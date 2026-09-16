@@ -85,7 +85,7 @@ test('both addresses reach the dashboard, and the v6 card only appears when ther
 });
 
 test('every locale has the label — a missing key renders as the raw key', () => {
-  for (const lang of ['en', 'es', 'fr', 'de', 'pt', 'it']) {
+  for (const lang of ['en', 'es', 'fr', 'de', 'pt', 'it', 'ru']) {
     const src = read(`frontend/js/i18n/${lang}.js`);
     assert.match(src, /'device\.info\.local_ip6':/, `${lang} is missing device.info.local_ip6`);
   }

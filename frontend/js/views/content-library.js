@@ -17,7 +17,7 @@ const BUNDLE_MIME = 'application/vnd.screentinker.bundle+zip';
 const SUBTITLE_LANGS = [
   ['en', 'English'], ['es', 'Español'], ['fr', 'Français'], ['de', 'Deutsch'],
   ['pt', 'Português'], ['it', 'Italiano'], ['nl', 'Nederlands'], ['ja', '日本語'],
-  ['ko', '한국어'], ['zh', '中文'],
+  ['ko', '한국어'], ['zh', '中文'], ['ru', 'Русский'],
 ];
 
 function formatFileSize(bytes) {

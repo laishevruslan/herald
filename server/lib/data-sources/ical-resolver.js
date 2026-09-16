@@ -68,6 +68,7 @@ const ROOM_STRINGS = {
   hi: { intl: 'hi-IN', hour12: false, busy: 'व्यस्त', available: 'उपलब्ध', busyUntil: (t) => `${t} तक व्यस्त`, freeUntil: (t) => `${t} तक उपलब्ध`, freeAllDay: 'पूरे दिन उपलब्ध', allDay: 'पूरा दिन', today: 'आज', tomorrow: 'कल', busyMask: 'व्यस्त', eventFallback: 'कार्यक्रम' },
   ja: { intl: 'ja-JP', hour12: false, busy: '使用中', available: '空き', busyUntil: (t) => `${t} まで使用中`, freeUntil: (t) => `${t} まで空き`, freeAllDay: '終日空き', allDay: '終日', today: '今日', tomorrow: '明日', busyMask: '使用中', eventFallback: '予定' },
   zh: { intl: 'zh-CN', hour12: false, busy: '使用中', available: '空闲', busyUntil: (t) => `使用中，至 ${t}`, freeUntil: (t) => `空闲，至 ${t}`, freeAllDay: '全天空闲', allDay: '全天', today: '今天', tomorrow: '明天', busyMask: '使用中', eventFallback: '活动' },
+  ru: { intl: 'ru-RU', hour12: false, busy: 'ЗАНЯТО', available: 'СВОБОДНО', busyUntil: (t) => `Занято до ${t}`, freeUntil: (t) => `Свободно до ${t}`, freeAllDay: 'Свободно весь день', allDay: 'Весь день', today: 'Сегодня', tomorrow: 'Завтра', busyMask: 'Занято', eventFallback: 'Событие' },
 };
 
 // Map a data source's `locale` (may be null, 'en-US', 'nl', etc.) to a table key. Default English.
