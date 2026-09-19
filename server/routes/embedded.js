@@ -47,6 +47,7 @@ const { postprocess }       = require('../lib/embedded-postprocess');
 const pairLockout           = require('../lib/pair-lockout');
 const { sixDigitCode }      = require('../lib/numeric-code');
 const ScheduleEval          = require('../lib/schedule-eval');
+const PlayOrder             = require('../lib/play-order');
 const { effectiveDeviceTz } = require('../lib/device-timezone');
 
 // ─── Auth helper ───────────────────────────────────────────────────────────────
@@ -68,6 +69,15 @@ function resolveAuth(req, res, next) {
     // API token path (preview / dashboard use)
     return bearerAuth(req, res, (err) => {
       if (err) return next(err);
+      // This router was mounted outside the PUBLIC_ROUTERS bearerAuth+tokenScopeGate loop (it also
+      // takes device tokens), so it never applied a scope gate. Every route here is a device-content
+      // READ, so only read-ladder tokens (read/write/full) qualify. 'agency' (publish to designated
+      // playlists) and 'billing:read' (global billing read) are off-ladder narrow grants and must not
+      // be able to read arbitrary device renders in their bound workspace.
+      const READ_LADDER = new Set(['read', 'write', 'full']);
+      if (req.viaToken && !READ_LADDER.has(req.tokenScope)) {
+        return res.status(403).json({ error: `API token scope '${req.tokenScope}' cannot read device content` });
+      }
       resolveTenancy(req, res, next);
     });
   }
@@ -270,49 +280,67 @@ function getPublishedPlaylistItems(playlistId) {
  * @returns {{ item, content, itemIndex, expiresIn, total } | null}
  *   null when no playlist or no items.
  */
-function resolveCurrentItem(deviceId, forceIndex) {
+// The device default/standby image as a resolved e-ink item, or null. Shown when the panel would
+// otherwise idle: no playlist, no items, or every item filtered out by its schedule (off times).
+// E-ink renders STILLS only, so a non-image default is ignored (the panel keeps its own idle).
+function defaultResolved(deviceId) {
+  const row = db.prepare('SELECT default_content_id FROM devices WHERE id = ?').get(deviceId);
+  if (!row || !row.default_content_id) return null;
+  const c = db.prepare('SELECT id AS content_id, filename, mime_type, filepath, file_size, remote_url FROM content WHERE id = ?').get(row.default_content_id);
+  if (!c || typeof c.mime_type !== 'string' || !c.mime_type.startsWith('image/')) return null;
+  const item = Object.assign({}, c, { duration_sec: 3600 });
+  return { item, content: item, itemIndex: 0, expiresIn: 3600, total: 1 };
+}
+
+function resolveCurrentItem(deviceId, forceIndex, { advance = true } = {}) {
   const { playlist_id } = resolveDeviceContext(deviceId);
-  if (!playlist_id) return null;
+  if (!playlist_id) return defaultResolved(deviceId);
 
   const device = db.prepare('SELECT id, workspace_id, timezone, reported_timezone FROM devices WHERE id = ?').get(deviceId);
   const tz = resolveDeviceTimezone(device);
 
   const allItems = getPublishedPlaylistItems(playlist_id);
-  const items = allItems.filter((it) => ScheduleEval.itemShouldPlay(it, Date.now(), tz));
-  if (!items.length) return null;
+  // E-ink cannot rasterize a live stream, so a video/hls item is never playable here —
+  // treated as ineligible so PlayOrder skips it and the panel shows the next real item
+  // (or idles if there is none). No attempt to decode a stream to a still frame.
+  const allows = (it) => it && it.mime_type !== 'video/hls' && it.mime_type !== 'video/rtsp' && ScheduleEval.itemShouldPlay(it, Date.now(), tz);
+  const modeRow = db.prepare('SELECT published_playback_order FROM playlists WHERE id = ?').get(playlist_id);
+  const mode = (modeRow && modeRow.published_playback_order) || 'sequential';
+  if (!allItems.length) return defaultResolved(deviceId);
 
   const now = Math.floor(Date.now() / 1000);
 
-  // If caller forces an index (for testing), honour it directly.
   if (forceIndex !== undefined && forceIndex !== null) {
     const raw = Number(forceIndex);
     const parsed = Number.isInteger(raw) ? raw : 0;
-    const idx  = Math.max(0, Math.min(parsed, items.length - 1));
-    const item = items[idx];
-    return { item, content: item, itemIndex: idx, expiresIn: item.duration_sec || 30, total: items.length };
+    const idx  = Math.max(0, Math.min(parsed, allItems.length - 1));
+    const item = allItems[idx];
+    return { item, content: item, itemIndex: idx, expiresIn: item.duration_sec || 30, total: allItems.length };
   }
 
-  // Load or initialise cursor
   let cursor = CURSOR_GET.get(deviceId);
   if (!cursor) {
-    CURSOR_UPSERT.run(deviceId, 0);
+    if (advance) CURSOR_UPSERT.run(deviceId, 0);
     cursor = { item_index: 0, started_at: now };
   }
 
-  let idx        = cursor.item_index % items.length;
+  let idx        = cursor.item_index;
   let startedAt  = cursor.started_at;
-  const item     = items[idx];
-  const duration = item.duration_sec || 30;
+  const st = (resolveCurrentItem._order = resolveCurrentItem._order || new Map());
+  if (!st.has(deviceId)) st.set(deviceId, {});
+  const state = st.get(deviceId);
+  const duration = (allItems[idx] && (allItems[idx].duration_sec || 30)) || 30;
   const elapsed  = now - startedAt;
 
-  // Advance if the current item's time has passed
-  if (elapsed >= duration) {
-    idx = (idx + 1) % items.length;
-    CURSOR_UPSERT.run(deviceId, idx);
+  if (idx < 0 || idx >= allItems.length || elapsed >= duration || !allows(allItems[idx])) {
+    const next = PlayOrder.nextIndex(allItems, idx, allows, mode, state);
+    if (next < 0) return defaultResolved(deviceId);
+    idx = next;
+    if (advance) CURSOR_UPSERT.run(deviceId, idx);   // read-only callers (/info, preview) must not move the panel
     startedAt = now;
   }
 
-  const currentItem = items[idx];
+  const currentItem = allItems[idx];
   const currentDuration = currentItem.duration_sec || 30;
   const expiresIn = Math.max(1, currentDuration - (now - startedAt));
 
@@ -321,7 +349,7 @@ function resolveCurrentItem(deviceId, forceIndex) {
     content: currentItem,
     itemIndex: idx,
     expiresIn,
-    total: items.length,
+    total: allItems.length,
   };
 }
 
@@ -358,7 +386,8 @@ function resolveLayoutItems(deviceId, forceIndex, { advance = true } = {}) {
   if (playlist_id) {
     const device = db.prepare('SELECT id, workspace_id, timezone, reported_timezone FROM devices WHERE id = ?').get(deviceId);
     const tz = resolveDeviceTimezone(device);
-    allItems = getPublishedPlaylistItems(playlist_id).filter((it) => ScheduleEval.itemShouldPlay(it, Date.now(), tz));
+    // Zoned e-ink also skips live streams — they cannot be rasterized to a panel.
+    allItems = getPublishedPlaylistItems(playlist_id).filter((it) => it && it.mime_type !== 'video/hls' && it.mime_type !== 'video/rtsp' && ScheduleEval.itemShouldPlay(it, Date.now(), tz));
   }
 
   // If the device has no items in its assigned playlist, return null so caller returns 404
@@ -574,7 +603,9 @@ router.get('/info', resolveAuth, (req, res) => {
 
   touchDeviceHeartbeat(device, req);
   const profile = parseProfile(device.screen_profile);
-  const resolved = resolveCurrentItem(device.id, req.query.item);
+  // /info is metadata (MCU negotiation / debugging / monitors). It must NOT advance the panel's
+  // cursor, or a poll that lands after the current item's dwell would make the real render skip an item.
+  const resolved = resolveCurrentItem(device.id, req.query.item, { advance: false });
 
   res.json({
     device_id: device.id,
@@ -693,14 +724,16 @@ async function handleRenderStandard(req, res, device, profile, opts = {}) {
   const signal = opts.signal || ac.signal;
 
   const forceIndex = req.query.item !== undefined ? req.query.item : null;
-  const resolved = resolveCurrentItem(device.id, forceIndex);
+  const isPreview = req.query.preview === '1';
+  // A dashboard preview must not advance the real device's cursor (an ?item= override already never
+  // does). A genuine device render still advances, time-gated by the current item's dwell.
+  const resolved = resolveCurrentItem(device.id, forceIndex, { advance: !isPreview });
   if (!resolved) {
     return res.status(404).json({ error: 'No playlist assigned or no active items for this device.' });
   }
 
   const clientIp = touchDeviceHeartbeat(device, req);
   const { item, content, itemIndex, expiresIn, total } = resolved;
-  const isPreview = req.query.preview === '1';
 
   console.log(`[embedded] Device '${device.name}' (${device.id}) requested frame [item=${itemIndex + 1}/${total}] from ${clientIp}`);
 

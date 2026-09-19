@@ -22,12 +22,19 @@ const slideRender = require('../lib/slide-render');
 const nowSec = () => Math.floor(Date.now() / 1000);
 
 /** Scope every read and write to the caller's workspace, the way content and devices do. */
-function checkDeckAccess(req, res) {
+function checkDeckAccess(req, res, requireWrite) {
   const deck = db.prepare('SELECT * FROM slide_decks WHERE id = ?').get(req.params.id);
   if (!deck) { res.status(404).json({ error: 'Deck not found' }); return null; }
   const ws = deck.workspace_id ? db.prepare('SELECT * FROM workspaces WHERE id = ?').get(deck.workspace_id) : null;
   const ctx = ws && accessContext(req.user.id, req.user.role, ws);
   if (!ctx) { res.status(403).json({ error: 'Access denied' }); return null; }
+  // A read-only member may VIEW a deck but not author, publish, or delete it — the same rule
+  // playlists (loadPlaylistAccess) and schedules already enforce, and which was missing here. Publish
+  // builds slide widgets + a playlist and fans a playlist-update to every screen, so this gate is what
+  // keeps a workspace_viewer off live signage.
+  if (requireWrite && !ctx.actingAs && ctx.workspaceRole === 'workspace_viewer') {
+    res.status(403).json({ error: 'Read-only access' }); return null;
+  }
   return deck;
 }
 
@@ -45,7 +52,7 @@ function present(deck) {
     created_at: deck.created_at,
     updated_at: deck.updated_at,
     doc,
-    warnings: deckLib.deckWarnings(doc, voDurations(doc)),
+    warnings: deckLib.deckWarnings(doc, voDurations(doc, deck.workspace_id)),
   };
 }
 
@@ -58,14 +65,17 @@ function present(deck) {
  * `duration_sec` is null for anything never probed (an image, an upload ffprobe could not read), and
  * those ids are simply absent from the map — the lint stays quiet rather than guessing.
  */
-function voDurations(doc) {
+function voDurations(doc, workspaceId) {
   const ids = [...new Set((doc.slides || [])
     .map((s) => s.template && s.template.audio && s.template.audio.vo)
     .filter((id) => typeof id === 'string' && id))];
-  if (!ids.length) return {};
+  if (!ids.length || !workspaceId) return {};
+  // Scope to the deck's workspace: a vo id sits in a doc the editor authored, so a foreign content
+  // UUID could otherwise probe another workspace's content existence and coarse duration via the
+  // deck warnings.
   const rows = db.prepare(
-    `SELECT id, duration_sec FROM content WHERE duration_sec IS NOT NULL AND id IN (${ids.map(() => '?').join(',')})`
-  ).all(...ids);
+    `SELECT id, duration_sec FROM content WHERE duration_sec IS NOT NULL AND workspace_id = ? AND id IN (${ids.map(() => '?').join(',')})`
+  ).all(workspaceId, ...ids);
   return Object.fromEntries(rows.map((r) => [r.id, r.duration_sec]));
 }
 
@@ -120,6 +130,11 @@ router.post('/', (req, res) => {
   if (!req.workspaceId) {
     return res.status(403).json({ error: 'No workspace context. Switch to a workspace before creating a deck.' });
   }
+  // Read-only members cannot create decks (mirrors playlists' create gate). The write routes below
+  // are gated in checkDeckAccess; this is the create path that has no deck to load yet.
+  if (!req.actingAs && req.workspaceRole === 'workspace_viewer') {
+    return res.status(403).json({ error: 'Read-only access' });
+  }
   const name = String((req.body && req.body.name) || '').trim().slice(0, 120);
   if (!name) return res.status(400).json({ error: 'A deck needs a name.' });
 
@@ -145,7 +160,7 @@ router.get('/:id', (req, res) => {
  * while they work rather than refusing the keystroke.
  */
 router.put('/:id', (req, res) => {
-  const deck = checkDeckAccess(req, res);
+  const deck = checkDeckAccess(req, res, true);
   if (!deck) return;
 
   const name = req.body && req.body.name !== undefined
@@ -197,7 +212,7 @@ function publishDeckNow(deck, req) {
 }
 
 router.post('/:id/publish', (req, res) => {
-  const deck = checkDeckAccess(req, res);
+  const deck = checkDeckAccess(req, res, true);
   if (!deck) return;
 
   let out;
@@ -227,7 +242,7 @@ router.post('/:id/publish', (req, res) => {
  * something else plays.
  */
 router.delete('/:id', (req, res) => {
-  const deck = checkDeckAccess(req, res);
+  const deck = checkDeckAccess(req, res, true);
   if (!deck) return;
 
   const alsoPublished = req.query.with_published === '1' || req.query.with_published === 'true';

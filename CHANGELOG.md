@@ -2,6 +2,279 @@
 
 ## Unreleased
 
+### Fixed
+
+**Tizen: multitasking resumes media, Return offers to exit, and a store-ready package.** Hidden
+behind Smart Hub or another app, the TV pauses every `<video>` and the AVPlay session and nothing
+restarted them, so a single looping video came back as a frozen frame (Samsung CO-MT-01). The player
+now suspends on hide and restores on show, re-mounting anything that cannot simply play again.
+Return on the playback screen used to drop the operator onto the Server URL form; it now opens
+Exit / Change server / Cancel, D-pad navigable (CO-US-05). `./build-wgt.sh --store` builds a
+consumer-store `.wgt` with the partner-only privileges and `background-support` stripped — the
+Seller Office pre-test refused the SSSP manifest outright — and `tizen/STORE-SUBMISSION.md` carries
+what to enter for the reviewer.
+
+### Added
+
+**Scale-out, phase C1: one writer, many readers.** A second server can now hold a live, read-only
+copy of another server's workspaces and serve their dashboards — the same tables, the same 40
+route files, no mirror schema. It is the mesh, not a new cluster product: the replica is the
+primary's mesh parent, paired with the usual code, carrying a new `serves-dashboard` role and a
+new **workspace-replication** grant whose consent text says, next to the tick, that *passwords,
+tokens and secrets are never copied*. The primary keeps a change log through SQLite triggers that
+exist only while that grant does (`test_change_log_triggers_absent_without_replication_grant`), the
+replica pulls a snapshot then every change over the mesh link, and rows that arrived that way are
+tagged on the workspace (`origin_node_id`). Every write for a copied workspace is caught in the
+tenancy resolver and forwarded to `PRIMARY_URL` with the operator's own token — status, headers and
+body relayed as the primary answered, a `403` staying a `403` — and
+`test_every_mutating_route_passes_resolveTenancy` fails the build on a mutating route that skips
+that resolver. `PRIMARY_URL` has no default; unset, writes answer `409` and nothing is discovered.
+Reads keep working when the primary is down, writes answer `503 primary_unreachable`, and
+`lag_s` reads `null` rather than zero. Sweeps, data-source polling and lifecycle emails run for a
+node's own rows only. Players stay on the primary in this phase; content bytes are fetched through
+per request; playback history is not copied. `server/test/scale-out-e2e.test.js` boots two real
+processes — a self-hosted primary and a hosted-shaped replica — and diffs their answers route by
+route, in both directions, which is the I8 test ARCHITECTURE.md had been carrying as a gap.
+Workspace edits (rename, members, invites, create) and imports that name a copied workspace are
+forwarded the same way, and Reports on a copied workspace says that playback history lives on the
+primary. Operator guide: `docs/scale-out.md`.
+
+**Support access — consent-gated, time-boxed, revocable.** The login page's "Support Access" field
+and the Settings token generator have existed since the first open-source release with no server
+behind them (both endpoints 404'd). They now work, around one rule: a token we sign is only honoured
+against a **request code your instance generated** (Settings → Support Access, 24 h, single use), so
+our key is not a key to every install. The session it opens is a `platform_operator` — cross-org
+read/write, none of the owner powers — expires with the grant, appears in Settings with an *End
+session* button that takes effect on the next request, and is written to your activity log at every
+step. Self-hosters can point `SUPPORT_PUBLIC_KEY` at their own key to trust a different support desk,
+or none. See `docs/support-access.md`.
+
+## 2.1.4 (2026-09-17)
+
+### Fixed
+
+**Multi-zone panels no longer flash a "Connecting" overlay on cold boot.** A follow-up to the
+cold-start-into-zones fix: a zoned panel renders through the zone manager rather than the single-zone
+controller, so the boot "Connecting to server..." status was shown on top of the restored zones for a
+few seconds until the online catch-up cleared it. It is now suppressed while zones are already up.
+
+Added regression unit tests for the pieces that were breaking: the shared layout-mode decision (so
+the cached cold-start and the live update can never diverge again), the remote-view capture pacing
+(rate-limit floor and backoff cap), the D-pad direction geometry, and the accessibility self-enable
+list merge (preserves other services, no duplicates).
+
+## 2.1.3 (2026-09-17)
+
+### Added
+
+**Provisioned panels can enable the ScreenTinker accessibility service by themselves.** The
+accessibility service is the durable way to mirror a panel's whole screen in the remote view (it
+survives updates, unlike the screen-record permission that is wiped on every app restart) and the
+only way the remote arrow keys work. Until now it could only be turned on by hand at the panel or by
+a per-boot ADB command. A panel granted `WRITE_SECURE_SETTINGS` once at provisioning
+(`adb shell pm grant com.remotedisplay.player android.permission.WRITE_SECURE_SETTINGS`) now enables
+its own accessibility service on every boot, so whole-screen remote view and the remote D-pad keep
+working across reboots and updates with nobody at the screen. Without that one-time grant the app
+does nothing new and the operator is still nudged toward Settings. See
+`docs/device-owner-provisioning.md`.
+
+### Fixed
+
+**A rebooted device no longer shows offline for several minutes while it is actually back.** Online
+status was pushed to the dashboard only when a device re-registered (one shot); heartbeats kept the
+database current but told the panel nothing, and the panel never re-synced when its own socket
+reconnected. So a device that rebooted and resumed playing could sit "offline" on the panel until its
+next periodic re-register, up to five minutes on the web/BrightSign player. The panel now re-syncs
+whenever its own socket reconnects, and a heartbeat re-broadcasts online on the offline-to-online
+transition, so a recovered device flips back within one heartbeat.
+
+**Remote-control arrow keys work again.** In a device's Remote tab, taps and swipes worked but the
+D-pad arrows, Enter, and Center did nothing. They were routed to a shell `input keyevent`, which
+needs `INJECT_EVENTS` (a signature permission the app cannot hold, even as device owner), so they
+failed silently. The arrows now move a highlight box around the on-screen items through the
+accessibility service, and Enter / Center taps the highlighted item, so a panel can be navigated
+entirely from the dashboard even on screens that only respond to a remote. The highlight clears when
+the operator taps directly, leaves the screen, or ends the session. Requires the ScreenTinker
+accessibility service enabled on the panel (see the self-enable note above).
+
+**The remote live view no longer flickers, and keeps up with control.** On a panel using the
+accessibility capture path, the screen mirror occasionally dropped a single frame back to just the
+player's own window (a flicker between the real screen and the playlist) whenever Android rate-limited
+its screenshot API; those misses are now skipped instead of shown. The stream also grabs a fresh
+frame right after each remote tap or key press, and no longer backs off as far under load, so driving
+a panel feels responsive rather than lagging seconds behind.
+
+**Multi-zone panels no longer flash fullscreen on a cold start.** A panel on a multi-zone (or
+video-wall) layout restored its cached playlist on boot through the single-zone path, so after a
+reboot or power cut it came up as one fullscreen rotation and only snapped into its zones once the
+server reconnected. The offline cold-start now restores the layout shape too, so a zoned panel boots
+straight into its zones.
+
+**Operator "force update" now overrides the phantom/backoff OTA holds.** A display on a genuine
+prerelease core (for example a one-off `-diag` build) could not self-recover to stable: the #144
+phantom guard deliberately refuses to chase an older-core prerelease, and the dashboard "force
+update" hit the same hold and silently reported "already on the latest version". `ota-breaker.decide()`
+now takes a `forced` flag; a forced check on a client strictly BEHIND latest returns `forced-override`
+ahead of the `superseded-prerelease` and `rate-backoff` holds, while an unforced check is held
+exactly as before. It never forces a downgrade or a same-version reinstall, and the server-side OTA
+kill switch still wins. The Android player sends `forced=1` only on an operator-forced check, never
+the 30-minute timer. (#369)
+
+## 2.1.2 (2026-09-17)
+
+### Added
+
+**Live TV / IPTV as a playlist item.** Add a **live stream** in the content library: an HLS
+(`.m3u8`) URL the screen opens itself. The URL can be a LAN address (venue and hotel IPTV live on
+10.x / `.local`), because ScreenTinker never fetches or restreams it: the bytes go straight from
+your source to the screen, so a 5 Mbps channel on 40 screens is not our WAN bill. A live item is
+ordinary content (`video/hls`): it takes tags, schedules, from/to windows, conditions, fit and
+weight, and shuffles like anything else. Its duration is **dwell** (how long to stay on the channel,
+default 5 minutes); set it to 0 to stay until the item is skipped by a schedule, a condition, or the
+playlist moving on. Plays on the web player (native HLS on Safari / BrightSign / webOS, and a
+lazily-loaded bundled hls.js on Chrome), Tizen, and native Android (ExoPlayer). E-ink skips live
+items, and a player too old to know about `video/hls` is not sent them, so nothing sits on a black
+screen. A live channel works in a full screen or a single zone of a multi-zone layout.
+
+**Native RTSP camera feeds on Android.** The same "Add live stream" also takes an `rtsp://` URL (an
+IP camera or NVR, credentials in the URL allowed) and plays it directly on the **native Android
+player** (ExoPlayer, forced over TCP so it works through firewalls and on cameras that refuse UDP).
+This is Android-only, and gated: the `video/rtsp` item is only ever sent to a screen that declares
+`playback.rtsp`, so browsers, BrightSign/webOS, Tizen and e-ink never receive an rtsp item they
+cannot open. RTSP does not fan out (a camera caps its own concurrent sessions), so for many screens
+off one camera, or for non-Android players, still run an on-site RTSP-to-HLS bridge (for example
+go2rtc) and point a `video/hls` URL at its output.
+
+**Tags and metadata on content, and shuffle / weighted-random playlists.** Tag a file in the
+library (`promo, lobby`) or attach key=value metadata. A playlist item can skip unless it has (or
+lacks) a tag, or unless a metadata field matches, using the same condition picker as the
+data-source gate, with a When dropdown. Tags and metadata are copied onto the published snapshot so
+a screen still skips with the WAN down.
+
+**Order on a playlist: in order (default), shuffle, or weighted random.** Shuffle draws from a
+no-repeat bag: every item plays once per cycle, and the bag is reshuffled so the same item never
+plays twice in a row across a bag boundary. Weighted uses each item's weight (1-1000, default 1) and
+avoids playing the same item twice in a row when another eligible item exists. Draft vs published,
+same as every other playlist field: publish to push to devices. Old players ignore the extra fields
+and keep playing in order.
+
+Wall followers and group-sync members still play in order; the leader index / shared clock is the
+source of truth. Multi-zone Android and multi-zone e-ink stay sequential; web, Tizen, BrightSign /
+webOS (web player), native Android fullscreen, and single-zone e-ink shuffle. The same zoned layout
+therefore shuffles on web/webOS/BrightSign and plays in order on Android and e-ink.
+
+**A device's default image now actually shows when there is nothing to play.** The Default/standard
+image under Device settings (`devices.default_content_id`) was stored but never sent to any player or
+rendered anywhere, so a screen with no playlist, an empty playlist, or a playlist whose only items
+are outside their schedule window went black. It is now resolved into the socket payload
+(`default_content`) and rendered as an idle fallback by the web player, native Android, Tizen, and
+e-ink, instead of a black frame. Image only (a video/URL default is ignored, e-ink included), and the
+local file is pinned for offline so it still appears with the WAN down. This is the supported answer
+to LED-wall off-hours: set a default image instead of building a black-image playlist with a
+timetable. Old players ignore the field and keep showing their idle screen.
+
+### Fixed
+
+**The slide editor no longer plays entrance animations while you are arranging a slide.** Switching to
+any slide but the first replayed its entrance, so elements were mid-flight (faded out, sliding in) and
+could not be grabbed until the animation settled, which made dragging things around maddening. The
+canvas now shows every slide settled, the way PowerPoint's editor does; the entrance plays only when
+you click **Play entrance** (motion still previews while you are editing an element's animation on the
+Motion tab).
+
+**Security: TOTP recovery codes are now 128-bit, and older codes keep working.** Recovery codes were
+40-bit (5 random bytes) stored as an unsalted SHA-256, which is brute-forceable offline if that table
+ever leaked. New codes are 128-bit (16 bytes, shown grouped in fours for legibility). No one is locked
+out: verification hashes whatever the user types and looks the hash up, so a pre-existing 40-bit code
+still matches its stored hash, and only newly issued codes (at setup or a manual regenerate) are
+longer. The two-factor input fields were widened so the longer code can be entered.
+
+**Security: a widget colour/background value can no longer beacon to an external URL.** `safeCss`
+blocked `url(...)` but not the other CSS functions that fetch a resource without that token, so a
+value like `image-set("//host/beacon.png" 1x)` passed and loaded the URL when the widget rendered
+(a tracking beacon or render confirmation, no script). Blocked `image-set()`, `image()`,
+`cross-fade()`, `paint()` and `element()` (and their prefixed forms); legitimate colours and
+gradients are unaffected. Also scoped a slide deck's voiceover-duration lookup to the deck's own
+workspace, so its warnings can no longer probe whether a content id in another workspace exists.
+**Discarding a draft no longer strips per-item schedules.** A discard rebuilt the playlist's items
+from the published version but dropped their per-item schedule blocks (dayparting and validity): the
+published structure never captured them and the re-insert never wrote them, so discarding an unrelated
+draft edit silently removed the schedules from every item. Publish now captures the blocks into the
+structure, and discard restores them.
+
+**Bulk actions are safer, and an embedded panel's cursor stops drifting.** The bulk duplicate action
+ran its inserts without a transaction, so a mid-batch failure left a half-duplicated selection; it is
+now atomic like every other bulk action. Paste also accepted a schedule block with no days (stored as
+a block that never plays); it now requires at least one day, matching the normal editor. And an
+embedded e-ink panel's playlist cursor no longer advances as a side effect of a metadata poll or a
+dashboard preview, only a real device render moves it, so a monitor polling the info endpoint can no
+longer make a panel skip an item.
+**Security: token-scope and stale-membership gaps.** Four workspace-scoping fixes from the review. The embedded (e-ink) device-content router was mounted outside the API-token scope gate, so an `agency` or `billing:read` token could read a device's rendered content in its workspace; it now accepts only read-ladder tokens. Workspace export and import trusted the JWT's `current_workspace_id` without re-checking membership, so a user removed from a workspace but still holding a token could export its branding or import into it and overwrite its branding; both now re-validate the claim against current access. A schedule PUT could set a `zone_id` belonging to another workspace's layout (POST already checked); it now validates it. And a content upload accepted a `folder_id` from another workspace (edit and batch-move already checked); it now validates it. None is cross-tenant data disclosure.
+**Security: read-only members could create content in their workspace.** The read-only-viewer gate was enforced on edit and delete but missing on the CREATE routes, so a `workspace_viewer` could still upload content, add remote/YouTube/live-stream content, create widgets, upload fonts, add custom shader transitions, create kiosk pages, and create or duplicate layouts. Added a shared `denyReadOnly` gate to those routes (and to the custom-shader delete, which scoped by workspace but not role). This is the same read-only escalation class as the slide-deck and token fixes; none of it is cross-tenant.
+
+**Data-source `play_when` gating and custom shader transitions work on live devices again.** The
+device payload query left `workspace_id` out of its column list, so the value passed on to the
+payload builder was always null and the two features that key off it (an item that plays only when a
+data-source field matches, and a workspace's uploaded shader transitions) silently no-opped on every
+real screen while passing in tests that supplied a workspace id. Added the column to the query, and
+to the dashboard preview payload, which had the same gap.
+
+**A cyclic or over-deep playlist nest can no longer crash publish.** Playlists nest one level deep,
+enforced when a child is added. But the snapshot builder's depth guard was dead code (it reset the
+depth to zero on every recursion), and the bulk `paste` action skipped the one-level checks the
+single-item add path runs. A row written by some other path (an import, a migration) that formed a
+cycle, or a paste that built a second level, would recurse until the stack overflowed and publish or
+preview returned a 500. The builder now tracks the nesting depth and the ancestor chain and refuses a
+cycle or an over-deep reference, and paste enforces the same one-level guard as add.
+**Security: the e-ink/embedded renderer no longer makes unguarded server-side fetches (SSRF).** When
+a device's content is a remote URL, the embedded snapshot renderer fetches it on the server. Three of
+those paths bypassed the SSRF guard the media proxy and data-source fetcher already use: the native
+layout renderer fetched a zone's URL with no vetting at all, and the remote-image and remote-page
+paths vetted once then fetched with an unpinned client, so a hostname that resolves to a private
+address at connect time, or a public URL that redirects to one, reached them. Any workspace editor
+could point content at `169.254.169.254`, `127.0.0.1`, or a LAN service and have it rendered into a
+snapshot every device pulls. The two image fetches now go through `guardedRequest` (vet + socket-pin +
+redirect re-vet), the Chromium page render vets every request it makes and aborts any to a
+private/reserved address, and a known non-image URL skips the image probe entirely.
+**Security: a read-only member could reach live screens (slide decks + agency tokens).** Two authorization gaps let a `workspace_viewer` perform writes the role is meant to forbid. Slide decks had no read-only gate: a viewer could create, edit, PUBLISH (which builds slide widgets and a playlist and pushes a playlist-update to every screen) and delete decks. And `POST /api/tokens` gated only on workspace membership, so a viewer could mint an `agency` token with auto-publish and push content to live signage through the agency surface, which does not re-check the owner's role. A viewer is now denied deck writes/publish/delete (matching playlists and schedules) and may mint only a read-scoped token.
+**Security: a non-string widget config value could bypass HTML escaping.** `escapeHtml` returned a
+non-string argument unchanged, so a widget `config` field set to a JSON array/object (weather
+`location`, social `platform`/`query`, rss `feed_url`) reached the render output unescaped and was
+string-coerced there, which for the rss JS-string context meant arbitrary script in the widget
+document. Non-`slide` widget config is not normalized, so the array reached the sink intact. Fixed by
+coercing with `String()` before escaping, matching the slide renderer. These are the escaped
+built-in widgets whose only defense is this escaping.
+
+**Schedule and play-window edits now tell you they need a Publish.** Setting a play window on an item
+(`play_from` / `play_until`) saved silently, so it was easy to set a time frame, see nothing change on
+the screen, and conclude the timetable was broken when the edit was only a draft. It now shows the
+same "publish the playlist to push it to devices" cue the schedule dialog already gave. The
+draft/published model is unchanged: a screen keeps playing the last published snapshot until you
+Publish, which is why an unpublished schedule looks like "it always plays".
+
+**A zero-length schedule window (start time equal to end time) is now rejected.** Such a block
+evaluates as never active, so the item silently vanished instead of playing, the mirror image of the
+"schedule ignored" report and just as confusing. The editor and the API both refuse it now, with a
+message pointing at the overnight-window form (make the end earlier than the start, or use 24:00 for
+"until midnight").
+
+**A slide background image no longer tiles.** The slide background layer set `background-size:cover`
+but never set `background-repeat`, so the CSS default of repeat tiled any image whose intrinsic size
+cover could not resolve (an SVG logo/wordmark used as a background, or a raster before its dimensions
+had loaded). A branded background showed a column of repeated marks down one edge, and because the
+slide iframe is rebuilt every cycle it reappeared on each reload. Pinned `background-repeat:no-repeat`
+on the background layer; cover never wants tiling.
+
+**Harden a live slide element (clock/date/countdown) against old-WebView repaint ghosting.** On some
+older Android System WebViews a live element that rewrites its text every second composites the new
+glyphs over the old without clearing, so they smear into a repeated ghost column (a room-sign clock
+whose minutes appeared to "repeat down the edge"). Each live element is now pinned to its own
+compositing layer (`translateZ(0)`, an identity transform) so the WebView re-rasterises it cleanly
+each frame. This could not be reproduced on a current WebView in-house, so it is a defensive fix for
+old field panels; where a panel still shows it, updating the panel's System WebView is the real remedy.
+
+## 2.1.1 (2026-09-16)
+
 ### Added
 
 **Checkbox selection on a playlist, and bulk actions that write the same fields the
@@ -29,6 +302,19 @@ playing everything.
 
 The Outlook calendar **shows** those windows on a playlist event (peek + stacked labels). It does
 not write `schedules` rows for them. Open playlist from the peek to edit.
+
+### Fixed
+
+**Tablet room-sign panels can fill the screen.** Added 3:2 / 2:3 and 16:10 / 10:16 to the slide-deck
+aspect options. A panel like an 800x1200 ThinkSmart is exactly 2:3, so a 16:9 deck could never fill
+it: it letterboxed, and on a glossy panel the black bars reflect the room. Authoring the deck at
+3:2 (landscape) now fills such a panel exactly. The renderer already accepted any ratio; only the
+editor's picker and the deck whitelist were gating it.
+
+**`busy_timeout` on the database connection.** The main connection now waits up to 5s through a
+brief writer lock instead of failing a statement with "database is locked". better-sqlite3 defaulted
+this to 5s (so the native path never saw it); the node:sqlite fallback opened with none, so a boot
+migration contended by the WAL checkpointer could fail. Matches the native driver's behaviour.
 
 ## 2.1.0
 

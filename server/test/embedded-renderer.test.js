@@ -29,18 +29,20 @@ db.exec(`
     pairing_code TEXT, claim_secret TEXT, status TEXT,
     device_token TEXT, blocked INTEGER DEFAULT 0, screen_profile TEXT,
     playlist_id TEXT, playlist_source TEXT, layout_id TEXT,
-    timezone TEXT, reported_timezone TEXT, background_color TEXT DEFAULT '#000000'
+    timezone TEXT, reported_timezone TEXT, background_color TEXT DEFAULT '#000000',
+    default_content_id TEXT
   );
   CREATE TABLE playlists (
     id TEXT PRIMARY KEY, workspace_id TEXT, name TEXT, status TEXT DEFAULT 'published',
-    published_snapshot TEXT, published_structure TEXT, updated_at INTEGER DEFAULT 0
+    published_snapshot TEXT, published_structure TEXT, updated_at INTEGER DEFAULT 0,
+    playback_order TEXT DEFAULT 'sequential', published_playback_order TEXT
   );
   CREATE TABLE playlist_items (
     id TEXT PRIMARY KEY, playlist_id TEXT, content_id TEXT,
     sort_order INTEGER DEFAULT 0, duration_sec INTEGER DEFAULT 30, updated_at INTEGER DEFAULT 0,
     zone_id TEXT, widget_id TEXT, child_playlist_id TEXT, muted INTEGER DEFAULT 0,
     play_from TEXT, play_until TEXT, enabled INTEGER DEFAULT 1, log_play INTEGER DEFAULT 1,
-    fit_mode TEXT, play_when TEXT
+    fit_mode TEXT, play_when TEXT, weight INTEGER DEFAULT 1
   );
   CREATE TABLE playlist_item_schedules (
     id TEXT PRIMARY KEY, playlist_item_id TEXT, active_days TEXT,
@@ -59,7 +61,8 @@ db.exec(`
     -- column made that whole refresh branch throw and be swallowed, silently untested.
     created_at INTEGER NOT NULL DEFAULT 0,
     expires_at INTEGER, unstable_connection INTEGER DEFAULT 0,
-    captions_enabled INTEGER DEFAULT 0, captions_lang TEXT, subtitle_url TEXT, subtitle_lang TEXT
+    captions_enabled INTEGER DEFAULT 0, captions_lang TEXT, subtitle_url TEXT, subtitle_lang TEXT,
+    tags TEXT, meta TEXT
   );
   CREATE TABLE embedded_cursor (
     device_id TEXT PRIMARY KEY, item_index INTEGER DEFAULT 0, started_at INTEGER DEFAULT 0
@@ -495,6 +498,43 @@ describe('Embedded Edge Cases & Robustness', () => {
     assert.equal(res, null, 'draft/unpublished playlist must never be served to embedded devices');
   });
 
+  test('resolveCurrentItem advance:false does not move the panel cursor (/info + preview)', () => {
+    db.prepare("INSERT INTO content (id, workspace_id, type, mime_type, is_active) VALUES ('c-adv-a','ws-1','image','image/png',1)").run();
+    db.prepare("INSERT INTO content (id, workspace_id, type, mime_type, is_active) VALUES ('c-adv-b','ws-1','image','image/png',1)").run();
+    db.prepare("INSERT INTO playlists (id, workspace_id, name, status, published_playback_order) VALUES ('pl-adv','ws-1','Adv','published','sequential')").run();
+    db.prepare("INSERT INTO playlist_items (id, playlist_id, content_id, sort_order, duration_sec) VALUES ('pi-adv-1','pl-adv','c-adv-a',0,30)").run();
+    db.prepare("INSERT INTO playlist_items (id, playlist_id, content_id, sort_order, duration_sec) VALUES ('pi-adv-2','pl-adv','c-adv-b',1,30)").run();
+    publishPlaylist('pl-adv');   // resolveCurrentItem reads the published snapshot, not raw items
+    db.prepare("INSERT INTO devices (id, name, workspace_id, playlist_id) VALUES ('dev-adv','Adv Dev','ws-1','pl-adv')").run();
+    // cursor at item 0, started at epoch 1 so the 30s dwell has elapsed -> a normal resolve advances.
+    db.prepare("INSERT INTO embedded_cursor (device_id, item_index, started_at) VALUES ('dev-adv', 0, 1)").run();
+    const idx = () => db.prepare("SELECT item_index FROM embedded_cursor WHERE device_id='dev-adv'").get().item_index;
+
+    resolveCurrentItem('dev-adv', undefined, { advance: false });
+    assert.equal(idx(), 0, 'a read-only resolve (advance:false) must not move the cursor');
+    resolveCurrentItem('dev-adv', undefined);            // a real device render advances, time-gated
+    assert.equal(idx(), 1, 'a real render advances the cursor');
+  });
+
+  test('resolveCurrentItem falls back to the device default image when there is no playlist', () => {
+    db.prepare("INSERT INTO content (id, workspace_id, type, mime_type, filename, is_active) VALUES ('c-def-img', 'ws-1', 'image', 'image/png', 'off.png', 1)").run();
+    // no playlist_id at all -> previously black/404; now the configured default image shows
+    db.prepare("INSERT INTO devices (id, name, workspace_id, default_content_id) VALUES ('dev-def-1', 'Default Dev', 'ws-1', 'c-def-img')").run();
+
+    const res = resolveCurrentItem('dev-def-1');
+    assert.ok(res, 'a device with a default image must resolve something instead of null');
+    assert.equal(res.item.content_id, 'c-def-img', 'the resolved item is the configured default');
+    assert.equal(res.total, 1, 'default fallback is a single-item rotation');
+  });
+
+  test('resolveCurrentItem ignores a non-image default (e-ink renders images only)', () => {
+    db.prepare("INSERT INTO content (id, workspace_id, type, mime_type, filename, is_active) VALUES ('c-def-vid', 'ws-1', 'video', 'video/mp4', 'clip.mp4', 1)").run();
+    db.prepare("INSERT INTO devices (id, name, workspace_id, default_content_id) VALUES ('dev-def-vid', 'Vid Default Dev', 'ws-1', 'c-def-vid')").run();
+
+    const res = resolveCurrentItem('dev-def-vid');
+    assert.equal(res, null, 'a video default cannot render on an e-ink panel -> null, not a broken item');
+  });
+
   test('resolveLayoutItems returns null for empty or unpublished playlist (yields 404, not black 200)', () => {
     const layoutId = 'lay-empty-1';
     db.prepare("INSERT INTO layouts (id, workspace_id, name) VALUES (?, 'ws-1', 'Empty Lay')").run(layoutId);
@@ -751,6 +791,8 @@ describe('remote web pages are navigated, not pasted', () => {
   const calls = { goto: [], setContent: [], fetch: [] };
   const fakePage = {
     setViewport: async () => {},
+    setRequestInterception: async () => {},   // SSRF hardening: renderRemotePage vets each request
+    on: () => {},
     goto: async (u) => { calls.goto.push(u); },
     setContent: async (h) => { calls.setContent.push(h); },
     waitForNetworkIdle: async () => {},
@@ -798,6 +840,21 @@ describe('remote web pages are navigated, not pasted', () => {
       () => render({ id: 'i3' }, { remote_url: 'http://169.254.169.254/latest/meta-data/', mime_type: 'image/jpeg' }, { width: 800, height: 480 }),
       (e) => e.code === 'BLOCKED_URL');
     assert.equal(calls.fetch.length, 0);
+  });
+});
+
+describe('SSRF: server-side remote_url fetches are guarded', () => {
+  test('every remote_url fetch goes through guardedRequest, and the page render vets each request', () => {
+    const src = fs.readFileSync(require.resolve('../lib/embedded-render'), 'utf8');
+    // No bare fetch() of an operator-supplied remote url anywhere (that path skips the pin + redirect
+    // re-vet that guardedRequest provides). renderRemoteImage and renderLayoutNative use guardedRequest.
+    assert.ok(!/\bfetch\(\s*content\.remote_url/.test(src), 'renderLayoutNative must not bare-fetch remote_url');
+    assert.ok(!/\bawait fetch\(\s*url\b/.test(src), 'renderRemoteImage must not bare-fetch the url');
+    assert.match(src, /guardedRequest\(url,/, 'renderRemoteImage uses guardedRequest');
+    assert.match(src, /guardedRequest\(content\.remote_url,/, 'renderLayoutNative uses guardedRequest');
+    // renderRemotePage (Chromium) vets every request the page makes, since page.goto is not pinned.
+    assert.match(src, /setRequestInterception\(true\)/, 'renderRemotePage intercepts requests');
+    assert.match(src, /assertSafeUrl\(r\.url\(\)\)/, 'and vets each request URL');
   });
 });
 

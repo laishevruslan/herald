@@ -6,9 +6,48 @@ const path = require('path');
 const { copyFileBytes } = require('../lib/fsutil'); // exFAT-safe; see lib/fsutil.js
 const fs = require('fs');
 const config = require('../config');
+const replicaProxy = require('../lib/replica-proxy');
 const { sixDigitCode } = require('../lib/numeric-code');
 const VERSION = require('../version');
 const { PLATFORM_ROLES, resolveSessionUser } = require('../middleware/auth');
+const { accessContext, firstAccessibleWorkspace } = require('../lib/tenancy');
+
+/**
+ * Scale-out roles read off the edges, never off a NODE_ROLE. Returns null on a stock install.
+ *   replicas   — up edges carrying workspace-replication (this node is their primary): acked rev.
+ *   replica_of — down edges with serves-dashboard + workspace-replication (this node copies them):
+ *                position, as-of, lag (null while the edge is down), phase.
+ */
+function scaleOutStatus() {
+  const parse = (v) => { try { return JSON.parse(v || '[]'); } catch (_) { return []; } };
+  let edges = [];
+  try { edges = db.prepare("SELECT * FROM mesh_edges WHERE revoked_at IS NULL").all(); } catch (_) { return null; }
+  const replicas = edges.filter((e) => e.direction === 'up' && parse(e.grant_categories).includes('workspace-replication'))
+    .map((e) => ({ node_id: e.peer_node_id, acked_rev: e.acked_rev ?? null, last_sync_at: e.last_sync_at ?? null }));
+  const rep = global.__meshReplica;
+  const replicaOf = rep ? rep.status() : [];
+  if (!replicas.length && !replicaOf.length) return null;
+  const role = [];
+  if (replicas.length) role.push('primary');
+  if (replicaOf.length) role.push('replica');
+  let head = null;
+  if (replicas.length) { try { head = require('../lib/mesh/replication').headRev(db); } catch (_) { /* absent */ } }
+  return { role, head_rev: head, replicas, replica_of: replicaOf };
+}
+
+// The JWT's current_workspace_id is a stored claim. Import and export resolve the session themselves
+// (they do not run behind resolveTenancy), so they must RE-VALIDATE that claim against current
+// membership: a user removed from a workspace still holds a JWT naming it, and must not be able to
+// import into it or export its branding. Mirrors resolveTenancy's discard-if-stale, then falls back
+// to the user's first accessible workspace.
+function sessionWorkspaceId(userId, role, jwtWorkspaceId) {
+  if (jwtWorkspaceId) {
+    const ws = db.prepare('SELECT * FROM workspaces WHERE id = ?').get(jwtWorkspaceId);
+    if (ws && accessContext(userId, role, ws)) return jwtWorkspaceId;
+  }
+  const first = firstAccessibleWorkspace(userId);
+  return first ? first.id : null;
+}
 const { INLINE_SAFE_EXTS } = require('../lib/upload-sniff');
 const { digestFileSync, isDigestName } = require('../lib/content-digest');
 const loopLag = require('../services/loop-lag');
@@ -58,6 +97,16 @@ router.get('/', (req, res) => {
     // flags are inert unless this is on. A boolean, no sidecar detail leaks here.
     features: { live_video: !!config.liveVideoEnabled, talk: !!config.talkEnabled },
   };
+
+  /*
+   * Scale-out (docs/scale-out-design.md §8). Present ONLY when this node is a primary for some
+   * replica or a replica of some primary — a stock install has no `scale_out` key at all. lag_s is
+   * null when the edge is down: silence is reported as unknown, never as zero.
+   */
+  try {
+    const so = scaleOutStatus();
+    if (so) body.scale_out = so;
+  } catch (e) { /* the health endpoint must never fail over an observer relationship */ }
 
   /*
    * 2.0.1 — WHY PLAYERS ARE BEING REFUSED, on the endpoint compose already polls.
@@ -146,7 +195,8 @@ router.get('/export', (req, res) => {
     // For a break-glass identity this is the synthetic recovery id, which has no users
     // row - the lookup below then 404s exactly as the inline verify did before.
     userId = session.user.id;
-    workspaceId = session.decoded.current_workspace_id || null;
+    // Re-validate the JWT's workspace claim against current membership (stale-access), then fall back.
+    workspaceId = sessionWorkspaceId(session.user.id, session.user.role, session.decoded.current_workspace_id || null);
     if (!userId) return res.status(401).json({ error: 'Invalid token' });
   } catch (err) {
     if (err.code === 'user_not_found') return res.status(404).json({ error: 'User not found' });
@@ -157,17 +207,6 @@ router.get('/export', (req, res) => {
   // resolver doesn't select).
   const user = db.prepare('SELECT id, email, name, role, auth_provider, plan_id, created_at FROM users WHERE id = ?').get(userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
-
-  // Phase 2.2f: export workspace-scoped branding. Fall back to first-accessible
-  // workspace if the JWT didn't carry one.
-  if (!workspaceId) {
-    const w = db.prepare(`
-      SELECT w.id FROM workspaces w
-      JOIN workspace_members wm ON wm.workspace_id = w.id
-      WHERE wm.user_id = ? ORDER BY wm.joined_at ASC LIMIT 1
-    `).get(userId);
-    workspaceId = w?.id || null;
-  }
 
   const devices = db.prepare('SELECT id, name, status, ip_address, android_version, app_version, screen_width, screen_height, created_at FROM devices WHERE user_id = ?').all(userId);
   const deviceIds = devices.map(d => d.id);
@@ -272,7 +311,27 @@ router.get('/export', (req, res) => {
 const multer = require('multer');
 const importUpload = multer({ dest: path.join(os.tmpdir(), 'screentinker-import'), limits: { fileSize: 2 * 1024 * 1024 * 1024 } }); // 2GB max
 
-router.post('/import', importUpload.single('file'), async (req, res) => {
+/*
+ * Scale-out (docs/scale-out.md): an import WRITES into the session's workspace. When that workspace
+ * is a copy (origin_node_id set) the whole upload is forwarded to the primary — before multer, so
+ * the multipart stream is still intact — and nothing lands here. Session errors are left to the
+ * handler below, which reports them exactly as it always has.
+ */
+function proxyImportIfCopied(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return next();
+  let ws = null;
+  try {
+    const session = resolveSessionUser(authHeader.split(' ')[1]);
+    if (session.viaRecovery) return next();
+    const wsId = sessionWorkspaceId(session.user.id, session.user.role, session.decoded.current_workspace_id || null);
+    ws = wsId ? db.prepare('SELECT id, origin_node_id FROM workspaces WHERE id = ?').get(wsId) : null;
+  } catch (e) { return next(); }
+  if (ws && replicaProxy.shouldIntercept(req, ws)) return replicaProxy.proxyToPrimary(req, res, config);
+  next();
+}
+
+router.post('/import', proxyImportIfCopied, importUpload.single('file'), async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Token required' });
 
@@ -284,24 +343,15 @@ router.post('/import', importUpload.single('file'), async (req, res) => {
     // for it, so the route 404'd. Preserve that.
     if (session.viaRecovery) return res.status(404).json({ error: 'User not found' });
     userId = session.user.id;
-    workspaceId = session.decoded.current_workspace_id || null;
+    // Import WRITES into the workspace and can overwrite its branding, so re-validate the JWT's
+    // workspace claim against current membership (stale-access) rather than trusting it, then fall back.
+    workspaceId = sessionWorkspaceId(session.user.id, session.user.role, session.decoded.current_workspace_id || null);
     if (!userId) return res.status(401).json({ error: 'Invalid token' });
   } catch (err) {
     if (err.code === 'user_not_found') return res.status(404).json({ error: 'User not found' });
     return denySession(res, err);
   }
 
-  // Phase 2.2b: imports stamp workspace_id on devices and content so the
-  // rows are visible to the workspace-filtered list endpoints. Fall back to
-  // the importer's first accessible workspace if the JWT didn't carry one.
-  if (!workspaceId) {
-    const w = db.prepare(`
-      SELECT w.id FROM workspaces w
-      JOIN workspace_members wm ON wm.workspace_id = w.id
-      WHERE wm.user_id = ? ORDER BY wm.joined_at ASC LIMIT 1
-    `).get(userId);
-    workspaceId = w?.id || null;
-  }
   if (!workspaceId) return res.status(403).json({ error: 'No workspace context for import. Switch to a workspace first.' });
 
   let data;

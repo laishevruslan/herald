@@ -12,6 +12,12 @@ if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 
 const db = new Database(config.dbPath);
 
+// Wait through a brief writer lock instead of failing the statement outright. better-sqlite3
+// defaults this to 5000ms, which is why the native path never saw "database is locked"; the
+// node:sqlite fallback opens with no busy timeout (default 0), so a write contended by the WAL
+// checkpointer worker or a concurrent boot-migration step failed immediately. Match better-sqlite3.
+db.pragma('busy_timeout = 5000');
+
 // Enable WAL mode and foreign keys
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
@@ -387,6 +393,14 @@ const migrations = [
   // first may be pulled back to stable. Without it, publishing a beta would drag every existing
   // pre-release tester backwards, which is the harm the opt-in exists to prevent.
   "ALTER TABLE devices ADD COLUMN ota_channel_served TEXT",
+  // Repair for schedules orphaned by a group deletion before the conversion carried workspace_id.
+  // Such rows are invisible (list/calendar filter on workspace), undeletable (PUT/DELETE 403 on a
+  // null workspace) and still firing (the scheduler has no workspace filter) — so an operator
+  // cannot fix them from the dashboard at all. Recover the workspace from the device the schedule
+  // targets; anything still unresolvable is left alone rather than guessed at.
+  `UPDATE schedules SET workspace_id = (SELECT d.workspace_id FROM devices d WHERE d.id = schedules.device_id)
+     WHERE workspace_id IS NULL AND device_id IS NOT NULL
+       AND (SELECT d.workspace_id FROM devices d WHERE d.id = schedules.device_id) IS NOT NULL`,
   // #161: privilege tier reported by the player (0 unprivileged / 1 device-admin / 2 owner-or-
   // delegated-install) + whether a foreign device owner (MDM) manages it. Drives dashboard gating
   // of Tier-2 controls (reboot/kiosk/time) — shown only for owned panels.
@@ -659,6 +673,7 @@ const migrations = [
   "ALTER TABLE users ADD COLUMN trial_expired_at INTEGER",
   "ALTER TABLE users ADD COLUMN trial_ending_email_sent_at INTEGER",
   "ALTER TABLE users ADD COLUMN trial_expired_email_sent_at INTEGER",
+  "ALTER TABLE organizations ADD COLUMN widget_sandbox_isolation_disabled INTEGER NOT NULL DEFAULT 0",
   // AUTH-05: make break-glass recovery revocable, single-use and auditable.
   //
   // scripts/reset-admin.js mints a JWT carrying `recovery: true`, which middleware/auth.js
@@ -1764,6 +1779,62 @@ const migrations = [
      approved_at    INTEGER NOT NULL,
      note           TEXT
    )`,
+  "ALTER TABLE content ADD COLUMN tags TEXT",
+  "ALTER TABLE content ADD COLUMN meta TEXT",
+  "ALTER TABLE playlists ADD COLUMN playback_order TEXT NOT NULL DEFAULT 'sequential'",
+  "ALTER TABLE playlists ADD COLUMN published_playback_order TEXT",
+  "ALTER TABLE playlist_items ADD COLUMN weight INTEGER NOT NULL DEFAULT 1",
+  // Support access (lib/support-access). Two tables, same shape as recovery_grants:
+  //   support_requests — codes THIS instance minted when an admin asked for support. A support
+  //                      token is only honoured against an open, unexpired, unredeemed one, which
+  //                      is what stops a vendor-signed token from being a key to every install.
+  //   support_grants   — the live sessions. A `support: true` session JWT is good only while its
+  //                      row exists: DELETE revokes on the next request, expires_at bounds it,
+  //                      first_used_at + source_ip attribute it.
+  // Additive and idempotent; a code-only rollback leaves two unused tables behind.
+  `CREATE TABLE IF NOT EXISTS support_requests (
+    code          TEXT PRIMARY KEY,
+    created_at    INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    expires_at    INTEGER NOT NULL,
+    requested_by  TEXT,
+    note          TEXT,
+    redeemed_at   INTEGER,
+    redeemed_jti  TEXT
+  )`,
+  "CREATE INDEX IF NOT EXISTS idx_support_requests_expires ON support_requests(expires_at)",
+  `CREATE TABLE IF NOT EXISTS support_grants (
+    jti            TEXT PRIMARY KEY,
+    request_code   TEXT NOT NULL,
+    org            TEXT,
+    reason         TEXT,
+    issued_by      TEXT,
+    created_at     INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    first_used_at  INTEGER,
+    expires_at     INTEGER NOT NULL,
+    source_ip      TEXT
+  )`,
+  "CREATE INDEX IF NOT EXISTS idx_support_grants_expires ON support_grants(expires_at)",
+  // Scale-out C1 (docs/scale-out-design.md §11). All additive; a stock install gets three NULL
+  // columns and two empty tables and nothing reads them.
+  //   workspaces.origin_node_id — NULL means "mine". Set on a copied workspace to the node UUID of
+  //                               the primary that owns it; it is the ONE column that decides
+  //                               whether a write is local or must go to the primary.
+  //   workspaces.replica_rev/replica_as_of — how far the copy has been applied, and when.
+  //   mesh_edges.acked_rev      — on the primary: the change-log position a replica has confirmed.
+  //   mesh_change_log           — on the primary, filled by triggers that exist ONLY while an up
+  //                               edge carries workspace-replication (lib/mesh/replication.js);
+  //                               never populated by application code.
+  //   (the three workspaces columns are added below the multitenancy phase, where the table exists)
+  "ALTER TABLE mesh_edges ADD COLUMN acked_rev INTEGER",
+  `CREATE TABLE IF NOT EXISTS mesh_change_log (
+    rev          INTEGER PRIMARY KEY AUTOINCREMENT,
+    workspace_id TEXT NOT NULL,
+    table_name   TEXT NOT NULL,
+    row_id       TEXT NOT NULL,
+    op           TEXT NOT NULL CHECK (op IN ('upsert','delete')),
+    ts           INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+  )`,
+  "CREATE INDEX IF NOT EXISTS idx_mesh_change_log_ws ON mesh_change_log(workspace_id, rev)",
 ];
 // Apply each ALTER idempotently. A "duplicate column name" / "already exists"
 // error means the column is already present (expected on a migrated DB) - benign.
@@ -2196,40 +2267,8 @@ try {
     db.exec('ALTER TABLE organizations ADD COLUMN sso_only INTEGER NOT NULL DEFAULT 0');
     console.log('[migrate] added organizations.sso_only');
   }
-  // Same placement as sso_only: the migrations array runs before organizations exists on a
-  // first boot, so an ALTER there logs `[migrate] FAILED … no such table: organizations`
-  // and never retries. Fresh CREATE TABLE already has the column; this covers upgrades.
-  if (orgCols.length && !orgCols.includes('widget_sandbox_isolation_disabled')) {
-    db.exec('ALTER TABLE organizations ADD COLUMN widget_sandbox_isolation_disabled INTEGER NOT NULL DEFAULT 0');
-    console.log('[migrate] added organizations.widget_sandbox_isolation_disabled');
-  }
 } catch (e) {
-  console.error('[migrate] could not add organizations columns:', e.message);
-}
-
-/*
- * Repair for schedules orphaned by a group deletion before the conversion carried workspace_id.
- * Such rows are invisible (list/calendar filter on workspace), undeletable (PUT/DELETE 403 on a
- * null workspace) and still firing (the scheduler has no workspace filter) — so an operator
- * cannot fix them from the dashboard at all. Recover the workspace from the device the schedule
- * targets; anything still unresolvable is left alone rather than guessed at.
- *
- * Must run AFTER ensureMultitenancyMigration(): devices.workspace_id / schedules.workspace_id
- * do not exist until then, and a first-boot UPDATE in the migrations array logged
- * `[migrate] FAILED … no such column: d.workspace_id` without ever retrying.
- */
-try {
-  const schedCols = db.prepare('PRAGMA table_info(schedules)').all().map((c) => c.name);
-  const deviceCols = db.prepare('PRAGMA table_info(devices)').all().map((c) => c.name);
-  if (schedCols.includes('workspace_id') && deviceCols.includes('workspace_id')) {
-    db.exec(`UPDATE schedules SET workspace_id = (SELECT d.workspace_id FROM devices d WHERE d.id = schedules.device_id)
-     WHERE workspace_id IS NULL AND device_id IS NOT NULL
-       AND (SELECT d.workspace_id FROM devices d WHERE d.id = schedules.device_id) IS NOT NULL`);
-  }
-} catch (e) {
-  if (!/no such (table|column)/i.test(e.message)) {
-    console.error('[migrate] could not backfill schedules.workspace_id:', e.message);
-  }
+  console.error('[migrate] could not add organizations.sso_only:', e.message);
 }
 
 // Phase 2.2c migration: backfill content_folders.workspace_id from owner's
@@ -2619,6 +2658,12 @@ try {
   // device flag must all be on. The publish secret is per device and rotatable, never the go2rtc
   // admin password. See docs/live-video.md and lib/go2rtc.js.
   try { db.prepare('ALTER TABLE workspaces ADD COLUMN live_video_enabled INTEGER NOT NULL DEFAULT 0').run(); console.log('[migrate] workspaces.live_video_enabled added (default off)'); } catch (_) { /* present */ }
+  // Scale-out C1 (docs/scale-out-design.md §3.3): NULL means "mine". Set on a copied workspace to
+  // the node UUID of the primary that owns it — the ONE column that decides whether a write is
+  // local or must go to the primary. replica_rev/replica_as_of record how far the copy is applied.
+  try { db.prepare('ALTER TABLE workspaces ADD COLUMN origin_node_id TEXT').run(); console.log('[migrate] workspaces.origin_node_id added'); } catch (_) { /* present */ }
+  try { db.prepare('ALTER TABLE workspaces ADD COLUMN replica_rev INTEGER').run(); } catch (_) { /* present */ }
+  try { db.prepare('ALTER TABLE workspaces ADD COLUMN replica_as_of INTEGER').run(); } catch (_) { /* present */ }
   try { db.prepare('ALTER TABLE devices ADD COLUMN live_video_enabled INTEGER NOT NULL DEFAULT 0').run(); } catch (_) { /* present */ }
   // #talk: per-org enablement for the voice intercom / PA feature (off by default).
   try { db.prepare('ALTER TABLE organizations ADD COLUMN talk_enabled INTEGER NOT NULL DEFAULT 0').run(); console.log('[migrate] organizations.talk_enabled added (default off)'); } catch (_) { /* present */ }

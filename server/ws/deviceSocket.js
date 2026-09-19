@@ -495,18 +495,44 @@ function buildPlaylistPayloadUnchecked(deviceId) {
   const device = db.prepare(`SELECT r.playlist_id AS playlist_id, r.source AS playlist_source,
       r.layout_id AS layout_id, d.orientation, d.background_color, d.wall_id, d.timezone, d.reported_timezone,
       d.triggers_accept_http, d.triggers_accept_udp, d.trigger_secret, d.trigger_http_port,
-      d.trigger_udp_port, d.trigger_multicast_group, d.trigger_clear_all_token
+      d.trigger_udp_port, d.trigger_multicast_group, d.trigger_clear_all_token,
+      d.default_content_id, d.workspace_id,
+      d.capabilities, d.platform, d.android_version, d.client_type
       FROM devices d JOIN device_resolved_playlist r ON r.device_id = d.id
       WHERE d.id = ?`).get(deviceId);
 
+  /*
+   * P2 (additive): a live item must never reach a device that cannot decode it. HLS (video/hls) is
+   * gated on playback.hls (a v1.9.28 player would hang on a black <video src=…m3u8>, e-ink cannot
+   * render a stream); RTSP (video/rtsp) is gated on playback.rtsp, which ONLY the native Android
+   * player declares (browsers/BrightSign/Tizen/e-ink cannot open rtsp://). Both are in no baseline,
+   * so supports() is false for a legacy/undeclared device and true only for a player that declared
+   * it. Drop unsupported live assignments BEFORE they are sent. (The device-free dashboard preview
+   * keeps them — assemblePayload is unchanged.)
+   */
+  const deviceSupportsHls = capsLib.supports(device, 'playback.hls');
+  const deviceSupportsRtsp = capsLib.supports(device, 'playback.rtsp');
+  const dropLiveIfUnsupported = (items) => {
+    if (!Array.isArray(items) || (deviceSupportsHls && deviceSupportsRtsp)) return items;
+    return items.filter((a) => {
+      if (!a) return true;
+      if (a.mime_type === 'video/hls') return deviceSupportsHls;
+      if (a.mime_type === 'video/rtsp') return deviceSupportsRtsp;
+      return true;
+    });
+  };
+
   let assignments = [];
+  let playback_order = 'sequential';
   if (device?.playlist_id) {
-    const playlist = db.prepare('SELECT published_snapshot FROM playlists WHERE id = ?').get(device.playlist_id);
+    const playlist = db.prepare('SELECT published_snapshot, published_playback_order FROM playlists WHERE id = ?').get(device.playlist_id);
     if (playlist?.published_snapshot) {
       try { assignments = JSON.parse(playlist.published_snapshot); } catch (e) { assignments = []; }
       refreshWidgetRevs(assignments);
-      refreshContentRevs(assignments);
+      refreshContentRevs(assignments);   // re-stamps a.mime_type, so strip live AFTER it
+      assignments = dropLiveIfUnsupported(assignments);
     }
+    if (playlist && playlist.published_playback_order) playback_order = playlist.published_playback_order;
   }
 
   /*
@@ -533,6 +559,7 @@ function buildPlaylistPayloadUnchecked(deviceId) {
           try { items = JSON.parse(pl.published_snapshot); } catch (e) { items = []; }
           refreshWidgetRevs(items);
           refreshContentRevs(items);
+          items = dropLiveIfUnsupported(items);   // a trigger playlist can carry a live item too
         }
       }
       triggers.push(projectTrigger(t, items));
@@ -641,9 +668,25 @@ function buildPlaylistPayloadUnchecked(deviceId) {
   // #group-sync: synchronized group playback (wall takes precedence — a wall member is never
   // also group-synced). Null unless the device is on a sync-enabled group's matching playlist.
   const group_sync = wall_config ? null : resolveGroupSync(device, deviceId);
+
+  // Device default / standby content: what a screen shows when it would otherwise be IDLE — no
+  // playlist assigned, or a playlist whose every item is filtered out by its schedule (LED-wall
+  // "off times"). Resolved PER-DEVICE from the live devices row (not baked into a playlist
+  // snapshot, so it survives playlist changes), and sent top-level (not in the item list) so a
+  // default-content change never restarts live playback. rev is read inline (same COALESCE the
+  // send-time content refresh uses) so filepath/rev are fresh without a snapshot round-trip; a
+  // since-deleted target resolves to null and every player falls back to its own idle text.
+  let default_content = null;
+  if (device?.default_content_id) {
+    const c = db.prepare(`SELECT id AS content_id, filename, mime_type, filepath, file_size, remote_url,
+      COALESCE(NULLIF(updated_at, 0), created_at) AS content_rev
+      FROM content WHERE id = ?`).get(device.default_content_id);
+    if (c) default_content = c;
+  }
+
   // #104: shared shape + zone-reset tail so the device payload and the dashboard
   // preview payload (GET /api/playlists/:id/preview-payload) can never drift.
-  return assemblePayload({ assignments, layout, orientation: device?.orientation || 'landscape', background_color: device?.background_color || null, workspace_id: device?.workspace_id || null, wall_config, group_sync, timezone, triggers, trigger_config });
+  return assemblePayload({ assignments, layout, orientation: device?.orientation || 'landscape', background_color: device?.background_color || null, workspace_id: device?.workspace_id || null, wall_config, group_sync, timezone, triggers, trigger_config, playback_order, default_content });
 }
 
 // #104: the canonical player payload shape, shared by the device path
@@ -713,7 +756,7 @@ function attachDataSourceBag(items, workspaceId) {
   }
 }
 
-function assemblePayload({ assignments, layout, orientation, background_color, workspace_id, wall_config, group_sync, timezone, triggers, trigger_config }) {
+function assemblePayload({ assignments, layout, orientation, background_color, workspace_id, wall_config, group_sync, timezone, triggers, trigger_config, playback_order, default_content }) {
   let a = Array.isArray(assignments) ? assignments : [];
   // Transition widgets are normalized OUT here (the single device+preview chokepoint): each is dropped
   // from the visible list and its config attached as an opaque `transition` on the item it plays into.
@@ -731,6 +774,10 @@ function assemblePayload({ assignments, layout, orientation, background_color, w
     // #325: null means "the player's own default", so a screen that has never been given one keeps
     // the black it has always had. Sent top-level like orientation, not per item.
     background_color: background_color || null,
+    // Device default/standby content, shown when the screen would otherwise be idle. Top-level like
+    // background_color (never in the item list), so a change to it does not restart playback. null =
+    // none set (or the target was deleted) -> players keep their existing idle text.
+    default_content: default_content || null,
     wall_config: wall_config || null,
     group_sync: group_sync || null,
     timezone: timezone || null,
@@ -744,6 +791,7 @@ function assemblePayload({ assignments, layout, orientation, background_color, w
     // to a source string, so merging these into that lookup is all any of them needs — no new
     // endpoint, no second round trip, and nothing sent for a workspace that uploaded nothing.
     custom_shaders: customShaderSources(workspace_id, a),
+    playback_order: playback_order || 'sequential',
   };
 }
 
@@ -1622,8 +1670,19 @@ module.exports = function setupDeviceSocket(io) {
       currentDeviceId = device_id;
       heartbeat.updateHeartbeat(device_id);
 
+      // A heartbeat is the device asserting it is alive. Online is normally broadcast to the panel
+      // only at device:register time (one shot); heartbeats just write the DB. So if the panel
+      // missed that single register-time broadcast (its own socket was mid-reconnect, or the emit
+      // raced the device's reconnect), the row reads 'online' while the card still shows OFFLINE,
+      // until the device's next periodic re-register (up to 5 min on the web/BrightSign player).
+      // Re-assert online to the panel on the offline->online transition so a rebooted device flips
+      // its card back within one heartbeat instead of waiting for the fallback re-register.
+      const prevStatus = db.prepare('SELECT status FROM devices WHERE id = ?').get(device_id);
       db.prepare("UPDATE devices SET status = 'online', last_heartbeat = strftime('%s','now'), updated_at = strftime('%s','now') WHERE id = ?")
         .run(device_id);
+      if (prevStatus && prevStatus.status !== 'online') {
+        emitToDeviceWorkspace(dashboardNs, device_id, 'dashboard:device-status', { device_id, status: 'online' });
+      }
 
       // A device row can vanish mid-session — deleted by an operator, or replaced by a re-pair —
       // while its socket is still heartbeating. The telemetry insert then fails the foreign key,

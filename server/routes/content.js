@@ -8,17 +8,22 @@ const { devicesPlayingContent } = require('../lib/devices-playing');
 const upload = require('../middleware/upload');
 const multer = require('multer');   // for MulterError only — the configured instance is `upload` above
 const config = require('../config');
+const replicaProxy = require('../lib/replica-proxy');
 const { checkStorageLimit, checkRemoteUrl } = require('../middleware/subscription');
 const { cleanUserText } = require('../middleware/sanitize');
 const { PLATFORM_ROLES, ELEVATED_ROLES } = require('../middleware/auth');
 // Phase 2.2b: workspace-aware access. Mirrors the pattern from devices.js.
-const { accessContext } = require('../lib/tenancy');
+const { accessContext, denyReadOnly } = require('../lib/tenancy');
 // #73: the upload ingest (processing + insert) is now shared with the agency router.
 const { ingestUploadedFile, deriveMediaMetadata } = require('../lib/content-ingest');
 const htmlBundle = require('../lib/html-bundle');
 const { finalizeUpload, INLINE_SAFE_EXTS } = require('../lib/upload-sniff');
 const { digestFile } = require('../lib/content-digest');
+const { normalizeTags, normalizeMeta, parseTags, parseMeta } = require('../lib/content-tags');
 const { unlinkIfUnreferenced, releaseMeshProvenance } = require('../lib/content-files');
+// IPTV/HLS: the URL gates (server-fetched vs player-opened) and the live mime live
+// in one place so the route, the PUT boundary and the tests share one definition.
+const { LIVE_MIME, RTSP_MIME, LIVE_MIMES, validateRemoteUrl, validatePlayerOpenedUrl, validateRtspUrl, looksLikeHlsUrl, looksLikeRtspUrl, classifyLiveUrl } = require('../lib/remote-url');
 
 // Multer captures file.originalname directly from the multipart filename header,
 // bypassing sanitizeBody, so it is cleaned here instead.
@@ -40,26 +45,9 @@ function safeFilename(name) {
   return cleanUserText((name || '').normalize('NFC'));
 }
 
-// SSRF gate for remote_url. Returns null if valid, else { status, error }.
-// Used by both POST /remote and PUT /:id so a user can't bypass the check by
-// uploading a benign URL and then PUT-updating it to file:///etc/passwd.
-function validateRemoteUrl(url) {
-  let parsed;
-  try { parsed = new URL(url); }
-  catch { return { status: 400, error: 'Invalid URL format' }; }
-  if (!['http:', 'https:'].includes(parsed.protocol)) {
-    return { status: 400, error: 'URL must use http or https' };
-  }
-  const hostname = parsed.hostname.toLowerCase();
-  const isPrivate = hostname === 'localhost' || hostname === '0.0.0.0' ||
-    hostname.startsWith('127.') || hostname.startsWith('10.') ||
-    hostname.startsWith('192.168.') || hostname.startsWith('169.254.') ||
-    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname) ||
-    hostname.startsWith('fc') || hostname.startsWith('fd') || hostname === '::1' ||
-    hostname.endsWith('.local') || hostname.endsWith('.internal');
-  if (isPrivate) return { status: 400, error: 'Internal URLs are not allowed' };
-  return null;
-}
+// validateRemoteUrl / validatePlayerOpenedUrl now live in ../lib/remote-url (imported
+// above): both POST /remote and PUT /:id share the SSRF gate, and POST /hls + PUT /:id
+// (for a video/hls row) use the player-opened gate that allows LAN addresses.
 
 // List content in the caller's current workspace, plus any platform-template
 // rows (workspace_id IS NULL) that are shared with all workspaces.
@@ -91,19 +79,27 @@ router.get('/', (req, res) => {
     }
   }
   if (q) {
-    // Leading-wildcard LIKE (no index) — fine for the library's scale. Escape the LIKE
-    // metacharacters so a filename with % or _ is matched literally.
     const esc = q.replace(/[\\%_]/g, (m) => '\\' + m);
-    sql += " AND filename LIKE ? ESCAPE '\\'";
-    params.push('%' + esc + '%');
+    const tagQ = q.replace(/^#/, '').replace(/^tag:/i, '').trim().toLowerCase();
+    if (q.startsWith('#') || /^tag:/i.test(q)) {
+      sql += " AND tags LIKE ? ESCAPE '\\'";
+      params.push('%"' + tagQ.replace(/[\\%_]/g, (m) => '\\' + m) + '"%');
+    } else {
+      sql += " AND (filename LIKE ? ESCAPE '\\' OR tags LIKE ? ESCAPE '\\' OR meta LIKE ? ESCAPE '\\')";
+      const like = '%' + esc + '%';
+      params.push(like, like, like);
+    }
   }
   // #214: type filter. youtube (video/youtube) and web (any other remote_url) are split
   // out from plain uploaded video/image so the UI's four buckets map cleanly.
   switch (req.query.type) {
     case 'image':   sql += " AND mime_type LIKE 'image/%'"; break;
-    case 'video':   sql += " AND mime_type LIKE 'video/%' AND mime_type != 'video/youtube'"; break;
+    // Live streams are their own bucket (operators need to find channels), so they
+    // are excluded from the plain uploaded-video bucket and from the web-page bucket.
+    case 'video':   sql += " AND mime_type LIKE 'video/%' AND mime_type NOT IN ('video/youtube','video/hls','video/rtsp')"; break;
     case 'youtube': sql += " AND mime_type = 'video/youtube'"; break;
-    case 'web':     sql += " AND remote_url IS NOT NULL AND mime_type != 'video/youtube'"; break;
+    case 'live':    sql += " AND mime_type IN ('video/hls','video/rtsp')"; break;
+    case 'web':     sql += " AND remote_url IS NOT NULL AND mime_type NOT IN ('video/youtube','video/hls','video/rtsp')"; break;
     // HTML bundles are their own bucket: they are neither image nor video, and without a case here
     // they appear only under "all" — present in the library and unfindable.
     case 'audio':   sql += " AND mime_type LIKE 'audio/%'"; break;
@@ -121,6 +117,10 @@ router.get('/', (req, res) => {
   sql += ' ORDER BY ' + (SORTS[req.query.sort] || SORTS.date_desc) + ' LIMIT ? OFFSET ?';
   params.push(Math.min(parseInt(req.query.limit) || 100, 500), parseInt(req.query.offset) || 0);
   const content = db.prepare(sql).all(...params);
+  for (const c of content) {
+    c.tags = parseTags(c.tags);
+    c.meta = parseMeta(c.meta);
+  }
   res.json(content);
 });
 
@@ -206,11 +206,20 @@ function uploadContentFilesGuarded(req, res, next) {
 router.post('/', checkStorageLimit, uploadContentFilesGuarded, async (req, res) => {
   try {
     if (!req.workspaceId) return res.status(403).json({ error: 'No workspace context. Switch to a workspace before uploading.' });
+    if (denyReadOnly(req, res)) return;
     const files = [...((req.files && req.files.files) || []), ...((req.files && req.files.file) || [])];
     if (files.length === 0) return res.status(400).json({ error: 'No file uploaded' });
 
     // #73: shared ingest - identical processing + insert for dashboard and agency uploads.
     const folderId = req.body.folder_id || null;
+    // Validate the folder is in this workspace (PUT /:id and batch/move already do; upload did not,
+    // so an upload could be filed under another workspace's folder id).
+    if (folderId) {
+      const target = db.prepare('SELECT workspace_id FROM content_folders WHERE id = ?').get(folderId);
+      if (!target || target.workspace_id !== req.workspaceId) {
+        return res.status(400).json({ error: 'Invalid folder_id for this workspace' });
+      }
+    }
     const results = [];
     for (const file of files) {
       results.push(await ingestUploadedFile({ file, userId: req.user.id, workspaceId: req.workspaceId, folderId }));
@@ -230,6 +239,7 @@ router.post('/', checkStorageLimit, uploadContentFilesGuarded, async (req, res) 
 router.post('/remote', checkRemoteUrl, (req, res) => {
   try {
     if (!req.workspaceId) return res.status(403).json({ error: 'No workspace context. Switch to a workspace before adding remote content.' });
+    if (denyReadOnly(req, res)) return;
     const { url, name, mime_type } = req.body;
     if (!url) return res.status(400).json({ error: 'url is required' });
     const urlErr = validateRemoteUrl(url);
@@ -257,6 +267,7 @@ router.post('/remote', checkRemoteUrl, (req, res) => {
 router.post('/youtube', async (req, res) => {
   try {
     if (!req.workspaceId) return res.status(403).json({ error: 'No workspace context. Switch to a workspace before adding YouTube content.' });
+    if (denyReadOnly(req, res)) return;
     const { url, name } = req.body;
     if (!url) return res.status(400).json({ error: 'url is required' });
 
@@ -302,6 +313,41 @@ router.post('/youtube', async (req, res) => {
   } catch (err) {
     console.error('YouTube add error:', err);
     res.status(500).json({ error: 'Failed to add YouTube video' });
+  }
+});
+
+// Add a live stream (IPTV / camera). Same shape as YouTube: a URL the PLAYER opens on
+// the LAN. The SERVER NEVER FETCHES IT — no HEAD/GET here (that would be both SSRF and
+// a WAN pull of a 24/7 stream across every screen). We trust the URL SHAPE; a junk
+// stream fails to a skip on the player. An http(s) .m3u8 becomes video/hls (all players);
+// an rtsp:// URL becomes video/rtsp (Android/ExoPlayer only — the deviceSocket strip keeps
+// it off screens that cannot open rtsp). Private / .local hosts and rtsp credentials are
+// allowed because the screen, not the server, opens the URL on its own LAN.
+router.post('/hls', (req, res) => {
+  try {
+    if (!req.workspaceId) return res.status(403).json({ error: 'No workspace context. Switch to a workspace before adding a live stream.' });
+    if (denyReadOnly(req, res)) return;
+    const { url, name } = req.body;
+    if (!url) return res.status(400).json({ error: 'url is required' });
+    const kind = classifyLiveUrl(url);
+    if (kind.error) return res.status(kind.error.status).json({ error: kind.error.error });
+
+    const id = uuidv4();
+    const filename = name || url.split('/').pop()?.split('?')[0] || 'Live stream';
+    // filepath '' + file_size 0 like YouTube: no bytes stored, no storage counted.
+    // duration_sec on the CONTENT stays null (unknown / infinite) — DWELL is set per
+    // playlist item.
+    db.prepare(`
+      INSERT INTO content (id, user_id, workspace_id, filename, filepath, mime_type, file_size, remote_url)
+      VALUES (?, ?, ?, ?, '', ?, 0, ?)
+    `).run(id, req.user.id, req.workspaceId, safeFilename(filename), kind.mime, url);
+
+    const content = db.prepare('SELECT * FROM content WHERE id = ?').get(id);
+    try { require('../lib/revisions').recordCurrent(db, 'content', content.id, { actor: require('../lib/releases').actorOf(req), summary: 'Added' }); } catch (_) {}
+    res.status(201).json(content);
+  } catch (err) {
+    console.error('HLS add error:', err);
+    res.status(500).json({ error: 'Failed to add live stream' });
   }
 });
 
@@ -489,6 +535,8 @@ router.post('/batch/move', (req, res) => {
 router.get('/:id', (req, res) => {
   const content = checkContentRead(req, res);
   if (!content) return;
+  content.tags = parseTags(content.tags);
+  content.meta = parseMeta(content.meta);
   res.json(content);
 });
 
@@ -498,7 +546,7 @@ router.put('/:id', (req, res) => {
   if (!content) return;
 
   const { filename, mime_type, remote_url, folder, folder_id, expires_at, unstable_connection,
-          captions_enabled, captions_lang, subtitle_url, subtitle_lang } = req.body;
+          captions_enabled, captions_lang, subtitle_url, subtitle_lang, tags, meta } = req.body;
   const updates = [];
   const values = [];
   /*
@@ -517,11 +565,53 @@ router.put('/:id', (req, res) => {
     else { updates.push(`${col} = ?`); values.push(val); }
   };
   if (filename !== undefined) { updates.push('filename = ?'); values.push(safeFilename(filename)); }
+  if (tags !== undefined) {
+    const n = normalizeTags(tags);
+    if (n === false) return res.status(400).json({ error: 'tags must be an array of labels, or a comma-separated string' });
+    updates.push('tags = ?'); values.push(JSON.stringify(n));
+  }
+  if (meta !== undefined) {
+    const n = normalizeMeta(meta);
+    if (n === false) return res.status(400).json({ error: 'meta must be an object of key=value pairs' });
+    updates.push('meta = ?'); values.push(JSON.stringify(n));
+  }
+  /*
+   * A live stream is a different KIND of item, the same way an HTML bundle is (see the
+   * replace-boundary note below): mime_type is what every player switches on, and its URL
+   * is validated by a different gate (player-opened, LAN allowed) than a server-fetched
+   * remote. So turning a youtube/web/video row INTO a live stream, or a live stream into
+   * anything else, is refused here — delete it and add the right kind instead. Switching a
+   * live item BETWEEN transports (video/hls <-> video/rtsp) is allowed: it is still live.
+   */
+  const wasLive = LIVE_MIMES.indexOf(content.mime_type) !== -1;
+  const targetMime = mime_type !== undefined ? mime_type : content.mime_type;
+  const targetIsLive = LIVE_MIMES.indexOf(targetMime) !== -1;
+  if (wasLive !== targetIsLive) {
+    return res.status(400).json({
+      error: wasLive
+        ? 'This item is a live stream — replace its URL, or delete it and add the new content.'
+        : 'A live stream cannot replace this item. Add it as a new live stream instead.',
+    });
+  }
   if (mime_type !== undefined) set('mime_type', mime_type);
   if (remote_url !== undefined) {
     if (remote_url) {
-      const urlErr = validateRemoteUrl(remote_url);
-      if (urlErr) return res.status(urlErr.status).json({ error: urlErr.error });
+      // A live URL is opened by the player on its LAN, never fetched by the server, so it
+      // uses the player-opened gate for its transport (private hosts / rtsp creds allowed);
+      // everything else stays on the SSRF gate.
+      if (targetIsLive) {
+        const urlErr = targetMime === RTSP_MIME ? validateRtspUrl(remote_url) : validatePlayerOpenedUrl(remote_url);
+        if (urlErr) return res.status(urlErr.status).json({ error: urlErr.error });
+        if (targetMime === LIVE_MIME && !looksLikeHlsUrl(remote_url)) {
+          return res.status(400).json({ error: 'That does not look like an HLS stream. The URL should point at an .m3u8 playlist.' });
+        }
+        if (targetMime === RTSP_MIME && !looksLikeRtspUrl(remote_url)) {
+          return res.status(400).json({ error: 'A camera stream URL must use rtsp://.' });
+        }
+      } else {
+        const urlErr = validateRemoteUrl(remote_url);
+        if (urlErr) return res.status(urlErr.status).json({ error: urlErr.error });
+      }
     }
     set('remote_url', remote_url || null);
   }
@@ -753,6 +843,19 @@ function hardenUploadResponse(res, filename) {
   }
 }
 
+/*
+ * Scale-out (docs/scale-out.md): the row was copied from the primary but the bytes were not. When
+ * the local file is absent and the row's workspace is a copy, the request is forwarded to the
+ * primary as-is (the caller's token travels with it) and the answer streamed back. No cache in C1.
+ */
+function fetchThroughIfCopied(req, res, content, localPath) {
+  if (!config.primaryUrl || !content.workspace_id || fs.existsSync(localPath)) return false;
+  const ws = db.prepare('SELECT origin_node_id FROM workspaces WHERE id = ?').get(content.workspace_id);
+  if (!replicaProxy.isCopiedWorkspace(ws)) return false;
+  replicaProxy.proxyToPrimary(req, res, config);
+  return true;
+}
+
 // Serve content file
 router.get('/:id/file', (req, res) => {
   const content = checkContentRead(req, res);
@@ -761,6 +864,7 @@ router.get('/:id/file', (req, res) => {
   // Prevent path traversal
   const safePath = path.resolve(config.contentDir, path.basename(content.filepath));
   if (!safePath.startsWith(path.resolve(config.contentDir))) return res.status(403).json({ error: 'Invalid path' });
+  if (fetchThroughIfCopied(req, res, content, safePath)) return;
   hardenUploadResponse(res, content.filepath);
   res.sendFile(safePath);
 });
@@ -772,6 +876,7 @@ router.get('/:id/thumbnail', (req, res) => {
   if (!content.thumbnail_path) return res.status(404).json({ error: 'Thumbnail not found' });
   const safePath = path.resolve(config.contentDir, path.basename(content.thumbnail_path));
   if (!safePath.startsWith(path.resolve(config.contentDir))) return res.status(403).json({ error: 'Invalid path' });
+  if (fetchThroughIfCopied(req, res, content, safePath)) return;
   hardenUploadResponse(res, content.thumbnail_path);
   res.sendFile(safePath);
 });

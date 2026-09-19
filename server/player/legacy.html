@@ -287,6 +287,7 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="/player/schedule-eval.js"></script>
+  <script src="/player/play-order.js"></script>
   <!-- #299: the offline proof-of-play queue, from the same source the Tizen .wgt copies. -->
   <script src="/player/offline-play-queue.js"></script>
   <script src="/player/live-publish-legacy.js"></script>
@@ -671,7 +672,7 @@ function requestOfflineCache(items, extraItems) {
   try {
     const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
     if (!sw) return;
-    const all = (items || []).concat(extraItems || []);
+    const all = (items || []).concat(extraItems || [], defaultContent ? [defaultContent] : []);
     const urls = all.filter((it) => it && it.filepath && !it.remote_url).map((it) => mediaUrl(it));
     sw.postMessage({ type: "st-cache-playlist", urls, prune: true });
     for (const it of all) {
@@ -687,6 +688,8 @@ function requestOfflineCache(items, extraItems) {
 }
 const TRIGGERS_CACHE_KEY = "rd_triggers_cache" + SCREEN_SUFFIX;
 let triggers = loadTriggersCache();
+let defaultContent = null;
+let _defaultShownRev = null;
 const TRIGGER_CFG_KEY = "rd_trigger_cfg" + SCREEN_SUFFIX;
 let triggerConfig = (function() {
   try {
@@ -1109,6 +1112,8 @@ function mediaFailureSkip(el, label, src, mayAdvance = true) {
 }
 const UNKNOWN_ITEM_HOLD_MS = 15e3;
 const BUNDLE_MIME = "application/vnd.screentinker.bundle+zip";
+const LIVE_MIME = "video/hls";
+const LIVE_DWELL_RECHECK_MS = 6e4;
 const WIDGET_SWAP_TIMEOUT_MS = 8e3;
 const WIDGET_SOLO_REFRESH_MS = 6e4;
 let pendingWidgetSwap = null;
@@ -3041,6 +3046,9 @@ function declaredCapabilities() {
     "playback.youtube",
     "playback.zones",
     "playback.pip",
+    // IPTV: this player plays a live HLS stream — natively on Safari/BrightSign/webOS/Tizen,
+    // and via the lazily-loaded vendored hls.js on Chrome. See renderLiveStream.
+    "playback.hls",
     /* Mounting a server-flattened bundle needs nothing this player does not already have — it
      * is the widget iframe with a different URL. Claimed unconditionally for that reason, and
      * deliberately NOT taken to mean the bundle is available offline: nothing here unpacks an
@@ -3289,6 +3297,26 @@ function startVersionCheck() {
   fetch(config.serverUrl + "/api/version").then((r) => r.json()).then((data) => {
     knownServerHash = data.hash;
     console.log("Server version:", data.version, "hash:", data.hash);
+    try {
+      if (data.version && PLAYER_VERSION && PLAYER_VERSION !== "1.1.0-web" && data.version !== PLAYER_VERSION) {
+        var lastHeal = 0;
+        try {
+          lastHeal = +(localStorage.getItem("st_selfheal_at") || 0);
+        } catch (e) {
+        }
+        if (Date.now() - lastHeal > 5 * 60 * 1e3) {
+          try {
+            localStorage.setItem("st_selfheal_at", String(Date.now()));
+          } catch (e) {
+          }
+          console.log("[player] running", PLAYER_VERSION, "but server serves", data.version, "- self-heal reload (stale cached shell)");
+          restartPlayer("version mismatch self-heal");
+        } else {
+          console.warn("[player] version still", PLAYER_VERSION, "vs server", data.version, "after a recent self-heal - not looping");
+        }
+      }
+    } catch (e) {
+    }
   }).catch(() => {
   });
   versionCheckTimer = setInterval(() => {
@@ -3370,6 +3398,7 @@ function groupScheduleSlots() {
   let acc = 0;
   for (let i = 0; i < playlist.length; i++) {
     if (!scheduleAllows(playlist[i])) continue;
+    if (playlist[i].mime_type === LIVE_MIME && !(Number(playlist[i].duration_sec) > 0)) continue;
     const dur = Math.max(1, Number(playlist[i].duration_sec) || 10) * 1e3;
     slots.push({ index: i, start: acc, dur });
     acc += dur;
@@ -3642,7 +3671,13 @@ function handlePlaylistUpdate(data) {
     return;
   }
   const newItems = data.assignments || [];
-  const fingerprint = (items) => items.map((a) => "".concat(a.content_id || "", "|").concat(a.widget_id || "", "|").concat(a.widget_rev || "", "|").concat(a.zone_id || "", "|").concat(a.remote_url || "", "|").concat(a.filepath || "", "|").concat(a.filename || "", "|").concat(JSON.stringify(a.schedules || []), "|").concat(a.play_from || "", "|").concat(a.play_until || "", "|").concat(a.enabled === 0 ? 0 : 1, "|").concat(a.log_play === 0 ? 0 : 1, "|").concat(a.fit_mode || "", "|").concat(JSON.stringify(a.play_when || null), "|").concat(JSON.stringify(a.transition || null))).join(",");
+  if (data.playback_order && data.playback_order !== playbackOrder) {
+    playOrderState = {};
+    clearLookahead();
+    for (const k of Object.keys(zoneOrderState)) delete zoneOrderState[k];
+  }
+  if (data.playback_order) playbackOrder = data.playback_order;
+  const fingerprint = (items) => items.map((a) => "".concat(a.content_id || "", "|").concat(a.widget_id || "", "|").concat(a.widget_rev || "", "|").concat(a.zone_id || "", "|").concat(a.remote_url || "", "|").concat(a.filepath || "", "|").concat(a.filename || "", "|").concat(JSON.stringify(a.schedules || []), "|").concat(a.play_from || "", "|").concat(a.play_until || "", "|").concat(a.enabled === 0 ? 0 : 1, "|").concat(a.log_play === 0 ? 0 : 1, "|").concat(a.fit_mode || "", "|").concat(JSON.stringify(a.play_when || null), "|").concat(JSON.stringify(a.tags || []), "|").concat(JSON.stringify(a.meta || {}), "|").concat(JSON.stringify(a.transition || null))).join(",");
   const newFp = fingerprint(newItems);
   const oldFp = fingerprint(playlist);
   const effectiveOrientation = window.WallGeometry ? window.WallGeometry.orientationForWallMember(data.orientation, (_a = data.wall_config) == null ? void 0 : _a.rotation) : data.orientation;
@@ -3656,6 +3691,9 @@ function handlePlaylistUpdate(data) {
     if (stage) stage.style.background = data.background_color;
     document.body.style.background = data.background_color;
   }
+  const prevDefault = defaultContent && defaultContent.content_rev;
+  defaultContent = data.default_content && typeof data.default_content === "object" ? data.default_content : null;
+  if ((defaultContent && defaultContent.content_rev) !== prevDefault) _defaultShownRev = null;
   if (data.orientation) {
     if (BS && typeof BS.setOrientation === "function" && BS.hasHost()) {
       BS.setOrientation(effectiveOrientation).then((rotatedByHost) => {
@@ -3795,8 +3833,10 @@ function handlePlaylistUpdate(data) {
   deferredRotation = false;
   deferredSuccessorId = null;
   if (playlist.length === 0) {
-    teardownCurrentMedia();
-    showStatus("Waiting for content...");
+    if (!renderDefaultContent()) {
+      teardownCurrentMedia();
+      showStatus("Waiting for content...");
+    }
     isPlaying = false;
     return;
   }
@@ -3861,7 +3901,18 @@ function itemFit(item, zone) {
 function shouldLogPlay(item) {
   return !item || item.log_play !== 0;
 }
+let playbackOrder = "sequential";
+let playOrderState = {};
+const zoneOrderState = {};
 function nextActiveIndex(from) {
+  try {
+    if (window.PlayOrder && !(wallConfig && wallConfig.is_leader === false) && !groupSync) {
+      return PlayOrder.nextIndex(playlist, from, function(it) {
+        return scheduleAllows(it);
+      }, playbackOrder, playOrderState);
+    }
+  } catch (e) {
+  }
   if (!playlist.length) return -1;
   for (let i = 1; i <= playlist.length; i++) {
     const idx = (from + i) % playlist.length;
@@ -3869,9 +3920,56 @@ function nextActiveIndex(from) {
   }
   return -1;
 }
-function showNothingScheduled() {
+function peekNextIndex(from) {
+  const saved = playOrderState;
+  playOrderState = { bag: (saved.bag || []).slice(), bagKey: saved.bagKey };
+  try {
+    return nextActiveIndex(from);
+  } finally {
+    playOrderState = saved;
+  }
+}
+let lookaheadFrom = null;
+let lookaheadIdx = -1;
+function commitNextIndex(from) {
+  if (lookaheadFrom === from && lookaheadIdx >= 0 && lookaheadIdx < playlist.length && scheduleAllows(playlist[lookaheadIdx])) {
+    return lookaheadIdx;
+  }
+  const idx = nextActiveIndex(from);
+  lookaheadFrom = from;
+  lookaheadIdx = idx;
+  return idx;
+}
+function clearLookahead() {
+  lookaheadFrom = null;
+  lookaheadIdx = -1;
+}
+function renderDefaultContent() {
+  const dc = defaultContent;
+  if (!dc || typeof dc.mime_type !== "string" || !dc.mime_type.startsWith("image/")) return false;
+  const container = document.getElementById("playerContainer");
+  const key = dc.content_rev || dc.content_id || dc.remote_url || dc.filepath;
+  if (_defaultShownRev === key && container && container.querySelector("img[data-st-default]")) return true;
   teardownCurrentMedia();
-  showStatus(_t("nothing_scheduled"));
+  const img = document.createElement("img");
+  img.setAttribute("data-st-default", "1");
+  img.style.cssText = "width:100%;height:100%;object-fit:contain";
+  img.onerror = () => {
+    _defaultShownRev = null;
+  };
+  img.src = mediaUrl(dc);
+  if (container) {
+    container.style.display = "block";
+    container.appendChild(img);
+  }
+  _defaultShownRev = key;
+  return true;
+}
+function showNothingScheduled() {
+  if (!renderDefaultContent()) {
+    teardownCurrentMedia();
+    showStatus(_t("nothing_scheduled"));
+  }
   isPlaying = false;
   clearTimeout(scheduleRetryTimer);
   scheduleRetryTimer = setTimeout(() => {
@@ -3906,7 +4004,7 @@ function playCurrentItem() {
     teardownCurrentMedia();
     stopSlideVo();
     stopSlideBed();
-    showStatus("Waiting for content...");
+    if (!renderDefaultContent()) showStatus("Waiting for content...");
     isPlaying = false;
     return;
   }
@@ -3967,7 +4065,8 @@ function nextItem() {
       completed: true
     });
   }
-  const idx = nextActiveIndex(currentIndex);
+  const idx = commitNextIndex(currentIndex);
+  clearLookahead();
   if (idx === -1) {
     showNothingScheduled();
     return;
@@ -4169,6 +4268,7 @@ function teardownCurrentMedia(keep) {
   if (container) {
     container.querySelectorAll("video").forEach((v) => {
       try {
+        destroyHls(v);
         v.onended = null;
         v.onerror = null;
         v.onloadeddata = null;
@@ -4193,6 +4293,7 @@ function teardownCurrentMedia(keep) {
   }
   if (currentVideoEl) {
     try {
+      destroyHls(currentVideoEl);
       currentVideoEl.onended = null;
       currentVideoEl.onerror = null;
       currentVideoEl.onloadeddata = null;
@@ -4266,7 +4367,7 @@ function renderBundleBuffered(item) {
   });
 }
 function reevaluateHeldWidget() {
-  if (nextActiveIndex(currentIndex) === currentIndex) {
+  if (peekNextIndex(currentIndex) === currentIndex) {
     scheduleAdvance(reevaluateHeldWidget, WIDGET_SOLO_REFRESH_MS);
     return;
   }
@@ -4304,7 +4405,7 @@ function cacheImg(src, img) {
   while (keys.length > 4) delete imgPreloadCache[keys.shift()];
 }
 function preloadNextImage() {
-  const nextIdx = nextActiveIndex(currentIndex);
+  const nextIdx = commitNextIndex(currentIndex);
   if (nextIdx < 0 || nextIdx === currentIndex) return;
   const it = playlist[nextIdx];
   if (!it || typeof it.mime_type !== "string" || !it.mime_type.startsWith("image/")) return;
@@ -4565,6 +4666,140 @@ function wireSoloVideoPlayback(video, item, src, opts) {
     }
   }, 2e3);
 }
+function renderLiveStream(item, src, mount, opts) {
+  const o = opts || {};
+  const video = document.createElement("video");
+  video.autoplay = true;
+  video.muted = !!(o.forceMuted || !userHasInteracted || !!item.muted);
+  if (!o.forceMuted) video.volume = 1;
+  video.playsInline = true;
+  video.loop = false;
+  video.style.cssText = wallConfig ? "width:100%;height:100%;object-fit:fill;background:#000" : "width:100%;height:100%;object-fit:contain;background:transparent";
+  mount.appendChild(video);
+  currentVideoEl = video;
+  const seq = renderSeq;
+  attachHlsTo(video, src, {
+    stale: () => renderSeq !== seq || video !== currentVideoEl,
+    onFatal: () => mediaFailureSkip(video, "hls", src, o.mayAdvance !== false)
+  });
+  if (o.mayAdvance !== false) armLiveDwell(item);
+}
+function attachHlsTo(video, src, opts) {
+  const o = opts || {};
+  const stale = typeof o.stale === "function" ? o.stale : () => false;
+  let settled = false;
+  const fail = () => {
+    if (settled) return;
+    settled = true;
+    if (o.onFatal) o.onFatal();
+  };
+  const play = () => video.play().catch(() => {
+    video.muted = true;
+    video.play().catch(() => {
+    });
+  });
+  const useHlsJs = () => {
+    if (stale()) return;
+    loadHlsLib((Hls) => {
+      if (stale()) return;
+      if (!Hls || !Hls.isSupported()) {
+        fail();
+        return;
+      }
+      try {
+        const hls = new Hls({ enableWorker: true, lowLatencyMode: false });
+        video._stHls = hls;
+        hls.on(Hls.Events.ERROR, (evt, data) => {
+          if (data && data.fatal) fail();
+        });
+        hls.loadSource(src);
+        hls.attachMedia(video);
+        play();
+      } catch (e) {
+        fail();
+      }
+    }, fail);
+  };
+  const stall = setTimeout(() => {
+    if (settled || stale() || video._stHls) return;
+    if (video.readyState < 2) {
+      video.onerror = null;
+      useHlsJs();
+    }
+  }, 6e3);
+  video.onerror = () => {
+    if (settled || stale()) return;
+    clearTimeout(stall);
+    const code = video.error && video.error.code;
+    if (!video._stHls && (code === 4 || code === 3 || code === void 0)) {
+      video.onerror = null;
+      useHlsJs();
+    } else fail();
+  };
+  try {
+    video.src = src;
+    play();
+  } catch (e) {
+    clearTimeout(stall);
+    useHlsJs();
+  }
+}
+function destroyHls(video) {
+  if (video && video._stHls) {
+    try {
+      video._stHls.destroy();
+    } catch (e) {
+    }
+    video._stHls = null;
+  }
+}
+function loadHlsLib(onReady, onFail) {
+  if (window.Hls) {
+    onReady(window.Hls);
+    return;
+  }
+  loadHlsLib.waiters = loadHlsLib.waiters || [];
+  if (loadHlsLib.state === "failed") {
+    if (onFail) onFail();
+    return;
+  }
+  loadHlsLib.waiters.push({ onReady, onFail });
+  if (loadHlsLib.state === "loading") return;
+  loadHlsLib.state = "loading";
+  const s = document.createElement("script");
+  s.src = (config.serverUrl || "") + "/player/hls.light.min.js";
+  s.async = true;
+  const flush = () => {
+    const Hls = window.Hls || null;
+    loadHlsLib.state = Hls ? "ready" : "failed";
+    const ws = loadHlsLib.waiters;
+    loadHlsLib.waiters = [];
+    ws.forEach((w) => {
+      if (Hls) w.onReady(Hls);
+      else if (w.onFail) w.onFail();
+    });
+  };
+  s.onload = flush;
+  s.onerror = flush;
+  document.head.appendChild(s);
+}
+function armLiveDwell(item) {
+  const dwell = Number(item && item.duration_sec) || 0;
+  if (dwell > 0) {
+    scheduleAdvance(nextItem, dwell * 1e3);
+    return;
+  }
+  scheduleAdvance(reevaluateLiveDwell, LIVE_DWELL_RECHECK_MS);
+}
+function reevaluateLiveDwell() {
+  if (!isPlaying) return;
+  const item = playlist[currentIndex];
+  if (item && item.mime_type === LIVE_MIME && scheduleAllows(item)) {
+    scheduleAdvance(reevaluateLiveDwell, LIVE_DWELL_RECHECK_MS);
+  } else {
+    nextItem();
+  }
+}
 function attachSubtitleTrack(video, item) {
   if (!item.subtitle_url || item.remote_url) return;
   const track = document.createElement("track");
@@ -4719,7 +4954,7 @@ function renderContent(item) {
   if (item && item.widget_id && !isZones && !wallConfig) {
     renderWidgetBuffered(item);
     if (!groupSync) {
-      const held = nextActiveIndex(currentIndex) === currentIndex;
+      const held = peekNextIndex(currentIndex) === currentIndex;
       if (held) scheduleAdvance(reevaluateHeldWidget, WIDGET_SOLO_REFRESH_MS);
       else scheduleAdvance(nextItem, (item.duration_sec || 30) * 1e3);
     }
@@ -4730,7 +4965,7 @@ function renderContent(item) {
     renderImageBuffered(item);
     return;
   }
-  const isVideoBufferable = item && typeof item.mime_type === "string" && item.mime_type.startsWith("video/") && item.mime_type !== "video/youtube" && !item.widget_id && !wallConfig && !isZones && !groupSync;
+  const isVideoBufferable = item && typeof item.mime_type === "string" && item.mime_type.startsWith("video/") && item.mime_type !== "video/youtube" && item.mime_type !== "video/hls" && !item.widget_id && !wallConfig && !isZones && !groupSync;
   if (isVideoBufferable) {
     renderVideoBuffered(item);
     return;
@@ -4769,7 +5004,8 @@ function renderContent(item) {
   const forceMuted = isWallFollower_;
   const isFollower = scheduleDriven;
   const isYoutube = item.mime_type === "video/youtube";
-  const isVideo = !isYoutube && ((_a = item.mime_type) == null ? void 0 : _a.startsWith("video/"));
+  const isHls = item.mime_type === LIVE_MIME;
+  const isVideo = !isYoutube && !isHls && ((_a = item.mime_type) == null ? void 0 : _a.startsWith("video/"));
   const isImage = (_b = item.mime_type) == null ? void 0 : _b.startsWith("image/");
   const remoteUrl = item.remote_url;
   const serverUrl = config.serverUrl;
@@ -4779,6 +5015,8 @@ function renderContent(item) {
   } else {
     if (isYoutube) {
       createYoutubeEmbed(src, item, mount);
+    } else if (isHls) {
+      renderLiveStream(item, src, mount, { forceMuted, mayAdvance: !isFollower, scheduleDriven });
     } else if (isVideo) {
       const preloaded = scheduleDriven ? takeGroupPreload(currentIndex) : null;
       const video = preloaded || document.createElement("video");
@@ -4815,7 +5053,16 @@ function renderContent(item) {
     }
   }
 }
-function zoneNextActive(items, from) {
+function zoneNextActive(items, from, zoneId) {
+  try {
+    if (window.PlayOrder) {
+      if (!zoneOrderState[zoneId]) zoneOrderState[zoneId] = {};
+      return PlayOrder.nextIndex(items, from - 1, function(it) {
+        return scheduleAllows(it);
+      }, playbackOrder, zoneOrderState[zoneId]);
+    }
+  } catch (e) {
+  }
   for (let i = 0; i < items.length; i++) {
     const idx = (from + i) % items.length;
     if (scheduleAllows(items[idx])) return idx;
@@ -4877,7 +5124,7 @@ function showZoneItem(zone, div, items, index, timers = zoneTimers) {
     clearTimeout(timers[zone.id]);
     delete timers[zone.id];
   }
-  const activeIdx = zoneNextActive(items, index);
+  const activeIdx = zoneNextActive(items, index, zone.id);
   if (activeIdx === -1) {
     showZoneEmpty(zone, div, items, timers);
     return;
@@ -4888,6 +5135,7 @@ function showZoneItem(zone, div, items, index, timers = zoneTimers) {
   const advance = () => showZoneItem(zone, div, items, index + 1, timers);
   div.querySelectorAll("video").forEach((v) => {
     try {
+      destroyHls(v);
       v.onended = null;
       v.pause();
       v.removeAttribute("src");
@@ -4897,7 +5145,8 @@ function showZoneItem(zone, div, items, index, timers = zoneTimers) {
   });
   div.innerHTML = "";
   const isYoutube = a.mime_type === "video/youtube";
-  const isVideo = !isYoutube && ((_a = a.mime_type) == null ? void 0 : _a.startsWith("video/"));
+  const isHls = a.mime_type === "video/hls";
+  const isVideo = !isYoutube && !isHls && ((_a = a.mime_type) == null ? void 0 : _a.startsWith("video/"));
   const src = mediaUrl(a);
   const dur = (a.duration_sec || 10) * 1e3;
   if (a.widget_id) {
@@ -4910,6 +5159,34 @@ function showZoneItem(zone, div, items, index, timers = zoneTimers) {
   } else if (isYoutube) {
     createYoutubeEmbed(src, a, div);
     if (multi) timers[zone.id] = setTimeout(advance, dur);
+  } else if (isHls) {
+    const video = document.createElement("video");
+    video.autoplay = true;
+    video.__stOverlay = !!div.__stOverlay;
+    video.muted = div.__stOverlay ? false : zone.sort_order > 0;
+    video.playsInline = true;
+    video.loop = false;
+    video.style.cssText = "width:100%;height:100%;object-fit:".concat(itemFit(a, zone));
+    div.appendChild(video);
+    attachHlsTo(video, src, { onFatal: () => {
+      if (multi) {
+        if (timers[zone.id]) clearTimeout(timers[zone.id]);
+        timers[zone.id] = setTimeout(advance, 3e3);
+      }
+    } });
+    if (multi) {
+      const dwell = Number(a.duration_sec) || 0;
+      if (dwell > 0) {
+        timers[zone.id] = setTimeout(advance, dwell * 1e3);
+      } else {
+        const recheckMs = 6e4;
+        const recheck = () => {
+          if (zoneNextActive(items, index, zone.id) === index) timers[zone.id] = setTimeout(recheck, recheckMs);
+          else advance();
+        };
+        timers[zone.id] = setTimeout(recheck, recheckMs);
+      }
+    }
   } else if (isVideo) {
     const video = document.createElement("video");
     video.src = src;

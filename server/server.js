@@ -17,6 +17,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const config = require('./config');
+const replicaProxy = require('./lib/replica-proxy');
 const VERSION = require('./version');
 const ghcrCheck = require('./lib/ghcr-check');
 
@@ -441,6 +442,10 @@ app.get(['/player/legacy', '/player/legacy/', '/player/legacy/index.html', '/pla
 app.get('/player/schedule-eval.js', (req, res) => {
   res.type('application/javascript').setHeader('Cache-Control', 'no-cache');
   res.sendFile(path.join(__dirname, 'lib', 'schedule-eval.js'));
+});
+app.get('/player/play-order.js', (req, res) => {
+  res.type('application/javascript').setHeader('Cache-Control', 'no-cache');
+  res.sendFile(path.join(__dirname, 'lib', 'play-order.js'));
 });
 
 // #299: the offline proof-of-play queue, served to the web player from the same single source the
@@ -968,6 +973,13 @@ function rateLimit(windowMs, maxRequests) {
 // Auth routes (public, rate limited)
 app.use('/api/auth/login', rateLimit(60000, 10)); // 10 attempts per minute
 app.use('/api/auth/register', rateLimit(60000, 5)); // 5 registrations per minute
+// Support-token redemption (lib/support-access) is unauthenticated by nature: the token IS the
+// credential. Guessing one means forging an Ed25519 signature, so this limiter is about noise,
+// not brute force — but it is the one auth surface a stranger can hit without an account, so it
+// gets the tightest cap here. Mounted on the exact path: /api/auth/support/request etc. are
+// authenticated admin routes and must not share this bucket.
+const supportRedeemLimit = rateLimit(60000, 5);
+app.use('/api/auth/support', (req, res, next) => (req.path === '/' ? supportRedeemLimit(req, res, next) : next()));
 // #100 (tightening #2): the TOTP verify endpoint is the brute-force surface for a
 // 6-digit code. Cap attempts/min here; the per-user lockout (lib/totp-lockout) sits
 // on top in the handler.
@@ -1134,6 +1146,11 @@ app.get('/api/content/:id/file', (req, res) => {
   if (!inPlaylist && !inWidget && !requesterCanAccessContent(req, content)) return res.status(403).json({ error: 'Content not assigned to any playlist or widget' });
   const safePath = path.resolve(config.contentDir, path.basename(content.filepath));
   if (!safePath.startsWith(path.resolve(config.contentDir))) return res.status(403).json({ error: 'Invalid path' });
+  // Scale-out (docs/scale-out.md): the row was copied, the bytes were not — fetch through (no cache in C1).
+  if (config.primaryUrl && content.workspace_id && !fs.existsSync(safePath) &&
+      replicaProxy.isCopiedWorkspace(db.prepare('SELECT origin_node_id FROM workspaces WHERE id = ?').get(content.workspace_id))) {
+    return replicaProxy.proxyToPrimary(req, res, config);
+  }
   // Widget boards (logo / background images) render inside the player's sandboxed
   // (opaque-origin) widget iframe, so these image loads are cross-origin. The helmet
   // default CORP: same-origin blocks them (NS_ERROR_DOM_CORP_FAILED, 0 bytes). Allow
@@ -1564,6 +1581,10 @@ const { getBand } = require('./services/loop-lag');  // #146 Item C: critical-ba
 app.get('/api/update/check', (req, res) => {
   const currentVersion = req.query.version;
   const deviceId = req.query.device_id || null;   // #144: optional; beta4+ clients send it for per-device keying
+  // An operator pressed "force update" on this one device; the client passes it through so the
+  // server-side holds (backoff / superseded-prerelease) can be overridden for a genuine upgrade.
+  // Absent on older clients, so the default (unforced) is unchanged for the whole existing fleet.
+  const forced = req.query.forced === '1' || req.query.forced === 'true';
   /*
    * #341: the version we ADVERTISE must describe the bytes we would SERVE, never the server's own
    * build. Where the stable APK declares its version in a sidecar, that wins; otherwise fall back
@@ -1613,7 +1634,7 @@ app.get('/api/update/check', (req, res) => {
 
   // The hold-my-prerelease guard only applies when we are NOT actively serving a beta: on the beta
   // channel the beta build is the target, so normal comparison does the right thing.
-  const verdict = otaBreaker.decide(currentVersion, latestVersion, deviceId, Date.now(), betaChannel && !onBeta, wasOnBeta);
+  const verdict = otaBreaker.decide(currentVersion, latestVersion, deviceId, Date.now(), betaChannel && !onBeta, wasOnBeta, forced);
 
   // Record that this display is being served beta, so switching it back later is distinguishable
   // from a display that has always run its own build. Written only on a change, not per check.
@@ -1819,6 +1840,11 @@ app.use('/uploads/content', (req, res, next) => {
    */
   res.removeHeader('Cache-Control');
   res.removeHeader('Content-Disposition');
+  // Scale-out (docs/scale-out.md): a copied workspace's file lives on the primary. Only a name that
+  // belongs to a copied content row is fetched through; anything else stays the miss above.
+  if (config.primaryUrl && replicaProxy.isCopiedUploadName(require('./db/database').db, path.basename(req.path))) {
+    return replicaProxy.proxyToPrimary(req, res, config);
+  }
   res.type('application/json').status(404).json({ error: 'Not found' });
 });
 
@@ -1875,6 +1901,15 @@ startDataSourcesPoller(io);
 try {
   const { startMeshUplinks } = require('./services/mesh-uplink');
   meshUplinks = startMeshUplinks(require('./db/database').db, { config: require('./config') });
+  /*
+   * Scale-out: the change-log triggers exist only while an up edge carries workspace-replication,
+   * and the uplink service maintains them. With the flag OFF that service never runs, so a set left
+   * behind by an operator who turned the flag off is dropped here — a stock install must have none,
+   * and `test_change_log_triggers_absent_without_replication_grant` checks exactly that.
+   */
+  if (!require('./config').meshAllowUplink) {
+    try { require('./lib/mesh/replication').ensureTriggers(require('./db/database').db, { wanted: false }); } catch (e) { /* best effort */ }
+  }
 } catch (e) {
   console.warn(`[mesh] uplinks not started: ${e && e.message}`);
 }

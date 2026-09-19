@@ -8,6 +8,7 @@ const config = require('../config');
 // by read/write helpers gated on the playlist's workspace_id.
 const { accessContext } = require('../lib/tenancy');
 const { resolveItemDuration } = require('../lib/item-duration');
+const { parseTags, parseMeta } = require('../lib/content-tags');
 const { emitMuteChanged } = require('../lib/mute-sync');
 
 // Per-item play window: local YYYY-MM-DDTHH:MM, inclusive. Empty/null clears.
@@ -51,17 +52,57 @@ function parsePlayWhen(v) {
   if (v === null || v === '' || v === false) return null;
   const obj = typeof v === 'string' ? (() => { try { return JSON.parse(v); } catch { return false; } })() : v;
   if (!obj || typeof obj !== 'object') return false;
+  const type = obj.type || (obj.slug ? 'ds' : (obj.tag || obj.op === 'has' || obj.op === 'lacks' ? 'tag' : 'ds'));
+  if (type === 'tag') {
+    const tag = String(obj.value || obj.tag || '').trim().toLowerCase();
+    if (!tag) return false;
+    return { type: 'tag', op: obj.op === 'lacks' ? 'lacks' : 'has', value: tag };
+  }
+  if (type === 'meta') {
+    const path = typeof obj.path === 'string' ? obj.path.trim() : '';
+    const op = obj.op || 'eq';
+    if (!path) return false;
+    if (!['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'truthy', 'has'].includes(op)) return false;
+    return { type: 'meta', path, op, value: obj.value == null ? null : obj.value };
+  }
   const slug = typeof obj.slug === 'string' ? obj.slug.trim() : '';
   const path = typeof obj.path === 'string' ? obj.path.trim() : '';
   const op = obj.op || 'eq';
   if (!slug || !path) return false;
   if (!['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'truthy'].includes(op)) return false;
-  return { slug, path, op, value: obj.value == null ? null : obj.value };
+  return { type: 'ds', slug, path, op, value: obj.value == null ? null : obj.value };
+}
+function normalizePlaybackOrder(v) {
+  if (v === undefined) return undefined;
+  const s = String(v || 'sequential').toLowerCase();
+  return (s === 'shuffle' || s === 'weighted' || s === 'sequential') ? s : false;
+}
+function normalizeWeight(v) {
+  if (v === undefined) return undefined;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 1) return false;
+  return Math.min(1000, Math.floor(n));
 }
 function attachPlayWhen(it) {
   if (!it.play_when) { delete it.play_when; return; }
   const parsed = parsePlayWhen(it.play_when);
   if (parsed) it.play_when = parsed; else delete it.play_when;
+}
+function decorateEditorItems(items) {
+  const ids = [...new Set((items || []).map((it) => it.content_id).filter(Boolean))];
+  if (!ids.length) return items;
+  const ph = ids.map(() => '?').join(',');
+  const rows = db.prepare(`SELECT id, tags, meta FROM content WHERE id IN (${ph})`).all(...ids);
+  const map = new Map(rows.map((r) => [r.id, r]));
+  for (const it of items) {
+    const row = it.content_id && map.get(it.content_id);
+    if (!row) continue;
+    const tags = parseTags(row.tags);
+    if (tags.length) it.tags = tags;
+    const meta = parseMeta(row.meta);
+    if (meta && Object.keys(meta).length) it.meta = meta;
+  }
+  return items;
 }
 
 // Re-probe video duration with ffprobe if content.duration_sec is missing
@@ -160,13 +201,24 @@ function attachSlideAudio(it) {
 }
 
 // Build the snapshot item list for a playlist (denormalized for device payload)
-function buildSnapshotItems(playlistId) {
+function buildSnapshotItems(playlistId, _depth = 0, _ancestors = null) {
+  // A nesting cycle (A contains B contains A) would recurse here until the stack overflows and
+  // publish/preview 500s. The old MAX_NEST_DEPTH guard was DEAD: this function recursed via
+  // expandChildPlaylists which called back in with depth reset to 0. Thread the depth, and also
+  // track the ancestor chain PER PATH (so two items legitimately referencing the same child are
+  // still fine) and refuse a repeat outright.
+  const ancestors = _ancestors || [];
+  if (ancestors.includes(playlistId)) {
+    console.warn(`[playlist] nesting cycle at ${playlistId} — reference dropped`);
+    return [];
+  }
   const items = db.prepare(`
     SELECT pi.id AS _iid, pi.content_id, pi.widget_id, pi.child_playlist_id, pi.zone_id, pi.sort_order, pi.duration_sec, pi.muted,
-           pi.play_from, pi.play_until, pi.enabled, pi.log_play, pi.fit_mode, pi.play_when,
+           pi.play_from, pi.play_until, pi.enabled, pi.log_play, pi.fit_mode, pi.play_when, pi.weight,
            COALESCE(c.filename, w.name) as filename, c.mime_type, c.filepath, c.file_size,
            c.duration_sec as content_duration, c.remote_url, c.unstable_connection,
            c.captions_enabled, c.captions_lang, c.subtitle_url, c.subtitle_lang,
+           c.tags AS content_tags, c.meta AS content_meta,
            w.name as widget_name, w.widget_type, w.config as widget_config, w.updated_at as widget_rev
     FROM playlist_items pi
     LEFT JOIN content c ON pi.content_id = c.id
@@ -202,6 +254,13 @@ function buildSnapshotItems(playlistId) {
     if (it.log_play === 0) it.log_play = 0; else delete it.log_play;
     if (!it.fit_mode) delete it.fit_mode;
     attachPlayWhen(it);
+    const tags = parseTags(it.content_tags);
+    if (tags.length) it.tags = tags;
+    delete it.content_tags;
+    const meta = parseMeta(it.content_meta);
+    if (meta && Object.keys(meta).length) it.meta = meta;
+    delete it.content_meta;
+    if (it.weight && Number(it.weight) !== 1) it.weight = Number(it.weight); else delete it.weight;
     delete it._iid;
     attachSlideAudio(it);
   }
@@ -227,13 +286,13 @@ function buildSnapshotItems(playlistId) {
    * The `depth` guard below is belt-and-braces against a row written by some other path (an
    * import, a migration, a manual fix-up). It is not the primary defence and must not become it.
    */
-  return expandChildPlaylists(items, 0);
+  return expandChildPlaylists(items, _depth, [...ancestors, playlistId]);
 }
 
 /** Max nesting depth. 1 = a playlist may contain playlists, but those may not. */
 const MAX_NEST_DEPTH = 1;
 
-function expandChildPlaylists(items, depth) {
+function expandChildPlaylists(items, depth, ancestors) {
   if (!items.some((i) => i && i.child_playlist_id)) return items;   // common case: no work, no copy
   const out = [];
   for (const it of items) {
@@ -247,7 +306,7 @@ function expandChildPlaylists(items, depth) {
     // Recurse through buildSnapshotItems so the child gets the SAME treatment as a top-level
     // playlist: the same is_active/expiry filter, the same per-item schedule blocks. Anything less
     // and a nested item would obey different rules from the identical item played directly.
-    for (const child of buildSnapshotItems(it.child_playlist_id)) {
+    for (const child of buildSnapshotItems(it.child_playlist_id, depth + 1, ancestors)) {
       const play_from = laterStamp(it.play_from, child.play_from);
       const play_until = earlierStamp(it.play_until, child.play_until);
       const merged = { ...child, zone_id: child.zone_id || it.zone_id };
@@ -392,16 +451,25 @@ function publishPlaylist(playlistId, reqOrIo, seen = new Set([playlistId])) {
    * which Carousel proved requires a player release (CSL-9211). Deferred, and named in the design
    * doc so it is not rediscovered.
    */
-  const prev = db.prepare('SELECT status, published_snapshot, published_structure FROM playlists WHERE id = ?').get(playlistId);
+  const prev = db.prepare('SELECT status, published_snapshot, published_structure, playback_order, published_playback_order FROM playlists WHERE id = ?').get(playlistId);
+  const order = normalizePlaybackOrder(prev && prev.playback_order) || 'sequential';
 
   // ⚠️ Structure is captured PRE-expansion so "discard" can restore the nesting the flat snapshot
   // cannot describe. Device-facing data stays in published_snapshot; this is never sent anywhere.
-  const structure = JSON.stringify(db.prepare(`
-    SELECT content_id, widget_id, child_playlist_id, zone_id, sort_order, duration_sec, muted, play_from, play_until, enabled, log_play, fit_mode, play_when
+  const structureRows = db.prepare(`
+    SELECT id, content_id, widget_id, child_playlist_id, zone_id, sort_order, duration_sec, muted, play_from, play_until, enabled, log_play, fit_mode, play_when, weight
       FROM playlist_items WHERE playlist_id = ? ORDER BY sort_order ASC
-  `).all(playlistId));
+  `).all(playlistId);
+  // ⚠️ Per-item schedule blocks (dayparting/validity) must be captured too, or a discard rebuilds
+  // the items WITHOUT them and silently strips the schedules from every item. `id` is used only to
+  // fetch the blocks and is dropped from the stored structure.
+  const structure = JSON.stringify(structureRows.map((row) => {
+    const blocks = schedulesForItem(row.id);
+    const { id, ...rest } = row;
+    return blocks.length ? { ...rest, schedules: blocks } : rest;
+  }));
 
-  if (prev && prev.status === 'published' && prev.published_snapshot === next) {
+  if (prev && prev.status === 'published' && prev.published_snapshot === next && (prev.published_playback_order || 'sequential') === order) {
     /*
      * The resolved list is unchanged, so no device is touched and nothing restarts — that is the
      * point of this early exit. But STRUCTURE can differ while the flat output does not: replacing
@@ -415,8 +483,8 @@ function publishPlaylist(playlistId, reqOrIo, seen = new Set([playlistId])) {
     }
     return { changed: false, items: snapshotItems.length };
   }
-  db.prepare("UPDATE playlists SET status = 'published', published_snapshot = ?, published_structure = ?, updated_at = strftime('%s','now') WHERE id = ?")
-    .run(next, structure, playlistId);
+  db.prepare("UPDATE playlists SET status = 'published', published_snapshot = ?, published_structure = ?, published_playback_order = ?, updated_at = strftime('%s','now') WHERE id = ?")
+    .run(next, structure, order, playlistId);
   pushToDevices(playlistId, reqOrIo);
   try {
     const row = db.prepare('SELECT name, workspace_id FROM playlists WHERE id = ?').get(playlistId);
@@ -547,7 +615,7 @@ router.get('/:id', requirePlaylistRead, (req, res) => {
   // zoned items) means fullscreen, which the UI draws as a single frame.
   let layout = null;
   try { layout = derivePreviewLayout(items); } catch (e) { layout = null; }
-  res.json({ ...req.playlist, items, item_count: items.length, display_count: displayCount, layout });
+  res.json({ ...req.playlist, items: decorateEditorItems(items), item_count: items.length, display_count: displayCount, layout });
 });
 
 // #104: device-free draft preview payload. Same shape the device player consumes
@@ -561,7 +629,14 @@ router.get('/:id/preview-payload', requirePlaylistRead, (req, res) => {
   const assignments = buildSnapshotItems(req.params.id);
   const layout = derivePreviewLayout(assignments);
   const orientation = PREVIEW_ORIENTATIONS.has(req.query.orientation) ? req.query.orientation : 'landscape';
-  res.json(assemblePayload({ assignments, layout, orientation, wall_config: null, timezone: null }));
+  res.json(assemblePayload({
+    assignments, layout, orientation, wall_config: null, timezone: null,
+    // Without this the preview's data-source play_when gating and custom shader transitions no-op
+    // (attachDataSourceBag/customShaderRegistry key off workspace_id), so the dashboard preview would
+    // not match what a real device shows. Same omission that dropped it from the live device payload.
+    workspace_id: req.playlist.workspace_id || null,
+    playback_order: req.playlist.playback_order || 'sequential',
+  }));
 });
 
 // Update playlist
@@ -578,11 +653,19 @@ router.put('/:id', requirePlaylistWrite, (req, res) => {
     updates.push('description = ?');
     values.push(description.trim());
   }
+  if (req.body.playback_order !== undefined) {
+    const order = normalizePlaybackOrder(req.body.playback_order);
+    if (order === false) return res.status(400).json({ error: 'playback_order must be sequential, shuffle, or weighted' });
+    updates.push('playback_order = ?');
+    values.push(order);
+  }
   if (updates.length > 0) {
     updates.push("updated_at = strftime('%s','now')");
     values.push(req.params.id);
     db.prepare(`UPDATE playlists SET ${updates.join(', ')} WHERE id = ?`).run(...values);
-    require('../lib/revisions').recordCurrent(db, 'playlist', req.params.id, { actor: require('../lib/releases').actorOf(req), summary: 'Renamed' });
+    const summary = req.body.playback_order !== undefined ? 'Changed playback order' : 'Renamed';
+    require('../lib/revisions').recordCurrent(db, 'playlist', req.params.id, { actor: require('../lib/releases').actorOf(req), summary });
+    if (req.body.playback_order !== undefined) markDraft(req.params.id, req, 'Changed playback order');
   }
   res.json(db.prepare('SELECT * FROM playlists WHERE id = ?').get(req.params.id));
 });
@@ -624,7 +707,7 @@ router.post('/:id/publish', requirePlaylistWrite, (req, res) => {
     WHERE pi.playlist_id = ?
     ORDER BY pi.sort_order ASC
   `).all(req.params.id);
-  res.json({ ...db.prepare('SELECT * FROM playlists WHERE id = ?').get(req.params.id), items });
+  res.json({ ...db.prepare('SELECT * FROM playlists WHERE id = ?').get(req.params.id), items: decorateEditorItems(items) });
 });
 
 // Discard draft — revert playlist_items to match published_snapshot
@@ -664,13 +747,21 @@ router.post('/:id/discard', requirePlaylistWrite, (req, res) => {
     // Re-insert from snapshot, skipping items whose content/widget was deleted
     // muted rides along too: #129's per-item mute was dropped by the old restore, so discarding an
     // unrelated draft edit silently un-muted every item that had been muted before publish.
-    const insert = db.prepare('INSERT INTO playlist_items (playlist_id, content_id, widget_id, child_playlist_id, zone_id, sort_order, duration_sec, muted, play_from, play_until, enabled, log_play, fit_mode, play_when) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const insert = db.prepare('INSERT INTO playlist_items (playlist_id, content_id, widget_id, child_playlist_id, zone_id, sort_order, duration_sec, muted, play_from, play_until, enabled, log_play, fit_mode, play_when, weight) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const insSched = db.prepare('INSERT INTO playlist_item_schedules (id, playlist_item_id, active_days, start_time, end_time, start_date, end_date, sort_order) VALUES (?,?,?,?,?,?,?,?)');
     for (const item of publishedItems) {
       try {
-        insert.run(req.params.id, item.content_id || null, item.widget_id || null,
+        const r = insert.run(req.params.id, item.content_id || null, item.widget_id || null,
                    item.child_playlist_id || null, item.zone_id || null, item.sort_order, item.duration_sec,
                    item.muted ? 1 : 0, item.play_from || null, item.play_until || null,
-                   item.enabled === 0 ? 0 : 1, item.log_play === 0 ? 0 : 1, item.fit_mode || null, item.play_when ? (typeof item.play_when === 'string' ? item.play_when : JSON.stringify(item.play_when)) : null);
+                   item.enabled === 0 ? 0 : 1, item.log_play === 0 ? 0 : 1, item.fit_mode || null, item.play_when ? (typeof item.play_when === 'string' ? item.play_when : JSON.stringify(item.play_when)) : null, item.weight || 1);
+        // Restore per-item schedule blocks (DELETE above cascaded them away). Both the structure and
+        // the snapshot carry them in the same {days,start,end,...} shape.
+        const blocks = Array.isArray(item.schedules) ? item.schedules : [];
+        blocks.forEach((b, i) => {
+          if (!b || !Array.isArray(b.days) || !b.days.length || !b.start || !b.end) return;
+          insSched.run(uuidv4(), r.lastInsertRowid, b.days.join(','), b.start, b.end, b.start_date || null, b.end_date || null, i);
+        });
       } catch (e) {
         if (e.message.includes('FOREIGN KEY')) {
           console.warn(`Discard: skipping snapshot item (content_id=${item.content_id}, widget_id=${item.widget_id}) — referenced entity was deleted`);
@@ -679,7 +770,7 @@ router.post('/:id/discard', requirePlaylistWrite, (req, res) => {
         throw e;
       }
     }
-    db.prepare("UPDATE playlists SET status = 'published', updated_at = strftime('%s','now') WHERE id = ?").run(req.params.id);
+    db.prepare("UPDATE playlists SET status = 'published', playback_order = COALESCE(published_playback_order, playback_order, 'sequential'), updated_at = strftime('%s','now') WHERE id = ?").run(req.params.id);
   });
   transaction();
   require('../lib/revisions').recordCurrent(db, 'playlist', req.params.id, { actor: require('../lib/releases').actorOf(req), summary: 'Draft discarded' });
@@ -697,7 +788,7 @@ router.post('/:id/discard', requirePlaylistWrite, (req, res) => {
     WHERE pi.playlist_id = ?
     ORDER BY pi.sort_order ASC
   `).all(req.params.id);
-  res.json({ ...db.prepare('SELECT * FROM playlists WHERE id = ?').get(req.params.id), items });
+  res.json({ ...db.prepare('SELECT * FROM playlists WHERE id = ?').get(req.params.id), items: decorateEditorItems(items) });
 });
 
 // Delete playlist
@@ -792,6 +883,10 @@ function validateBlocks(blocks) {
     if (!Array.isArray(b.days) || b.days.length === 0 || !b.days.every(d => Number.isInteger(d) && d >= 0 && d <= 6)) return 'days must be a non-empty array of integers 0-6';
     if (!TIME_RE.test(b.start)) return 'start must be HH:MM (00:00-23:59)';
     if (!(TIME_RE.test(b.end) || b.end === '24:00')) return 'end must be HH:MM or 24:00';
+    // A zero-length window (start == end) evaluates as NEVER active — the item silently disappears
+    // rather than showing in the intended window. Reject it. (start > end is a valid OVERNIGHT window
+    // and is allowed; use end=24:00 for "until midnight".)
+    if (b.start === b.end) return 'start and end must differ (a zero-length window never plays; for an overnight window make end earlier than start)';
     for (const k of ['start_date', 'end_date']) if (b[k] != null && !DATE_RE.test(b[k])) return `${k} must be YYYY-MM-DD or null`;
   }
   return null;
@@ -891,8 +986,11 @@ router.post('/:id/items', requirePlaylistWrite, async (req, res) => {
         });
       }
     }
-    if (duration_sec !== undefined && duration_sec !== null && (typeof duration_sec !== 'number' || duration_sec < 1)) {
-      return res.status(400).json({ error: 'duration_sec must be a positive integer' });
+    // 0 is allowed through here (it is the live "stay until skipped" dwell); resolveItemDuration
+    // below coerces a 0 on any NON-live item back to a safe default, so a 0ms advance can never
+    // reach finite media. A negative or non-number is still rejected.
+    if (duration_sec !== undefined && duration_sec !== null && (typeof duration_sec !== 'number' || duration_sec < 0)) {
+      return res.status(400).json({ error: 'duration_sec must be a non-negative integer' });
     }
 
     let content = null;
@@ -1006,8 +1104,13 @@ router.put('/:id/items/:itemId', requirePlaylistWrite, (req, res) => {
     updates.push('zone_id = ?'); values.push(zone_id || null);
   }
   if (duration_sec !== undefined) {
-    if (typeof duration_sec !== 'number' || duration_sec < 1) {
-      return res.status(400).json({ error: 'duration_sec must be a positive integer' });
+    // A live stream (video/hls) accepts dwell 0 ("stay until skipped"); finite media must stay
+    // >= 1, because 0 self-loops into a black screen. The item's content mime decides which.
+    const liveItem = !!(item.content_id
+      && db.prepare("SELECT 1 AS live FROM content WHERE id = ? AND mime_type = 'video/hls'").get(item.content_id));
+    const minDur = liveItem ? 0 : 1;
+    if (typeof duration_sec !== 'number' || duration_sec < minDur) {
+      return res.status(400).json({ error: liveItem ? 'duration_sec must be 0 or a positive integer' : 'duration_sec must be a positive integer' });
     }
     updates.push('duration_sec = ?');
     values.push(duration_sec);
@@ -1038,8 +1141,13 @@ router.put('/:id/items/:itemId', requirePlaylistWrite, (req, res) => {
   }
   if (Object.prototype.hasOwnProperty.call(req.body, 'play_when')) {
     const when = parsePlayWhen(req.body.play_when);
-    if (when === false) return res.status(400).json({ error: 'play_when must be { slug, path, op, value } or empty' });
+    if (when === false) return res.status(400).json({ error: 'play_when must be { slug, path, op, value }, { type:tag }, { type:meta }, or empty' });
     updates.push('play_when = ?'); values.push(when ? JSON.stringify(when) : null);
+  }
+  if (Object.prototype.hasOwnProperty.call(req.body, 'weight')) {
+    const w = normalizeWeight(req.body.weight);
+    if (w === false) return res.status(400).json({ error: 'weight must be an integer from 1 to 1000' });
+    updates.push('weight = ?'); values.push(w);
   }
   /*
    * ⚠️ #129's per-item mute, which this route never read.
@@ -1145,9 +1253,9 @@ router.post('/:id/items/:itemId/duplicate', requirePlaylistWrite, (req, res) => 
     // content_id, widget_id AND child_playlist_id all NULL — a ghost that renders as nothing. No
     // depth check is needed here, because the copy lands in the playlist that already holds it.
     const result = db.prepare(`
-      INSERT INTO playlist_items (playlist_id, content_id, widget_id, child_playlist_id, zone_id, sort_order, duration_sec, play_from, play_until, muted, enabled, log_play, fit_mode, play_when)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(req.params.id, item.content_id, item.widget_id, item.child_playlist_id, item.zone_id, order, item.duration_sec, item.play_from || null, item.play_until || null, item.muted ? 1 : 0, item.enabled === 0 ? 0 : 1, item.log_play === 0 ? 0 : 1, item.fit_mode || null, item.play_when || null);
+      INSERT INTO playlist_items (playlist_id, content_id, widget_id, child_playlist_id, zone_id, sort_order, duration_sec, play_from, play_until, muted, enabled, log_play, fit_mode, play_when, weight)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(req.params.id, item.content_id, item.widget_id, item.child_playlist_id, item.zone_id, order, item.duration_sec, item.play_from || null, item.play_until || null, item.muted ? 1 : 0, item.enabled === 0 ? 0 : 1, item.log_play === 0 ? 0 : 1, item.fit_mode || null, item.play_when || null, item.weight || 1);
     const newId = result.lastInsertRowid;
     const scheds = db.prepare('SELECT active_days, start_time, end_time, start_date, end_date, sort_order FROM playlist_item_schedules WHERE playlist_item_id = ?').all(req.params.itemId);
     const insSched = db.prepare('INSERT INTO playlist_item_schedules (id, playlist_item_id, active_days, start_time, end_time, start_date, end_date, sort_order) VALUES (?,?,?,?,?,?,?,?)');
@@ -1181,7 +1289,7 @@ router.post('/:id/items/:itemId/duplicate', requirePlaylistWrite, (req, res) => 
 const MAX_SELECTION = 500;
 const SELECTION_ACTIONS = new Set([
   'delete', 'duplicate', 'duration', 'play_window', 'enabled', 'log_play',
-  'fit_mode', 'mute', 'schedules', 'play_when', 'transition', 'paste',
+  'fit_mode', 'mute', 'schedules', 'play_when', 'transition', 'paste', 'weight',
 ]);
 
 function loadSelectionItems(playlistId, ids) {
@@ -1213,8 +1321,8 @@ router.post('/:id/items/selection', requirePlaylistWrite, (req, res) => {
       const max = db.prepare('SELECT MAX(sort_order) as m FROM playlist_items WHERE playlist_id = ?').get(req.params.id);
       let order = (max && max.m) || 0;
       const ins = db.prepare(`INSERT INTO playlist_items
-        (playlist_id, content_id, widget_id, child_playlist_id, zone_id, sort_order, duration_sec, muted, play_from, play_until, enabled, log_play, fit_mode, play_when)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+        (playlist_id, content_id, widget_id, child_playlist_id, zone_id, sort_order, duration_sec, muted, play_from, play_until, enabled, log_play, fit_mode, play_when, weight)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
       const insSched = db.prepare('INSERT INTO playlist_item_schedules (id, playlist_item_id, active_days, start_time, end_time, start_date, end_date, sort_order) VALUES (?,?,?,?,?,?,?,?)');
       // A pasted zone_id from another playlist may not exist in this workspace's layouts. Keep it
       // only if it resolves here; otherwise drop to the default zone so the item still renders
@@ -1245,6 +1353,15 @@ router.post('/:id/items/selection', requirePlaylistWrite, (req, res) => {
             if (it.child_playlist_id === req.params.id) continue;
             const ch = db.prepare('SELECT id, workspace_id FROM playlists WHERE id = ?').get(it.child_playlist_id);
             if (!ch || (ch.workspace_id && ch.workspace_id !== ws)) continue;
+            // The same one-level-deep guard the single-item add route enforces, which paste skipped:
+            // refuse a child that itself holds a child (2 levels), or one that would make THIS
+            // playlist a grandchild (the reverse direction, which builds a cycle A->B->A). Paste
+            // skips a bad item rather than failing the batch. buildSnapshotItems now also refuses
+            // cycles/over-depth at render, but keeping them out of the DB is the real fix.
+            const grandchild = db.prepare('SELECT 1 FROM playlist_items WHERE playlist_id = ? AND child_playlist_id IS NOT NULL LIMIT 1').get(it.child_playlist_id);
+            if (grandchild) continue;
+            const parentRef = db.prepare('SELECT 1 FROM playlist_items WHERE child_playlist_id = ? LIMIT 1').get(req.params.id);
+            if (parentRef) continue;
           }
           const fit = it.fit_mode == null ? null : normalizeFitMode(it.fit_mode);
           if (fit === false) continue;
@@ -1253,11 +1370,14 @@ router.post('/:id/items/selection', requirePlaylistWrite, (req, res) => {
           const r = ins.run(req.params.id, it.content_id || null, it.widget_id || null, it.child_playlist_id || null,
             resolveZone(it.zone_id), ++order, it.duration_sec || 10, it.muted ? 1 : 0,
             it.play_from || null, it.play_until || null, it.enabled === 0 ? 0 : 1, it.log_play === 0 ? 0 : 1,
-            fit, when ? JSON.stringify(when) : null);
+            fit, when ? JSON.stringify(when) : null, it.weight || 1);
           added.push(r.lastInsertRowid);
           const blocks = Array.isArray(it.schedules) ? it.schedules : [];
           blocks.forEach((b, i) => {
-            if (!b || !Array.isArray(b.days) || !b.start || !b.end) return;
+            // days must be NON-EMPTY: an empty array stores active_days='' and the evaluator treats
+            // that as "no day matches", so the item silently never plays. validateBlocks rejects it
+            // on the normal path; paste dropped the length check.
+            if (!b || !Array.isArray(b.days) || !b.days.length || !b.start || !b.end) return;
             insSched.run(uuidv4(), r.lastInsertRowid, b.days.join(','), b.start, b.end, b.start_date || null, b.end_date || null, i);
           });
         }
@@ -1278,19 +1398,24 @@ router.post('/:id/items/selection', requirePlaylistWrite, (req, res) => {
     }
 
     if (action === 'duplicate') {
-      for (const r of rows) {
-        // Reuse the existing single-item duplicate (copies schedules too).
-        const max = db.prepare('SELECT MAX(sort_order) as m FROM playlist_items WHERE playlist_id = ?').get(req.params.id);
-        const order = ((max && max.m) || 0) + 1;
-        const result = db.prepare(`INSERT INTO playlist_items
-          (playlist_id, content_id, widget_id, child_playlist_id, zone_id, sort_order, duration_sec, play_from, play_until, muted, enabled, log_play, fit_mode, play_when)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-          req.params.id, r.content_id, r.widget_id, r.child_playlist_id, r.zone_id, order, r.duration_sec,
-          r.play_from, r.play_until, r.muted ? 1 : 0, r.enabled === 0 ? 0 : 1, r.log_play === 0 ? 0 : 1, r.fit_mode, r.play_when);
-        const scheds = db.prepare('SELECT active_days, start_time, end_time, start_date, end_date, sort_order FROM playlist_item_schedules WHERE playlist_item_id = ?').all(r.id);
-        const insSched = db.prepare('INSERT INTO playlist_item_schedules (id, playlist_item_id, active_days, start_time, end_time, start_date, end_date, sort_order) VALUES (?,?,?,?,?,?,?,?)');
-        for (const s of scheds) insSched.run(uuidv4(), result.lastInsertRowid, s.active_days, s.start_time, s.end_time, s.start_date, s.end_date, s.sort_order);
-      }
+      // Wrap in a transaction like every other selection action: a mid-loop throw (an FK failure, or
+      // a schedule insert failing after its item inserted) otherwise leaves a partially-duplicated
+      // selection committed while markDraft still runs.
+      db.transaction(() => {
+        for (const r of rows) {
+          // Reuse the existing single-item duplicate (copies schedules too).
+          const max = db.prepare('SELECT MAX(sort_order) as m FROM playlist_items WHERE playlist_id = ?').get(req.params.id);
+          const order = ((max && max.m) || 0) + 1;
+          const result = db.prepare(`INSERT INTO playlist_items
+            (playlist_id, content_id, widget_id, child_playlist_id, zone_id, sort_order, duration_sec, play_from, play_until, muted, enabled, log_play, fit_mode, play_when, weight)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+            req.params.id, r.content_id, r.widget_id, r.child_playlist_id, r.zone_id, order, r.duration_sec,
+            r.play_from, r.play_until, r.muted ? 1 : 0, r.enabled === 0 ? 0 : 1, r.log_play === 0 ? 0 : 1, r.fit_mode, r.play_when, r.weight || 1);
+          const scheds = db.prepare('SELECT active_days, start_time, end_time, start_date, end_date, sort_order FROM playlist_item_schedules WHERE playlist_item_id = ?').all(r.id);
+          const insSched = db.prepare('INSERT INTO playlist_item_schedules (id, playlist_item_id, active_days, start_time, end_time, start_date, end_date, sort_order) VALUES (?,?,?,?,?,?,?,?)');
+          for (const s of scheds) insSched.run(uuidv4(), result.lastInsertRowid, s.active_days, s.start_time, s.end_time, s.start_date, s.end_date, s.sort_order);
+        }
+      })();
       markDraft(req.params.id, req, `Duplicated ${rows.length} item(s)`);
       return res.json({ duplicated: rows.length });
     }
@@ -1366,11 +1491,20 @@ router.post('/:id/items/selection', requirePlaylistWrite, (req, res) => {
 
     if (action === 'play_when') {
       const when = parsePlayWhen(req.body.play_when);
-      if (when === false) return res.status(400).json({ error: 'play_when must be { slug, path, op, value } or empty' });
+      if (when === false) return res.status(400).json({ error: 'play_when must be a data-source, tag, or meta condition, or empty' });
       const up = db.prepare("UPDATE playlist_items SET play_when = ?, updated_at = strftime('%s','now') WHERE id = ?");
       const json = when ? JSON.stringify(when) : null;
       db.transaction(() => { for (const r of rows) up.run(json, r.id); })();
       markDraft(req.params.id, req, `Set condition on ${rows.length} item(s)`);
+      return res.json({ updated: rows.length });
+    }
+
+    if (action === 'weight') {
+      const w = normalizeWeight(req.body.weight);
+      if (w === false) return res.status(400).json({ error: 'weight must be an integer from 1 to 1000' });
+      const up = db.prepare("UPDATE playlist_items SET weight = ?, updated_at = strftime('%s','now') WHERE id = ?");
+      db.transaction(() => { for (const r of rows) up.run(w, r.id); })();
+      markDraft(req.params.id, req, `Set weight on ${rows.length} item(s)`);
       return res.json({ updated: rows.length });
     }
 

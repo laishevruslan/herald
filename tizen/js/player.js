@@ -144,7 +144,11 @@ PlaylistPlayer.prototype._releasePreloadImage = function () {
   this.preloadImgEl = null; this.preloadImgIdx = -1;
 };
 
-PlaylistPlayer.prototype.load = function (assignments) {
+PlaylistPlayer.prototype.load = function (assignments, playbackOrder) {
+  var nextOrder = playbackOrder || this.playbackOrder || 'sequential';
+  if (nextOrder !== this.playbackOrder) this.playOrderState = {};
+  this.playbackOrder = nextOrder;
+  this.playOrderState = this.playOrderState || {};
   // B3: a malformed device:playlist-update with a non-array `assignments` used to throw
   // (.filter is not a function) out of the socket handler; coerce to [] instead.
   var items = (Array.isArray(assignments) ? assignments : []).filter(function (a) {
@@ -161,13 +165,14 @@ PlaylistPlayer.prototype.load = function (assignments) {
       // widget_rev for the same reason as schedules and transition above: a widget's IDENTITY
       // is unchanged when it is EDITED, so a content edit produced an identical signature, the
       // update was treated as unchanged, and the screen kept the old render until a restart.
-      return [a.content_id, a.widget_id, a.widget_rev || 0, a.remote_url, a.mime_type, a.schedules || [], a.play_from || '', a.play_until || '', a.enabled === 0 ? 0 : 1, a.fit_mode || '', a.play_when || null, a.transition || null];
+      return [a.content_id, a.widget_id, a.widget_rev || 0, a.remote_url, a.mime_type, a.schedules || [], a.play_from || '', a.play_until || '', a.enabled === 0 ? 0 : 1, a.fit_mode || '', a.play_when || null, a.tags || [], a.meta || {}, a.transition || null];
   }));
   if (sig === this.sig && this.items.length) {
-    // In-place duration refresh: patch duration_sec on the live items so a duration edit takes effect
-    // (group schedule tick re-anchors; solo advance uses it next) WITHOUT restarting playback.
+    // In-place duration/weight refresh: patch live items so a duration or weight edit takes effect
+    // WITHOUT restarting playback.
     for (var k = 0; k < this.items.length && k < items.length; k++) {
       if (this.items[k].duration_sec !== items[k].duration_sec) this.items[k].duration_sec = items[k].duration_sec;
+      if (this.items[k].weight !== items[k].weight) this.items[k].weight = items[k].weight;
     }
     return;
   }
@@ -255,7 +260,21 @@ PlaylistPlayer.prototype.clearStage = function () {
   this.stage.innerHTML = '';
 };
 
+// default/standby content: if the device carries a fallback IMAGE (set by app.js from the payload's
+// top-level default_content), render it in place of an idle card. Returns true when it took the stage.
+// It is NOT in the items list, so renderImage's staleness gate keys on defaultContent instead of the
+// item index (see renderImage). single=true -> no advance timer is armed; the image just stays until
+// the next payload (idle) or the next daypart re-check (nothingScheduled) supersedes it.
+PlaylistPlayer.prototype.showDefaultContent = function () {
+  var dc = this.defaultContent;
+  if (!dc || (dc.mime_type || '').indexOf('image/') !== 0) return false;
+  this._releasePreloadImage();   // never mount a warmed NEXT-item image as the default
+  this.renderImage(dc, true);
+  return true;
+};
+
 PlaylistPlayer.prototype.idle = function () {
+  if (this.showDefaultContent()) return;   // no playlist / empty playlist -> fallback image if set
   this.clearStage();
   this.stage.innerHTML =
     '<div class="card" style="position:relative"><h1>ScreenTinker</h1>' +
@@ -370,11 +389,26 @@ PlaylistPlayer.prototype.anyScheduled = function () {
 };
 
 PlaylistPlayer.prototype.firstActiveIndex = function () {
+  try {
+    // Wall followers and group-sync (scheduleDriven) members MUST stay sequential — the
+    // leader index / shared clock is the source of truth, and a private shuffle would
+    // desync the wall. Today they never reach here (the solo timer is suppressed), so this
+    // guard is defense-in-depth matching the web player.
+    if (typeof PlayOrder !== 'undefined' && !this.wallFollower && !this.scheduleDriven) {
+      return PlayOrder.firstIndex(this.items, function (it) { return this.scheduleAllows(it); }.bind(this), this.playbackOrder || 'sequential', this.playOrderState);
+    }
+  } catch (e) {}
   for (var i = 0; i < this.items.length; i++) if (this.scheduleAllows(this.items[i])) return i;
   return -1;
 };
 
 PlaylistPlayer.prototype.nextActiveIndex = function (from) {
+  try {
+    // See firstActiveIndex: solo/fullscreen shuffles, wall-followers and group-sync stay sequential.
+    if (typeof PlayOrder !== 'undefined' && !this.wallFollower && !this.scheduleDriven) {
+      return PlayOrder.nextIndex(this.items, from, function (it) { return this.scheduleAllows(it); }.bind(this), this.playbackOrder || 'sequential', this.playOrderState);
+    }
+  } catch (e) {}
   if (!this.items.length) return -1;
   for (var i = 1; i <= this.items.length; i++) {
     var idx = (from + i) % this.items.length;
@@ -394,12 +428,17 @@ PlaylistPlayer.prototype.startPlayback = function () {
 // Every item filtered out: idle and re-check shortly (a daypart may open).
 PlaylistPlayer.prototype.nothingScheduled = function () {
   if (this.timer) { clearTimeout(this.timer); this.timer = null; }
+  var self = this;
+  // Keep re-checking regardless of what we paint: a daypart may open, and startPlayback then swaps the
+  // scheduled item back in over the fallback image.
+  this.timer = setTimeout(function () { self.startPlayback(); }, 30000);
+  // A playlist exists but every item is filtered out by its schedule -> show the fallback image if the
+  // device has one, else the "nothing scheduled" card (renderImage owns the decode-gated swap).
+  if (this.showDefaultContent()) return;
   this.clearStage();
   this.stage.innerHTML =
     '<div class="card" style="position:relative"><h1>ScreenTinker</h1>' +
     '<p class="sub">' + tzt('nothing_scheduled') + '</p></div>';
-  var self = this;
-  this.timer = setTimeout(function () { self.startPlayback(); }, 30000);
 };
 
 // Proof-of-play: build + forward a device:play-event payload via the onPlayEvent hook (set by app.js).
@@ -593,7 +632,12 @@ PlaylistPlayer.prototype.renderImage = function (item, single) {
     img.src = this.contentUrl(item);
   }
   var settled = false;
+  // default/standby content is rendered from renderImage too, but it is NOT in the items list, so the
+  // index-based staleness check below would always read it as stale and blank. For it, "stale" means
+  // only that a newer payload replaced the fallback mid-decode.
+  var isDefault = (item === self.defaultContent);
   var stale = function () {
+    if (isDefault) return item !== self.defaultContent;
     // A next()/gotoIndex/playlist change mid-decode must not mount a now-stale image over the current
     // item (mirrors how renderVideo's _takePreload only fires for the still-current index).
     return self.index !== targetIdx || self.items[targetIdx] !== item;
@@ -891,6 +935,50 @@ PlaylistPlayer.prototype.renderVideoAv = function (item, single) {
   } catch (e) { this.avFallback(item); }
 };
 
+// Multitasking (Samsung certification CO-MT-01: "when the application resumes, media playback
+// resumes in the same state"). When the app is hidden (Smart Hub, another app, source change) the
+// platform pauses every <video> and the AVPlay session and, with background-support off, freezes
+// our JS. Nothing here ever restarted anything on resume, so a single looping video came back as
+// a frozen frame for good — the exact test a Samsung QA tester runs. Multi-item playlists only
+// recovered because the advance timer happened to fire.
+//
+// suspend(): note what was playing and pause it (AVPlay: suspend(), which Samsung's multitasking
+// guide requires — the platform does not do it for us). resume(): AVPlay restore(), else play()
+// every element we paused; anything that cannot be resumed (ended, play() rejected) is re-mounted
+// via onReplay, which the app maps to playCurrent() or a zone re-render, whichever owns the stage.
+PlaylistPlayer.prototype.suspend = function () {
+  this._suspended = true;
+  if (this.avActive) { try { webapis.avplay.suspend(); } catch (e) {} }
+  var media = this.stage.querySelectorAll('video, audio');
+  for (var i = 0; i < media.length; i++) {
+    var m = media[i];
+    try { if (!m.paused && !m.ended) { m.__stWasPlaying = true; m.pause(); } } catch (e) {}
+  }
+  if (this._bedEl) { try { if (!this._bedEl.paused) { this._bedEl.__stWasPlaying = true; this._bedEl.pause(); } } catch (e) {} }
+};
+
+PlaylistPlayer.prototype.resume = function (onReplay) {
+  if (!this._suspended) return;
+  this._suspended = false;
+  var replay = false;
+  if (this.avActive) {
+    try { webapis.avplay.restore(); } catch (e) { replay = true; }
+  }
+  var list = Array.prototype.slice.call(this.stage.querySelectorAll('video, audio'));
+  if (this._bedEl) list.push(this._bedEl);
+  for (var i = 0; i < list.length; i++) {
+    var m = list[i];
+    if (!m.__stWasPlaying) continue;
+    delete m.__stWasPlaying;
+    if (m.ended) { replay = true; continue; }
+    try {
+      var p = m.play();
+      if (p && typeof p.catch === 'function') p.catch(function () { if (onReplay) onReplay(); });
+    } catch (e) { replay = true; }
+  }
+  if (replay && onReplay) onReplay();
+};
+
 // AVPlay missing/failed on this device -> honest note (never a silent black), then move on.
 PlaylistPlayer.prototype.avFallback = function (item) {
   this.avStop();
@@ -921,6 +1009,10 @@ PlaylistPlayer.prototype.renderVideo = function (item, single) {
   // so the outgoing frame is still on stage to capture. Plain videos fall through to the proven path.
   if (this._videoWillComposite(item)) { return this.renderVideoBuffered(item, single); }
   var self = this;
+  // A live HLS channel (video/hls + remote_url .m3u8) is a plain <video> whose src is the stream URL
+  // — shaped exactly like a remote MP4 — but it NEVER ends, so its duration_sec is DWELL (how long to
+  // hold the channel), not clip length. See the advance block at the end of this function.
+  var isHls = (item.mime_type || '') === 'video/hls';
   // Double buffer: reuse the pre-buffered element for this index if warmed (no black hold); its src
   // is already set + buffering, so playback starts near-instantly.
   var pre = this._takePreload(this.index);
@@ -941,11 +1033,20 @@ PlaylistPlayer.prototype.renderVideo = function (item, single) {
   var applyMute = function () { try { v.muted = self.wallFollower ? true : !!item.muted; } catch (e) {} };
   v.addEventListener('playing', applyMute, { once: true });
   if (!v.paused && v.readyState >= 2) applyMute(); // a reused preload may already be playing
-  // Safety net: if 'ended' never fires (rare), advance after the known
-  // content duration (or the assignment duration) + a buffer.
+  // Advance timing splits by whether the clip ENDS:
+  //  - normal uploaded/remote video: 'ended' advances; the timer is only a safety net (duration + buf).
+  //  - live HLS (video/hls): the stream never ends, so 'ended' never fires. duration_sec is DWELL:
+  //      dwell > 0      -> arm the finite advance timer for the dwell (durationMs), like an image.
+  //      dwell 0/absent -> arm NO timer: stay on the channel (never spin). It leaves only when the
+  //                        ~60s schedule re-check (app.js register -> device:playlist-update -> load)
+  //                        finds it ineligible, or the playlist is otherwise advanced.
   if (!single) {
-    var secs = Number(item.content_duration || item.duration_sec) || this.DEFAULT_DURATION; // B3: numeric
-    this.schedule((secs + 5) * 1000);
+    if (isHls) {
+      if (Number(item.duration_sec) > 0) this.schedule(this.durationMs(item));
+    } else {
+      var secs = Number(item.content_duration || item.duration_sec) || this.DEFAULT_DURATION; // B3: numeric
+      this.schedule((secs + 5) * 1000);
+    }
   }
 };
 
@@ -1234,7 +1335,22 @@ ZoneRenderer.prototype.allows = function (item) {
   } catch (e) { return true; }
 };
 
-ZoneRenderer.prototype.nextActive = function (list, from) {
+ZoneRenderer.prototype.setPlaybackOrder = function (mode) {
+  var m = mode || 'sequential';
+  if (m !== this.playbackOrder) this.orderState = {};
+  this.playbackOrder = m;
+  this.orderState = this.orderState || {};
+};
+
+ZoneRenderer.prototype.nextActive = function (list, from, zoneId) {
+  try {
+    if (typeof PlayOrder !== 'undefined') {
+      if (!this.orderState) this.orderState = {};
+      var key = zoneId || '_';
+      if (!this.orderState[key]) this.orderState[key] = {};
+      return PlayOrder.nextIndex(list, from - 1, function (it) { return this.allows(it); }.bind(this), this.playbackOrder || 'sequential', this.orderState[key]);
+    }
+  } catch (e) {}
   for (var i = 0; i < list.length; i++) {
     var idx = (from + i) % list.length;
     if (this.allows(list[idx])) return idx;
@@ -1269,7 +1385,7 @@ ZoneRenderer.prototype.showItem = function (zone, list, index) {
   var self = this;
   // #74/#75: skip items whose schedule excludes them now; blank-idle the zone and
   // re-check shortly (a daypart may open) if none are active.
-  var activeIdx = this.nextActive(list, index);
+  var activeIdx = this.nextActive(list, index, zone && zone.id);
   if (activeIdx < 0) { this.scheduleAdvance(zone, 30000, function () { self.showItem(zone, list, 0); }); return; }
 
   var a = list[activeIdx];
@@ -1557,6 +1673,9 @@ GroupSyncController.prototype.slots = function () {
   var p = this.player, items = p.items, acc = 0, s = [];
   for (var i = 0; i < items.length; i++) {
     if (!p.scheduleAllows(items[i])) continue;   // same daypart filter as solo playback
+    // A dwell-0 live HLS channel is INFINITE (no finite slot length), so it would desync a synced
+    // group. Treat it as INELIGIBLE for the clock scheduler; a dwell>0 live item is a finite slot.
+    if (items[i].mime_type === 'video/hls' && !(Number(items[i].duration_sec) > 0)) continue;
     // CANONICAL slot length — MUST match the web + Android engines exactly (max(1,dur||10)*1000).
     // Deliberately NOT durationMs() (its MIN_DURATION=3 clamp would diverge from the other players).
     var d = Math.max(1, Number(items[i].duration_sec) || 10) * 1000;

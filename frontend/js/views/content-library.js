@@ -51,6 +51,11 @@ function toLocalDatetimeInput(epochSec) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+function metaToLines(meta) {
+  if (!meta || typeof meta !== 'object') return '';
+  return Object.entries(meta).map(([k, v]) => `${k}=${v}`).join('\n');
+}
+
 export function render(container) {
   container.innerHTML = `
     <div class="page-header">
@@ -115,6 +120,19 @@ export function render(container) {
         <input type="text" id="youtubeNameInput" class="input" placeholder="${t('content.youtube_name_placeholder')}">
         <button class="btn btn-primary" id="addYoutubeBtn">${t('content.youtube_add_btn')}</button>
       </div>
+      <div style="width:320px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--text-primary);font-weight:500">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="23 7 16 12 23 17 23 7"/>
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+          </svg>
+          ${t('content.hls')}
+        </div>
+        <p style="font-size:12px;color:var(--text-muted)">${t('content.hls_desc')}</p>
+        <input type="text" id="hlsUrlInput" class="input" placeholder="${t('content.hls_url_placeholder')}">
+        <input type="text" id="hlsNameInput" class="input" placeholder="${t('content.hls_name_placeholder')}">
+        <button class="btn btn-primary" id="addHlsBtn">${t('content.hls_add_btn')}</button>
+      </div>
     </div>
     </div>
 
@@ -125,6 +143,7 @@ export function render(container) {
         <option value="video" ${state.type === 'video' ? 'selected' : ''}>${t('content.filter_type_video')}</option>
         <option value="image" ${state.type === 'image' ? 'selected' : ''}>${t('content.filter_type_image')}</option>
         <option value="youtube" ${state.type === 'youtube' ? 'selected' : ''}>${t('content.filter_type_youtube')}</option>
+        <option value="live" ${state.type === 'live' ? 'selected' : ''}>${t('content.filter_type_live')}</option>
         <option value="web" ${state.type === 'web' ? 'selected' : ''}>${t('content.filter_type_web')}</option>
         <option value="bundle" ${state.type === 'bundle' ? 'selected' : ''}>${t('content.filter_type_bundle')}</option>
       </select>
@@ -222,6 +241,27 @@ export function render(container) {
       showToast(t('content.toast.youtube_added'), 'success');
       document.getElementById('youtubeUrlInput').value = '';
       document.getElementById('youtubeNameInput').value = '';
+      loadContent();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  // IPTV: add a live HLS stream. The screen opens the URL itself (it may be a LAN
+  // address); ScreenTinker never pulls the video, so the private-URL error from the
+  // server-fetched remote path never applies here.
+  document.getElementById('addHlsBtn').addEventListener('click', async () => {
+    const url = document.getElementById('hlsUrlInput').value.trim();
+    const name = document.getElementById('hlsNameInput').value.trim();
+    if (!url) {
+      showToast(t('content.error_enter_hls_url'), 'error');
+      return;
+    }
+    try {
+      await api.addHlsContent(url, name);
+      showToast(t('content.toast.hls_added'), 'success');
+      document.getElementById('hlsUrlInput').value = '';
+      document.getElementById('hlsNameInput').value = '';
       loadContent();
     } catch (err) {
       showToast(err.message, 'error');
@@ -553,8 +593,9 @@ async function loadContent() {
         </div>
         <div class="content-item-body">
           <div class="content-item-name" title="${esc(c.filename)}">${esc(c.filename)}</div>
+          ${Array.isArray(c.tags) && c.tags.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${c.tags.map((tg) => `<span data-tag="${esc(tg)}" style="font-size:10px;padding:1px 6px;border-radius:4px;background:var(--bg-input);color:var(--text-muted);cursor:pointer">#${esc(tg)}</span>`).join('')}</div>` : ''}
           <div class="content-item-size">
-            ${c.mime_type === 'video/youtube' ? t('content.type_youtube') : c.mime_type === BUNDLE_MIME ? t('content.type_bundle') : c.remote_url ? t('content.type_remote') : (c.mime_type?.startsWith('video/') ? t('content.type_video') : t('content.type_image'))}
+            ${c.mime_type === 'video/hls' || c.mime_type === 'video/rtsp' ? t('content.type_live') : c.mime_type === 'video/youtube' ? t('content.type_youtube') : c.mime_type === BUNDLE_MIME ? t('content.type_bundle') : c.remote_url ? t('content.type_remote') : (c.mime_type?.startsWith('video/') ? t('content.type_video') : t('content.type_image'))}
             ${c.duration_sec ? ` &middot; ${Math.floor(c.duration_sec / 60)}:${String(Math.floor(c.duration_sec % 60)).padStart(2, '0')}` : ''}
             ${c.file_size ? ' &middot; ' + formatFileSize(c.file_size) : ''}
             ${c.width && c.height ? ` &middot; ${c.width}x${c.height}` : ''}
@@ -640,6 +681,14 @@ async function loadContent() {
       }
 
       // Edit button
+      const tagEl = e.target.closest('[data-tag]');
+      if (tagEl) {
+        state.search = '#' + tagEl.dataset.tag;
+        const box = document.getElementById('contentSearch');
+        if (box) box.value = state.search;
+        loadContent();
+        return;
+      }
       const editBtn = e.target.closest('[data-edit-content]');
       if (editBtn) {
         const id = editBtn.dataset.editContent;
@@ -797,6 +846,15 @@ function showEditModal(contentItem, onSave) {
           <label>${t('content.label_filename')}</label>
           <input type="text" id="editFilename" class="input" value="${esc(contentItem.filename)}">
         </div>
+        <div class="form-group">
+          <label>${t('content.label_tags')}</label>
+          <input type="text" id="editTags" class="input" value="${esc((Array.isArray(contentItem.tags) ? contentItem.tags : []).join(', '))}" placeholder="${esc(t('content.tags_placeholder'))}">
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${t('content.tags_hint')}</div>
+        </div>
+        <div class="form-group">
+          <label>${t('content.label_meta')}</label>
+          <textarea id="editMeta" class="input" rows="3" placeholder="${esc(t('content.meta_placeholder'))}" style="width:100%;font-family:monospace;font-size:12px">${esc(metaToLines(contentItem.meta))}</textarea>
+        </div>
         ${isRemote ? `
         <div class="form-group">
           <label>${t('content.label_remote_url_field')}</label>
@@ -904,6 +962,16 @@ function showEditModal(contentItem, onSave) {
       const folderId = overlay.querySelector('#editFolderId')?.value || '';
       const updateData = {};
       if (filename !== contentItem.filename) updateData.filename = filename;
+      const tagsRaw = overlay.querySelector('#editTags')?.value || '';
+      const newTags = tagsRaw.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
+      const curTags = Array.isArray(contentItem.tags) ? contentItem.tags : [];
+      if (newTags.join('\0') !== curTags.join('\0')) updateData.tags = newTags;
+      const metaRaw = overlay.querySelector('#editMeta')?.value || '';
+      // Only send meta when it actually changed. metaToLines() renders the
+      // current meta the same way the textarea is seeded, so an untouched
+      // modal produces an identical string and no-op Saves don't fire a PUT
+      // (which would bump a revision and re-flag approval-gated assets).
+      if (metaRaw !== metaToLines(contentItem.meta)) updateData.meta = metaRaw;
       if (mimeType !== contentItem.mime_type) updateData.mime_type = mimeType;
       if (remoteUrl !== undefined && remoteUrl !== contentItem.remote_url) updateData.remote_url = remoteUrl;
       if ((contentItem.folder_id || '') !== folderId) updateData.folder_id = folderId || null;
