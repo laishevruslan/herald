@@ -34,7 +34,7 @@ Pushing the tag fires `.github/workflows/release.yml`:
 - **artifacts** - builds the source tarball (bundling the unsigned Tizen `.wgt`)
   and creates the GitHub Release with generated notes.
 - **docker** - builds a multi-arch (amd64 + arm64) image and pushes
-  `ghcr.io/screentinker/screentinker:X.Y.Z` and `:latest`.
+  `ghcr.io/laishevruslan/herald:X.Y.Z` and `:latest`.
 
 `artifacts` and `docker` are independent jobs: a docker (arm64/QEMU) failure does
 not block the GitHub Release and can be re-run on its own. Nothing here deploys to
@@ -61,11 +61,11 @@ Each release carries these as standalone assets AND bundled in the tarball:
 - `screentinker-X.Y.Z.tar.gz` - server + frontend source + apk + wgt at the root
 - `ScreenTinker.apk` - signed Android player
 - `ScreenTinker.wgt` - Tizen TV web app (unsigned; see [tizen/README.md](tizen/README.md))
-- `ghcr.io/screentinker/screentinker:X.Y.Z` + `:latest` - Docker image
+- `ghcr.io/laishevruslan/herald:X.Y.Z` + `:latest` - Docker image
 
 ## One-time / occasional
 
 - **ghcr visibility:** new packages default to private. Set the package Public
-  once (Repo -> Packages -> `screentinker` -> Package settings -> Change
+  once (Repo -> Packages -> `herald` -> Package settings -> Change
   visibility -> Public) so anonymous `docker pull` works.
 - **Self-hosters upgrade** with `scripts/upgrade.sh [vX.Y.Z]` (see the README).

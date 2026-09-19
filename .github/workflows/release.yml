@@ -207,9 +207,9 @@ jobs:
               echo "  must sit beside the payload wherever you serve it: the launcher reads it to"
               echo "  decide whether an update is published."
             if [ "${{ steps.ver.outputs.prerelease }}" = "true" ]; then
-              echo "- Docker image: \`ghcr.io/screentinker/screentinker:${{ steps.ver.outputs.version }}\` (pre-release - \`:latest\` is NOT moved)."
+              echo "- Docker image: \`ghcr.io/laishevruslan/herald:${{ steps.ver.outputs.version }}\` (pre-release - \`:latest\` is NOT moved)."
             else
-              echo "- Docker image: \`ghcr.io/screentinker/screentinker:${{ steps.ver.outputs.version }}\` (also \`:latest\`)."
+              echo "- Docker image: \`ghcr.io/laishevruslan/herald:${{ steps.ver.outputs.version }}\` (also \`:latest\`)."
             fi
             echo "- \`ScreenTinker.apk\` - signed Android player (attached during release finalization)."
             echo "- \`screentinker-sbom-${{ steps.ver.outputs.version }}.cdx.json\` - CycloneDX 1.5 software bill of materials for the server's production dependencies, with the licence of every component."
@@ -249,10 +249,10 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           # #80: move :latest only for final releases - a pre-release (1.9.0-rc1) must
           # not repoint :latest onto untested code (anyone on :latest pulls it on restart).
-          TAGS="ghcr.io/screentinker/screentinker:$VERSION"
+          TAGS="ghcr.io/laishevruslan/herald:$VERSION"
           case "$VERSION" in
             *-*) echo "Pre-release $VERSION: :latest will NOT be moved" ;;
-            *)   TAGS="${TAGS}"$'\n'"ghcr.io/screentinker/screentinker:latest" ;;
+            *)   TAGS="${TAGS}"$'\n'"ghcr.io/laishevruslan/herald:latest" ;;
           esac
           { echo "tags<<__EOF__"; printf '%s\n' "$TAGS"; echo "__EOF__"; } >> "$GITHUB_OUTPUT"
       - uses: docker/setup-qemu-action@v3

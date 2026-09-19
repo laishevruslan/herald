@@ -24,10 +24,10 @@ afterEach(() => { global.fetch = realFetch; });
 // --- the Link-header parser -------------------------------------------------
 
 test('nextPageUrl resolves the relative path registries actually send', () => {
-  const cur = 'https://ghcr.io/v2/screentinker/screentinker/tags/list?n=100';
-  const link = '</v2/screentinker/screentinker/tags/list?last=2.0.0-beta5&n=100>; rel="next"';
+  const cur = 'https://ghcr.io/v2/laishevruslan/herald/tags/list?n=100';
+  const link = '</v2/laishevruslan/herald/tags/list?last=2.0.0-beta5&n=100>; rel="next"';
   assert.equal(ghcr.nextPageUrl(link, cur),
-    'https://ghcr.io/v2/screentinker/screentinker/tags/list?last=2.0.0-beta5&n=100');
+    'https://ghcr.io/v2/laishevruslan/herald/tags/list?last=2.0.0-beta5&n=100');
 });
 
 test('nextPageUrl returns null when there is no next link (this is how the walk ends)', () => {
