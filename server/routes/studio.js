@@ -73,12 +73,15 @@ router.post('/export', upload.single('file'), async (req, res) => {
       width: req.body && req.body.width,
       height: req.body && req.body.height,
       filename: (req.body && req.body.name) || null,
+      actor: require('../lib/releases').actorOf(req),
     });
-    pushPlaylistRefresh(req, result.affectedDevices);
-    res.status(result.content && req.body && req.body.content_id ? 200 : 201).json({
+    if (!result.draft) pushPlaylistRefresh(req, result.affectedDevices);
+    const status = result.content && req.body && req.body.content_id ? 200 : 201;
+    res.status(status).json({
       content_id: result.content_id,
       width: result.width,
       height: result.height,
+      ...(result.draft ? { draft: true, pending_review: true } : {}),
     });
   } catch (e) {
     const status = e.status || 500;

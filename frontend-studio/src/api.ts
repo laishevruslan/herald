@@ -53,7 +53,7 @@ export async function publishToLibrary(opts: {
   width: number;
   height: number;
   name?: string;
-}): Promise<{ content_id: string }> {
+}): Promise<{ content_id: string; draft?: boolean; pending_review?: boolean }> {
   const fd = new FormData();
   fd.append('file', opts.png, opts.name || 'studio-poster.png');
   fd.append('scene_json', JSON.stringify(opts.scene));

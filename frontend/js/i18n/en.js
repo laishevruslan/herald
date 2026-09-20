@@ -606,7 +606,7 @@ export default {
   'studio.edit_poster': 'Edit poster',
   'studio.badge': 'Studio',
   'studio.help_blurb': 'Draw a poster with layers, undo and zoom, then publish a PNG to the library. This is not a slide — clocks and live data stay in Slides.',
-  'studio.cyrillic_note': 'Default fonts cover Latin scripts only. Cyrillic may show missing glyphs until a language pack is added.',
+  'studio.cyrillic_note': 'Inter, Oswald, Bitter and JetBrains Mono include Cyrillic. Archivo is Latin-only — Cyrillic may show missing glyphs there.',
   'studio.unavailable': 'Poster editor is not available on this install (Studio island not built).',
   'studio.publish_to_library': 'Publish to library',
   'studio.badge_title': 'Made in Poster editor — open Edit poster to change the layout',

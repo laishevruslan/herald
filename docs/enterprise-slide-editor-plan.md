@@ -539,10 +539,11 @@ PoC — **не** Polotno и не CE.SDK. Остров `frontend-studio/` на з
 
 **6.1 (2026-09-20): DONE.** Ingest/replace через `POST /api/studio/export`, `studio_designs`, кнопки Library, Docker/CI собирают `/studio/`. См. [`scenify-studio-plan.md`](scenify-studio-plan.md).
 
-**6.2 (2026-09-20): DONE.** OFL-шрифты до paint, white-label swatches, фон слайда из Studio, пресет e-paper 800×480. Неполное: brand-kit API фазы 4, кириллический language pack. См. [`scenify-studio-plan.md`](scenify-studio-plan.md).
+**6.2 (2026-09-20): DONE.** OFL-шрифты до paint, white-label swatches, фон слайда из Studio, пресет e-paper 800×480. Неполное закрыто в **6.3c** (brand-kit API + кириллица). См. [`scenify-studio-plan.md`](scenify-studio-plan.md).
 
 **6.3a (2026-09-20): DONE.** Полный Editor UI на `@layerhub-io/react` (Layers / Properties / undo / zoom), без чужой оболочки Scenify. Запреты 6.3 (Fabric в плеере и т.д.) не трогали. См. [`scenify-studio-plan.md`](scenify-studio-plan.md).
 
+**6.3c (2026-09-20): DONE (часть фазы 4).** Workspace brand-kit API (`/api/brand-kit`, 4 цвета + 2 шрифта + logo content_id), Cyrillic OFL pack, Studio approval draft replace. Остаётся в фазе 4: Fill/`locked`, Save-as-template, org pack, dashboard UI kit.
 **6.3b (2026-09-20):** бэклог 6.0 (export / Library buttons / Dockerfile+CI `/studio/` / portrait+picker+brand stand-in) явно закрыт в плане; New poster выбирает пресет; CI artifact `studio-island`.
 
 ### Фаза 7 — не делать

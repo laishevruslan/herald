@@ -80,11 +80,12 @@ function EditorActions(props: {
 
   const addText = useCallback(() => {
     if (!editor) return;
+    const bodyCss = STUDIO_FONTS.find((f) => f.id === brand?.fontBody)?.css || fontCss;
     void editor.objects.add({
       type: 'StaticText',
       text: t(lang, 'newTextDefault'),
       width: Math.min(480, logical.width - 80),
-      fontFamily: fontStack(fontCss),
+      fontFamily: fontStack(bodyCss),
       fontSize: Math.round(logical.width * 0.03),
       fill: brand?.primary || '#111827',
     });
@@ -197,7 +198,9 @@ function EditorActions(props: {
       }
       setStatus({
         kind: 'ok',
-        text: t(lang, 'published', { id: result.content_id.slice(0, 8) }),
+        text: t(lang, result.draft || result.pending_review ? 'publishedDraft' : 'published', {
+          id: result.content_id.slice(0, 8),
+        }),
       });
     } catch (e) {
       setStatus({ kind: 'err', text: e instanceof Error ? e.message : String(e) });

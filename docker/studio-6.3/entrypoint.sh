@@ -6,7 +6,7 @@ cp -R /opt/studio/. /out/studio/
 echo "Studio island copied to /out/studio ($(du -sh /out/studio | cut -f1))"
 
 cd /repo/server
-node --test test/studio-export.test.js test/studio-spike.test.js
+node --test test/studio-export.test.js test/studio-spike.test.js test/brand-kit.test.js test/slide-fonts.test.js
 
 # Headless PNG export (Layerhub renderer → 1920×1080)
 cd /repo/frontend-studio

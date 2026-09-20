@@ -1,4 +1,4 @@
-# Studio island (phase 6.3a)
+# Studio island (phase 6.3c)
 
 **UI name:** Poster editor / Редактор постеров — not “Scenify”, not “Layerhub”.
 
@@ -9,9 +9,10 @@ Isolated Vite + React app on **`@layerhub-io/react`** (`Provider` + `Canvas` + c
 - Layerhub editor chrome: Layers, Properties, context menu, undo/redo, zoom, align, z-order
 - Presets 1920×1080, 1080×1920, 800×480 e-paper (honest dither warning)
 - Text (`StaticText`), rectangle (`StaticPath`), image from Content Library (`StaticImage` + `metadata.contentId`)
-- OFL fonts from `/fonts`; brand colour swatches from workspace white-label
-- **Publish to library** → `POST /api/studio/export` (PNG via `renderer.toDataURL` + compact `scene_json` v2)
-- Slide background via `?for=slide-bg`
+- OFL fonts from `/fonts` (latin + Cyrillic pack where available; Archivo latin-only)
+- Brand colour swatches from **`/api/brand-kit`** (fallback: white-label → defaults)
+- **Publish to library** → `POST /api/studio/export` (PNG via `renderer.toDataURL` + compact `scene_json` v2); with workspace approval on, replace parks a draft
+- Slide background via `?for=slide-bg` (deck Save stays manual — intentional dirty flag)
 - JWT from `localStorage.token` (same session as dashboard)
 - Island i18n: `?lang=ru` | `en`
 - Content Library **New poster** asks for size (landscape / portrait / e-paper) before opening `/studio/`

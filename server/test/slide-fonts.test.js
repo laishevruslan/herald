@@ -28,7 +28,7 @@ const { renderSlideHtml, normalizeSlide } = require('../lib/slide-render');
 test('⚠️ every bundled family ships its files AND its OFL licence text', () => {
   const missing = [];
   for (const [id, f] of Object.entries(F.FAMILIES)) {
-    for (const rel of [`${f.file}.woff2`, `${f.file}-ext.woff2`, f.ofl]) {
+    for (const rel of [...F.familyFileNames(f), f.ofl]) {
       const p = path.join(F.FONT_DIR, rel);
       if (!fs.existsSync(p)) { missing.push(`${id}: ${rel}`); continue; }
       if (fs.statSync(p).size === 0) missing.push(`${id}: ${rel} is empty`);
@@ -41,7 +41,7 @@ test('⚠️ every bundled family ships its files AND its OFL licence text', () 
 test('⚠️ the shipped files really are woff2, not something renamed', () => {
   // A .woff2 that is actually a .ttf loads nowhere and fails silently to the fallback.
   for (const f of Object.values(F.FAMILIES)) {
-    for (const rel of [`${f.file}.woff2`, `${f.file}-ext.woff2`]) {
+    for (const rel of F.familyFileNames(f)) {
       const head = fs.readFileSync(path.join(F.FONT_DIR, rel)).subarray(0, 4).toString('latin1');
       assert.equal(head, 'wOF2', `${rel} is not a woff2 (magic ${JSON.stringify(head)})`);
     }
@@ -85,18 +85,29 @@ test('a font stack always ends in a generic keyword', () => {
 
 test('⚠️ only the families a slide actually uses are emitted', () => {
   const css = F.fontFaceCss(['archivo', 'archivo', 'sans']);
-  assert.equal((css.match(/@font-face/g) || []).length, 4, 'expected two families x two subsets');
+  // Archivo: 2 subsets (latin); Inter (sans): 4 (latin + cyrillic pack)
+  assert.equal((css.match(/@font-face/g) || []).length, 6, 'expected Archivo×2 + Inter×4');
   assert.match(css, /'Archivo'/);
   assert.match(css, /'Inter'/);
   assert.ok(!css.includes('Oswald'), 'an unused family was emitted');
 });
 
-test('each family emits both subsets with distinct unicode-ranges', () => {
+test('each family emits subsets with distinct unicode-ranges', () => {
   const css = F.fontFaceCss(['oswald']);
   assert.match(css, /oswald\.woff2/);
   assert.match(css, /oswald-ext\.woff2/);
+  assert.match(css, /oswald-cyrillic\.woff2/);
+  assert.match(css, /oswald-cyrillic-ext\.woff2/);
   assert.ok(css.includes(F.RANGE_LATIN) && css.includes(F.RANGE_LATIN_EXT),
     'a subset shipped without the range it was cut against');
+  assert.ok(css.includes(F.RANGE_CYRILLIC) && css.includes(F.RANGE_CYRILLIC_EXT));
+});
+
+test('Archivo stays latin-only (no Google Cyrillic cut)', () => {
+  const css = F.fontFaceCss(['archivo']);
+  assert.equal((css.match(/@font-face/g) || []).length, 2);
+  assert.ok(!css.includes('cyrillic'));
+  assert.deepEqual(F.FAMILIES.archivo.scripts, F.SCRIPTS_LATIN);
 });
 
 test('⚠️ the declared weight range matches the axis the file actually has', () => {
@@ -163,7 +174,7 @@ test('normalizeSlide stores the resolved family, so the document self-heals on s
 test('the catalogue carries what the editor needs to match the renderer exactly', () => {
   // If the editor has to guess a generic or a filename, its preview drifts from what plays.
   for (const f of F.catalogue()) {
-    for (const k of ['id', 'label', 'role', 'note', 'weights', 'file', 'css', 'stack']) {
+    for (const k of ['id', 'label', 'role', 'note', 'weights', 'file', 'css', 'stack', 'scripts']) {
       assert.ok(f[k] !== undefined, `catalogue entry ${f.id} is missing ${k}`);
     }
     assert.match(f.stack, /^(sans-serif|serif|monospace)$/);

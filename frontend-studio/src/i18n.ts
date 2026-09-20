@@ -15,6 +15,7 @@ const dict: Record<StudioLang, Record<string, string>> = {
     publish: 'Publish to library',
     publishing: 'Publishing…',
     published: 'Saved to library ({id}…). Assign it to a playlist like any image.',
+    publishedDraft: 'Submitted for review ({id}…). Screens keep the previous file until a reviewer publishes.',
     publishedSlideBg: 'Background saved. Returning to the slide…',
     back: 'Back to library',
     backSlide: 'Back to slide',
@@ -27,7 +28,7 @@ const dict: Record<StudioLang, Record<string, string>> = {
     brandColors: 'Brand colours',
     applyFill: 'Fill selection',
     cyrillicNote:
-      'Default Inter pack is latin + latin-ext only. Cyrillic may render as .notdef until a language pack ships.',
+      'Inter, Oswald, Bitter and JetBrains Mono include Cyrillic. Archivo is Latin-only — Cyrillic may show .notdef there.',
     needLogin: 'Sign in to the dashboard first — Studio reuses the same session.',
     pickImage: 'Choose an image from the library',
     close: 'Close',
@@ -85,6 +86,7 @@ const dict: Record<StudioLang, Record<string, string>> = {
     publish: 'Опубликовать в библиотеку',
     publishing: 'Публикация…',
     published: 'Сохранено в библиотеку ({id}…). Назначьте в плейлист как обычное изображение.',
+    publishedDraft: 'Отправлено на проверку ({id}…). Экраны показывают прежний файл, пока рецензент не опубликует.',
     publishedSlideBg: 'Фон сохранён. Возвращаемся к слайду…',
     back: 'Назад в библиотеку',
     backSlide: 'Назад к слайду',
@@ -97,7 +99,7 @@ const dict: Record<StudioLang, Record<string, string>> = {
     brandColors: 'Цвета бренда',
     applyFill: 'Залить выделение',
     cyrillicNote:
-      'Базовый пакет Inter — только latin + latin-ext. Кириллица может стать .notdef, пока нет языкового пака.',
+      'Inter, Oswald, Bitter и JetBrains Mono включают кириллицу. Archivo — только латиница; кириллица там может стать .notdef.',
     needLogin: 'Сначала войдите в панель — Studio использует ту же сессию.',
     pickImage: 'Выберите изображение из библиотеки',
     close: 'Закрыть',

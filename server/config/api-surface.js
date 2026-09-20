@@ -67,6 +67,11 @@ const JWT_ONLY_ROUTERS = [
   { path: '/api/provision',   mod: './routes/provisioning', tenancy: true },
   { path: '/api/teams',       mod: './routes/teams',        tenancy: true },
   { path: '/api/white-label', mod: './routes/white-label',  tenancy: true },
+  /*
+   * Workspace brand kit (authoring colours / fonts / logo). Distinct from white-label
+   * (login chrome). JWT-only like Studio — not a PAT write surface.
+   */
+  { path: '/api/brand-kit',   mod: './routes/brand-kit',    tenancy: true },
   { path: '/api/workspaces',  mod: './routes/workspaces' },
   { path: '/api/admin',       mod: './routes/admin' },
   /*

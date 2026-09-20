@@ -125,18 +125,37 @@ function upsertDesign({ contentId, workspaceId, sceneJson, width, height }) {
 }
 
 /**
- * Replace PNG bytes on an existing content row (Studio re-publish). Image-only;
- * approval / revision history follows the same spirit as PUT /content/:id/replace
- * without re-entering the Express route.
+ * Replace PNG bytes on an existing content row (Studio re-publish). Image-only.
+ * When workspace require_approval is on, parks new bytes in draft_json like
+ * PUT /content/:id/replace — live filepath stays until review publishes.
+ *
+ * @param {object} content content row
+ * @param {object} file multer file
+ * @param {{ actor?: object }} [opts]
+ * @returns {Promise<{ row: object, affectedDevices: string[], draft?: boolean }>}
  */
-async function replacePngBytes(content, file) {
+async function replacePngBytes(content, file, opts = {}) {
   if (!content.mime_type || !content.mime_type.startsWith('image/')) {
     const err = new Error('Studio can only replace image content');
     err.status = 400;
     throw err;
   }
-  unlinkIfUnreferenced(content.filepath, content.id, 'filepath');
-  unlinkIfUnreferenced(content.thumbnail_path, content.id, 'thumbnail_path');
+
+  const policy = require('./release-policy');
+  const revisions = require('./revisions');
+  const approvalOn = !!(content.workspace_id && policy.approvalRequired(db, content.workspace_id));
+  const actor = opts.actor || { userId: null, kind: 'system', label: null };
+
+  let retainedFile = null;
+  let retainedThumb = null;
+  if (!approvalOn) {
+    const prev = revisions.latest(db, 'content', content.id);
+    const tag = prev ? `r${prev.rev_no}` : 'r0';
+    retainedFile = revisions.retainContentFile(db, content.id, content.filepath, tag);
+    retainedThumb = revisions.retainContentFile(db, content.id, content.thumbnail_path, tag);
+    if (!retainedFile) unlinkIfUnreferenced(content.filepath, content.id, 'filepath');
+    if (!retainedThumb) unlinkIfUnreferenced(content.thumbnail_path, content.id, 'thumbnail_path');
+  }
 
   let filepath, mime;
   try {
@@ -163,16 +182,52 @@ async function replacePngBytes(content, file) {
     newDigest = null;
   }
 
-  db.prepare(`UPDATE content
-                 SET filepath = ?, mime_type = ?, file_size = ?, thumbnail_path = ?, width = ?, height = ?,
-                     duration_sec = ?, byte_digest = ?,
-                     updated_at = MAX(CAST(strftime('%s','now') AS INTEGER), COALESCE(NULLIF(updated_at, 0), created_at) + 1)
-               WHERE id = ?`)
-    .run(filepath, mime, file.size, thumbnailPath, width, height, durationSec, newDigest, content.id);
+  if (approvalOn) {
+    const prevDraft = revisions.parseJson(content.draft_json, null) || {};
+    revisions.disposeDraftFiles(db, content.id, prevDraft, content);
+    const { filepath: _f, thumbnail_path: _t, ...prevFields } = prevDraft;
+    const draft = {
+      ...prevFields,
+      filepath,
+      mime_type: mime,
+      file_size: file.size,
+      thumbnail_path: thumbnailPath,
+      width,
+      height,
+      duration_sec: durationSec,
+      byte_digest: newDigest,
+    };
+    db.prepare('UPDATE content SET draft_json = ? WHERE id = ?').run(JSON.stringify(draft), content.id);
+    revisions.recordCurrent(db, 'content', content.id, { actor, summary: 'Studio replace (draft)' });
+    return {
+      row: db.prepare('SELECT * FROM content WHERE id = ?').get(content.id),
+      affectedDevices: [],
+      draft: true,
+    };
+  }
+
+  db.transaction(() => {
+    if (retainedFile) {
+      db.prepare('UPDATE revisions SET file_ref = ? WHERE resource_type = ? AND resource_id = ? AND file_ref = ?')
+        .run(retainedFile, 'content', content.id, content.filepath);
+    }
+    if (retainedThumb) {
+      db.prepare('UPDATE revisions SET thumb_ref = ? WHERE resource_type = ? AND resource_id = ? AND thumb_ref = ?')
+        .run(retainedThumb, 'content', content.id, content.thumbnail_path);
+    }
+    db.prepare(`UPDATE content
+                   SET filepath = ?, mime_type = ?, file_size = ?, thumbnail_path = ?, width = ?, height = ?,
+                       duration_sec = ?, byte_digest = ?,
+                       updated_at = MAX(CAST(strftime('%s','now') AS INTEGER), COALESCE(NULLIF(updated_at, 0), created_at) + 1)
+                 WHERE id = ?`)
+      .run(filepath, mime, file.size, thumbnailPath, width, height, durationSec, newDigest, content.id);
+    revisions.recordCurrent(db, 'content', content.id, { actor, summary: 'Studio replace' });
+  })();
 
   return {
     row: db.prepare('SELECT * FROM content WHERE id = ?').get(content.id),
     affectedDevices: devicesPlayingContent(content.id),
+    draft: false,
   };
 }
 
@@ -186,6 +241,7 @@ async function publishExport({
   width,
   height,
   filename,
+  actor,
 }) {
   const scene = sanitizeSceneJson(sceneRaw);
   if (!scene.ok) {
@@ -203,6 +259,7 @@ async function publishExport({
 
   let content;
   let affectedDevices = [];
+  let draft = false;
 
   if (contentId) {
     const existing = getByContentId(contentId, workspaceId);
@@ -217,9 +274,10 @@ async function publishExport({
       err.status = 404;
       throw err;
     }
-    const replaced = await replacePngBytes(row, file);
+    const replaced = await replacePngBytes(row, file, { actor });
     content = replaced.row;
     affectedDevices = replaced.affectedDevices;
+    draft = !!replaced.draft;
   } else {
     const name = safeFilename(filename || 'Studio poster.png');
     if (file.originalname == null || !String(file.originalname).trim()) {
@@ -230,6 +288,8 @@ async function publishExport({
     content = await ingestUploadedFile({ file, userId, workspaceId, folderId: null });
   }
 
+  // Scene sidecar always updates (re-edit state). Draft PNG does not change live bytes;
+  // scene still advances so Edit shows what was submitted for review.
   upsertDesign({
     contentId: content.id,
     workspaceId,
@@ -238,7 +298,14 @@ async function publishExport({
     height: dims.height,
   });
 
-  return { content_id: content.id, content, affectedDevices, width: dims.width, height: dims.height };
+  return {
+    content_id: content.id,
+    content,
+    affectedDevices,
+    width: dims.width,
+    height: dims.height,
+    draft,
+  };
 }
 
 module.exports = {

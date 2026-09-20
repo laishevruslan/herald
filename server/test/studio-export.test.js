@@ -174,3 +174,43 @@ test('epaper-5x3 preset records 800×480 metadata (phase 6.2)', async () => {
   assert.equal(design.height, 480);
   assert.match(design.scene_json, /Inter/);
 });
+
+test('Studio replace with require_approval parks PNG in draft_json (6.3c)', async () => {
+  const bytes = await pngBytes(100, 60);
+  const fd = new FormData();
+  fd.append('file', new Blob([bytes], { type: 'image/png' }), 'live.png');
+  fd.append('scene_json', JSON.stringify({ version: 2, objects: [{ type: 'textbox', text: 'LIVE' }] }));
+  fd.append('preset', 'landscape-1080');
+  const created = await (await fetch(`${base}/export`, { method: 'POST', body: fd })).json();
+  const live = db.prepare('SELECT filepath, draft_json FROM content WHERE id = ?').get(created.content_id);
+  assert.ok(live.filepath);
+  assert.equal(live.draft_json, null);
+
+  db.prepare('UPDATE workspaces SET require_approval = 1 WHERE id = ?').run(WS);
+
+  const bytes2 = await pngBytes(110, 70);
+  const fd2 = new FormData();
+  fd2.append('file', new Blob([bytes2], { type: 'image/png' }), 'draft.png');
+  fd2.append('scene_json', JSON.stringify({ version: 2, objects: [{ type: 'textbox', text: 'DRAFT' }] }));
+  fd2.append('content_id', created.content_id);
+  fd2.append('preset', 'landscape-1080');
+
+  const r2 = await fetch(`${base}/export`, { method: 'POST', body: fd2 });
+  assert.equal(r2.status, 200);
+  const body2 = await r2.json();
+  assert.equal(body2.content_id, created.content_id);
+  assert.equal(body2.draft, true);
+  assert.equal(body2.pending_review, true);
+
+  const after = db.prepare('SELECT filepath, draft_json FROM content WHERE id = ?').get(created.content_id);
+  assert.equal(after.filepath, live.filepath, 'live bytes must not change while pending review');
+  assert.ok(after.draft_json);
+  const draft = JSON.parse(after.draft_json);
+  assert.ok(draft.filepath);
+  assert.notEqual(draft.filepath, live.filepath);
+
+  const design = studio.getByContentId(created.content_id, WS);
+  assert.match(design.scene_json, /DRAFT/);
+
+  db.prepare('UPDATE workspaces SET require_approval = 0 WHERE id = ?').run(WS);
+});

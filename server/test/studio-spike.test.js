@@ -48,6 +48,8 @@ test('dashboard i18n has studio keys in en and ru', () => {
   assert.match(ru, /Фон из Studio/);
   assert.match(ru, /Размер постера/);
   assert.match(ru, /портрет/);
+  assert.match(en, /Cyrillic/);
+  assert.match(ru, /кириллиц/);
   assert.doesNotMatch(en, /Scenify/);
   assert.doesNotMatch(ru, /Scenify/);
 });
@@ -72,6 +74,8 @@ test('studio 6.1/6.2/6.3 docker assets and Layerhub Editor modules exist', () =>
   assert.ok(fs.existsSync(path.join(ROOT, 'docker', 'studio-6.3', 'Dockerfile')));
   assert.ok(fs.existsSync(path.join(ROOT, 'server', 'routes', 'studio.js')));
   assert.ok(fs.existsSync(path.join(ROOT, 'server', 'lib', 'studio-designs.js')));
+  assert.ok(fs.existsSync(path.join(ROOT, 'server', 'lib', 'brand-kit.js')));
+  assert.ok(fs.existsSync(path.join(ROOT, 'server', 'routes', 'brand-kit.js')));
   assert.ok(fs.existsSync(path.join(ROOT, 'frontend-studio', 'src', 'fontCatalogue.ts')));
   assert.ok(fs.existsSync(path.join(ROOT, 'frontend-studio', 'src', 'brand.ts')));
   assert.ok(fs.existsSync(path.join(ROOT, 'frontend-studio', 'src', 'fonts.css')));
@@ -80,4 +84,12 @@ test('studio 6.1/6.2/6.3 docker assets and Layerhub Editor modules exist', () =>
   const main = fs.readFileSync(path.join(ROOT, 'frontend-studio', 'src', 'main.tsx'), 'utf8');
   assert.match(main, /@layerhub-io\/react/);
   assert.match(main, /LayerhubProvider|Provider/);
+  const fontsCss = fs.readFileSync(path.join(ROOT, 'frontend-studio', 'src', 'fonts.css'), 'utf8');
+  assert.match(fontsCss, /inter-cyrillic\.woff2/);
+  assert.match(fontsCss, /oswald-cyrillic\.woff2/);
+  const brand = fs.readFileSync(path.join(ROOT, 'frontend-studio', 'src', 'brand.ts'), 'utf8');
+  assert.match(brand, /\/api\/brand-kit/);
+  const designs = fs.readFileSync(path.join(ROOT, 'server', 'lib', 'studio-designs.js'), 'utf8');
+  assert.match(designs, /approvalRequired/);
+  assert.match(designs, /draft_json/);
 });

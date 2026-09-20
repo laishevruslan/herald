@@ -150,6 +150,7 @@ const TABLES = Object.freeze([
   { table: 'alert_rules',          pk: 'id', scope: 'workspace_id' },
   { table: 'alert_configs',        pk: 'id', scope: 'workspace_id' },
   { table: 'white_labels',         pk: 'id', scope: 'workspace_id' },
+  { table: 'workspace_brand_kits', pk: 'workspace_id', scope: 'workspace_id' },
   { table: 'activity_log',         pk: 'id', scope: 'workspace_id' },
   { table: 'revisions',            pk: 'id', scope: 'workspace_id' },
 ]);

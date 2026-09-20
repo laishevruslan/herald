@@ -366,13 +366,30 @@ OFL-шрифты: те же обязательства, что в `slide-fonts.j
 | `frontend/js/views/slides.js` | кнопки фона (I5), return hook |
 | `docker/studio-6.2/` | отдельный контейнер: build + unit tests (epaper) |
 
-**Не сделано полностью в 6.2:**
+**Не сделано полностью в 6.2 (обновлено 6.3c):**
 
-- Настоящий **brand-kit API** фазы 4 родителя (палитры workspace, роли цветов) — сейчас только white-label primary/secondary/bg + дефолтные 8 swatches
-- Кириллический OFL language pack (UI честно предупреждает про `.notdef`)
-- Полный `@layerhub-io/react` Editor chrome — **закрыто в 6.3a**
-- Approval draft path при Studio replace (как в 6.1)
-- Авто-save дека после применения фона (оператор должен Save сам — намеренно, dirty flag)
+- [x] Настоящий **brand-kit API** фазы 4 родителя (палитры workspace, роли цветов) — `GET/PUT /api/brand-kit`, таблица `workspace_brand_kits`, Studio читает kit (fallback: white-label → defaults)
+- [x] Кириллический OFL language pack — Inter / Oswald / Bitter / JetBrains Mono (`*-cyrillic*.woff2`); **Archivo без кириллицы** (Google не публикует cut) — UI честно предупреждает
+- [x] Полный `@layerhub-io/react` Editor chrome — **закрыто в 6.3a**
+- [x] Approval draft path при Studio replace (как в 6.1) — `require_approval` → `draft_json`, live bytes не трогаем
+- [ ] Авто-save дека после применения фона (оператор должен Save сам — **намеренно**, dirty flag; не делаем)
+
+### 6.3c — brand kit + кириллица + approval draft (~1–2 дн.) — **DONE 2026-09-20**
+
+Закрывает остаток gap-листа 6.2 (строки 371–374) без auto-save дека.
+
+1. [x] `workspace_brand_kits` + `server/lib/brand-kit.js` + JWT `GET/PUT /api/brand-kit` (PUT = workspace_admin).
+2. [x] Studio `brand.ts` предпочитает brand-kit, затем white-label.
+3. [x] Cyrillic + cyrillic-ext OFL files в `server/fonts/`; `slide-fonts.js` + `frontend-studio` `fonts.css`.
+4. [x] `replacePngBytes` / `POST /api/studio/export` при approval → draft + `pending_review`.
+5. [x] i18n en/ru/de + island ru; тесты `brand-kit` / `slide-fonts` / `studio-export`.
+
+**Неполное в 6.3c:**
+
+- Dashboard UI настроек brand kit (только API; Studio/пикер уже потребляет GET)
+- Fill-режим / `locked` / Save-as-template / org pack — остальная фаза 4 родителя
+- Archivo Cyrillic — нет upstream cut
+- Auto-save дека после фона Studio — намеренно не делаем
 
 ### 6.3a — Editor UI на `@layerhub-io/react` (~2–3 дн.) — **DONE 2026-09-20**
 
@@ -393,7 +410,7 @@ OFL-шрифты: те же обязательства, что в `slide-fonts.j
 - Чужие панели Scenify (templates marketplace, Pixabay, Iconscout, video timeline) — сознательно не тащим
 - Group/ungroup UI (SDK умеет, план §2 помечает как несделанное upstream — кнопок в chrome нет)
 - Crop объекта, presentation mode, share design
-- brand-kit API фазы 4, кириллический language pack, approval draft replace — как в 6.2
+- brand-kit API / кириллица / approval draft — **закрыто в 6.3c**
 - `scene_json` не хранит полный Layerhub `IScene` (компактный v2 без blob/`src`) — re-edit поднимает blob URL из `contentId`
 
 ### 6.3 — не делать в этой фазе (запреты)
@@ -512,4 +529,5 @@ PR 3 / 6.2 — шрифты `/fonts`, brand swatches (white-label), фон сл�
 | 2026-09-20 | **6.2 DONE**: OFL `/fonts` до paint, font picker, white-label swatches, «Фон из Studio» (`?for=slide-bg` + sessionStorage → `background_content_id`), пресет `epaper-5x3` с честной подписью, i18n en/ru/de + island ru, `docker/studio-6.2`. Неполное: brand-kit API фазы 4, кириллический language pack, Layerhub Editor chrome, approval draft replace, auto-save дека после фона. |
 | 2026-09-20 | **6.3a DONE**: полный Editor UI на `@layerhub-io/react` (`Provider`/`Canvas`, Layers/Properties/context menu, undo/redo/zoom/align), PNG через `renderer.toDataURL`, `scene_json` v2 + миграция v1, i18n chrome en/ru, `docker/studio-6.3`. Неполное: group UI, crop, чужие панели Scenify, brand-kit API, кириллический pack, approval draft. **6.3 запреты** (Fabric в плеере / GSAP / Mongo / video) — по-прежнему не делать. |
 | 2026-09-20 | **6.3b docs/UX:** бэклог «Не сделано в 6.0» (§321–324) явно закрыт ссылками на 6.1/6.2/6.3a; New poster в Library — модалка пресета (landscape/portrait/e-paper); CI artifact `studio-island`. Brand-kit API фазы 4 — по-прежнему только white-label stand-in. |
+| 2026-09-20 | **6.3c DONE:** `GET/PUT /api/brand-kit` + `workspace_brand_kits`; Cyrillic OFL pack (Inter/Oswald/Bitter/JetBrains Mono; Archivo latin-only); Studio replace → approval `draft_json`; i18n en/ru/de. Неполное: dashboard UI kit, Archivo Cyrillic, auto-save дека (намеренно). |
 | 2026-09 | Первая версия плана (генеалогия Scenify → Layerhub, D-SC-1…10). |
