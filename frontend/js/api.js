@@ -386,6 +386,10 @@ export const api = {
     body: JSON.stringify({ ids, folder_id: folderId || null })
   }),
 
+  // Studio poster designs (phase 6.1)
+  getStudioDesigns: () => request('/studio'),
+  getStudioDesign: (contentId) => request(`/studio/${contentId}`),
+
   // Folders
   getFolders: () => request('/folders'),
   createFolder: (name, parentId) => request('/folders', {

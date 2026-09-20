@@ -7,10 +7,10 @@ import { fileURLToPath } from 'node:url';
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const OFL_FONTS = path.resolve(rootDir, '../server/fonts');
 
-/** Serve the same OFL Inter files slides use — no second copy, no fonts.gstatic (D-SC-7). */
+/** Serve OFL fonts at /fonts for Vite preview (production uses server /fonts mount). */
 function oflFontsPlugin(): Plugin {
   const mount = (middlewares: { use: Function }) => {
-    middlewares.use('/studio-fonts', (req: { url?: string }, res: any, next: () => void) => {
+    middlewares.use('/fonts', (req: { url?: string }, res: any, next: () => void) => {
       const name = path.basename((req.url || '').split('?')[0]);
       if (!/^[\w.-]+\.woff2$/i.test(name) && !/^OFL-[\w.-]+\.txt$/i.test(name)) {
         res.statusCode = 404;
@@ -46,6 +46,10 @@ export default defineConfig({
   server: {
     port: 5174,
     strictPort: true,
+    proxy: {
+      // Dashboard JWT session on :3001 — Studio island reuses it same-origin in prod.
+      '/api': { target: 'http://127.0.0.1:3001', changeOrigin: true },
+    },
   },
   preview: {
     port: 4173,

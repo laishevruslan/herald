@@ -1,42 +1,38 @@
-# Studio island (phase 6 spike)
+# Studio island (phase 6.1)
 
 **UI name:** Poster editor / Редактор постеров — not “Scenify”, not “Layerhub”.
 
-Isolated Vite + React + Fabric app. The vanilla dashboard under `frontend/js/` is untouched.
+Isolated Vite + React + Fabric app. Dashboard under `frontend/js/` stays vanilla.
 
-## Decision (6.0)
+## Features (6.1)
 
-| Question | Answer |
-|---|---|
-| Source | **npm pin** `@layerhub-io/react@0.3.3` + `@layerhub-io/core@0.3.3` (not git subtree, not `@scenify/sdk`) |
-| Why not subtree | Pin is enough for the spike; subtree of the whole monorepo would drag Vue packages and dead demos |
-| Why not `@scenify/sdk` | GPL-3.0 — denied by `scripts/license-check.js` |
-| Export | Browser `canvas.toDataURL` → PNG 1920×1080 (no `node-canvas` in this image) |
-
-Full licence table: [`LICENSE-AUDIT.md`](LICENSE-AUDIT.md). Plan: [`docs/scenify-studio-plan.md`](../docs/scenify-studio-plan.md).
+- Presets 1920×1080 and 1080×1920
+- Text, rectangle, image from Content Library
+- **Publish to library** → `POST /api/studio/export` (PNG ingest + `studio_designs.scene_json`)
+- Re-edit replaces the same `content_id`
+- JWT from `localStorage.token` (same session as dashboard)
 
 ## Local
 
 ```bash
-cd frontend-studio
-npm ci
-npm run license-check
-npm run dev          # http://localhost:5174/studio/
-npm run build && npm run preview
+# terminal 1 — CMS
+cd server && npm start
+
+# terminal 2 — island (proxies /api to :3001)
+cd frontend-studio && npm ci && npm run dev
+# http://localhost:5174/studio/
 ```
 
-OFL Inter is served from `../server/fonts` via the Vite middleware at `/studio-fonts/` (same bytes as slides).
+Production / Docker: `scripts/build-studio.sh` or the `studio-builder` stage in the root `Dockerfile` copies the island to `frontend/studio/`.
 
-## Docker verify (separate container)
+## Verify
 
 ```bash
-docker compose -f docker/studio-spike/docker-compose.yml build
+# API + licence + island build (separate container)
+docker compose -f docker/studio-6.1/docker-compose.yml run --rm studio-61
+
+# PNG raster smoke (6.0 container)
 docker compose -f docker/studio-spike/docker-compose.yml run --rm studio-spike
-# → docker/studio-spike/out/studio-spike-export.png (1920×1080)
 ```
 
-## What this spike does **not** include
-
-- `studio_designs` / ingest / Library buttons (phase 6.1)
-- GSAP animations, Iconscout, video/presentation modes
-- Fabric JSON on the player
+Licence table: [`LICENSE-AUDIT.md`](LICENSE-AUDIT.md). Plan: [`docs/scenify-studio-plan.md`](../docs/scenify-studio-plan.md).

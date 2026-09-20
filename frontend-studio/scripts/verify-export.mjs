@@ -25,10 +25,10 @@ async function main() {
   try {
     const page = await browser.newPage();
     await page.goto(BASE, { waitUntil: 'networkidle', timeout: 120_000 });
-    await page.waitForSelector('[data-testid="export-png"]', { timeout: 60_000 });
+    await page.waitForSelector('[data-testid="publish-library"]', { timeout: 60_000 });
     // Give @font-face / document.fonts.ready a beat after paint.
     await page.waitForTimeout(1500);
-    await page.click('[data-testid="export-png"]');
+    await page.click('[data-testid="publish-library"]');
     await page.waitForFunction(
       () => Boolean(window.__STUDIO_SPIKE_LAST_PNG__),
       null,

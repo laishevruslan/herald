@@ -100,3 +100,67 @@ html, body, #root {
   color: var(--muted);
   max-width: 28rem;
 }
+
+.toolbar select.preset {
+  appearance: none;
+  border: 1px solid #3a4250;
+  background: #2c323c;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+  z-index: 40;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--panel);
+  border: 1px solid #3a4250;
+  border-radius: 10px;
+  width: min(560px, 100%);
+  max-height: 80vh;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.modal header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.modal h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.picker-grid {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.picker-item {
+  text-align: left;
+  appearance: none;
+  border: 1px solid #3a4250;
+  background: #2c323c;
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.picker-item:hover {
+  border-color: var(--accent);
+}

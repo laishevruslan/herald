@@ -6,6 +6,14 @@
 # No TLS in the image: it listens on plain HTTP :3001. Front it with a
 # TLS-terminating reverse proxy / Cloudflare in production.
 
+# --- studio island (phase 6): Vite build → frontend/studio (I5: buttons appear only if present) ---
+FROM node:20-slim AS studio-builder
+WORKDIR /studio
+COPY frontend-studio/package.json frontend-studio/package-lock.json ./
+RUN npm ci
+COPY frontend-studio/ ./
+RUN npm run build
+
 # --- builder: install production deps (better-sqlite3 is the only native one left; image
 # decoding is pure JS + WASM since sharp was dropped, and sharp is now a devDependency that
 # --omit=dev leaves out entirely) ---
@@ -36,6 +44,7 @@ WORKDIR /app/server
 COPY server/ /app/server/
 COPY --from=builder /app/server/node_modules /app/server/node_modules
 COPY frontend/ /app/frontend/
+COPY --from=studio-builder /studio/dist/ /app/frontend/studio/
 # shared/Transitions is a RUNTIME dependency: server/lib/transition-config.js + transition-bundle.js
 # require the shader manifest/params/sources from ../../shared at load time (the server won't boot
 # without it). Small, and keeps the .glsl files the single source across server + player + Tizen.

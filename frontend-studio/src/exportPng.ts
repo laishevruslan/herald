@@ -1,26 +1,31 @@
-import { fabric } from 'fabric';
+export type FabricCanvas = any;
 
-/** Logical poster size (D-SC-6 landscape-1080). */
-export const POSTER_W = 1920;
-export const POSTER_H = 1080;
+export const PRESETS = {
+  'landscape-1080': { width: 1920, height: 1080, id: 'landscape-1080' as const },
+  'portrait-1080': { width: 1080, height: 1920, id: 'portrait-1080' as const },
+};
 
-/** On-screen editor size — smaller so the spike fits a laptop; multiplier restores px. */
-export const DISPLAY_W = 960;
-export const DISPLAY_H = 540;
+export type PresetId = keyof typeof PRESETS;
 
-export type FabricCanvas = InstanceType<typeof fabric.Canvas>;
-
-export function exportMultiplier(): number {
-  return POSTER_W / DISPLAY_W;
+export function displaySize(logicalW: number, logicalH: number): { dw: number; dh: number } {
+  const max = 960;
+  if (logicalW >= logicalH) {
+    return { dw: max, dh: Math.max(1, Math.round((max * logicalH) / logicalW)) };
+  }
+  return { dw: Math.max(1, Math.round((max * logicalW) / logicalH)), dh: max };
 }
 
-/**
- * Rasterize the Fabric canvas to a PNG Blob at the logical poster size.
- * Waits for document.fonts so Inter is in the bitmap (plan §10 risk).
- */
-export async function canvasToPngBlob(canvas: FabricCanvas): Promise<Blob> {
+export function exportMultiplier(logicalW: number, displayW: number): number {
+  return logicalW / displayW;
+}
+
+export async function canvasToPngBlob(
+  canvas: FabricCanvas,
+  logicalW: number,
+  displayW: number,
+): Promise<Blob> {
   await document.fonts.ready;
-  const multiplier = exportMultiplier();
+  const multiplier = exportMultiplier(logicalW, displayW);
   const dataUrl = canvas.toDataURL({
     format: 'png',
     multiplier,
@@ -30,16 +35,6 @@ export async function canvasToPngBlob(canvas: FabricCanvas): Promise<Blob> {
   return res.blob();
 }
 
-export function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-/** Expose last export for Playwright verify (spike only). */
 export function rememberExportForVerify(blob: Blob): void {
   const w = window as Window & { __STUDIO_SPIKE_LAST_PNG__?: Blob };
   w.__STUDIO_SPIKE_LAST_PNG__ = blob;

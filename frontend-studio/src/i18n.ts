@@ -1,6 +1,6 @@
 /**
- * Minimal island copy for the spike UI. Dashboard buttons use frontend/js/i18n.
- * Prefer ?lang=ru | en; default en.
+ * Minimal island copy. Dashboard buttons use frontend/js/i18n.
+ * Prefer ?lang=ru | en; default from navigator.
  */
 
 export type StudioLang = 'en' | 'ru';
@@ -8,35 +8,49 @@ export type StudioLang = 'en' | 'ru';
 const dict: Record<StudioLang, Record<string, string>> = {
   en: {
     title: 'Poster editor',
-    subtitle: 'Spike — not a slide. Export is a PNG for the library.',
+    subtitle: 'Not a slide. Publish writes a PNG to the library.',
     addText: 'Add text',
     addRect: 'Add rectangle',
-    exportPng: 'Export PNG 1920×1080',
-    exporting: 'Exporting…',
-    ready: 'Fonts ready. Canvas {w}×{h} (display {dw}×{dh}).',
-    exported: 'Exported {w}×{h} PNG ({kb} KB).',
+    addImage: 'Image from library',
+    publish: 'Publish to library',
+    publishing: 'Publishing…',
+    published: 'Saved to library ({id}…). Assign it to a playlist like any image.',
+    back: 'Back to library',
+    preset: 'Size',
+    ready: 'Ready. Canvas {w}×{h} (display {dw}×{dh}).',
+    readyEdit: 'Editing poster {w}×{h}. Publish replaces the same library file.',
     fontWait: 'Waiting for Inter…',
     fontFail: 'Inter did not load — export may use a fallback face.',
     cyrillicNote:
       'Default Inter pack is latin + latin-ext only. Cyrillic may render as .notdef until a language pack ships.',
-    layerhubOk: 'Layerhub core import OK (npm pin).',
-    layerhubFail: 'Layerhub core import failed.',
+    needLogin: 'Sign in to the dashboard first — Studio reuses the same session.',
+    pickImage: 'Choose an image from the library',
+    close: 'Close',
+    noImages: 'No images in this workspace yet. Upload one in the Content Library.',
+    newTextDefault: 'New text',
   },
   ru: {
     title: 'Редактор постеров',
-    subtitle: 'Spike — это не слайд. Экспорт — PNG для библиотеки.',
+    subtitle: 'Это не слайд. «Опубликовать» сохраняет PNG в библиотеку.',
     addText: 'Добавить текст',
     addRect: 'Добавить прямоугольник',
-    exportPng: 'Экспорт PNG 1920×1080',
-    exporting: 'Экспорт…',
-    ready: 'Шрифты готовы. Холст {w}×{h} (экран {dw}×{dh}).',
-    exported: 'Экспортирован PNG {w}×{h} ({kb} КБ).',
+    addImage: 'Картинка из библиотеки',
+    publish: 'Опубликовать в библиотеку',
+    publishing: 'Публикация…',
+    published: 'Сохранено в библиотеку ({id}…). Назначьте в плейлист как обычное изображение.',
+    back: 'Назад в библиотеку',
+    preset: 'Размер',
+    ready: 'Готово. Холст {w}×{h} (экран {dw}×{dh}).',
+    readyEdit: 'Редактирование постера {w}×{h}. Публикация заменит тот же файл в библиотеке.',
     fontWait: 'Ожидание Inter…',
     fontFail: 'Inter не загрузился — в экспорте может быть запасной шрифт.',
     cyrillicNote:
       'Базовый пакет Inter — только latin + latin-ext. Кириллица может стать .notdef, пока нет языкового пака.',
-    layerhubOk: 'Импорт Layerhub core OK (npm pin).',
-    layerhubFail: 'Импорт Layerhub core не удался.',
+    needLogin: 'Сначала войдите в панель — Studio использует ту же сессию.',
+    pickImage: 'Выберите изображение из библиотеки',
+    close: 'Закрыть',
+    noImages: 'В этом workspace ещё нет изображений. Загрузите в библиотеке контента.',
+    newTextDefault: 'Новый текст',
   },
 };
 

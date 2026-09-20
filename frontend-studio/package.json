@@ -1,7 +1,7 @@
 {
   "name": "screentinker-frontend-studio",
   "private": true,
-  "version": "0.0.0-spike",
+  "version": "0.1.0",
   "license": "MIT",
   "description": "Poster editor island (phase 6 spike). Layerhub MIT pin — not Scenify GPL.",
   "type": "module",

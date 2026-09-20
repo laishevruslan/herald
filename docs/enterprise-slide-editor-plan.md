@@ -535,7 +535,9 @@ PoC — **не** Polotno и не CE.SDK. Остров `frontend-studio/` на з
 
 Критерий «надо»: после фаз 1–5 продажи всё ещё отваливаются формулировкой «нет Canva-like editor inside». Сначала измерить, не строить.
 
-**Spike 6.0 (2026-09-20): DONE / зелёный.** `frontend-studio/` + `docker/studio-spike` (отдельный контейнер): license-check без GPL, PNG 1920×1080 с OFL Inter, бандл ~206 KB gzip. Решение: **npm pin**, не subtree. Ingest / Library UI — 6.1. Если 6.1 Support завалит Fabric — kill-switch кнопки, Canva ingest остаётся.
+**Spike 6.0 (2026-09-20): DONE / зелёный.** `frontend-studio/` + `docker/studio-spike`.
+
+**6.1 (2026-09-20): DONE.** Ingest/replace через `POST /api/studio/export`, `studio_designs`, кнопки Library, Docker/CI собирают `/studio/`. См. [`scenify-studio-plan.md`](scenify-studio-plan.md).
 
 ### Фаза 7 — не делать
 

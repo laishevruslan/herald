@@ -1832,9 +1832,20 @@ const migrations = [
     table_name   TEXT NOT NULL,
     row_id       TEXT NOT NULL,
     op           TEXT NOT NULL CHECK (op IN ('upsert','delete')),
+    payload_json TEXT,
     ts           INTEGER NOT NULL DEFAULT (strftime('%s','now'))
   )`,
   "CREATE INDEX IF NOT EXISTS idx_mesh_change_log_ws ON mesh_change_log(workspace_id, rev)",
+  // Studio poster designs (phase 6.1) — scene JSON beside content PNG; never on the player.
+  `CREATE TABLE IF NOT EXISTS studio_designs (
+     content_id   TEXT PRIMARY KEY REFERENCES content(id) ON DELETE CASCADE,
+     workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+     scene_json   TEXT NOT NULL DEFAULT '{}',
+     width        INTEGER NOT NULL DEFAULT 1920,
+     height       INTEGER NOT NULL DEFAULT 1080,
+     updated_at   INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+   )`,
+  'CREATE INDEX IF NOT EXISTS idx_studio_designs_ws ON studio_designs(workspace_id)',
 ];
 // Apply each ALTER idempotently. A "duplicate column name" / "already exists"
 // error means the column is already present (expected on a migrated DB) - benign.

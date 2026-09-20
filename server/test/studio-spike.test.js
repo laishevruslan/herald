@@ -50,8 +50,8 @@ test('license-check accepts --root for the studio island', () => {
   assert.match(src, /frontend-studio/);
 });
 
-test('studio spike docker assets exist', () => {
-  assert.ok(fs.existsSync(path.join(ROOT, 'docker', 'studio-spike', 'Dockerfile')));
-  assert.ok(fs.existsSync(path.join(ROOT, 'docker', 'studio-spike', 'docker-compose.yml')));
-  assert.ok(fs.existsSync(path.join(ROOT, 'frontend-studio', 'LICENSE-AUDIT.md')));
+test('studio 6.1 docker assets exist', () => {
+  assert.ok(fs.existsSync(path.join(ROOT, 'docker', 'studio-6.1', 'Dockerfile')));
+  assert.ok(fs.existsSync(path.join(ROOT, 'server', 'routes', 'studio.js')));
+  assert.ok(fs.existsSync(path.join(ROOT, 'server', 'lib', 'studio-designs.js')));
 });

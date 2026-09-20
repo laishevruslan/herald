@@ -1,6 +1,6 @@
 # Studio на Scenify / Design Editor (фаза 6)
 
-**Статус: ПЛАН + spike 6.0 выполнен (2026-09-20).** Код острова: `frontend-studio/`. Ingest / Library — ещё нет (6.1).
+**Статус: ПЛАН + 6.0/6.1 выполнены (2026-09-20).** Код: `frontend-studio/`, `/api/studio`, `studio_designs`. 6.2 (шрифты/бренд/фон слайда) — дальше.
 **Родитель:** [`enterprise-slide-editor-plan.md`](enterprise-slide-editor-plan.md), фаза 6.
 **Соседи:** [`canva-editor-embed-plan.md`](canva-editor-embed-plan.md) (тот же шов «внешний холст → байты в библиотеку»), инварианты I1, I3, I4, I5.
 **Съёмка:** сентябрь 2026. **Spike:** ветка `spike/studio-6.0`, контейнер `docker/studio-spike/`.
@@ -324,16 +324,35 @@ OFL-шрифты: те же обязательства, что в `slide-fonts.j
 - portrait пресет, picker библиотеки, brand kit
 - полный Editor UI из `@layerhub-io/react` (spike использует Fabric напрямую + smoke-import core)
 
-### 6.1 — остров + ingest (~5–8 дн.)
+### 6.1 — остров + ingest (~5–8 дн.) — **DONE 2026-09-20**
 
-1. `frontend-studio` в main, сборка в CI.
-2. Auth, пресеты 1920×1080 и 1080×1920.
-3. Текст, прямоугольник, изображение из Library.
-4. `POST /api/studio/export`, `studio_designs`, кнопка в Library.
-5. Replace при повторном Edit.
-6. i18n en/de/ru на кнопках дашборда (остров можно en-first, но подписи вокруг — нет).
+1. [x] `frontend-studio` в main (ветка `feat/studio-6.1`), сборка в CI + stage в `Dockerfile` → `/frontend/studio/`.
+2. [x] Auth (JWT `localStorage.token` + `X-Workspace-Id`), пресеты **1920×1080** и **1080×1920**.
+3. [x] Текст, прямоугольник, изображение из Library (auth fetch → blob URL; в `scene_json` только `contentId`).
+4. [x] `POST /api/studio/export`, таблица `studio_designs`, кнопки New/Edit poster в Library (скрыты без `/studio/` — I5).
+5. [x] Replace при повторном Edit (тот же `content_id`).
+6. [x] i18n en/de/ru на кнопках дашборда; остров en/ru.
 
-**Готово, когда:** оператор на hosted и на self-host tarball рисует «SALE −30%», жмёт Publish to library, назначает в плейлист, Android/web/Tizen показывают PNG **без WAN**. Edit открывает тот же макет.
+**Готово, когда:** оператор рисует «SALE −30%», Publish to library, плейлист играет PNG офлайн; Edit открывает макет.
+
+**Артефакты 6.1:**
+
+| Путь | Назначение |
+|---|---|
+| `server/lib/studio-designs.js` | sanitize scene, upsert, ingest/replace |
+| `server/routes/studio.js` | JWT `/api/studio` |
+| `server/test/studio-export.test.js` | auth shape, IDOR, data URL reject, replace id |
+| `docker/studio-6.1/` | отдельный контейнер: build island + unit tests |
+| `Dockerfile` studio-builder stage | self-host получает `/studio/` |
+
+**Не сделано полностью / отложено в 6.2+:**
+
+- Полный UI `@layerhub-io/react` Editor (по-прежнему Fabric hello-world + Library image)
+- Brand kit цвета workspace
+- «Фон из Studio» со слайда
+- Пресет e-paper 800×480 с честной подписью
+- Approval-workflow draft path при replace (Studio пишет live bytes как обычный image replace без draft ветки approvalOn — упрощение 6.1; при включённом approval оператору лучше Publish через Content replace)
+- Кириллический OFL language pack
 
 ### 6.2 — шрифты, бренд, слайд-фон (~3–5 дн.)
 
@@ -455,4 +474,5 @@ PR 4 — фон слайда.
 | Дата | Что |
 |---|---|
 | 2026-09-20 | Spike **6.0 DONE**: `frontend-studio/` (npm pin Layerhub 0.3.3), `license-check --root`, Docker verify `docker/studio-spike`, i18n `studio.*` en/ru/de, kill-критерии PASS. Не в 6.0: ingest, Library UI, основной Dockerfile. |
+| 2026-09-20 | **6.1 DONE**: `studio_designs` + `POST /api/studio/export`, Library New/Edit, presets landscape/portrait, Library image picker, Dockerfile studio stage, CI build, `docker/studio-6.1`. Неполное: Layerhub Editor chrome, brand kit, slide background, approval draft replace. |
 | 2026-09 | Первая версия плана (генеалогия Scenify → Layerhub, D-SC-1…10). |

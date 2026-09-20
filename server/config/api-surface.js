@@ -81,6 +81,12 @@ const JWT_ONLY_ROUTERS = [
    */
   { path: '/api/admin/diagnostics', mod: './routes/diagnostics' },
   { path: '/api/tokens',      mod: './routes/tokens',       tenancy: true },
+  /*
+   * Poster Studio (phase 6). JWT-only: scene_json is authoring state for the operator island,
+   * not something an API token should write. PNG still goes through the same ingest/replace
+   * path as Content Library uploads.
+   */
+  { path: '/api/studio',      mod: './routes/studio',       tenancy: true },
 ];
 
 // #73: AGENCY_ROUTERS - capability-restricted ('agency' scope) surface. Mounted with
