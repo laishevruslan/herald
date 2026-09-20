@@ -438,10 +438,10 @@ async function openNewDeckModal(container) {
 /* ============================================================ render */
 
 export async function render(container) {
-  container.innerHTML = `<div class="page-header"><div><h1>Slides</h1>
-    <div class="subtitle">Build a deck of slides and publish it as a playlist.</div></div>
-    <button class="btn btn-primary" id="newDeck">+ New deck</button></div>
-    <div id="deckArea"><p style="color:var(--text-muted)">Loading…</p></div>`;
+  container.innerHTML = `<div class="page-header"><div><h1>${t('nav.slides')}</h1>
+    <div class="subtitle">${t('slides.page_subtitle')}</div></div>
+    <button class="btn btn-primary" id="newDeck">${t('slides.new_deck')}</button></div>
+    <div id="deckArea"><p style="color:var(--text-muted)">${t('slides.loading')}</p></div>`;
 
   container.querySelector('#newDeck').addEventListener('click', () => openNewDeckModal(container));
 
@@ -454,7 +454,7 @@ export async function render(container) {
     state.decks = await api.get('/slide-decks');
   } catch (e) {
     container.querySelector('#deckArea').innerHTML =
-      `<p style="color:var(--danger)">Could not load decks: ${esc(e.message || '')}</p>`;
+      `<p style="color:var(--danger)">${t('slides.load_failed', { error: esc(e.message || '') })}</p>`;
     return;
   }
   if (state.deck) return renderEditor(container);
@@ -465,9 +465,8 @@ function renderList(container) {
   const host = container.querySelector('#deckArea');
   if (!state.decks.length) {
     host.innerHTML = `<div class="settings-section" style="text-align:center;padding:38px 20px">
-      <p style="margin:0 0 6px;font-weight:600">No decks yet</p>
-      <p style="margin:0;color:var(--text-muted);font-size:13px">A deck is a set of slides that
-        publishes as a playlist — headline, photo, big number, each with its own entrance.</p></div>`;
+      <p style="margin:0 0 6px;font-weight:600">${t('slides.empty_title')}</p>
+      <p style="margin:0;color:var(--text-muted);font-size:13px">${t('slides.empty_desc')}</p></div>`;
     return;
   }
   host.innerHTML = `<div class="settings-section" style="padding:0">
@@ -476,7 +475,9 @@ function renderList(container) {
         <div style="flex:1;min-width:0">
           <div style="font-weight:600">${esc(d.name)}</div>
           <div style="font-size:12px;color:var(--text-muted)">
-            ${d.slide_count} slide${d.slide_count === 1 ? '' : 's'} · ${(d.total_sec || 0)}s total
+            ${d.slide_count === 1
+              ? t('slides.slide_count_one', { n: d.slide_count, sec: d.total_sec || 0 })
+              : t('slides.slide_count_other', { n: d.slide_count, sec: d.total_sec || 0 })}
             ${d.playlist_id ? '· published' : '· not published yet'}</div>
         </div>
         <button class="btn btn-secondary btn-sm" data-open="${esc(d.id)}">Edit</button>

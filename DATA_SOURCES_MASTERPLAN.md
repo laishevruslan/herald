@@ -183,6 +183,15 @@ Add a dedicated item in the sidebar ([`frontend/index.html`](file:///Users/rene/
 - [x] Soft reload hash tracker in `server/server.js`.
 
 ### Phase 3: Out-of-the-Box Slide Templates & Presets (In Progress)
-- [ ] Template 1: **E-Paper Meeting Room Sign** (800×480 for Seeed Studio reTerminal Sticky).
-- [ ] Template 2: **Waste / Trash Pickup Reminder** (800×480 & 1080p).
-- [ ] Template 3: **Daily Office Agenda Board** (1080p / 4K).
+
+Implementation plan (competitive analysis, renderer gaps, factory IDs, PR split):
+[`docs/data-sources-templates-plan.md`](docs/data-sources-templates-plan.md).
+
+Two stubs exist in the New Deck modal (`buildRoomSignSlide` / `buildWasteCalendarSlide` in `frontend/js/views/slides.js`). They are not the shipped templates: no source picker, German chrome, 5:3 only, colours that dither badly on 1-bit e-paper, no agenda board.
+
+- [ ] **3.0** Renderer: `hide_if_empty`, `show_when`, `bind_status` / `color_when`; pass `__status` so a failed fetch cannot look AVAILABLE.
+- [ ] **3.1** Template 1: **Meeting Room Door Sign** — `room-epaper-5x3` (800×480 Sticky) and `room-lcd-16x9` (green/red bar). Wizard binds a data source.
+- [ ] **3.2** Template 2: **Waste / Trash Pickup** — `waste-epaper-5x3` and `waste-lcd-16x9`.
+- [ ] **3.3** Template 3: **Daily Office Agenda Board** — `agenda-lcd-16x9` (4K uses the same 16:9 + `cqw`).
+- [ ] **3.4** Gallery UX (preview cards), replacing the radio list.
+- [ ] **3.5** Stretch: 4-room corridor board, portrait 9:16 door sign. Not required to tick Phase 3.

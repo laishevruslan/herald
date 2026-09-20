@@ -148,17 +148,17 @@ export async function render(container) {
 
     ${canManageOrgSecurity ? `
     <div class="settings-section">
-      <h3>Security</h3>
+      <h3>${t('settings.security')}</h3>
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
         <div style="min-width:260px;flex:1">
-          <div style="font-weight:600">Widget sandbox isolation</div>
+          <div style="font-weight:600">${t('settings.widget_sandbox')}</div>
           <div style="font-size:12px;color:var(--text-muted);margin-top:4px">
-            Keep widget code in a null-origin sandbox. Turning this off allows widget code to run with same-origin access.
+            ${t('settings.widget_sandbox_desc')}
           </div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap">
           <input type="checkbox" id="widgetSandboxIsolationToggle" ${widgetIsolationDisabled ? '' : 'checked'}>
-          <span>${widgetIsolationDisabled ? 'Isolation disabled' : 'Isolation enabled'}</span>
+          <span>${widgetIsolationDisabled ? t('settings.widget_sandbox_off') : t('settings.widget_sandbox_on')}</span>
         </label>
       </div>
     </div>
@@ -172,8 +172,8 @@ export async function render(container) {
 
     ${isSuperAdmin ? `
     <div class="settings-section" id="telemetrySection">
-      <h3>Install statistics</h3>
-      <div id="telemetryBody"><p style="color:var(--text-muted);font-size:13px">Loading…</p></div>
+      <h3>${t('settings.telemetry')}</h3>
+      <div id="telemetryBody"><p style="color:var(--text-muted);font-size:13px">${t('settings.telemetry_loading')}</p></div>
     </div>
     ` : ''}
 
@@ -680,57 +680,52 @@ export async function render(container) {
     if (!box) return;
     let info;
     try { info = await api.adminGetTelemetry(); }
-    catch { box.innerHTML = `<p style="color:var(--text-muted);font-size:13px">Unavailable.</p>`; return; }
+    catch { box.innerHTML = `<p style="color:var(--text-muted);font-size:13px">${t('settings.telemetry_unavailable')}</p>`; return; }
 
     const on = info.state === 'on';
     const sent = info.last_report
-      ? `Last sent ${new Date(info.last_report.at * 1000).toLocaleString()}.`
-      : 'Nothing has been sent yet.';
+      ? t('settings.telemetry_last_sent', { when: new Date(info.last_report.at * 1000).toLocaleString() })
+      : t('settings.telemetry_never_sent');
 
     // A blocked outbound connection is the normal failure on a self-hosted box, and it is
     // otherwise invisible — the operator just sees nothing arriving. Name the failure and the
     // host, so the fix is "allow this in the firewall" rather than "guess".
     const failed = on && info.last_error;
     const why = failed
-      ? ({ network: 'the connection was refused or the address did not resolve',
-           timeout: 'the connection timed out' }[info.last_error.reason]
-         || `the server replied ${esc(info.last_error.reason)}`)
+      ? ({ network: t('settings.telemetry_fail_network'),
+           timeout: t('settings.telemetry_fail_timeout') }[info.last_error.reason]
+         || t('settings.telemetry_fail_other', { reason: info.last_error.reason }))
       : '';
 
     box.innerHTML = `
       <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px">
-        ScreenTinker can't see how widely it's deployed, because most installs are private by
-        design. Sharing lets us say how many screens are running — nothing more.
+        ${t('settings.telemetry_desc')}
       </p>
       <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
         <input type="checkbox" id="telemetryToggle" ${on ? 'checked' : ''}>
-        Share install statistics
+        ${t('settings.telemetry_share')}
       </label>
       <p style="color:var(--text-muted);font-size:12px;margin-bottom:6px">
-        Everything that would be sent, in full:
+        ${t('settings.telemetry_payload')}
       </p>
       <pre style="background:var(--bg-input,rgba(0,0,0,.2));padding:10px;border-radius:var(--radius);font-size:12px;overflow-x:auto;margin-bottom:8px">${esc(JSON.stringify(info.payload, null, 2))}</pre>
       <p style="color:var(--text-muted);font-size:12px;margin-bottom:${info.extra_endpoint ? '4' : '8'}px">
-        ${on ? 'Sent once a day to' : 'When enabled, sent once a day to'}
-        <code style="font-size:11px">${esc(info.endpoint || '')}</code>. If this server's outbound
-        traffic is filtered, that address has to be allowed or the reports never arrive.
+        ${on ? t('settings.telemetry_when_on') : t('settings.telemetry_when_off')}
+        <code style="font-size:11px">${esc(info.endpoint || '')}</code>. ${t('settings.telemetry_firewall')}
       </p>
       ${info.extra_endpoint ? `
       <p style="color:var(--text-muted);font-size:12px;margin-bottom:8px">
-        A second copy also goes to your own collector at
-        <code style="font-size:11px">${esc(info.extra_endpoint)}</code>, configured on this server
-        with <code style="font-size:11px">TELEMETRY_EXTRA_ENDPOINT</code>. That is in addition to
-        the above, not instead of it — turn the switch off if you want your own statistics without
-        sharing.
+        ${t('settings.telemetry_extra', { endpoint: esc(info.extra_endpoint) })}
       </p>` : ''}
       ${failed ? `
       <p style="font-size:12px;color:var(--danger);margin-bottom:8px">
-        The last attempt (${esc(new Date(info.last_error.at * 1000).toLocaleString())}) did not get
-        through — ${why}. Check that outbound HTTPS to that address is permitted.
+        ${t('settings.telemetry_failed', {
+          when: new Date(info.last_error.at * 1000).toLocaleString(),
+          why,
+        })}
       </p>` : ''}
       <p style="color:var(--text-muted);font-size:12px">
-        No names, addresses, content, or user details. The ID is random and identifies the install
-        only so repeat reports aren't counted twice. ${esc(sent)}
+        ${t('settings.telemetry_privacy', { sent })}
       </p>
     `;
 
@@ -740,13 +735,13 @@ export async function render(container) {
         // Turning it on sends immediately, so a blocked firewall is reported here and now rather
         // than failing quietly tonight — say so plainly instead of a cheerful success toast.
         const r = await api.adminSetTelemetry(enabled);
-        if (!enabled) showToast('Install statistics off', 'success');
-        else if (r.first_report && r.first_report.sent) showToast('Shared — thank you', 'success');
-        else showToast('Saved, but the first report did not get through — see below', 'error');
+        if (!enabled) showToast(t('settings.telemetry_off'), 'success');
+        else if (r.first_report && r.first_report.sent) showToast(t('settings.telemetry_shared'), 'success');
+        else showToast(t('settings.telemetry_saved_fail'), 'error');
         loadTelemetry();
       } catch {
         e.target.checked = !enabled;
-        showToast('Could not save that setting', 'error');
+        showToast(t('settings.telemetry_save_err'), 'error');
       }
     });
   }
@@ -1522,7 +1517,7 @@ export async function render(container) {
         });
         const nextUser = { ...user, current_organization: { ...(user.current_organization || {}), widget_sandbox_isolation_disabled: 1 } };
         localStorage.setItem('user', JSON.stringify(nextUser));
-        showToast('Widget sandbox isolation disabled', 'success');
+        showToast(t('settings.widget_sandbox_toast_off'), 'success');
       } catch (err) {
         checkbox.checked = true;
         showToast(err.message, 'error');
@@ -1534,7 +1529,7 @@ export async function render(container) {
       await api.updateWorkspaceSecuritySettings(workspaceId, { widgetSandboxIsolationDisabled: false });
       const nextUser = { ...user, current_organization: { ...(user.current_organization || {}), widget_sandbox_isolation_disabled: 0 } };
       localStorage.setItem('user', JSON.stringify(nextUser));
-      showToast('Widget sandbox isolation enabled', 'success');
+      showToast(t('settings.widget_sandbox_toast_on'), 'success');
     } catch (err) {
       checkbox.checked = false;
       showToast(err.message, 'error');

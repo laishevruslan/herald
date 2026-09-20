@@ -82,3 +82,7 @@ server/data/
 # Uploaded plugin zips waiting for approval. Not a plugin root — the loader
 # never scans it. Default path when DATA_DIR is unset is server/plugin-inbox.
 server/plugin-inbox/
+
+# Local Android signing credentials (never commit)
+android/keystore.local.env
+android/local.properties

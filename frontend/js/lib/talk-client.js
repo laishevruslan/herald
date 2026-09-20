@@ -39,9 +39,10 @@ export class TalkClient {
     if (desc.mode !== 'webrtc') throw new Error(desc.reason || 'talk_unavailable');
     const ice = desc.iceServers || [];
 
-    // 2. Operator mic + webcam (the click on the Talk button unlocks getUserMedia). Falls back to
-    //    audio-only if there is no camera; the device shows the video fullscreen when present.
-    this.micStream = await getTalkMedia(true);
+    // 2. Operator mic only. Webcam is optional overlay elsewhere; bundling VP8/H264 video into the
+    //    Talk offer makes stock go2rtc (H264 ingest) and Docker ICE slower and is the usual cause
+    //    of talk/publish 502s. The click still unlocks getUserMedia for audio.
+    this.micStream = await getTalkMedia(false);
     if (this.stopped) return;
 
     // 3. Publish our mic first (creates the downlink producer the device will attach to). This is
@@ -159,9 +160,8 @@ export class BroadcastTalkClient {
     const desc = await dRes.json();
     if (desc.mode !== 'webrtc') throw new Error(desc.reason || 'talk_unavailable');
 
-    // #talk video: capture webcam + mic. If there's no camera / it's denied, fall back to audio-only
-    // so a PA still works. The device shows the video fullscreen; audio-only just plays the voice.
-    this.micStream = await getTalkMedia(true);
+    // PA is voice. Audio-only keeps the SDP small and avoids a camera prompt on every broadcast.
+    this.micStream = await getTalkMedia(false);
     if (this.stopped) return;
 
     const pc = new RTCPeerConnection({ iceServers: desc.iceServers || [] });

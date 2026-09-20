@@ -8,6 +8,7 @@ import { showDeviceOwnerQRModal } from '../components/device-owner-qr-modal.js';
 import { frameDeviceOutput, displayAspectRatio } from '../lib/device-frame.js';
 import * as gettingStarted from '../components/getting-started.js';
 import { LiveViewer, whenVisible } from '../lib/webrtc-viewer.js';
+import { layoutLabel, zoneLabel } from '../lib/layout-labels.js';
 
 // The player distinguishes three cases for the Wi-Fi name, because "--" was hiding a real
 // answer: Android 8.1+ refuses to reveal the SSID to an app without location permission, and a
@@ -2302,7 +2303,7 @@ async function setupPlaylistActions(device) {
       layouts.filter(l => l.is_template).forEach(l => {
         const opt = document.createElement('option');
         opt.value = l.id;
-        opt.textContent = t('device.layout.template_zones_count', { name: l.name, n: l.zones?.length || 0 });
+        opt.textContent = t('device.layout.template_zones_count', { name: layoutLabel(l.name), n: l.zones?.length || 0 });
         if (device.layout_id === l.id) opt.selected = true;
         select.appendChild(opt);
       });
@@ -2384,7 +2385,7 @@ async function setupPlaylistActions(device) {
               ${zones.length > 0 ? `
                 <select id="assignZone" class="input" style="background:var(--bg-input)">
                   <option value="">${t('device.assign.zone_default')}</option>
-                  ${zones.map(z => `<option value="${z.id}">${esc(z.name)} (${Math.round(z.width_percent)}% x ${Math.round(z.height_percent)}%)</option>`).join('')}
+                  ${zones.map(z => `<option value="${z.id}">${esc(zoneLabel(z.name))} (${Math.round(z.width_percent)}% x ${Math.round(z.height_percent)}%)</option>`).join('')}
                 </select>
               ` : !device.layout_id ? `
                 <div style="font-size:12px;color:var(--text-muted);padding:6px 0;line-height:1.5">${t('device.assign.zone_no_layout')}</div>
@@ -2559,7 +2560,7 @@ function attachRemoveHandlers(device) {
         (zones || []).forEach(z => {
           const opt = document.createElement('option');
           opt.value = z.id;
-          opt.textContent = z.name;
+          opt.textContent = zoneLabel(z.name);
           select.appendChild(opt);
         });
         const orphan = !!currentZoneId && !activeIds.has(currentZoneId);

@@ -22,6 +22,22 @@ test('stream names are deterministic, prefixed, and in go2rtc\'s charset', () =>
   assert.equal(g.streamName('ws-1', null), null);
 });
 
+test('talk stream names are directional, prefixed, and workspace-scoped', () => {
+  const g = require('../lib/go2rtc');
+  const dn = g.talkStreamName('ws-1', 'dev-1', 'dn');
+  const up = g.talkStreamName('ws-1', 'dev-1', 'up');
+  assert.match(dn, /^tk_dn_[a-z0-9]+$/);
+  assert.match(up, /^tk_up_[a-z0-9]+$/);
+  assert.notEqual(dn, up);
+  assert.equal(dn, g.talkStreamName('ws-1', 'dev-1', 'dn'));
+  assert.equal(g.talkStreamBelongsTo(dn, 'ws-1', 'dev-1'), true);
+  assert.equal(g.talkStreamBelongsTo(dn, 'ws-2', 'dev-1'), false, 'another workspace cannot claim the talk stream');
+  assert.equal(g.talkStreamName('ws-1', 'dev-1', 'sideways'), null);
+  const cast = g.broadcastTalkStreamName('group', 'g-1');
+  assert.match(cast, /^tk_cast_g_[a-z0-9]+$/);
+  assert.notEqual(cast, g.broadcastTalkStreamName('workspace', 'g-1'));
+});
+
 test('a stream name is workspace-scoped: no other pair produces it', () => {
   const g = require('../lib/go2rtc');
   const mine = g.streamName('ws-A', 'dev-1');
@@ -111,7 +127,24 @@ test('ensureStream creates a webrtc: placeholder only when the stream is absent'
     assert.equal(await g.ensureStream('st_abc'), true);
     const put = calls.find((c) => c.method === 'PUT');
     assert.ok(put, 'a PUT was issued to create the stream');
-    assert.match(put.url, /\/api\/streams\?name=st_abc&src=webrtc:/, 'created with the inert webrtc: source');
+    assert.match(put.url, /\/api\/streams\?name=st_abc&src=webrtc(%3A|:)/, 'created with the inert webrtc: source');
+  } finally { global.fetch = realFetch; delete process.env.GO2RTC_URL; }
+});
+
+test('ensureStream succeeds when PUT returns 400 but the stream exists afterwards', async () => {
+  process.env.GO2RTC_URL = 'http://go2rtc:1984';
+  delete require.cache[require.resolve('../config')]; delete require.cache[require.resolve('../lib/go2rtc')];
+  const g = require('../lib/go2rtc');
+  let gets = 0;
+  const realFetch = global.fetch;
+  global.fetch = async (url, opts) => {
+    if (opts.method === 'PUT') return { ok: false, status: 400, headers: { get: () => '' }, text: async () => 'yaml: line 3' };
+    gets++;
+    const body = gets === 1 ? {} : { st_abc: { producers: [{ url: 'webrtc:' }] } };
+    return { ok: true, headers: { get: () => 'application/json' }, json: async () => body };
+  };
+  try {
+    assert.equal(await g.ensureStream('st_abc'), true, '400-but-created is still success');
   } finally { global.fetch = realFetch; delete process.env.GO2RTC_URL; }
 });
 

@@ -1,0 +1,22 @@
+# go2rtc sidecar for ScreenTinker live video + Talk.
+# Mounted read-only by docker-compose. Streams are created at runtime via the API, so
+# `streams` stays empty. See docs/live-video.md and docs/go2rtc.example.yaml.
+api:
+  listen: ":1984"
+  # Uncomment and match GO2RTC_API_TOKEN on the ScreenTinker service to protect the admin API.
+  # token: "change-me-to-a-long-random-string"
+
+webrtc:
+  listen: ":8555"
+  candidates:
+    # Docker Desktop / Windows: go2rtc's own UDP socket is the container IP (172.x), which the
+    # operator browser and the Android player cannot reach. Advertise the host instead.
+    # 127.0.0.1 — dashboard on the same machine (http://localhost:3001).
+    # LAN IPs — the player on the Wi-Fi/Ethernet. Adjust if this host's addresses change.
+    # stun:8555 — WAN reflexive address; keep last so a slow STUN lookup does not block host ICE.
+    - 127.0.0.1:8555
+    - 192.168.1.21:8555
+    - 192.168.1.35:8555
+    - stun:8555
+
+streams: {}

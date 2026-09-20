@@ -209,8 +209,11 @@ tasks.register<Exec>("resignReleaseV1") {
         val buildTools = File(sdkDir, "build-tools").listFiles()
             ?.filter { it.isDirectory }?.maxByOrNull { it.name }
             ?: throw GradleException("#81 resign: no build-tools found under $sdkDir")
+        // Windows ships apksigner.bat; Unix ships a shell script named apksigner.
+        val apksignerName = if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true))
+            "apksigner.bat" else "apksigner"
         commandLine(
-            File(buildTools, "apksigner").absolutePath, "sign",
+            File(buildTools, apksignerName).absolutePath, "sign",
             "--ks", file("../release-key.jks").absolutePath,
             "--ks-key-alias", (System.getenv("KEY_ALIAS") ?: "remotedisplay"),
             "--ks-pass", "pass:" + (System.getenv("KEYSTORE_PASSWORD") ?: ""),

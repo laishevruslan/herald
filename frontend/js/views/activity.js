@@ -48,7 +48,7 @@ async function renderAlerts() {
 
   if (!local.length && !remote.length) {
     el.innerHTML = `<div style="padding:12px 0;color:var(--text-muted);font-size:13px">
-      Nothing is open right now${mesh ? ', here or on any connected server' : ''}.</div>`;
+      ${mesh ? t('activity.nothing_open_mesh') : t('activity.nothing_open')}</div>`;
     return;
   }
 
@@ -66,17 +66,17 @@ async function renderAlerts() {
   el.innerHTML = `
     ${rollups.map((r) => `
       <div style="border-left:3px solid var(--warning,#f59e0b);padding:10px 12px;margin-bottom:10px;background:var(--bg-card)">
-        <strong>Check this server's connection first</strong>
+        <strong>${t('activity.check_connection')}</strong>
         <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${esc(r.summary)}</div>
       </div>`).join('')}
     ${local.map((i) => row(String(i.metric || '').replace(/[_-]/g, ' '),
-                           i.device_id ? `this server · ${i.device_id}` : 'this server',
+                           i.device_id ? t('activity.this_server_device', { id: i.device_id }) : t('activity.this_server'),
                            i.opened_at, false)).join('')}
     ${remote.map((a) => row(String(a.alert_type || '').replace(/[_-]/g, ' '),
                             // ⚠️ Says which server, and whether we can currently SEE that server.
                             // "Last known" on an alert is not pedantry: acting on a stale alert from
                             // an unreachable site is how somebody drives to a screen that is fine.
-                            `${String(a.origin_node_id || '').slice(0, 8)}${a.stale ? ' · last known, that server is not reachable' : ''}`,
+                            `${String(a.origin_node_id || '').slice(0, 8)}${a.stale ? t('activity.stale_remote') : ''}`,
                             a.opened_at, true)).join('')}`;
 }
 
@@ -86,10 +86,10 @@ export async function render(container) {
       <div><h1>${t('activity.title')} <span class="help-tip" data-tip="${t('activity.help_tip')}">?</span></h1><div class="subtitle">${t('activity.subtitle')}</div></div>
     </div>
     <div class="settings-section" style="margin-bottom:20px">
-      <h3 style="font-size:14px;margin-bottom:4px">Open alerts</h3>
-      <div id="alertsPanel"><div style="color:var(--text-muted);font-size:13px">Loading…</div></div>
+      <h3 style="font-size:14px;margin-bottom:4px">${t('activity.open_alerts')}</h3>
+      <div id="alertsPanel"><div style="color:var(--text-muted);font-size:13px">${t('activity.loading')}</div></div>
     </div>
-    <h3 style="font-size:14px;margin-bottom:8px">Recent activity</h3>
+    <h3 style="font-size:14px;margin-bottom:8px">${t('activity.recent')}</h3>
     <div id="activityList"><div class="empty-state"><h3>${t('common.loading')}</h3></div></div>
     <div style="text-align:center;margin-top:16px">
       <button class="btn btn-secondary btn-sm" id="loadMoreBtn" style="display:none">${t('activity.load_more')}</button>

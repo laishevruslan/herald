@@ -5,6 +5,7 @@ import { esc, hydrateAuthImages } from '../utils.js';
 import { t, tn } from '../i18n.js';
 import { frameDeviceOutput, displayAspectRatio } from '../lib/device-frame.js';
 import { renderApprovalBar } from '../components/approval-actions.js';
+import { layoutLabel } from '../lib/layout-labels.js';
 
 function formatDate(ts) {
   if (!ts) return '--';
@@ -428,7 +429,7 @@ function layoutMockup(playlist) {
         ${zones}
       </div>
       <div style="font-size:12px;color:var(--text-muted)">
-        <div>${esc(layout.name || '')} &middot; ${w}&times;${h}${portrait ? ' (portrait)' : ''}</div>
+        <div>${esc(layoutLabel(layout.name || ''))} &middot; ${w}&times;${h}${portrait ? ' (portrait)' : ''}</div>
         <div>${tn('playlist.zones_count', layout.zones.length)}</div>
         ${layout._preview_ambiguous ? `<div style="color:var(--warning)">${t('playlist.layout_ambiguous')}</div>` : ''}
       </div>

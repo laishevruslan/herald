@@ -103,13 +103,13 @@ function render(device, telemetry) {
 const ANDROID_FULL = {
   client_type: 'apk', android_version: '13',
   capabilities: ['playback.video', 'audio.volume', 'display.power', 'display.brightness',
-    'remote.screenshot', 'remote.stream', 'remote.input',
+    'remote.screenshot', 'remote.stream', 'remote.input', 'remote.talk', 'remote.mic',
     'system.reboot', 'system.restart_player', 'system.self_update'],
 };
 const WEB = {
   android_version: 'Web/Chrome',
   capabilities: ['playback.video', 'audio.volume', 'remote.screenshot', 'remote.stream',
-    'remote.input', 'system.restart_player'],
+    'remote.input', 'remote.talk', 'system.restart_player'],
 };
 // Exactly what tizen/js/app.js registers, including the android_version field — which reads
 // 'Tizen 6.5' and NOT anything Android-shaped. An earlier version of this fixture omitted it, so
@@ -165,8 +165,26 @@ test('a BrightSign IS offered the screen power and reboot it genuinely has', () 
 test('an Android panel keeps the full control set', () => {
   const html = render(ANDROID_FULL);
   for (const id of ['rebootBtn', 'screenOffBtn', 'screenOnBtn', 'launchAppBtn', 'forceUpdateBtn',
-    'screenshotBtn', 'startRemoteBtn', 'sysVolume', 'sysWinBrightness']) {
+    'screenshotBtn', 'startRemoteBtn', 'sysVolume', 'sysWinBrightness', 'startTalkBtn', 'start2wayBtn']) {
     assert.ok(has(html, id), `${id} must survive`);
+  }
+});
+
+test('Talk is offered only to players that declare remote.talk', () => {
+  // Android and the web player run the WebRTC audio peer (TalkService / STTalk). Tizen, webOS
+  // and BrightSign do not, so the Talk control stays hidden rather than looking like a dead button.
+  const android = render(ANDROID_FULL);
+  assert.ok(has(android, 'startTalkBtn'), 'Android declares remote.talk');
+  assert.ok(has(android, 'start2wayBtn'), 'Android also declares remote.mic');
+
+  const web = render(WEB);
+  assert.ok(has(web, 'startTalkBtn'), 'web player declares remote.talk');
+  assert.equal(has(web, 'start2wayBtn'), false, 'web player has no mic unless __stHasMic');
+
+  for (const [name, dev] of [['tizen', TIZEN], ['brightsign', BRIGHTSIGN]]) {
+    const html = render(dev);
+    assert.equal(has(html, 'startTalkBtn'), false, `${name} must not show Talk`);
+    assert.equal(has(html, 'start2wayBtn'), false, `${name} must not show 2-way`);
   }
 });
 

@@ -143,8 +143,11 @@ async function hasStream(name) {
 async function ensureStream(name) {
   if (!name) return false;
   if (await hasStream(name)) return true;
-  const r = await call('PUT', '/api/streams?name=' + encodeURIComponent(name) + '&src=webrtc:', { raw: true });
-  return !!(r && r.ok);
+  const r = await call('PUT', '/api/streams?name=' + encodeURIComponent(name) + '&src=' + encodeURIComponent('webrtc:'), { raw: true });
+  if (r && r.ok) return true;
+  // go2rtc 1.9.14 often answers 400 (it tries to parse an empty body as YAML) while still
+  // creating the webrtc: placeholder. Treat "it exists now" as success so WHIP is not skipped.
+  return hasStream(name);
 }
 
 // Is a publisher ACTUALLY connected to this stream right now? A stream created by ensureStream
@@ -179,7 +182,10 @@ async function webrtcExchange(name, sdpOffer, dir = 'sub') {
     headers: { 'Content-Type': 'application/sdp' },
     raw: true,
   });
-  return (r && r.ok) ? { sdp: r.text, dir } : null;
+  // WHIP answers 201; WHEP answers 200. fetch ok covers 2xx. Anything else is a fail-soft null.
+  if (r && r.ok && r.text) return { sdp: r.text, dir };
+  try { console.warn('[go2rtc] webrtcExchange failed', dir, name, r && r.status); } catch (_) {}
+  return null;
 }
 
 // ICE servers handed to the browser: a STUN server always helps, TURN only if the operator

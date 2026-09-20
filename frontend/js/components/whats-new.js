@@ -65,7 +65,16 @@ export async function fetchNotes() {
  * Notes are authored by us in release-notes.json, not entered by a user — but they still go through
  * the DOM as text rather than markup. A release note has no reason to carry HTML, and an escaping
  * habit that has exceptions is not a habit.
+ *
+ * Optional per-locale overrides live under whatsnew.note.<version>.<index> in the locale files.
+ * Missing keys fall back to the English text from release-notes.json.
  */
+function localizeNote(version, index, english) {
+  const key = `whatsnew.note.${version}.${index}`;
+  const translated = t(key);
+  return translated === key ? english : translated;
+}
+
 function li(text) {
   const el = document.createElement('li');
   el.style.cssText = 'margin-bottom:6px;line-height:1.5';
@@ -97,7 +106,7 @@ export function render(host, data) {
     </div>`;
 
   const list = host.querySelector('#wnList');
-  for (const note of data.current.notes) list.appendChild(li(note));
+  data.current.notes.forEach((note, i) => list.appendChild(li(localizeNote(data.current.version, i, note))));
 
   const putAway = () => { markSeen(data.version); host.innerHTML = ''; host.style.display = 'none'; };
   host.querySelector('#wnDismiss')?.addEventListener('click', putAway);
@@ -133,7 +142,7 @@ export function renderHistory(host, data) {
 
     const ul = document.createElement('ul');
     ul.style.cssText = 'color:var(--text-muted);font-size:12px;padding-left:18px;margin:0';
-    for (const note of rel.notes) ul.appendChild(li(note));
+    for (const [i, note] of rel.notes.entries()) ul.appendChild(li(localizeNote(rel.version, i, note)));
     block.appendChild(ul);
 
     body.appendChild(block);
