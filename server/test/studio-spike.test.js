@@ -53,12 +53,18 @@ test('license-check accepts --root for the studio island', () => {
   assert.match(src, /frontend-studio/);
 });
 
-test('studio 6.1/6.2 docker assets and font/brand modules exist', () => {
+test('studio 6.1/6.2/6.3 docker assets and Layerhub Editor modules exist', () => {
   assert.ok(fs.existsSync(path.join(ROOT, 'docker', 'studio-6.1', 'Dockerfile')));
   assert.ok(fs.existsSync(path.join(ROOT, 'docker', 'studio-6.2', 'Dockerfile')));
+  assert.ok(fs.existsSync(path.join(ROOT, 'docker', 'studio-6.3', 'Dockerfile')));
   assert.ok(fs.existsSync(path.join(ROOT, 'server', 'routes', 'studio.js')));
   assert.ok(fs.existsSync(path.join(ROOT, 'server', 'lib', 'studio-designs.js')));
   assert.ok(fs.existsSync(path.join(ROOT, 'frontend-studio', 'src', 'fontCatalogue.ts')));
   assert.ok(fs.existsSync(path.join(ROOT, 'frontend-studio', 'src', 'brand.ts')));
   assert.ok(fs.existsSync(path.join(ROOT, 'frontend-studio', 'src', 'fonts.css')));
+  assert.ok(fs.existsSync(path.join(ROOT, 'frontend-studio', 'src', 'App.tsx')));
+  assert.ok(fs.existsSync(path.join(ROOT, 'frontend-studio', 'src', 'components', 'EditorStage.tsx')));
+  const main = fs.readFileSync(path.join(ROOT, 'frontend-studio', 'src', 'main.tsx'), 'utf8');
+  assert.match(main, /@layerhub-io\/react/);
+  assert.match(main, /LayerhubProvider|Provider/);
 });

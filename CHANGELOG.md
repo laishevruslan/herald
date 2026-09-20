@@ -16,6 +16,14 @@ what to enter for the reviewer.
 
 ### Added
 
+**Studio 6.3a — full Layerhub Editor UI on the poster island.** The Studio island no longer
+drives a bare Fabric canvas. It mounts `@layerhub-io/react` `Provider` + `Canvas` with Layers,
+Properties, context menu, undo/redo, zoom, align and z-order — still without Scenify’s Iconscout /
+video / presentation shell. Publish keeps the same PNG ingest + `studio_designs.scene_json` path;
+scenes are stored as compact v2 (logical frame coords) with a one-shot upgrade from legacy v1
+display-space JSON. Island chrome is translated en/ru. Verify: `docker/studio-6.3`. See
+[`docs/scenify-studio-plan.md`](docs/scenify-studio-plan.md).
+
 **Stretch factories, phase 3.5 — portrait door tablet and a four-room corridor board.** `room-lcd-9x16`
 is the 9:16 twin of the 16:9 door sign: same CANON binds and green/red/grey contract, strip on
 top so the status word can use the full width. `rooms-board-16x9` is a 2×2 lobby wall of four

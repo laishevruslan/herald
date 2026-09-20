@@ -20,6 +20,22 @@ export function exportMultiplier(logicalW: number, displayW: number): number {
   return logicalW / displayW;
 }
 
+/** PNG at logical frame size via Layerhub offscreen renderer (D-SC-6). */
+export async function editorToPngBlob(editor: {
+  scene: { exportToJSON: () => unknown };
+  renderer: { toDataURL: (template: unknown, params: Record<string, unknown>) => Promise<unknown> };
+}): Promise<Blob> {
+  await document.fonts.ready;
+  const template = editor.scene.exportToJSON();
+  const dataUrl = (await editor.renderer.toDataURL(template, {})) as string;
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image')) {
+    throw new Error('PNG export failed');
+  }
+  const res = await fetch(dataUrl);
+  return res.blob();
+}
+
+/** @deprecated Prefer editorToPngBlob — kept for legacy fabric canvas paths. */
 export async function canvasToPngBlob(
   canvas: FabricCanvas,
   logicalW: number,

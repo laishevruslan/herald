@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const OFL_FONTS = path.resolve(rootDir, '../server/fonts');
+const API_PROXY = process.env.STUDIO_API_PROXY || 'http://127.0.0.1:3001';
 
 /** Serve OFL fonts at /fonts for Vite preview (production uses server /fonts mount). */
 function oflFontsPlugin(): Plugin {
@@ -44,14 +45,16 @@ export default defineConfig({
   base: '/studio/',
   plugins: [react(), oflFontsPlugin()],
   server: {
+    host: '0.0.0.0',
     port: 5174,
     strictPort: true,
+    // Docker Desktop / compose: set STUDIO_API_PROXY=http://screentinker:3001
     proxy: {
-      // Dashboard JWT session on :3001 — Studio island reuses it same-origin in prod.
-      '/api': { target: 'http://127.0.0.1:3001', changeOrigin: true },
+      '/api': { target: API_PROXY, changeOrigin: true },
     },
   },
   preview: {
+    host: '0.0.0.0',
     port: 4173,
     strictPort: true,
   },

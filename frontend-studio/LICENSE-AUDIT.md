@@ -12,9 +12,9 @@
 | Fabric exports readable 1920×1080 PNG with OFL Inter | **PASS** (Docker verify) | `docker/studio-spike` → `out/studio-spike-export.png`; IHDR 1920×1080; Inter loaded via `/studio-fonts/` from `server/fonts` |
 | GPL/AGPL in dependencies | **PASS** | No DENY licences in production tree |
 | Bundle > ~3 MB gzip without fonts | **NOTE (not kill)** | Recorded after `npm run build` in Docker logs / below |
-| Cannot strip video/presentation/Iconscout in a day | **PASS** | Spike never imported their shell — hello-world Fabric only + dynamic `import('@layerhub-io/core')` smoke |
+| Cannot strip video/presentation/Iconscout in a day | **PASS** | 6.3a chrome is ours (Layers/Properties); never imported Scenify shell / Iconscout |
 
-**Verdict:** Spike **green**. 6.1 ingest + 6.2 fonts/brand/slide-bg shipped; see `docs/scenify-studio-plan.md`.
+**Verdict:** Spike **green**. 6.1 ingest + 6.2 fonts/brand/slide-bg + **6.3a Layerhub Editor chrome** shipped; see `docs/scenify-studio-plan.md`.
 
 ## Denied candidates (do not add)
 
@@ -30,7 +30,7 @@ Filled by the licence gate after `npm ci` in the spike container / local install
 
 | Package | Declared licence | Role |
 |---|---|---|
-| `@layerhub-io/react@0.3.3` | MIT | React bindings (pinned; not used as full Editor UI in spike) |
+| `@layerhub-io/react@0.3.3` | MIT | React bindings — `Provider` + `Canvas` + hooks (6.3a Editor UI) |
 | `@layerhub-io/core@0.3.3` | ISC | Editor core; proves pin resolves |
 | `@layerhub-io/objects@0.2.0` | (transitively MIT/ISC — verify on disk) | Fabric object helpers |
 | `@layerhub-io/types@0.3.0` | (transitive) | Types |
@@ -46,14 +46,13 @@ Same files as slides (`server/fonts/inter*.woff2` + `OFL-inter.txt`). Not an npm
 
 ## Bundle size note
 
-Measured 2026-09-20 (`npm run build` local):
+Measured 2026-09-20 after 6.3a (`npm run build` local):
 
 | Asset | Raw | gzip |
 |---|---|---|
-| `index-*.js` (app chunk) | ~210 KB | **~65 KB** |
-| `index-*.js` (vendor/fabric) | ~462 KB | **~141 KB** |
-| CSS | ~2 KB | ~1 KB |
-| **Total JS gzip** | | **~206 KB** |
+| `index-*.js` (app + Layerhub/Fabric) | ~712 KB | **~217 KB** |
+| CSS | ~8 KB | ~2 KB |
+| **Total JS gzip** | | **~217 KB** |
 
 Well under the ~3 MB gzip soft budget. **Not a kill.**
 

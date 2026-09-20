@@ -316,7 +316,7 @@ export default {
   'studio.new_poster': 'Neues Poster',
   'studio.edit_poster': 'Poster bearbeiten',
   'studio.badge': 'Studio',
-  'studio.help_blurb': 'Poster zeichnen und als PNG in die Bibliothek veröffentlichen. Das ist keine Folie — Uhren und Live-Daten bleiben bei Folien.',
+  'studio.help_blurb': 'Poster mit Ebenen, Undo und Zoom zeichnen und als PNG in die Bibliothek veröffentlichen. Das ist keine Folie — Uhren und Live-Daten bleiben bei Folien.',
   'studio.cyrillic_note': 'Standardschriften decken nur lateinische Schriften ab. Kyrillisch kann fehlende Glyphen zeigen, bis ein Sprachpaket vorliegt.',
   'studio.unavailable': 'Poster-Editor ist auf dieser Installation nicht verfügbar (Studio-Insel nicht gebaut).',
   'studio.publish_to_library': 'In Bibliothek veröffentlichen',
