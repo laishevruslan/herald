@@ -1,0 +1,5 @@
+project_slug: aktivisda-docs
+project_home: "/var/www/{{ project_slug }}"
+main_user: "user__aktivisda-docs"
+use_password: false
+url: docs.aktivisda.earth

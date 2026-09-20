@@ -1,0 +1,10 @@
+include: 'https://framagit.org/aktivisda/aktivisda/-/raw/main/common.gitlab-ci.yml'
+
+variables:
+    REMOTE_DIR: 'www'
+
+build:
+    when: always # or use manual
+
+deploy-server:
+    when: on_success # if build was ok, or use manual

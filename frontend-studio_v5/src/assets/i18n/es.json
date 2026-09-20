@@ -1,0 +1,177 @@
+{
+    "ABOUT": {
+        "AKTIVISDA": {
+            "FIRST_PARAGRAPH": "Aktivisda es un sitio web para permitir que todos los activismos de todo el mundo creen imágenes (redes sociales, carteles, pegatinas, etc.) a partir de una carta gráfica (colores, fuentes, símbolos, fondos, etc.) establecida por diseñadores gráficos. Aktivisda es la continuación de <a href='https://extinctionrebellion.fr/vizgen/' target='_blank'>XR Viz Generator</a>. El generador de visualización había sido utilizado ampliamente por las sucursales locales de XR en todo el mundo.",
+            "HEADER": "Aktivisda, un sitio web para crear y difundir tus obras de arte en todo el mundo",
+            "SECOND_PARAGRAPH": "Aktivisda es un proyecto de código abierto bajo licencia LGPL-3.0.<br/>Código fuente disponible en <a href='https://framagit.org/aktivisda/aktivisda'>Framagit</a>.<br/>. Póngase en contacto con el equipo <a href='mailto:contact@aktivisda.earth'>contact@aktivisda.earth</a> si desea instalar Aktivisda para su propia organización."
+        },
+        "LABEL": "Más sobre aktivisda",
+        "PAGE_DESCRIPTION": "Obtenga más información sobre Aktivisda, el sitio web para crear y difundir sus obras de arte en sus organizaciones."
+    },
+    "BACKGROUND_IMAGES": {
+        "FIT_DOCUMENT_SIZE": "Ajuste el tamaño del documento a su tamaño de fondo",
+        "LABEL": "Fondo| Fondos",
+        "PAGE_DESCRIPTION": "Todas las imágenes de fondo de Aktivisda. Cambia los colores y descárgalos directamente en HD png o en SVG."
+    },
+    "BUTTONS": {
+        "BRING_FORWARD": "Adelantar",
+        "CANCEL": "Cerrar",
+        "CLOSE": "Cerrar",
+        "COPIED_TO_CLIPBOARD": "Copiar al portapapeles",
+        "COPY": "Copiar",
+        "DELETE": "Eliminar",
+        "DOWNLOAD": "Descargar",
+        "DUPLICATE": "Duplicado",
+        "EDIT": "Editar",
+        "NEW": "Nuevo",
+        "OPEN_GALLERY": "Abrir la galería",
+        "PASTE": "Pegar",
+        "REDO": "Rehacer",
+        "SEND_BACKWARD": "Enviar al fondo",
+        "UNDO": "Deshacer"
+    },
+    "CHANGELOG": {
+        "BUG_REPORT": "Reportar un problema",
+        "CHANGELOG": "Registro de cambios",
+        "CONTRIBUTE": "Contribuir",
+        "LABEL": "Registro de cambios",
+        "LAST_UPDATE": "Ultima actualización",
+        "PAGE_DESCRIPTION": "Últimas funciones y correcciones de errores en Aktivisda.",
+        "VERSION": "Versión Aktivisda"
+    },
+    "COLORS": {
+        "BLUE": "Azul",
+        "ERRORS": {
+            "NOT_VALID_HTML": "Escriba un color HTML válido, por ejemplo: \"#0000000\""
+        },
+        "GREEN": "Verde",
+        "LABEL": "color | colores",
+        "PAGE_DESCRIPTION": "¡Todos los colores disponibles en Aktivisda, copie y pegue los códigos HTML en su software favorito!",
+        "RED": "Rojo",
+        "TIPS": {
+            "DARKEN": "Oscurecer",
+            "DROP_COLOR": "Soltar un color en la pantalla",
+            "LIGHTEN": "Aclarar"
+        }
+    },
+    "COMMON": {
+        "ANGLE": "Angulo",
+        "BIG": "Grande",
+        "BOTTOM": "Abajo",
+        "CENTER": "Centro",
+        "FONT": "Frente",
+        "HEIGHT": "Alto",
+        "HORIZONTAL_POSITION": "Posición horizontal",
+        "LEFT": "Izquierda",
+        "POSITION": "Posición",
+        "RIGHT": "Derecha",
+        "SIZE": "Medida",
+        "SMALL": "Pequeño",
+        "TOP": "Arriba",
+        "VERTICAL_POSITION": "Posición vertical ",
+        "WIDTH": "Ancho"
+    },
+    "EDIT": {
+        "COMPONENTS": {
+            "DOCUMENT": "Documento",
+            "SVGS": "Imagen | Imagenes",
+            "TEXTS": "Texto | Textos"
+        },
+        "EXPORT": {
+            "JPG": "Exportar a JPEG",
+            "MAIN": "Guardar",
+            "PDF": "Exportar a PDF",
+            "PDF_ERROR": "Algunas características de su plantilla como todavía no está disponible en la exportación de PDF. Por favor, considere la posibilidad de exportar en PNG o JPG",
+            "PNG": "Exportar a PNG",
+            "SVG": "Exportar a SVG",
+            "TEMPLATE": "Guardar"
+        },
+        "IMPORT": {
+            "CONFIRM": {
+                "CANCEL": "Cancelar",
+                "CONFIRM": "Confirmar",
+                "MESSAGE": "¿Quiere importar este documento? Perderá su trabajo",
+                "TITLE": "Advertencia"
+            },
+            "TEMPLATE": "Abrir"
+        },
+        "SMARTPHONE_WARNING": {
+            "CANCEL_TEXT": "Regresar",
+            "CONFIRM_TEXT": "Prueba",
+            "MESSAGE": "Aktvisda todavía no funciona bien en los smartphones. Por favor, utilice Aktivisda con un ordenador.",
+            "TITLE": "Información de dispositivo móvil"
+        },
+        "TIPS": {
+            "DOWNLOAD": "Descargar",
+            "RANDOM_SELECTION": "Elige al azar",
+            "RESTORE": "Restaurar"
+        },
+        "UNSAVED_WORK": {
+            "MESSAGE": "Tenga cuidado, perderá su trabajo al salir de esta página.",
+            "QUIT_BUTTON": "Irse",
+            "STAY_BUTTON": "Quedarse",
+            "TITLE": "Advertencia"
+        },
+        "WARNING": {
+            "EXPERIMENTAL": "Tenga cuidado, esta función se está probando actualmente.Gracias por sus comentarios en contact@aktivisda.earth"
+        }
+    },
+    "FONTS": {
+        "ERROR_LOADING_MESSAGE": "Algunas fuentes no se pudieron cargar. Por favor, inténtelo de nuevo más tarde.",
+        "NUMBERS": "0 1 2 3 4 5 6 7 8 9 + - / = %",
+        "PAGE_DESCRIPTION": "Todas las fuentes disponibles en Aktivisda. ¡Vea cómo se ven y descárguelos en su computadora!",
+        "PANGRAM": "El veloz zorro marrón salta sobre el perro perezoso.",
+        "SPECIAL": "! ? : \" , < > @ [ ] ^ ( ) { } ~ $"
+    },
+    "FORMATS": {
+        "LABEL": "Formato | Formatos",
+        "PREDEFINED_FORMATS_BUTTON": "Formatos predefinidos"
+    },
+    "NAVBAR": {
+        "ABOUT": "Sobre ",
+        "BACKGROUNDS": "Imagenes",
+        "COLORS": "Colores",
+        "FONTS": "Fuentes",
+        "QRCODE": "Código Qr",
+        "SYMBOLS": "Simbolos",
+        "TEMPLATES": "Todas las plantillas"
+    },
+    "PALETTES": {
+        "CHOOSE": "Elige otra paleta de colores",
+        "LABEL": "Paleta de colores | Paletas de colores",
+        "SELECT": "Seleccione esta paleta",
+        "SHUFFLE": "Mezcla los colores",
+        "TITLE_SIZE": "Paletas con {nb} colores"
+    },
+    "QRCODE": {
+        "EXPERIMENTAL": {
+            "MESSAGE": "La característica de este generador de QRCode está en desarrollo activo. Actualmente no es posible usar su qrcode en plantillas. Se agradecen los comentarios por correo electrónico a <a href='mailto:dev@aktivisda.earth'>dev@aktivisda.earth</a>.<br/><b>Advertencia</b>: compruebe que el qrcode sea correcto y hágamelo saber por correo electrónico si no es el caso."
+        },
+        "EXPORT": {
+            "CONFIRM_LINK": "Comparte este enlace a tu qrcode",
+            "IMAGE": "Imagen (png)",
+            "LINK": "Compartir",
+            "VECTOR": "Imagen (svg)"
+        },
+        "LABEL": "Generador de código QR",
+        "PAGE_DESCRIPTION": "Genera tu qrcode personalizado"
+    },
+    "SNACKBARS": {
+        "CONTRIBUTE_LANG": "Su idioma aún no es compatible. Ha sido redirigido al idioma \"inglés\". <a href='https://framagit.org/aktivisda/aktivisda/-/wikis/Internationalization' target='_blank'>Haga clic aquí para ayudar a traducir Aktivisda a su idioma</a>."
+    },
+    "SVGS": {
+        "CONTRIBUTE": "¿Quieres añadir tu imagen a esta lista? Puede enviarlo en HD (idealmente svg) por correo electrónico a <a href='mailto:{email}'>{email}</a>.",
+        "LABEL": "Vector de imagen| Vectores de images",
+        "PAGE_DESCRIPTION": "Todas las imágenes disponibles en Aktivisda. ¡Cambia los colores y descárgalos en HD png o en SVG!"
+    },
+    "TEXTS": {
+        "DEFAULT_TEXT": "Más sobre aktivisda.earth",
+        "LABEL": "texto | textos",
+        "PLACEHOLDER": "Estas aquí"
+    },
+    "WELCOME": {
+        "DESCRIPTION": "Crea tus carteles con los colores de {org} en unos minutos a partir de {nbsymbols} imágenes y logotipos, {nbbackgrounds} imágenes de fondo y {nbfonts} fuentes ¡directamente en tu navegador!",
+        "TEMPLATES_SUBTITLE": "Elige una plantilla y comienza a editar!",
+        "TEMPLATES_TITLE": "Plantillas"
+    }
+}

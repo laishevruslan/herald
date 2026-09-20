@@ -1,0 +1,150 @@
+{
+    "ABOUT": {
+        "AKTIVISDA": {
+            "FIRST_PARAGRAPH": "Aktivisda ist eine Webseite, die es allen sozialen Bewegungen ermöglichen soll, einfach Mobimaterial (Sticker, Flyer, Onlinebilder) nach von Grafiker:innen erstellen Vorlagen zu erschaffen. Es ist eine Weiterentwicklung des <a href='https://extinctionrebellion.fr/vizgen/' target='_blank'>Grafikgenerators von Extinction Rebellion</a>, der von verschiedenen Gruppen genutzt wurde.",
+            "HEADER": "Aktivisda, ein Programm zum Erstellen und Verteilen von Mobigrafiken",
+            "SECOND_PARAGRAPH": "Aktivisda ist ein Open Source Projekt unter der LGPL-3.0 Lizenz und offen für Verbesserungen.<br/> Wenn du Aktivisda gerne für deine soziale Bewegung nutzen möchtest, kontaktiere die Entwickler:innen über <a href='mailto:contact@aktivisda.earth'>contact@aktivisda.earth</a>"
+        },
+        "LABEL": "Über Aktivisda",
+        "PAGE_DESCRIPTION": "Mehr über Aktivisda, der Webseite zum Erstellen und Teilen deiner Mobibilder für soziale Bewegungen."
+    },
+    "ADMIN": {
+        "BUTTONS": {
+            "ADD_NEW_LANG": "Neue Sprache hinzufügen",
+            "CREATE_TAG": "Neue Kategorie hinzufügen",
+            "SELECT_LANG": "Sprache auswählen"
+        }
+    },
+    "BACKGROUND_IMAGES": {
+        "FIT_DOCUMENT_SIZE": "Größe des Dokuments an Hintergrund anpassen",
+        "LABEL": "Hintergrundbild | Hintergrundbilder",
+        "PAGE_DESCRIPTION": "Alle auf Aktivisda verfügbaren Hintergrundbilder. Wechsle die Farben und lade sie direkt als PNG oder SVG herunter."
+    },
+    "BUTTONS": {
+        "BRING_FORWARD": "In den Vordergrund bringen",
+        "CANCEL": "Schließen",
+        "DELETE": "Löschen",
+        "DOWNLOAD": "Herunterladen",
+        "DUPLICATE": "Vervielfältigen",
+        "EDIT": "Bearbeiten",
+        "NEW": "Neu",
+        "OPEN_GALLERY": "Galerie öffnen",
+        "REDO": "Wiederholen",
+        "SEND_BACKWARD": "In den Hintergrund schieben",
+        "UNDO": "Zurück"
+    },
+    "CHANGELOG": {
+        "BUG_REPORT": "Fehler melden",
+        "CHANGELOG": "Changelog",
+        "CONTRIBUTE": "Beitragen",
+        "LABEL": "Changelog",
+        "PAGE_DESCRIPTION": "Neuste Features und Änderungen in Aktivisda",
+        "VERSION": "Aktivisda version"
+    },
+    "COLORS": {
+        "BLUE": "blau",
+        "ERRORS": {
+            "NOT_VALID_HTML": "Bitte wähle eine gültige HTML-Farbe, zum Beispiel: \"#0000000\""
+        },
+        "GREEN": "grün",
+        "LABEL": "Farbe | Farben",
+        "PAGE_DESCRIPTION": "Alle auf Aktivisda verfügbaren Farben. Kopiere den HTML-Code einer Farbe in deine bevorzugte Software.",
+        "RED": "rot",
+        "TIPS": {
+            "DARKEN": "Verdunkeln",
+            "DROP_COLOR": "Farbe vom Bildschirm auswählen",
+            "LIGHTEN": "Aufhellen"
+        }
+    },
+    "COMMON": {
+        "ANGLE": "Winkel",
+        "BIG": "Groß",
+        "BOTTOM": "Unten",
+        "CENTER": "Mitte",
+        "FONT": "Schriftart",
+        "HEIGHT": "Höhe",
+        "HORIZONTAL_POSITION": "Horizontale Positionierung",
+        "LEFT": "Links",
+        "POSITION": "Position",
+        "RIGHT": "Rechts",
+        "SIZE": "Größe",
+        "SMALL": "Klein",
+        "TOP": "Oben",
+        "VERTICAL_POSITION": "Vertikale Positionierung",
+        "WIDTH": "Breite"
+    },
+    "EDIT": {
+        "COMPONENTS": {
+            "DOCUMENT": "Dokument",
+            "SVGS": "Bild | Bilder",
+            "TEXTS": "Text | Texte"
+        },
+        "EXPORT": {
+            "JPG": "Zu JPEG exportiere",
+            "PDF": "Zu PDF exportieren",
+            "PNG": "Zu PNG exportieren",
+            "SVG": "Zu SVG exportieren",
+            "TEMPLATE": "Vorlage exportieren"
+        },
+        "IMPORT": {
+            "TEMPLATE": "Import"
+        },
+        "SMARTPHONE_WARNING": {
+            "CANCEL_TEXT": "Abbruch",
+            "CONFIRM_TEXT": "Trotzdem versuchen",
+            "MESSAGE": "Das Bearbeiten der Grafiken per Smartphone wird noch nicht unterstützt. Bitte verwende einen Computer.",
+            "TITLE": "Smartphone Information"
+        },
+        "TIPS": {
+            "DOWNLOAD": "Herunterladen",
+            "RANDOM_SELECTION": "Zufällig auswählen",
+            "RESTORE": "Wiederherstellen"
+        },
+        "UNSAVED_WORK": {
+            "MESSAGE": "Achtung, du wirst deine Änderungen auf dieser Seite verlieren",
+            "QUIT_BUTTON": "Verlassen",
+            "STAY_BUTTON": "Auf Seite bleiben",
+            "TITLE": "Achtung"
+        }
+    },
+    "FONTS": {
+        "ERROR_LOADING_MESSAGE": "Einge Schriftarten konnten nicht geladen werden. Probier es später nochmal.",
+        "NUMBERS": "0 1 2 3 4 5 6 7 8 9 + - / = %",
+        "PAGE_DESCRIPTION": "Alle auf Aktivisda verfügbaren Schriftarten. Schau sie dir an oder lade sie direkt herunter.",
+        "PANGRAM": "Zwölf Boxkämpfer jagen Viktor quer über den großen Sylter Deich.",
+        "SPECIAL": "! ? : \" , < > @ [ ] ^ ( ) { } ~ $"
+    },
+    "FORMATS": {
+        "LABEL": "Format | Formate",
+        "PREDEFINED_FORMATS_BUTTON": "Voreingestellte Formate"
+    },
+    "NAVBAR": {
+        "ABOUT": "Über Aktivisda",
+        "BACKGROUNDS": "Hintergrundbilder",
+        "COLORS": "Farben",
+        "FONTS": "Schriftarten",
+        "SYMBOLS": "Symbole",
+        "TEMPLATES": "Alle Vorlagen"
+    },
+    "PALETTES": {
+        "CHOOSE": "Eine andere Farbpalette wählen",
+        "LABEL": "Farbpalette | Farbpaletten",
+        "SELECT": "Palette auswählen",
+        "SHUFFLE": "Zufällige Farben",
+        "TITLE_SIZE": "Palette mit {nb} Farben"
+    },
+    "SVGS": {
+        "CONTRIBUTE": "Möchtest du dein Bild hier hinzufügen? Schicke es in hoher Auflösung, idealerweise als SVG, an <a href='mailto:{email}'>{email}</a>.",
+        "LABEL": "Vektorbild | Vektorbilder",
+        "PAGE_DESCRIPTION": "Alle auf Aktivisda verfügbaren Bilder. Wechsle die Farben und lade sie direkt als PNG oder SVG herunter."
+    },
+    "TEXTS": {
+        "DEFAULT_TEXT": "Mehr über aktivisda.earth",
+        "LABEL": "text | texte",
+        "PLACEHOLDER": "Dein Text hier"
+    },
+    "WELCOME": {
+        "TEMPLATES_SUBTITLE": "Wähle eine Vorlage zur Bearbeitung!",
+        "TEMPLATES_TITLE": "Vorlagen"
+    }
+}

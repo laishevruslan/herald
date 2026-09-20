@@ -1,0 +1,81 @@
+{
+    "version": "1.0.18",
+    "document": {
+        "id": "2992256f",
+        "format": "instagram-square",
+        "resolution": 96,
+        "width": 1080,
+        "height": 1080,
+        "background": {
+            "type": "internalsvg",
+            "id": "f8ea7741-1242-4368-882b-0394696719cd",
+            "colors": {
+                "#ffc11e": "#00804D"
+            },
+            "width": 305.4,
+            "height": 375
+        }
+    },
+    "components": [
+        {
+            "id": "a800894a",
+            "type": "image",
+            "scale": 55,
+            "image": {
+                "type": "internalsvg",
+                "id": "cf470748",
+                "colors": {
+                    "#000000": "#000000"
+                },
+                "width": 477.7,
+                "height": 419.7
+            },
+            "position": {
+                "x": 0.49049260761569635,
+                "y": 0.4801691885631144
+            },
+            "angle": 80,
+            "zIndex": 2
+        },
+        {
+            "id": "a800894p",
+            "type": "image",
+            "scale": 55,
+            "image": {
+                "type": "internalsvg",
+                "id": "cf470748",
+                "colors": {
+                    "#000000": "#ee0000"
+                },
+                "width": 477.7,
+                "height": 419.7
+            },
+            "position": {
+                "x": 0.49049260761569635,
+                "y": 0.4801691885631144
+            },
+            "angle": 30,
+            "zIndex": 3
+        },
+        {
+            "id": "a800894e",
+            "type": "image",
+            "scale": 55,
+            "image": {
+                "type": "internalsvg",
+                "id": "cf470748",
+                "colors": {
+                    "#000000": "#00ee00"
+                },
+                "width": 477.7,
+                "height": 419.7
+            },
+            "position": {
+                "x": 0.49049260761569635,
+                "y": 0.4801691885631144
+            },
+            "angle": 0,
+            "zIndex": 1
+        }
+    ]
+}

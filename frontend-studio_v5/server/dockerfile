@@ -1,0 +1,33 @@
+FROM ubuntu:24.04
+
+WORKDIR /app
+
+RUN apt-get update && apt-get upgrade -y
+RUN apt-get install software-properties-common -y
+RUN apt-get update && apt-get install -y
+RUN add-apt-repository universe
+RUN apt-get install python3.12-venv -y
+RUN apt-get install which gcc -y
+
+# Needed for opencv
+RUN apt-get install ffmpeg libsm6 libxext6 git -y
+RUN apt-get install imagemagick potrace -y
+RUN add-apt-repository ppa:inkscape.dev/stable
+RUN apt-get install -y inkscape scour pngquant jpegoptim
+
+RUN apt-get install libcairo2-dev pkg-config python3-dev libgirepository-2.0-dev -y
+ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
+RUN git clone https://framagit.org/Marc-AntoineA/files-manipulator.git files-manipulator
+
+RUN python3 -m venv venv
+
+RUN . venv/bin/activate && pip install files-manipulator/images-manipulator
+
+COPY requirements.txt ./requirements.txt
+RUN . venv/bin/activate && pip install -r requirements.txt
+
+COPY . /app
+
+CMD . venv/bin/activate && uwsgi --socket 0.0.0.0:4000 --protocol http -w wsgi:application
+
+EXPOSE 4000

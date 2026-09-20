@@ -1,0 +1,106 @@
+@import '@/assets/local/buefy.scss';
+
+.gallery-card.card.box {
+    padding: 5px;
+    padding-bottom: 5px;
+    cursor: pointer;
+
+    .contain-image.image {
+        max-height: 100px;
+        overflow: hidden;
+    }
+
+    .contain-image.image img {
+        object-fit: contain;
+        width: 100%;
+        height: 100px;
+    }
+
+    &:hover {
+        box-shadow:
+            0 0.5em 1em -0.125em $primary,
+            0 0px 0 1px $primary-light;
+
+        .card-content {
+            color: $primary;
+        }
+    }
+
+    .card-content {
+        padding-top: 5px;
+        font-size: small;
+        padding: 0px;
+        padding-top: 10px;
+        color: #6a6a6a;
+        font-size: x-small;
+    }
+
+    .card-footer {
+        margin-bottom: 10px;
+    }
+}
+
+.capitalize {
+    text-transform: capitalize;
+}
+
+h3 {
+    font-size: 30px;
+    text-align: center;
+}
+
+h4 {
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+.row {
+    margin: 0px;
+    display: flex;
+    flex-wrap: wrap;
+    flex: 1 1 auto;
+}
+
+.button {
+    &.is-complete-ghost {
+        background-color: transparent;
+        border-color: transparent;
+        color: #4a4a4a;
+        text-decoration: none;
+        &:hover,
+        &.is-hovered,
+        &:focus,
+        &.is-focused {
+            background-color: whitesmoke;
+            color: #363636;
+        }
+    }
+}
+
+[data-badge]:not([data-badge='']).card-image::after {
+    position: absolute;
+    right: -5px;
+    top: -5px;
+    min-width: 15px;
+    min-height: 15px;
+    line-height: 10px;
+    padding: 3px;
+    color: var(--primary-text-color);
+    background-color: var(--primary-color);
+    font-size: 8px;
+    border-radius: 20px;
+    border: solid 1px var(--primary-color);
+    content: attr(data-badge);
+    opacity: 0.7;
+}
+
+.primary-loading {
+    .loading-icon::after {
+        border-left-color: var(--primary-color) !important;
+        border-bottom-color: var(--primary-color) !important;
+    }
+}
+
+.position-relative {
+    position: relative;
+}

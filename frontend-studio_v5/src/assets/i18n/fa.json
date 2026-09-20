@@ -1,0 +1,27 @@
+{
+    "ADMIN": {
+        "BUTTONS": {
+            "SELECT_LANG": "زبان را انتخاب کنید"
+        },
+        "RULES": {
+            "DEFAULT": {
+                "FREE": "آزاد"
+            }
+        },
+        "SYNC_REVIEW": {
+            "PUBLISH_BUTTON": "منتشر کنید"
+        },
+        "UPLOADER": {
+            "NEXT_STEP": "مرحله بعدی",
+            "TITLE_AND_TAGS": {
+                "CATEGORIES_BUTTON": "دسته‌ها را انتخاب کن",
+                "LABEL_CATEGORIES": "دسته بندی‌ها"
+            }
+        }
+    },
+    "BUTTONS": {
+        "DEACTIVATE": "غیرفعال کردن",
+        "DELETE": "حذف کردن",
+        "DUPLICATE": "تکرار"
+    }
+}

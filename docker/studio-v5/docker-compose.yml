@@ -1,0 +1,33 @@
+# frontend-studio_v5 — Aktivisda (Vue/Konva) in Docker Desktop.
+#
+#   docker compose -f docker/studio-v5/docker-compose.yml up -d --build
+#   http://localhost:3005/
+#
+# Stop:
+#   docker compose -f docker/studio-v5/docker-compose.yml down
+
+services:
+  studio-v5:
+    build:
+      context: ../..
+      dockerfile: docker/studio-v5/Dockerfile
+    container_name: herald-studio-v5
+    ports:
+      - "3005:3005"
+    volumes:
+      - ../../frontend-studio_v5:/app
+      - /app/node_modules
+      - /app/aktivisda-library/node_modules
+      - /app/aktivisda-library/dist
+    environment:
+      VUE_APP_NAME: aktivisda
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    # Rebuild library into the anonymous dist volume on start (host has no dist/)
+    command:
+      [
+        "sh",
+        "-c",
+        "cd aktivisda-library && npm run build && cd /app && npm run serve:docker",
+      ]
+    restart: unless-stopped

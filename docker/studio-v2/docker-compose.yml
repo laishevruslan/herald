@@ -1,0 +1,28 @@
+# frontend-studio_v2 (OpenDesign) — Vite + Wrangler in Docker Desktop.
+#
+#   docker compose -f docker/studio-v2/docker-compose.yml up -d --build
+#   http://localhost:5178/
+#
+# Stop:
+#   docker compose -f docker/studio-v2/docker-compose.yml down
+
+services:
+  studio-v2:
+    build:
+      context: ../..
+      dockerfile: docker/studio-v2/Dockerfile
+    container_name: herald-studio-v2
+    ports:
+      - "5178:5178"
+      - "8787:8787"
+    volumes:
+      # Live reload — edit frontend-studio_v2 on the host
+      - ../../frontend-studio_v2:/app
+      - /app/node_modules
+      # Keep D1/miniflare state outside /app so Vite does not full-reload on WAL writes
+      - studio_v2_wrangler_state:/data/wrangler
+    command: ["pnpm", "run", "dev:docker"]
+    restart: unless-stopped
+
+volumes:
+  studio_v2_wrangler_state:

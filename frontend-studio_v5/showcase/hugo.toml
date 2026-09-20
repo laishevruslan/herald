@@ -1,0 +1,18 @@
+baseURL = 'https://aktivisda.earth/'
+languageCode = 'en-GB'
+defaultContentLanguage = "en"
+defaultContentLanguageInSubdir = false
+[languages]
+    [languages.en]
+        languageCode = "en"
+        languageDirection = "ltr"
+        languageName = "English"
+        title = "Aktivisda"
+    [languages.fr]
+        languageCode = "fr"
+        languageDirection = "ltr"
+        languageName = "Français"
+        title = "Aktivisda"
+        weight = 1
+[taxonomies]
+    disableKinds = ['taxonomy', 'term']

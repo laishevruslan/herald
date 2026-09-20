@@ -1,0 +1,86 @@
+include:
+   - 'https://framagit.org/Marc-AntoineA/tolgitbot/-/raw/main/tolgee.gitlab-ci.yml'
+
+image: alpine:3
+
+stages:
+    - test
+    - deploy
+
+deploy-instances:
+    rules:
+        - if: $CI_PIPELINE_SOURCE == "schedule"
+          when: never
+        - if: $CI_COMMIT_BRANCH == "main"
+          changes: # Include the job and set to when:manual if any of the follow paths match a modified file.
+              - src/**
+              - public/**
+              - aktivisda-library/**
+          when: always
+        - when: never
+    stage: deploy
+    script:
+        - apk add --no-cache curl openssh
+        - 'curl -X POST --fail -F token=$TRIGGER_TOKEN_EXTINCTIONREBELLION -F ref=main https://framagit.org/api/v4/projects/78249/trigger/pipeline'
+        - 'curl -X POST --fail -F token=$TRIGGER_TOKEN_AMAP -F ref=main https://framagit.org/api/v4/projects/99297/trigger/pipeline'
+        - 'curl -X POST --fail -F token=$TRIGGER_TOKEN_SOLIDAIRES -F ref=main https://framagit.org/api/v4/projects/99814/trigger/pipeline'
+        - 'curl -X POST --fail -F token=$TRIGGER_TOKEN_ALTERNATIBA -F ref=main https://framagit.org/api/v4/projects/84191/trigger/pipeline'
+        - 'curl -X POST --fail -F token=$TRIGGER_TOKEN_CLIMATEFRESK -F ref=main https://framagit.org/api/v4/projects/78511/trigger/pipeline'
+
+deploy-doc:
+    stage: test
+    image: node:latest
+    script:
+        - apt update && apt-get install rsync -y
+        - eval $(ssh-agent -s)
+        - mkdir -p ~/.ssh
+        - chmod 700 ~/.ssh
+        - echo "$SSH_KEY" | tr -d '\r' | ssh-add - > /dev/null
+        - ssh-keyscan -p $FTP_PORT $FTP_HOST >> ~/.ssh/known_hosts 2> /dev/null
+        - chmod 644 ~/.ssh/known_hosts
+        - PROD_SERVER="$FTP_USER@$FTP_HOST"
+        - cd aktivisda-library
+        - npm install
+        - npm run docs
+        - cd ..
+        - rsync -e "ssh -p $FTP_PORT" -avz --stats --delete-after docs/ $PROD_SERVER:www
+        - ssh -p $FTP_PORT $PROD_SERVER "chmod a+r * -R"
+    when: manual
+    rules:
+        - if: $CI_COMMIT_BRANCH == "main"
+          changes:
+              - docs/**
+          when: always
+        - if: $CI_PIPELINE_SOURCE == "schedule"
+          when: never
+
+test-lib:
+    image: node:21
+    rules:
+        - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+          when: always
+        - if: $CI_PIPELINE_SOURCE == "schedule"
+          when: never
+        - changes:
+            - aktivisda-library/**
+          when: always
+    stage: test
+    script:
+        - cd aktivisda-library
+        - cp tests/assets/fonts/*.ttf /usr/share/fonts/truetype/
+        - fc-cache -f -v
+        - fc-list | grep "Roboto"
+        - npm install http-server -g
+        - npm install
+        - npm run serve:assets &
+        - npm run test:report
+    artifacts:
+        reports:
+            junit: aktivisda-library/report.xml
+
+translations-pull:
+  variables:
+    TOLGEE_PULL_USE_MR: true
+    TOLGEE_STATE: "TRANSLATED"
+  dependencies: []
+  needs: []

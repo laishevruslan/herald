@@ -1,0 +1,394 @@
+{
+    "ABOUT": {
+        "AKTIVISDA": {
+            "FIRST_PARAGRAPH": "Aktivisda è un sito web che permette a tutti i movimenti attivisti nel mondo di creare immagini (social network, poster, adesivi, ecc.) sulla base di una cartella grafica (colori, font, simboli, sfondi, ecc.) stabilita da graphic designer. Aktivisda è la continuazione e l'apertura a tutti i movimenti attivisti del <a href='https://extinctionrebellion.fr/vizgen/' target='_blank'>generatore di contenuti visivi di Extinction Rebellion</a> utilizzato da diversi gruppi locali di XR in tutto il mondo. ",
+            "HEADER": "Aktivisda, un software per creare e diffondere le tue grafiche impegnate in tutto il mondo.",
+            "SECOND_PARAGRAPH": "Aktivisda è un progetto open source sotto licenza LGPL-3.0 e aperto a contributi.<br/>Il codice sorgente è disponibile su <a href='https://framagit.org/aktivisda/aktivisda'>Framagit</a>.<br/>. Se vuoi implementare questo strumento nella tua organizzazione o movimento attivista, o se vuoi contribuire, contatta il team: <a href='mailto:contact@aktivisda.earth'>contact@aktivisda.earth</a>."
+        },
+        "LABEL": "Per saperne di più su Aktivisda",
+        "PAGE_DESCRIPTION": "Scopri di più su Aktivisda, il sito web per creare e diffondere illustrazioni e grafiche per i movimenti e le organizzazioni attiviste."
+    },
+    "ADMIN": {
+        "BUTTONS": {
+            "ADD_NEW_LANG": "Aggiungi una nuova lingua",
+            "CREATE_TAG": "Aggiungi una nuova categoria",
+            "SELECT_LANG": "Scegli la lingua"
+        },
+        "LOGIN": {
+            "ERROR_GITLAB_TOKEN": "Fornisci un token Gitlab valido",
+            "ERROR_UNAUTHORIZED_GITLAB_TOKEN": "Il tuo Personal access Token di Gitlab non è valido, probabilmente è scaduto. È stato cancellato.",
+            "GITLAB_TOKEN": "Gitlab Personal access token",
+            "SERVER_TOKEN": "Token identificazione server",
+            "TITLE": "Dettagli login"
+        },
+        "NAVBAR": {
+            "ARIA-LABEL": "Navigazione principale",
+            "LABEL": "Amministrazione",
+            "LOGIN": "Dettagli login",
+            "SYNC": "Sincronizza"
+        },
+        "RULES": {
+            "COMPIMAGE": {
+                "FIXED": "Non è possibile aggiungere nuove immagini",
+                "FREE": "Le immagini possono essere aggiunte liberamente"
+            },
+            "COMPQRCODE": {
+                "FIXED": "Non è possibile aggiungere un nuovo codice QR",
+                "FREE": "Nuovi codici QR possono essere aggiunti liberamente"
+            },
+            "COMPTEXT": {
+                "FIXED": "Non è possibile aggiungere del testo",
+                "FREE": "Nuovi testi possono essere aggiunti liberamente"
+            },
+            "DEFAULT": {
+                "FIXED": "Bloccato",
+                "FREE": "Free",
+                "MAX": "max.",
+                "MIN": "min."
+            },
+            "DOCHEIGHT": {
+                "FIXED": "Altezza della grafica non modificabile",
+                "FREE": "Altezza della grafica liberamente modificabile"
+            },
+            "DOCSELF": {
+                "FIXED": "Il documento non è modificabile",
+                "FREE": "Il documento può essere modificato secondo le regole definite"
+            },
+            "DOCWIDTH": {
+                "FIXED": "Larghezza della grafica non modificabile",
+                "FREE": "Larghezza della grafica liberamente modificabile"
+            },
+            "FONT": {
+                "FIXED": "Carattere bloccato",
+                "FREE": "Carattere libero"
+            },
+            "JUSTIFICATION": {
+                "FIXED": "Orientamento del testo bloccato",
+                "FREE": "Orientamento del testo libero"
+            },
+            "POSITION": {
+                "FIXED": "Posizione bloccata",
+                "FREE": "Posizione libera"
+            },
+            "PRESENCE": {
+                "FIXED": "L'elemento non può essere eliminato",
+                "FREE": "L'elemento può essere eliminato"
+            },
+            "SELF": {
+                "FIXED": "L'elemento non può essere selezionato",
+                "FREE": "L'elemento può essere modificato secondo le regole definite"
+            },
+            "TEXT": {
+                "FIXED": "Contenuto del testo bloccato",
+                "FREE": "Contenuto del testo libero"
+            },
+            "UNICITY": {
+                "FIXED": "L'elemento non può essere duplicato",
+                "FREE": "L'elemento può essere copiato"
+            },
+            "ZINDEX": {
+                "FIXED": "L'elemento non può essere portato in primo piano o sullo sfondo",
+                "FREE": "L'elemento può essere portato in primo piano o sullo sfondo"
+            }
+        },
+        "SYNC_REVIEW": {
+            "COMMIT_PLACEHOLDER": "Messaggio per salvare le modifiche",
+            "DEFAULT_COMMIT_MESSAGE": "Simboli: aggiornamento",
+            "ERROR": "Si è verificato un errore durante l'invio. Hai i diritti necessari?",
+            "PUBLISH_BUTTON": "Pubblica",
+            "SUCCESS_MESSAGE": "Tutto è stato inviato correttamente!"
+        },
+        "TAGS": {
+            "ADD_BUTTON": "Aggiungi questo tag",
+            "CTA": "Seleziona il tuo tag",
+            "HELP": "Identificatore del tag (idealmente in inglese, in minuscolo, senza spazi)"
+        },
+        "TEMPLATES": {
+            "MODAL": {
+                "CREATE": "Aggiungi un nuovo modello",
+                "ERRORS": {
+                    "THUMBNAILING": "Errore durante la creazione della miniatura"
+                },
+                "TAGS_SELECTION": "Scegli le categorie",
+                "TITLE": "Aggiungi un nuovo modello nel database",
+                "UPDATE": "Aggiorna il modello",
+                "WARNING": "Prima di salvare il tuo modello, aggiungi un titolo e una categoria"
+            }
+        },
+        "TRANSLATIONS": {
+            "MESSAGE": "Le tue modifiche sono specifiche per la lingua: {lang}",
+            "OVERRIDE_VALUE": "Clicca per impostare un valore specifico per questa lingua",
+            "USE_DEFAULT_VALUE": "Clicca per non impostare un valore specifico per questa lingua"
+        },
+        "UPLOADER": {
+            "BACKGROUND_ZONES": {
+                "BACKGROUND_EXPLANATIONS": "La zona blu corrisponde alla zona che viene visualizzata dietro il simbolo quando lo si utilizza su un codice QR. Non ci devono essere buchi. Le zone gialle e blu si assomigliano molto.",
+                "BACKGROUND_LABEL": "Area di sfondo sul codice QR",
+                "CLICKABLE_ZONE_EXPLANATIONS": "L'area gialla corrisponde ai punti in cui è possibile selezionare l'immagine cliccandoci sopra. Questa zona deve seguire il contorno del simbolo. Possono esserci dei buchi nel caso in cui il simbolo sia \"vuoto\".",
+                "CLICKABLE_ZONE_LABEL": "Zona di selezione",
+                "TITTLE": "Zone di selezione e sfondo"
+            },
+            "BUTTON_SKIP_VECTORIZATION": "Usa l'immagine così com'è",
+            "BUTTON_USE_VECTOR": "Continua con questa immagine vettoriale",
+            "BUTTON_VECTOR": "Vettorizza",
+            "ERRORS": {
+                "COMPRESSION_FAILED": "Compressione dell'immagine non riuscita: {err}.",
+                "PREVIEW_FAILED": "Errore durante il calcolo della miniatura. Codice di errore: {errCode}."
+            },
+            "IMAGE_DIMENSIONS_DESCRIPTION": "E ha le seguenti dimensioni: {width}x{height}",
+            "IMAGE_FORMATS_STRING": "Le immagini possono essere in formato JPEG, JPG, PNG o SVG",
+            "IMAGE_WEIGHT_DESCRIPTION": "La tua immagine pesa {weight} kB.",
+            "LOAD_IMAGE": "Selezione dell'immagine",
+            "NEXT_STEP": "Prossimo passo",
+            "REDUCE_COLORS": {
+                "BEFORE_AFTER_LABEL": "La tua immagine prima/dopo aver limitato il numero di colori",
+                "EXPLANATIONS": "Spesso, le immagini originali contengono molti colori simili. Per facilitare la modifica dei colori nell'immagine finale, scegli il numero di colori che desideri avere.",
+                "NB_COLORS_LABEL": "Numero di colori",
+                "TITLE": "Riduzione dei colori",
+                "USE_WHITE_AS_ALPHA": "Considerare il bianco come trasparente",
+                "WARNING_TOO_MANY_COLORS": "Se la tua immagine contiene più di 5 colori, probabilmente è meglio non vettorializzarla."
+            },
+            "SUBMIT_BUTTON": "Aggiungi l'immagine su Aktivisda",
+            "TITLE_AND_TAGS": {
+                "CATEGORIES_BUTTON": "Scegli le categorie",
+                "LABEL_CATEGORIES": "Categorie",
+                "LABEL_TITLE": "Etichetta dell'immagine",
+                "TITLE": "Titolo e tag"
+            },
+            "VECTORIZATION": {
+                "COLORS_EDITOR": "La tua immagine vettoriale è disponibile sulla destra. Puoi anche cambiare il colore se lo desideri.",
+                "TITLE": "Vettorializzazione",
+                "WARNING_HEAVY_VECTOR": "Attenzione, questa immagine è molto pesante, probabilmente dovrebbe essere convertita in un file SVG binario.",
+                "WARNING_VERY_HEAVY_VECTOR": "Attenzione, questa immagine è davvero molto pesante, probabilmente bisogna fare qualcosa prima."
+            },
+            "WARNING_PHOTO_UPLOADED": "Hai caricato una foto, vuoi vettorializzarla o usarla così com'è? Se viene vettorializzata, gli utenti potranno cambiare i colori e ridimensionarla.",
+            "WARNING_SVG_UPLOADED": "Hai deciso di caricare un'immagine vettoriale. Al momento, non è per nulla elaborata o verificata. Potrebbe non essere ben supportata su Aktivisda. Considera l'idea di ritagliare le immagini, utilizzare colori in HTML, ecc. Insomma, ti consigliamo di non proseguire!"
+        }
+    },
+    "BACKGROUND_IMAGES": {
+        "CONTRIBUTE": "Vuoi aggiungere le tue immagini a questo elenco? Inviane uno in alta definizione via e-mail a <a href='mailto:{email}'>{email}</a>.",
+        "FIT_DOCUMENT_SIZE": "Adatta le dimensioni del documento alle dimensioni dello sfondo",
+        "LABEL": "Immagine di sfondo | Immagini di sfondo",
+        "PAGE_DESCRIPTION": "Tutte le immagini di sfondo disponibili su Aktivisda: cambia i colori e scaricale direttamente come PNG o SVG!"
+    },
+    "BUTTONS": {
+        "BRING_FORWARD": "Porta avanti",
+        "CANCEL": "Chiudi",
+        "CLOSE": "Chiudi",
+        "COPIED_TO_CLIPBOARD": "Copia negli appunti",
+        "COPY": "Copia",
+        "DEACTIVATE": "Disattiva",
+        "DELETE": "Cancella",
+        "DOWNLOAD": "Scarica",
+        "DUPLICATE": "Duplica",
+        "EDIT": "Modifica",
+        "NEW": "Nuovo",
+        "OPEN_GALLERY": "Apri la galleria",
+        "PASTE": "Incolla",
+        "REDO": "Rifai",
+        "SEND_BACKWARD": "Metti in secondo piano",
+        "START_EDITION": "Comincia a modificare",
+        "UNDO": "Annulla",
+        "UPLOAD": "Carica"
+    },
+    "CHANGELOG": {
+        "BUG_REPORT": "Segnala un bug",
+        "CHANGELOG": "Changelog",
+        "CONTRIBUTE": "Contribuisci",
+        "LABEL": "Monitoraggio delle funzionalità",
+        "LAST_UPDATE": "Ultimo aggiornamento",
+        "PAGE_DESCRIPTION": "Ultime aggiunte e correzioni di bug su Aktivisda.",
+        "VERSION": "Versione Aktivisda"
+    },
+    "COLORS": {
+        "BLUE": "blu",
+        "ERRORS": {
+            "NOT_VALID_HTML": "Indica un colore HTML valido, ad esempio: \"#0000000\""
+        },
+        "GREEN": "verde",
+        "LABEL": "Colore | Colori",
+        "PAGE_DESCRIPTION": "Tutti i colori disponibili su Aktivisda: copia-incolla i codici HTML nel tuo software preferito!",
+        "RED": "rosso",
+        "TIPS": {
+            "DARKEN": "Scurire",
+            "DROP_COLOR": "Seleziona un colore dallo schermo",
+            "LIGHTEN": "Schiarire"
+        }
+    },
+    "COMMON": {
+        "ANGLE": "Rotazione",
+        "BACKGROUND": "Sfondo",
+        "BIG": "Grande",
+        "BOTTOM": "Basso",
+        "CENTER": "Centro",
+        "COLOR": "Colore",
+        "ERROR": "errore",
+        "FONT": "Carattere",
+        "HEIGHT": "Altezza",
+        "HORIZONTAL_POSITION": "Posizionamento orizzontale",
+        "IMAGE": "Immagine",
+        "LABEL": "Titolo",
+        "LEFT": "Sinistra",
+        "NOT_IMPLEMENTED_ERROR": "Errore di implementazione",
+        "POSITION": "Posizione",
+        "RIGHT": "Destra",
+        "SIZE": "Dimensione",
+        "SMALL": "Piccolo",
+        "TEXT": "Testo",
+        "TOP": "Alto",
+        "VERTICAL_POSITION": "Posizionamento verticale",
+        "WIDTH": "Larghezza"
+    },
+    "EDIT": {
+        "BACKGROUND": {
+            "DISABLED": "disattivato",
+            "DISTORTED": "distorto",
+            "LESS_BORDER_RADIUS": "meno arrotondato",
+            "LESS_DISTORTION": "meno distorto",
+            "MORE_BORDER_RADIUS": "più arrotondato",
+            "MORE_DISTORTION": "più distorto",
+            "NORMAL": "normale",
+            "ROUNDED": "arrotondato"
+        },
+        "COMPONENTS": {
+            "DOCUMENT": "Documento",
+            "SVGS": "Immagine | Immagini",
+            "TEXTS": "Testo | Testi"
+        },
+        "EXPORT": {
+            "COMPRESSED_JPEG": "Questa immagine è stata compressa per essere la più leggera possibile.",
+            "CONFIRM_LINK": "Condividi questo link per continuare a modificare questo poster",
+            "JPG": "Esporta in JPEG",
+            "LINK": "Condividi con un link",
+            "MAIN": "Salva",
+            "PDF": "Esporta in PDF",
+            "PDF_ERROR": "Alcune proprietà del modello non sono ancora disponibili per l'esportazione in PDF. Ti invitiamo a esportare in PNG o JPEG.",
+            "PNG": "Esporta in PNG",
+            "SVG": "Esporta in SVG",
+            "TEMPLATE": "Salva"
+        },
+        "IMPORT": {
+            "CONFIRM": {
+                "CANCEL": "Cancella",
+                "CONFIRM": "Conferma",
+                "MESSAGE": "Vuoi importare questo documento? Perderai le modifiche in corso.",
+                "TITLE": "Avviso"
+            },
+            "TEMPLATE": "Apri"
+        },
+        "REMOVE_WARNING": {
+            "CANCEL_TEXT": "Conserva l'elemento",
+            "CONFIRM_TEXT": "Elimina",
+            "MESSAGE": "Sei sicuro/a di voler eliminare questo elemento? L'eliminazione è definitiva e non può essere annullata",
+            "TITLE": "Attenzione"
+        },
+        "SMARTPHONE_WARNING": {
+            "CANCEL_TEXT": "Indietro",
+            "CONFIRM_TEXT": "Prova",
+            "MESSAGE": "La modifica delle grafiche su Aktivisda non è (per il momento) adattata agli smartphone. Ti invitiamo a creare le tue immagini da un computer.",
+            "TITLE": "Avviso per gli smartphone"
+        },
+        "TIPS": {
+            "DOWNLOAD": "Scarica",
+            "RANDOM_SELECTION": "Seleziona a caso",
+            "REMOVE_IMAGE": "Elimina l'immagine",
+            "RESTORE": "Ripristina",
+            "UPLOAD_PHOTO": "Seleziona una foto dal tuo computer"
+        },
+        "TRANSLATIONS": {
+            "HELP_CTA": "Aiuta con la traduzione",
+            "HELP_MODAL": "Questo modello è pronto per essere tradotto in altre lingue. Puoi contribuire alla sua traduzione <a href='mailto:{email}'>contattando gli amministratori</a>."
+        },
+        "UNSAVED_WORK": {
+            "MESSAGE": "Attenzione, lasciando questa pagina perderai le modifiche in corso.",
+            "QUIT_BUTTON": "Esci",
+            "STAY_BUTTON": "Rimani",
+            "TITLE": "Avviso"
+        },
+        "WARNING": {
+            "EXPERIMENTAL": "Attenzione, questa funzionalità è attualmente in fase di test. Inviaci il tuo feedback a contact@aktivisda.earth",
+            "NEW_FEATURE": "Cosa ne pensi di questa funzionalità? Grazie per il tuo feedback a contact@aktivisda.earth",
+            "UNEXPECTED_ERROR": "Si è verificato un errore imprevisto. Ti preghiamo di contattare gli sviluppatori via email a contact@aktivisda.earth fornendo il maggior numero di informazioni possibile sul bug riscontrato. È possibile allegare a questa email l'esportazione JSON del proprio modello (ottenuta cliccando su 'Salva / Salva')."
+        }
+    },
+    "FONTS": {
+        "ERROR_LOADING_MESSAGE": "Non è stato possibile caricare alcuni caratteri. Riprova più tardi.",
+        "NUMBERS": "0 1 2 3 4 5 6 7 8 9 + - / = %",
+        "PAGE_DESCRIPTION": "Tutti i caratteri disponibili su Aktivisda: guarda come appaiono e scaricali sul tuo computer!",
+        "PANGRAM": "Quel vituperabile xenofobo zelante assaggia whisky ed esclama: alleluja!",
+        "SPECIAL": "! ? : \" , < > @ [ ] ^ ( ) { } ~ $"
+    },
+    "FORMATS": {
+        "LABEL": "Formato | Formati",
+        "PREDEFINED_FORMATS_BUTTON": "Formati predefiniti"
+    },
+    "META": {
+        "DESCRIPTION": "{localdesc} - con Aktivisda.",
+        "SITE_NAME": "{instance} | Aktivisda",
+        "TITLE": "{instance} - Crea le tue immagini"
+    },
+    "NAVBAR": {
+        "ABOUT": "A proposito",
+        "BACKGROUNDS": "Sfondi",
+        "COLORS": "Colori",
+        "FONTS": "Caratteri",
+        "QRCODE": "Codice QR",
+        "SYMBOLS": "Simboli",
+        "TEMPLATES": "Tutti i modelli"
+    },
+    "PALETTES": {
+        "CHOOSE": "Scegli un'altra tavolozza",
+        "LABEL": "Tavolozza | Tavolozze",
+        "SELECT": "Seleziona questa tavolozza",
+        "SHUFFLE": "Rimescola i colori",
+        "TITLE_SIZE": "Tavolozza con {nb} colori"
+    },
+    "QRCODE": {
+        "EXPERIMENTAL": {
+            "MESSAGE": "Questo generatore di codici QR è in fase di sviluppo. I vostri commenti sono benvenuti via mail a <a href='mailto:dev@aktivisda.earth'>dev@aktivisda.earth</a>.<br/><b>Attenzione</b>: i codici QR generati potrebbero essere invalidi. Ricordati di provarli e avvisaci via e-mail in caso di problemi."
+        },
+        "EXPORT": {
+            "CONFIRM_LINK": "Condividi questo link per continuare a modificare questo codice QR",
+            "IMAGE": "Immagine PNG",
+            "LINK": "Condividi",
+            "VECTOR": "Immagine SVG"
+        },
+        "LABEL": "Generatore di codice QR",
+        "PAGE_DESCRIPTION": "Genera il tuo codice QR personalizzato"
+    },
+    "SNACKBARS": {
+        "CONTRIBUTE_LANG": "La tua lingua non è ancora supportata. Sei stato reindirizzato alla lingua \"inglese\". <a href='https://framagit.org/aktivisda/aktivisda/-/wikis/Internationalization' target='_blank'>Clicca qui</a> per aiutarci a tradurre Aktivisda nella tua lingua."
+    },
+    "SVGS": {
+        "CONTRIBUTE": "Vuoi aggiungere un immagine vettoriale a questo elenco? Inviane uno in alta definizione via e-mail a <a href='mailto:{email}'>{email}</a>.",
+        "LABEL": "Simbolo | Simboli",
+        "PAGE_DESCRIPTION": "Tutti gli sfondi di Aktivisda: cambia i colori e scaricali direttamente in PNG o SVG!"
+    },
+    "TEMPLATES": {
+        "CONTRIBUTE": "Vuoi aggiungere un modello a questo elenco? Crea il tuo con Aktivisda, salvalo sul tuo computer e invia il file JSON via e-mail a <a href='mailto:{email}'>{email}</a>.",
+        "LABEL": "Modello | Modelli",
+        "PAGE_DESCRIPTION": "Scegli un modello e comincia a modificarlo!"
+    },
+    "TEXTS": {
+        "DEFAULT_TEXT": "Per saperne di più su aktivisda.earth",
+        "LABEL": "Testo | Testi",
+        "PLACEHOLDER": "Il tuo testo qui.",
+        "SHADOW": "Ombra"
+    },
+    "WELCOME": {
+        "CONTACT": "Per aggiungere le proprie immagini su Aktivisda, invia una mail a:  <a :href='mailto:{email}'>{email}</a>",
+        "DESCRIPTION": "Crea i tuoi poster in pochi minuti con {org}. Utilizza le {nbsymbols} immagini e simboli, i {nbbackgrounds} sfondi e i {nbfonts} caratteri direttamente nel tuo browser!",
+        "FEATURES": {
+            "BACKGROUNDS": "Scopri i {nbbackgrounds} sfondi",
+            "COLORS": "Scopri i {nbcolors} colori e le {nbpalettes} tavolozze",
+            "FONTS": "{nbfonts} Font disponibili!",
+            "QRCODE": "Crea un codice QR con il tuo simbolo!",
+            "SYMBOLS": "Scopri le {nbsymbols} immagini, simboli e foto"
+        },
+        "MOSAIC_CAPTION": "Clicca su un'immagine qui sotto per iniziare,",
+        "SHOW_ALL_TEMPLATES": "Guarda tutti i modelli",
+        "START_NOW": "Clicca su un'immagine per iniziare a modificarla!",
+        "TEMPLATES_SUBTITLE": "Scegli un modello per modificarlo!",
+        "TEMPLATES_TITLE": "Modello | Modelli"
+    }
+}

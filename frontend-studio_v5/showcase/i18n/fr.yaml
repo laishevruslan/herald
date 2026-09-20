@@ -1,0 +1,67 @@
+common:
+  cta:
+    see-demo: "Voir la démo"
+    explore: "Explorer"
+newsletter:
+  title: Se tenir informé·e sur les avancées du projet
+  subtitle: Écrivez votre email pour être tenu·e au courant des avancées de Aktivisda
+  cta: Je supporte
+  email: Votre email
+sections:
+  hero:
+    title: Le logiciel de création graphique pour les activistes
+    subtitle: Créez des visuels aux couleurs de votre organisation, aucune compétence nécessaire. Libre et décentralisé.
+  problems:
+    title: Dites adieu aux visuels incohérents et aux outils complexes
+    subtitle: Les militant·es méritent mieux que des logiciels inadaptés
+  use-cases:
+    title: "Ils et elles utilisent Aktivisda !"
+    subtitle: "Découvrez comment ces groupes décuplent la portée de leurs communications grâce à Aktivisda !"
+  features:
+    title: Que peut-faire Aktivisda?
+    subtitle: Ces fonctionnalités clés sont conçues pour vos organistions militantes.
+    footer: "**Les fonctionnalités sont ajoutées au fur et à mesure selon les besoins de la communauté.** Vous avez besoin d'une fonctionnalité ? Rendez-vous sur  [Framagit](https://framagit.org/aktivisda/aktivisda/-/issues)."
+  key-messages:
+    title: "Aktivisda : Simple, Libre et cohérent"
+    subtitle: C'est pour ces raisons qu'Aktivisda est utilisé par des milliers de militant·es à travers le monde
+  comparison:
+    title: "Aktivisda vs Canva: Le bon choix pour votre organisation"
+    subtitle: Nous ne voulons pas remplacer Canva. Nous développons ce dont vos organisations ont réellement besoin
+    tabular:
+      header:
+        criteria: Critères
+        aktivisda: Aktivisda
+        canva: Canva
+      brand-consistency:
+        criteria: Cohérence de marque
+        aktivisda: ✓ Garantie by design
+        canva: ✗ Aucune garantie
+      data-ownership:
+        criteria: Data ownership
+        aktivisda: ✓ 100% vous
+        canva: ✗ Gérées par Canva
+      cost:
+        criteria: Prix
+        aktivisda: ✓ Gratuit en auto-hébergement
+        canva: 💰 Abonnements payants ou limités
+      ease-of-use:
+        criteria: Facilité d'utilisation
+        aktivisda: ✓ Interface épurée
+        canva: ⚠ Peut être une usine à gaz
+      advanced-customization:
+        criteria: Personnalisation avancée
+        aktivisda: ✓ Code open source modifiable
+        canva: ✗ Non faisable
+footer.description: Le logiciel libre pour la création de visuels militants. Un commun numérique développé depuis 2020.
+footer.project: Projet
+footer.community: Communauté
+footer.issues: Tickets sur Framagit
+footer.support: Soutenir le projet
+footer.newsletter: Infolettre
+footer.license: Licence
+footer.source-code: Code Source
+navbar:
+  features: Fonctionnalités
+  comparison: Comparaison
+  documentation: Documentation
+  blog: Blog

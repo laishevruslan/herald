@@ -1,0 +1,17 @@
+{
+    "version": "1.0.18",
+    "document": {
+        "id": "2992256f",
+        "format": "CANVAS_FORMAT_CUSTOM",
+        "resolution": 96,
+        "width": 1619,
+        "height": 1080,
+        "background": {
+            "type": "internalphoto",
+            "id": "d45c5360",
+            "width": 640,
+            "height": 427
+        }
+    },
+    "components": []
+}

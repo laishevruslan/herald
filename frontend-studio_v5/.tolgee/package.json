@@ -1,0 +1,15 @@
+{
+    "name": "aktivisda-translate",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "pull": "node node_modules/tolgitbot/cli.mjs pull -i tolgitinterface.js",
+        "push": "node node_modules/tolgitbot/cli.mjs push -i tolgitinterface.js"
+    },
+    "dependencies": {
+        "commander": "^12.0.0",
+        "flat": "^6.0.1",
+        "json-stable-stringify": "^1.1.1",
+        "tolgitbot": "git+https://framagit.org/Marc-AntoineA/tolgitbot.git"
+    }
+}

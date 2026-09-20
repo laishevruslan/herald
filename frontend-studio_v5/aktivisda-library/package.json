@@ -1,0 +1,71 @@
+{
+  "name": "aktivisda-library",
+  "version": "1.2.0",
+  "type": "module",
+  "email": "dev@aktivisda.earth",
+  "url": "aktivisda.earth",
+  "repository": {
+    "url": "https://framagit.org/aktivisda/aktivisda",
+    "type": "git",
+    "directory": "aktivisda-library"
+  },
+  "types": "dist/index.d.ts",
+  "main": "./dist/aktivisda-library.js",
+  "module": "./dist/aktivisda-library.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/aktivisda-library.js",
+      "import": "./dist/aktivisda-library.js",
+      "default": "./dist/aktivisda-library.js"
+    },
+    "./dist/index.d.ts": "./dist/index.d.ts",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --p ./tsconfig-build.json && vite build && echo Last build:$(date)",
+    "preview": "vite preview",
+    "test": "vitest --mode headless",
+    "test:ui": "vitest --ui --coverage --mode headless --coverage.enabled=true --coverage.reporter=html",
+    "test:coverage": "vitest run --coverage --mode headless",
+    "test:report": "vitest run --coverage --mode headless --reporter junit --outputFile=report.xml",
+    "serve:assets": "cd tests/assets;http-server . -p 5050 --cors 'Access-Control-Allow-Origin *'",
+    "docs": "typedoc"
+  },
+  "devDependencies": {
+    "@types/lodash.get": "^4.4.9",
+    "@types/lodash.set": "^4.3.9",
+    "@types/pako": "^2.0.1",
+    "@types/pdfmake": "^0.2.7",
+    "@types/qrcode": "^1.5.2",
+    "@vitest/coverage-v8": "^1.2.2",
+    "canvas": "^2.11.2",
+    "jimp": "^0.22.10",
+    "jsdom": "^22.1.0",
+    "looks-same": "^8.2.4",
+    "pdf-img-convert": "^1.2.1",
+    "typedoc": "^0.25.4",
+    "typedoc-plugin-markdown": "^3.17.1",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5",
+    "vite-plugin-dts": "^3.6.0",
+    "vitest": "^1.2.2"
+  },
+  "dependencies": {
+    "@neslinesli93/mozjpeg-wasm": "^2.0.1",
+    "@vitest/ui": "^1.5.0",
+    "ajv": "^8.12.0",
+    "async-mutex": "^0.4.0",
+    "canvg": "^4.0.1",
+    "konva": "^9.2.3",
+    "lodash.get": "^4.4.2",
+    "lodash.set": "^4.3.2",
+    "lz-string": "^1.5.0",
+    "pako": "^2.1.0",
+    "pdfmake": "^0.2.10",
+    "qrcode": "^1.5.3",
+    "uuid": "^9.0.1",
+    "uuidv4": "^6.2.13"
+  }
+}

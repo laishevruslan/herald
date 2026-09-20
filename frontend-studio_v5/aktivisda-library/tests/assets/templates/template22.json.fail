@@ -1,0 +1,402 @@
+{
+    "version": "1.0.18",
+    "document": {
+        "format": "CANVAS_FORMAT_CUSTOM",
+        "id": "03ae593f",
+        "resolution": 96,
+        "width": 800,
+        "height": 450,
+        "background": {
+            "type": "internalsvg",
+            "id": "865b750a",
+            "colors": {
+                "#ffffff": "#ffffff"
+            },
+            "width": 3508,
+            "height": 4961
+        }
+    },
+    "components": [
+        {
+            "id": "af8378c7",
+            "type": "image",
+            "scale": 10.480073790929355,
+            "image": {
+                "type": "internalsvg",
+                "id": "0a15c625",
+                "colors": {
+                    "#267b66": "#267b66",
+                    "#d0e6e6": "#d0e6e6"
+                },
+                "width": 179.7,
+                "height": 70.77
+            },
+            "position": {
+                "x": 0.8860384725957772,
+                "y": 0.17288259616015972
+            },
+            "angle": 0,
+            "zIndex": 1
+        },
+        {
+            "id": "03c960d4",
+            "type": "image",
+            "scale": 26,
+            "image": {
+                "type": "internalsvg",
+                "id": "2495a13c",
+                "colors": {
+                    "#e7501b": "#267b66"
+                },
+                "width": 847.7,
+                "height": 686.9
+            },
+            "position": {
+                "x": 0.6855611881109022,
+                "y": 0.2699602941893069
+            },
+            "angle": 0,
+            "zIndex": 2
+        },
+        {
+            "id": "5ba7ac02",
+            "type": "text",
+            "color": "#257a65",
+            "justification": "center",
+            "size": 18,
+            "font": "Skrapbook",
+            "text": "LES AMAP SE JETTENT À L’EAU POUR",
+            "position": {
+                "x": 0.6425,
+                "y": 0.06
+            },
+            "angle": 0,
+            "zIndex": 3,
+            "background": {
+                "enabled": false,
+                "color": "#94c11a",
+                "padding": 5,
+                "distortion": [
+                    [
+                        -1.2223622957712754,
+                        1.2223622957712756
+                    ],
+                    [
+                        1.205244088379212,
+                        0.9729793431457255
+                    ],
+                    [
+                        1.2223622957712754,
+                        -1.0631923773333292
+                    ],
+                    [
+                        -0.9842517770080947,
+                        -1.2223622957712756
+                    ]
+                ],
+                "angleDistortion": 13
+            }
+        },
+        {
+            "id": "d8addc4f",
+            "type": "text",
+            "color": "#e7501b",
+            "justification": "center",
+            "size": 35,
+            "font": "Asap-Bold",
+            "text": "18  SEPTEMBRE\nAU 18 OCTOBRE",
+            "position": {
+                "x": 0.7987500000000001,
+                "y": 0.6155555555555555
+            },
+            "angle": 0,
+            "zIndex": 4,
+            "background": {
+                "enabled": false,
+                "color": "#e94c16",
+                "padding": 5,
+                "distortion": [
+                    [
+                        -1.2461563966914215,
+                        1.1703614315978428
+                    ],
+                    [
+                        1.1357690304993122,
+                        1.2338224501555688
+                    ],
+                    [
+                        1.2461563966914215,
+                        -0.7823511134284575
+                    ],
+                    [
+                        -1.1335575655324104,
+                        -1.2338224501555688
+                    ]
+                ],
+                "angleDistortion": 19
+            }
+        },
+        {
+            "id": "d08fa6c6",
+            "type": "image",
+            "scale": 10,
+            "image": {
+                "type": "internalsvg",
+                "id": "4ffc4319",
+                "colors": {
+                    "#2d833f": "#2d833f",
+                    "#95c43e": "#95c43e",
+                    "#f6951e": "#f6951e",
+                    "#29b575": "#29b575",
+                    "#3ab44d": "#3ab44d",
+                    "#0f9447": "#0f9447",
+                    "#76c046": "#76c046"
+                },
+                "width": 935.1,
+                "height": 371.9
+            },
+            "position": {
+                "x": 0.15100243813569697,
+                "y": 0.7791097437535902
+            },
+            "angle": 0,
+            "zIndex": 5
+        },
+        {
+            "id": "6b55098d-e7a7-45b4-a2fe-22a063cc66ca",
+            "type": "image",
+            "scale": 13,
+            "image": {
+                "type": "qrcode",
+                "url": "https://extinctionrebellion.uk/",
+                "color": "#000000",
+                "backgroundColor": "#ffffff",
+                "symbol": {
+                    "id": "22b2b2af-6165-4596-ba7b-dc5139b6c476",
+                    "colors": {
+                        "#ffffff": "#ffffff",
+                        "#000000": "#000000"
+                    }
+                }
+            },
+            "position": {
+                "x": 0.8805088672649901,
+                "y": 0.9082355055045006
+            },
+            "angle": 0,
+            "zIndex": 9
+        },
+        {
+            "id": "d9054f43",
+            "type": "text",
+            "color": "#257a65",
+            "justification": "right",
+            "size": 28,
+            "font": "Fontfabric-IntroHeadHBase",
+            "text": "www.amap-en-fetes.org",
+            "position": {
+                "x": 0.8025,
+                "y": 0.8444444444444444
+            },
+            "angle": 0,
+            "zIndex": 6,
+            "background": {
+                "enabled": false,
+                "color": "#e94c16",
+                "padding": 5,
+                "distortion": [
+                    [
+                        -1.2461563966914215,
+                        1.1703614315978428
+                    ],
+                    [
+                        1.1357690304993122,
+                        1.2338224501555688
+                    ],
+                    [
+                        1.2461563966914215,
+                        -0.7823511134284575
+                    ],
+                    [
+                        -1.1335575655324104,
+                        -1.2338224501555688
+                    ]
+                ],
+                "angleDistortion": 19
+            }
+        },
+        {
+            "id": "30e83c89",
+            "type": "image",
+            "scale": 18,
+            "image": {
+                "type": "internalsvg",
+                "id": "5340bc38",
+                "colors": {
+                    "#267a65": "#267a65",
+                    "#c8cb3c": "#c8cb3c",
+                    "#ebf2f0": "#ebf2f0",
+                    "#0d532a": "#0d532a",
+                    "#68a291": "#68a291",
+                    "#a7c9bf": "#a7c9bf"
+                },
+                "width": 166.3,
+                "height": 196.8
+            },
+            "position": {
+                "x": 0.325,
+                "y": 0.729673747727112
+            },
+            "angle": 0,
+            "zIndex": 7
+        },
+        {
+            "id": "48727449",
+            "type": "image",
+            "scale": 19,
+            "image": {
+                "type": "internalsvg",
+                "id": "940b634c",
+                "colors": {
+                    "#0c522a": "#0c522a",
+                    "#277b66": "#277b66",
+                    "#c7ddd7": "#c7ddd7"
+                },
+                "width": 170.9,
+                "height": 198.9
+            },
+            "position": {
+                "x": 0.53125,
+                "y": 0.724923617560533
+            },
+            "angle": 0,
+            "zIndex": 8
+        },
+        {
+            "id": "dbfbcf02",
+            "type": "image",
+            "scale": 18,
+            "image": {
+                "type": "internalsvg",
+                "id": "c95ffb93",
+                "colors": {
+                    "#c9cb3c": "#c9cb3c",
+                    "#2b7c64": "#2b7c64",
+                    "#e54e18": "#e54e18",
+                    "#0d5229": "#0d5229",
+                    "#86b2a1": "#86b2a1",
+                    "#e1ebe5": "#e1ebe5"
+                },
+                "width": 166.9,
+                "height": 198
+            },
+            "position": {
+                "x": 0.1176433586169423,
+                "y": 0.4148514433138703
+            },
+            "angle": 0,
+            "zIndex": 9
+        },
+        {
+            "id": "3d87cf55",
+            "type": "image",
+            "scale": 17,
+            "image": {
+                "type": "internalsvg",
+                "id": "7c107eaa",
+                "colors": {
+                    "#267a65": "#267a65",
+                    "#c8cb3c": "#c8cb3c",
+                    "#0d5329": "#0d5329",
+                    "#82b1a3": "#82b1a3",
+                    "#e54e19": "#e54e19",
+                    "#e2ece9": "#e2ece9"
+                },
+                "width": 170,
+                "height": 198.8
+            },
+            "position": {
+                "x": 0.31375,
+                "y": 0.22885271025231196
+            },
+            "angle": 0,
+            "zIndex": 10
+        },
+        {
+            "id": "cd04f83f",
+            "type": "image",
+            "scale": 10,
+            "image": {
+                "type": "internalsvg",
+                "id": "2552de95",
+                "colors": {
+                    "#257a65": "#257a65"
+                },
+                "width": 91.98,
+                "height": 100.4
+            },
+            "position": {
+                "x": 0.4996551484022849,
+                "y": 0.3225930320368629
+            },
+            "angle": 0,
+            "zIndex": 11
+        },
+        {
+            "id": "e23b13e0",
+            "type": "text",
+            "color": "#257a65",
+            "justification": "left",
+            "size": 26,
+            "font": "Fontfabric-IntroHeadHBase",
+            "text": "TOUS LES ÉVÉNEMENTS SUR ",
+            "position": {
+                "x": 0.8049999999999999,
+                "y": 0.7866666666666666
+            },
+            "angle": 0,
+            "zIndex": 12,
+            "background": {
+                "enabled": false,
+                "color": "#e94c16",
+                "padding": 5,
+                "distortion": [
+                    [
+                        -1.2461563966914215,
+                        1.1703614315978428
+                    ],
+                    [
+                        1.1357690304993122,
+                        1.2338224501555688
+                    ],
+                    [
+                        1.2461563966914215,
+                        -0.7823511134284575
+                    ],
+                    [
+                        -1.1335575655324104,
+                        -1.2338224501555688
+                    ]
+                ],
+                "angleDistortion": 19
+            }
+        },
+        {
+            "id": "3e345e0d",
+            "type": "image",
+            "scale": 6,
+            "image": {
+                "type": "internalphoto",
+                "id": "07619aab",
+                "width": 238,
+                "height": 253
+            },
+            "position": {
+                "x": 0.03999999999999998,
+                "y": 0.7704961367537775
+            },
+            "angle": 0,
+            "zIndex": 13
+        }
+    ]
+}

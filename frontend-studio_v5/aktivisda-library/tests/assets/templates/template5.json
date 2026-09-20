@@ -1,0 +1,17 @@
+{
+    "version": "1.0.18",
+    "document": {
+        "format": "a4",
+        "id": "62de1cae",
+        "resolution": 72,
+        "width": 10,
+        "height": 10,
+        "background": {
+            "type": "urlphoto",
+            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAAAGXRFWHRDb21tZW50AENyZWF0ZWQgd2l0aCBHSU1QV4EOFwAAAYRpQ0NQSUNDIHByb2ZpbGUAACiRfZE9SMNAGIbfpkqlVDvYQcQhQ3WyICriqFUoQoVQK7TqYHLpHzQxJCkujoJrwcGfxaqDi7OuDq6CIPgD4uripOgiJX6XFFrEeHB3D+9978vdd4DQqDLN6hoDNN02M6mkmMuviKFXhBFFH62CzCxjVpLS8B1f9wjw/S7Bs/zr/hy9asFiQEAknmGGaROvE09t2gbnfeIYK8sq8TnxqEkXJH7kuuLxG+eSywLPjJnZzBxxjFgsdbDSwaxsasSTxHFV0ylfyHmsct7irFVrrHVP/sJIQV9e4jrNIaSwgEVIEKGghgqqsJGgXSfFQobOkz7+QdcvkUshVwWMHPPYgAbZ9YP/we/eWsWJcS8pkgS6XxznYxgI7QLNuuN8HztO8wQIPgNXetu/0QCmP0mvt7X4ERDdBi6u25qyB1zuAANPhmzKrhSkKRSLwPsZfVMe6L8Fwqte31rnOH0AstSr9A1wcAiMlCh7zefdPZ19+7em1b8f8YJyc1f3LdwAAAAJcEhZcwAALiMAAC4jAXilP3YAAAAHdElNRQfnCg8OCh1GMSA0AAAAFUlEQVQY02P8//8/A27AxIAXjFRpAKXjAxH/0Dm5AAAAAElFTkSuQmCC",
+            "width": 10,
+            "height": 10
+        }
+    },
+    "components": []
+}

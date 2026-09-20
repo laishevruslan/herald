@@ -1,0 +1,17 @@
+---
+- hosts: all
+  tasks:
+      - name: Deploy showcase build
+        ansible.posix.synchronize:
+            src: '../showcase/public/'
+            dest: '{{ project_home }}/www'
+            # owner: '{{ main_user }}'
+            # group: 'www-data'
+            # remote_src: true
+            # mode: 664
+      # - name: Changown
+      #   ansible.builtin.file:
+      #     path: '{{ project_home }}'
+      #     owner: '{{ main_user }}'
+      #     group: '{{ main_user }}'
+      #     mode: 664

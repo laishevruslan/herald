@@ -1,0 +1,68 @@
+{{ ansible_managed | comment }}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{ url }};
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+
+    access_log /var/log/nginx/{{ url }}-access.log;
+    error_log /var/log/nginx/{{ url }}-error.log;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name {{ url }};
+
+    ssl_certificate /etc/letsencrypt/live/{{ url }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ url }}/privkey.pem;
+
+    #sub_path_only rewrite ^/$ / permanent;
+    location / {
+
+        add_header Cache-Control "no-cache";
+
+        {% if use_password %}
+        auth_basic "Acces restreint";
+        auth_basic_user_file "{{ project_home }}/passwdfile";
+        {% endif %}
+
+        # Path to source
+        alias {{ project_home }}/www/;
+
+        # Default indexes and catch-all
+        index index.html;
+
+        try_files $uri $uri/ $uri.html /index.html;
+        default_type 'text/html';
+
+        location ~ \.(js|css|jpe?j|png|svg|webp) {
+            try_files $uri $uri/ =404;
+        }
+
+        # Prevent useless logs
+        location = /favicon.ico {
+            log_not_found off;
+            access_log off;
+        }
+
+        location = /robots.txt {
+            allow all;
+            log_not_found off;
+            access_log off;
+        }
+
+        # Deny access to hidden files and directories
+        location ~ ^/(.+/|)\.(?!well-known\/) {
+            deny all;
+        }
+    }
+
+    access_log /var/log/nginx/{{ url }}-access.log;
+    error_log /var/log/nginx/{{ url }}-error.log;
+}
+

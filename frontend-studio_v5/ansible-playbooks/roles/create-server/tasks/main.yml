@@ -1,0 +1,117 @@
+- name: 'Create a group with ssh access'
+  group:
+      name: 'ssh-allowed'
+      state: present
+
+- name: Create a user '{{ main_user }}' with ssh
+  ansible.builtin.user:
+      name: '{{ main_user }}'
+      comment: 'User for {{ project_slug }}'
+      groups: www-data, ssh-allowed
+      create_home: true
+      home: '{{ project_home }}'
+      generate_ssh_key: yes
+      ssh_key_file: .ssh/id_rsa
+      password_lock: true
+  register: new_user
+
+- name: Create www dir for content
+  ansible.builtin.file:
+      path: '{{ project_home }}/www'
+      owner: '{{ main_user}}'
+      mode: '755'
+      state: directory
+
+- name: Remove media dir for content
+  ansible.builtin.file:
+      path: '{{ project_home }}/media'
+      state: absent
+
+- name: Get new ssh key public key
+  command: 'cat {{ project_home }}/.ssh/id_rsa.pub'
+  register: command_output
+  when: new_user.changed
+
+- name: Set authorized keys taken
+  ansible.posix.authorized_key:
+      user: '{{ main_user }}'
+      key: '{{ command_output.stdout }}'
+  when: new_user.changed
+
+- name: WARNING ABOUT new ssh key
+  debug:
+      msg: |
+          IMPORTANT REMINDER
+
+          A new ssh key has been generated at .ssh/id_rsa
+          - it should be added to the project deploy keys in Gitlab/Github
+          so that we can clone it.
+  when: new_user.changed
+
+- name: Get new ssh key contents
+  command: 'cat {{ project_home }}/.ssh/id_rsa'
+  register: command_output
+  when: new_user.changed
+
+- name: Print ssh key to console
+  debug:
+      msg: '{{command_output.stdout}}'
+  when: new_user.changed
+
+- name: Install passlib python package, required by community.general.htpasswd
+  ansible.builtin.apt:
+      name: python3-passlib
+  when: use_password == true
+
+- name: Add a user to a password file and ensure permissions are set
+  community.general.htpasswd:
+      path: '{{ project_home }}/passwdfile'
+      name: '{{ username }}'
+      password: '{{ password }}'
+      owner: '{{ main_user }}'
+      group: www-data
+      mode: 0640
+  when: use_password == true
+
+- name: Check that the somefile.conf exists
+  stat:
+    path: /etc/letsencrypt/live/{{ url }}/fullchain.pem
+  register: ssl_exists
+
+- name: Copy http nginx config
+  template:
+    src: nginx.http.conf.j2
+    dest: /etc/nginx/sites-enabled/{{ url }}
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+      - reload nginx
+  when: not ssl_exists.stat.exists
+
+- name: 'Get certificate'
+  command: 'certbot -n --nginx certonly -d {{ url }}'
+  args:
+    creates: '/etc/letsencrypt/live/{{ url }}'
+  ignore_errors: false
+  tags:
+    - nginx
+    - certbot
+  when: not ssl_exists.stat.exists
+
+
+- name: Copy nginx config
+  template:
+      src: nginx.conf.j2
+      dest: /etc/nginx/sites-enabled/{{ url }}
+      owner: root
+      group: root
+      mode: 0644
+  notify:
+      - reload nginx
+
+- name: Ensure everything has the good mod
+  ansible.builtin.file:
+      path: '{{ project_home }}/www'
+      mode: '755'
+      state: directory

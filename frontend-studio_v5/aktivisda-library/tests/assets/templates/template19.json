@@ -1,0 +1,79 @@
+{
+    "version": "1.0.18",
+    "document": {
+        "id": "documentid",
+        "format": "CANVAS_FORMAT_CUSTOM",
+        "resolution": 96,
+        "width": 1619,
+        "height": 1080,
+        "background": {
+            "type": "internalphoto",
+            "id": "d45c5360",
+            "width": 640,
+            "height": 427
+        }
+    },
+    "components": [{
+        "id": "id1",
+        "zIndex": 1,
+        "position": {
+            "x": 0.8,
+            "y": 0.5
+        },
+        "type": "shape",
+        "shape": {
+            "type": "circle",
+            "options": {
+                "radius": 100
+            }
+        },
+        "fill": {
+            "type": "blur",
+            "options": {
+                "size": 0.3
+            }
+        }
+    },
+    {
+        "id": "id2",
+        "zIndex": 2,
+        "position": {
+            "x": 0.8,
+            "y": 0.2
+        },
+        "type": "shape",
+        "shape": {
+            "type": "circle",
+            "options": {
+                "radius": 200
+            }
+        },
+        "fill": {
+            "type": "blur",
+            "options": {
+                "size": 0.3
+            }
+        }
+    },
+    {
+        "id": "id3",
+        "zIndex": 3,
+        "position": {
+            "x": 0.8,
+            "y": 0.8
+        },
+        "type": "shape",
+        "shape": {
+            "type": "circle",
+            "options": {
+                "radius": 100
+            }
+        },
+        "fill": {
+            "type": "blur",
+            "options": {
+                "size": 0.1
+            }
+        }
+    }]
+}

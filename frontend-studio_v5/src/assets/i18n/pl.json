@@ -1,0 +1,206 @@
+{
+    "ABOUT": {
+        "AKTIVISDA": {
+            "FIRST_PARAGRAPH": "Aktivisda to strona internetowa pozwalająca osobom aktywistycznym z całego świata na tworzenie materiałów ilustracyjnych (postów, plakatów, naklejek, itd.) spośród graficznych komponentów (kolorów, czionek, symboli, teł, itd.) stworzonych przez projektantów graficznych. Aktivisda jest kontynuacją <a href='https://extinctionrebellion.fr/vizgen/' target='_blank'>XR Viz Generator</a>. Viz Generator był używany na szeroką skalę przez osoby aktywistyczne z całego świata",
+            "HEADER": "Aktivisda, oprogramowanie do tworzenia i udostępniania twoich aktywistycznych dzieł sztuki na cały świat",
+            "SECOND_PARAGRAPH": "Aktivisda to projekt o otwartym źródle udostępniony na licencji LGPL-3.0.<br/>Kod źródłowy jest dostępny na stronie <a href='https://framagit.org/aktivisda/aktivisda'>Framagit</a>.<br/>. Proszę, skontaktuj się z zespołem <a href='mailto:contact@aktivisda.earth'>contact@aktivisda.earth</a> jeżeli chciałbyś użyć Aktivisda dla swojej własnej organizacji."
+        },
+        "LABEL": "Więcej o portalu Aktivisda",
+        "PAGE_DESCRIPTION": "Dowiedz się więcej o Aktivisda, stronie do tworzenia i rozpowszechniania twojej twóczości w organizacji."
+    },
+    "BACKGROUND_IMAGES": {
+        "CONTRIBUTE": "Chesz dodać swój obraz do tej listy? Możesz go wysłać w wysokiej rozdzielczości na adres <a href='mailto:{email}'>{email}</a>.",
+        "FIT_DOCUMENT_SIZE": "Dopasuj rozmiar dokumentu do rozmiaru tła",
+        "LABEL": "Obrazy tła",
+        "PAGE_DESCRIPTION": "Wszystkie obrazy tła dostępne na Aktivisda. Zmień kolory i pobierz je bezpośrednio w jakości HD jako JPEG lub SVG."
+    },
+    "BUTTONS": {
+        "BRING_FORWARD": "Przybliż",
+        "CANCEL": "Anuluj",
+        "CLOSE": "Zamknij",
+        "COPIED_TO_CLIPBOARD": "Skopiuj do schowka",
+        "COPY": "Kopiuj",
+        "DELETE": "Usuń",
+        "DOWNLOAD": "Pobierz",
+        "DUPLICATE": "Duplikuj",
+        "EDIT": "Edytuj",
+        "NEW": "Nowy",
+        "OPEN_GALLERY": "Otwórz galerię",
+        "PASTE": "Wklej",
+        "REDO": "Powtórz",
+        "SEND_BACKWARD": "Oddal",
+        "START_EDITION": "Rozpocznij edycję",
+        "UNDO": "Cofnij",
+        "UPLOAD": "Wgraj"
+    },
+    "CHANGELOG": {
+        "BUG_REPORT": "Zgłoś błąd",
+        "CHANGELOG": "Zmiany",
+        "CONTRIBUTE": "Współtwórz Aktivisda",
+        "LABEL": "Zmiany",
+        "LAST_UPDATE": "Ostatnia aktualizacja",
+        "PAGE_DESCRIPTION": "Najnowsze funkcje i poprawki błędów w Aktivisda.",
+        "VERSION": "Wersja Aktivisda"
+    },
+    "COLORS": {
+        "BLUE": "NIebieski",
+        "ERRORS": {
+            "NOT_VALID_HTML": "Proszę napisz poprawny kolor w formacie HTML, na przykład \"#0000000\""
+        },
+        "GREEN": "Zielony",
+        "LABEL": "Kolory",
+        "PAGE_DESCRIPTION": "Wszystkie kolory dostępne na Aktivisda, skopiuj je w formacie HTML do twojego ulubionego oprogramowania!",
+        "RED": "Czerwony",
+        "TIPS": {
+            "DARKEN": "Przyciemnij",
+            "DROP_COLOR": "Upuść wybrany kolor",
+            "LIGHTEN": "Rozjaśnij"
+        }
+    },
+    "COMMON": {
+        "ANGLE": "Kąt",
+        "BACKGROUND": "Tło",
+        "BIG": "Duży",
+        "BOTTOM": "Dół",
+        "CENTER": "Środek",
+        "COLOR": "Kolor",
+        "FONT": "Czcionka",
+        "HEIGHT": "Wysokość",
+        "HORIZONTAL_POSITION": "Pozycja w poziomie",
+        "IMAGE": "Obraz",
+        "LEFT": "Lewo",
+        "POSITION": "Pozycja",
+        "RIGHT": "Prawo",
+        "SIZE": "Rozmiar",
+        "SMALL": "Mały",
+        "TEXT": "Tekst",
+        "TOP": "Góra",
+        "VERTICAL_POSITION": "Pozycja w pionowe",
+        "WIDTH": "Szerokość"
+    },
+    "EDIT": {
+        "COMPONENTS": {
+            "DOCUMENT": "Dokument",
+            "SVGS": "Obrazy",
+            "TEXTS": "Tekst"
+        },
+        "EXPORT": {
+            "COMPRESSED_JPEG": "Ten obraz JPEG został skompresowany aby zajmować jak najmniej miejsca.",
+            "CONFIRM_LINK": "Udostępnij ten link aby podzielić się swoją pracą i kontynuować edycję plakatu",
+            "JPG": "Eksportuj do JPEG",
+            "LINK": "Udostępnij link",
+            "MAIN": "Zapisz",
+            "PDF": "Eksportuj do PDF",
+            "PDF_ERROR": "Niektóre funkcje twojego szablonu nie są jeszce dostępne w eksporcie do formatu PDF. Proszę, wybierz format PNG lub JPEG.",
+            "PNG": "Eksportuj do PNG",
+            "SVG": "Eksportuj do SVG",
+            "TEMPLATE": "Eksportuj jako szablon"
+        },
+        "IMPORT": {
+            "CONFIRM": {
+                "CANCEL": "Anuluj",
+                "CONFIRM": "Potwierdź",
+                "MESSAGE": "Czy chcesz zaimportować ten dokument? Stracisz obecne zmiany w swojej pracy.",
+                "TITLE": "Ostrzeżenie"
+            },
+            "TEMPLATE": "Otwórz"
+        },
+        "SMARTPHONE_WARNING": {
+            "CANCEL_TEXT": "Cofnij się",
+            "CONFIRM_TEXT": "Wypróbuj",
+            "MESSAGE": "Aktvisda nie działa jeszcze dobrze na smartfonach. Polecamy używanie naszego portalu poprzez komputer.",
+            "TITLE": "Ostrzeżenie dla smartfonów"
+        },
+        "TIPS": {
+            "DOWNLOAD": "Pobierz",
+            "RANDOM_SELECTION": "Wybierz losowo",
+            "REMOVE_IMAGE": "Usuń obraz",
+            "RESTORE": "Przywróć",
+            "UPLOAD_PHOTO": "Wybierz obraz ze swojego komputera"
+        },
+        "UNSAVED_WORK": {
+            "MESSAGE": "Uważaj, opuszczając tę stronę utracisz swoje niezapisane zmiany.",
+            "QUIT_BUTTON": "Wyjdź",
+            "STAY_BUTTON": "Zostań",
+            "TITLE": "Ostrzeżenie"
+        },
+        "WARNING": {
+            "EXPERIMENTAL": "Ta funkcja jest na etapie testów. Proszę podziel się swoją opinią w wiadomości na maila contact@aktivisda.earth",
+            "NEW_FEATURE": "Co sądzisz o tej funkcji? Twoja opinia jest mile widzana pod adresem contact@aktivisda.earth"
+        }
+    },
+    "FONTS": {
+        "ERROR_LOADING_MESSAGE": "Niektóre czcionki nie mogły zostać załadowane. Proszę spróbuj ponownie później",
+        "NUMBERS": "0 1 2 3 4 5 6 7 8 9 + - / = %",
+        "PAGE_DESCRIPTION": "Wszystkie czcionki dostępne na Aktivisda. Zobacz jak wyglądają i pobierz je na swój komputer.",
+        "PANGRAM": "Mężny bądź, chroń pułk twój i sześć flag.",
+        "SPECIAL": "! ? : \" , < > @ [ ] ^ ( ) { } ~ $"
+    },
+    "FORMATS": {
+        "LABEL": "Format",
+        "PREDEFINED_FORMATS_BUTTON": "Domyślne formaty"
+    },
+    "NAVBAR": {
+        "ABOUT": "O nas",
+        "BACKGROUNDS": "Obrazy tła",
+        "COLORS": "Kolory",
+        "FONTS": "Czcionki",
+        "QRCODE": "Kod QR",
+        "SYMBOLS": "Symbole",
+        "TEMPLATES": "Wszystkie szablony"
+    },
+    "PALETTES": {
+        "CHOOSE": "Wybierz paletę kolorów",
+        "LABEL": "Palety kolorów",
+        "SELECT": "Wybierz paletę",
+        "SHUFFLE": "Wybierz kolory losowo",
+        "TITLE_SIZE": "Paleta z {nb} kolorami"
+    },
+    "QRCODE": {
+        "EXPERIMENTAL": {
+            "MESSAGE": "Generator kodów QR jes w trakcie rozwoju. Twoje przemyślenia są mile widziane pod adresem <a href='mailto:dev@aktivisda.earth'>dev@aktivisda.earth</a>.<br/><b>Ostrzeżenie</b>: wygenerowane kody QR mogą być niepoprawne. Pamiętaj, żeby je wypróbować i powiadomić nas o ewentualnych problemach."
+        },
+        "EXPORT": {
+            "CONFIRM_LINK": "Udostępnij ten link aby kontynuować edytowanie kodu QR",
+            "IMAGE": "Obraz PNG",
+            "LINK": "Udostępnij",
+            "VECTOR": "Obraz SVG"
+        },
+        "LABEL": "Generator kodów QR",
+        "PAGE_DESCRIPTION": "Stwórz swój własny kod QR"
+    },
+    "SNACKBARS": {
+        "CONTRIBUTE_LANG": "Twój język nie jest jeszcze wspierany. Przekierowaliśmy cię do wersji \"angielskiej\". <a href='https://framagit.org/aktivisda/aktivisda/-/wikis/Internationalization' target='_blank'>Kliknij tutaj aby pomóc w tłumaczeniu Aktivisda na twój język</a>."
+    },
+    "SVGS": {
+        "CONTRIBUTE": "Chcesz dodać swój obraz do tej listy? Możesz go wysłać w jakości HD (najlepiej w formacie SVG) na maila <a href='mailto:{email}'>{email}</a>.",
+        "LABEL": "Obrazy wektorowe",
+        "PAGE_DESCRIPTION": "Wszystkie obrazy dostępne na Aktivisda. Zmień kolory i pobierz je bezpośrednio w jakości HD jako JPEG lub SVG."
+    },
+    "TEMPLATES": {
+        "CONTRIBUTE": "Chcesz dodać swój szablon do tej listy? Stwórz własny w Aktivisda, zapisz na swoim komputerze i wyślij plik w formacie JSON na adres <a href='mailto:{email}'>{email}</a>.",
+        "LABEL": "Szablony",
+        "PAGE_DESCRIPTION": "Wybierz jeden szablon i rozpocznij edycję!"
+    },
+    "TEXTS": {
+        "DEFAULT_TEXT": "Więcej o Aktivisda",
+        "LABEL": "Tekst",
+        "PLACEHOLDER": "Miejsce na twój tekst."
+    },
+    "WELCOME": {
+        "CONTACT": "Jeżeli chcesz dodać swoje własne obrazy do Aktivisda, możesz wysłać je na adres:  <a :href='mailto:{email}'>{email}</a>",
+        "DESCRIPTION": "Twórz swoje plakaty w kilka minut z {org}. Użyj {nbsymbols} obrazów/y i symboli/e, {nbbackgrounds} obrazów/y tła i {nbfonts} czcionek bezpośrednio w twojej przeglądarce!",
+        "FEATURES": {
+            "BACKGROUNDS": "Odkryj {nbbackgrounds} obrazów/y tła",
+            "COLORS": "Odkryj {nbcolors} kolorów/y i {nbpalettes} palet",
+            "FONTS": "{nbfonts} do wykorzystania!",
+            "QRCODE": "Stwórz kod QR ze swoim logo!",
+            "SYMBOLS": "Odkryj {nbsymbols} obrazów/y i symboli/e"
+        },
+        "MOSAIC_CAPTION": "Kliknij na poniższy obraz, aby rozpocząć",
+        "SHOW_ALL_TEMPLATES": "Zobacz wszystkie szablony",
+        "START_NOW": "Kliknij na obraz, aby rozpocząć edycję!",
+        "TEMPLATES_SUBTITLE": "Wybierz jeden z szablonów i rozpocznij edycję!",
+        "TEMPLATES_TITLE": "Szablony"
+    }
+}

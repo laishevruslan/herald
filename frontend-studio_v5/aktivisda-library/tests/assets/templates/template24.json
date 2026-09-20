@@ -1,0 +1,164 @@
+{
+    "version": "1.1.0",
+    "document": {
+        "id": "2992256f",
+        "format": "CANVAS_FORMAT_CUSTOM",
+        "resolution": 96,
+        "width": 1619,
+        "height": 1080,
+        "background": {
+            "type": "internalsvg",
+            "id": "f8ea7741-1242-4368-882b-0394696719cd",
+            "colors": {
+                "#ffc11e": "#ffc11e"
+            },
+            "width": 305.4,
+            "height": 375
+        }
+    },
+    "components": [
+        {
+            "id": "fixed",
+            "type": "image",
+            "scale": 10.480073790929355,
+            "image": {
+                "type": "internalsvg",
+                "id": "cf470748",
+                "colors": {
+                    "#000000": "#267b66"
+                },
+                "width": 477.7,
+                "height": 419.7
+            },
+            "position": {
+                "x": 0.8860384725957772,
+                "y": 0.17288259616015972
+            },
+            "rules": {
+                "self": {
+                    "fixed": true
+                }
+            },
+            "angle": 20,
+            "zIndex": 1
+        },
+        {
+            "id": "xfixedyminmax",
+            "type": "image",
+            "scale": 18,
+            "image": {
+                "type": "internalsvg",
+                "id": "b7ce0879",
+                "colors": {
+                    "#000000": "#aa7b66"
+                },
+                "width": 939.5,
+                "height": 419.5
+            },
+            "position": {
+                "x": 0.7,
+                "y": 0.17288259616015972
+            },
+            "rules": {
+                "position": {
+                    "properties": {
+                        "x": {
+                            "fixed": true
+                        },
+                        "y": {
+                            "min": 0.15,
+                            "max": 0.20
+                        }
+                    }
+                }
+            },
+            "angle": 30,
+            "zIndex": 2
+        },
+        {
+            "id": "xminmaxyfixed",
+            "type": "image",
+            "scale": 40,
+            "image": {
+                "type": "internalsvg",
+                "id": "f8ea7741-1242-4368-882b-0394696719cd",
+                "colors": {
+                    "#ffc11e": "#aaaa66"
+                },
+                "width": 305.4,
+                "height": 375
+            },
+            "position": {
+                "x": 0.3,
+                "y": 0.5
+            },
+            "angle": 0,
+            "zIndex": 3,
+            "rules": {
+                "position": {
+                    "properties": {
+                        "x": {
+                            "min": 0.2,
+                            "max": 0.7
+                        },
+                        "y": {
+                            "fixed": true
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "id": "anglefixedscaleminmax",
+            "type": "image",
+            "scale": 30,
+            "image": {
+                "type": "internalphoto",
+                "id": "8a226461",
+                "width": 466,
+                "height": 337
+            },
+            "position": {
+                "x": 0.7,
+                "y": 0.8
+            },
+            "angle": 300,
+            "zIndex": 4,
+            "rules": {
+                "angle": {
+                    "fixed": true
+                },
+                "scale": {
+                    "min": 28,
+                    "max": 40
+                }
+            }
+        },
+        {
+            "id": "angleminmaxscalefixed",
+            "type": "image",
+            "scale": 17,
+            "image": {
+                "type": "internalphoto",
+                "id": "d45c5360",
+                "width": 620,
+                "height": 427
+            },
+            "position": {
+                "x": 0.7,
+                "y": 0.4
+            },
+            "angle": 10,
+            "zIndex": 5,
+            "rules": {
+                "angle": {
+                    "min": 5,
+                    "max": 50
+                },
+                "scale": {
+                    "fixed": true
+                }
+            }
+        }
+    ]
+}

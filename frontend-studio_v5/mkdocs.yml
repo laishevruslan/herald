@@ -1,0 +1,133 @@
+site_name: Documentation Aktivisda
+site_url: "https://docs.aktivisda.earth/"
+repo_name: "aktivisda/aktivisda"
+repo_url: "https://framagit.org/aktivisda/aktivisda"
+extra:
+  social:
+    - icon: "fontawesome/brands/square-gitlab"
+      link: "https://framagit.org/aktivisda/aktivisda"
+    - icon: "fontawesome/solid/heart"
+      link: "https://opencollective.com/aktivisda"
+    - icon: "fontawesome/solid/newspaper"
+      link: "https://app.keila.io/forms/nfrm_PR8kkXVE"
+
+  generator: false
+copyright: "GPL v3"
+markdown_extensions:
+  - attr_list
+  - codehilite
+  - footnotes
+  - md_in_html
+  - meta
+  - def_list
+  - pymdownx.emoji:
+      emoji_generator: "twemoji"
+      options:
+        custom_icons: []
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.blocks.admonition
+  - pymdownx.smartsymbols
+  - pymdownx.tasklist
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: "!!fence_code_format"
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+plugins:
+  - search:
+      lang: ["fr"]
+
+  - git-revision-date-localized
+  - minify:
+      minify_html: true
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+
+nav:
+  - Le projet: index.md
+  - Changelog: changelog.md
+  - Déployer:
+    - Prérequis: deploy/prerequisites.md
+    - Quickstart: deploy/quickstart.md
+    - Checklist: deploy/checklist.md
+  - Administrer:
+      - Réceptionner une instance: admin/prendre-en-main.md
+      - Utiliser backtivisda: admin/backtivisda.md
+      - Modifier les couleurs: admin/colors.md
+      - Modifier les polices de caractères: admin/fonts.md
+      - Configurer votre instance: admin/settings.md
+      - Modifier les tags: admin/tags.md
+      - Modifier les modèles: admin/templates.md
+      - Modifier les images: admin/images.md
+      - Internationaliser votre instance: admin/i18n.md
+      - Questions fréquentes: admin/questions.md
+  - Développer:
+      - Backend: dev/backend.md
+      - Tests: dev/tests.md
+  - Bibliothèque: aktivisda-library/README.md
+
+theme:
+  name: "material"
+  language: "fr"
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.tabs.link
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+    - toc.integrate
+  custom_dir: "docs/theme/"
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Passer au mode sombre
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Passer au mode clair
+  icon:
+    repo: fontawesome/brands/square-gitlab
+
+extra_css: [assets/stylesheets/extra.css]
+
+extra_javascript:
+  - assets/javascripts/extra.js

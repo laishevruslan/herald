@@ -1,0 +1,147 @@
+{
+    "ABOUT": {
+        "AKTIVISDA": {
+            "HEADER": "Aktivista, um website para criares e espalhares as tuas obras de arte pelo mundo fora "
+        },
+        "LABEL": "Mais sobre aktivista",
+        "PAGE_DESCRIPTION": "Sabe mais sobre Aktivista, o website que cria e espalha obras de arte pelas organizações "
+    },
+    "BUTTONS": {
+        "BRING_FORWARD": "Trazer para a frente",
+        "CANCEL": "Fechar",
+        "CLOSE": "Fechar",
+        "COPIED_TO_CLIPBOARD": "Copiado para a clipboard",
+        "COPY": "Copiar",
+        "DELETE": "Apagar",
+        "DUPLICATE": "Duplicar",
+        "EDIT": "Editar",
+        "NEW": "Novo",
+        "OPEN_GALLERY": "Abrir a galeria",
+        "PASTE": "Colar",
+        "REDO": "Refazer",
+        "SEND_BACKWARD": "Mandar para trás",
+        "UNDO": "Desfazer"
+    },
+    "CHANGELOG": {
+        "BUG_REPORT": "Reportar um bug",
+        "CHANGELOG": "mudar registo (?)",
+        "CONTRIBUTE": "Contribuir",
+        "LAST_UPDATE": "último update",
+        "PAGE_DESCRIPTION": "Últimas funcionalidades e bugs consertados em Aktivista",
+        "VERSION": "Versão aktivista"
+    },
+    "COLORS": {
+        "BLUE": "azul",
+        "ERRORS": {
+            "NOT_VALID_HTML": "Por favor escreve um HTML válido, por exemplo \"#0000000\""
+        },
+        "GREEN": "verde",
+        "LABEL": "cor | cores",
+        "RED": "vermelho",
+        "TIPS": {
+            "DARKEN": "escurecer",
+            "DROP_COLOR": "escolhe uma cor para o ecrã",
+            "LIGHTEN": "enclarecer"
+        }
+    },
+    "COMMON": {
+        "ANGLE": "ângulo",
+        "BIG": "grande",
+        "BOTTOM": "Baixo",
+        "CENTER": "Centro",
+        "FONT": "Fonte",
+        "HEIGHT": "altura",
+        "HORIZONTAL_POSITION": "Posicionamento horizontal",
+        "LEFT": "Esquerda",
+        "POSITION": "Posição",
+        "RIGHT": "Direita",
+        "SIZE": "tamanho",
+        "SMALL": "pequeno",
+        "TOP": "Cima",
+        "VERTICAL_POSITION": "Posicionamento vertical ",
+        "WIDTH": "largura"
+    },
+    "EDIT": {
+        "COMPONENTS": {
+            "DOCUMENT": "Documento",
+            "SVGS": "Imagem | Imagens",
+            "TEXTS": "Texto | Textos "
+        },
+        "EXPORT": {
+            "JPG": "Exportar para JPEG",
+            "MAIN": "Guardar ",
+            "PDF": "Exportar para PDF",
+            "PDF_ERROR": "Algumas particulariades do teu template não estão disponíveis para exportar em pdf. Por favor considera exportar em png ou jpg.",
+            "PNG": "Exportar para PNG",
+            "SVG": "Export to SVG"
+        },
+        "IMPORT": {
+            "CONFIRM": {
+                "CANCEL": "Cancelar",
+                "CONFIRM": "Confirmar",
+                "MESSAGE": "Queres importar este domunto ? Perderás o teu trabalho ",
+                "TITLE": "Aviso"
+            },
+            "TEMPLATE": "Abrir"
+        },
+        "SMARTPHONE_WARNING": {
+            "CANCEL_TEXT": "Voltar para trás",
+            "CONFIRM_TEXT": "Tentar ",
+            "MESSAGE": "Aktivista ainda não funciona bem em smartphones. Por favor usa no computador. ",
+            "TITLE": "Informação para smartphone"
+        },
+        "TIPS": {
+            "DOWNLOAD": "Download",
+            "RANDOM_SELECTION": "Escolhe aleatoriamente",
+            "RESTORE": "Restaurar"
+        },
+        "UNSAVED_WORK": {
+            "MESSAGE": "Tem cuidado, vais perder o teu trabalho ao saíres desta página. ",
+            "QUIT_BUTTON": "Sair",
+            "STAY_BUTTON": "Ficar",
+            "TITLE": "Aviso!"
+        },
+        "WARNING": {
+            "EXPERIMENTAL": "Atenção, esta funcionalidade ainda está a ser testada. Obrigada pelo teu feedback em contact@aktivisda.earth "
+        }
+    },
+    "FONTS": {
+        "ERROR_LOADING_MESSAGE": "Algumas fontes não conseguiram ser carregadas. Por favor tenta mais tarde. ",
+        "PAGE_DESCRIPTION": "Todas as fontes disponíveis em aktivista. Vê como se parecem e faz download para o teu computador!"
+    },
+    "FORMATS": {
+        "LABEL": "Formato | formatos ",
+        "PREDEFINED_FORMATS_BUTTON": "Formatos predefinidos"
+    },
+    "NAVBAR": {
+        "ABOUT": "Sobre",
+        "BACKGROUNDS": "Imagens de fundo ",
+        "COLORS": "Cores",
+        "FONTS": "Fontes",
+        "QRCODE": "Código QR",
+        "SYMBOLS": "Símbolos",
+        "TEMPLATES": "Todos os templates"
+    },
+    "PALETTES": {
+        "CHOOSE": "Escolhe outra palete de cores ",
+        "LABEL": "Palete de cor | Palete de cores",
+        "SELECT": "Escolhe esta palete",
+        "SHUFFLE": "cores aleatórias"
+    },
+    "QRCODE": {
+        "EXPORT": {
+            "IMAGE": "Imagem (png)",
+            "LINK": "Partilhar",
+            "VECTOR": "Imagem (svg)"
+        },
+        "LABEL": "Gerador de código QR",
+        "PAGE_DESCRIPTION": "Gera o teu código QR customizado"
+    },
+    "TEXTS": {
+        "PLACEHOLDER": "O teu texto aqui. "
+    },
+    "WELCOME": {
+        "TEMPLATES_SUBTITLE": "Escolhe um template e começa a editar!",
+        "TEMPLATES_TITLE": "Templates "
+    }
+}

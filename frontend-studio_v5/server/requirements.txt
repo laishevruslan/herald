@@ -1,0 +1,6 @@
+flask-cors
+flask-jwt-auth
+python-dotenv
+uWSGI
+pyjwt
+bs4

@@ -1,0 +1,20 @@
+{
+    "name": {
+        "fr": "<%= AKTIVISDA_ID %> - Aktivisda"
+    },
+    "id": "<%= AKTIVISDA_ID_SLUG %>",
+    "description": {
+        "fr": "Créez vos visuels pour <%= AKTIVISDA_ID %>. en quelques minutes!"
+    },
+    "availableLangs": ["fr", "en"],
+    "matomo": {
+        "enabled": false,
+        "host": "https://stats.aktivisda.earth/matomo",
+        "siteId": 11
+    },
+    "email": "<%= AKTIVISDA_ID_SLUG %>.@aktivisda.earth",
+    "url": "https://<%= AKTIVISDA_ID_SLUG %>..aktivisda.earth/",
+    "about": {
+        "fr": "About <%= AKTIVISDA_ID %>.(<b>HTML allowed</b>)."
+    }
+}
