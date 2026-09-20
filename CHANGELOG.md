@@ -16,6 +16,16 @@ what to enter for the reviewer.
 
 ### Added
 
+**New Deck gallery, phase 3.4 — cards and chips, not a radio list.** Slides → New deck is a
+two-column grid of CSS thumbnails (same hex as the factory, including 1-bit black/white on e-paper
+plates) with filter chips All / Room / Facilities / Agenda / Blank. Blank stays a card. Arrow keys
+move the selection and do not wrap; Enter and double-click continue to the calendar picker — they
+do not skip it. Sample words on the thumbs stay English (`AVAILABLE`, `Sprint Planning`,
+`Gelber Sack`, `Today`); wall chrome is still the dashboard language at create time, including
+Russian «Переговорные» / «Хозяйство» / «Повестка». Help has a Data Sources guide (en/ru).
+`GET /api/slide-decks/factories` now returns `chip` and `thumbnail`. See
+[`docs/slide-data-binding.md`](docs/slide-data-binding.md).
+
 **Daily office agenda, phase 3.3 — eight timed rows and an honest empty evening.** `agenda-lcd-16x9`
 joins the door signs and waste reminders in `server/lib/slide-templates.js`. The header is a live
 long date, a clock, and a stored headline from the dashboard language at create time — including
@@ -23,7 +33,7 @@ Russian «Сегодня». The body is structured `event_0..7` rows, not one `a
 lobby can keep a time column. After the last meeting the resolver's `remaining_today_empty` fills
 `empty_hint` (Russian «Сегодня встреч больше нет») and hides when the afternoon still has events.
 No busy/free bar: this is not a room sign. Empty rows do not restack (no flex kind). Invalid slug
-falls back to `lobby`. The card gallery is still 3.4. See
+falls back to `lobby`. The card gallery shipped in 3.4. See
 [`docs/slide-data-binding.md`](docs/slide-data-binding.md).
 
 **Waste collection reminders, phase 3.2 — next bag, date, then the following pickup.** Two factory
@@ -35,7 +45,7 @@ language at create time — including Russian «Следующий вывоз» 
 word (`Gelber Sack`, `Restmüll`), not a yellow fill. `Then:` binds `event_1_title` with
 `hide_if_empty`. The German stub `buildWasteCalendarSlide` is gone. The wizard hints to set an
 Include filter; it does not write one. Invalid slug falls back to `abfall`. The card gallery is
-still 3.4. See [`docs/slide-data-binding.md`](docs/slide-data-binding.md).
+3.4. See [`docs/slide-data-binding.md`](docs/slide-data-binding.md).
 
 **Meeting-room door signs, phase 3.1 — pick a calendar, get a slide.** The New Deck wizard
 binds a data source instead of guessing the first slug or `testraum`. Two factory templates live
@@ -45,7 +55,7 @@ in `server/lib/slide-templates.js` so the dashboard and the tests cannot drift:
 create time — including Russian «Следующая» / «Сейчас» — and then sit in `fields` as ordinary
 editable text. A workspace with no calendars is sent to Data Sources; designers can still create
 with placeholder slug `room`. `POST /api/slide-decks` accepts `{ factory, data_source_slug, title,
-chrome }`. Waste/agenda factories and the card gallery are still 3.2–3.4. See
+chrome }`. The card gallery shipped in 3.4. See
 [`docs/slide-data-binding.md`](docs/slide-data-binding.md) and
 [`docs/data-sources-templates-plan.md`](docs/data-sources-templates-plan.md).
 

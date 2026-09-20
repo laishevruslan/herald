@@ -1,6 +1,6 @@
 # Data Sources, фаза 3 — готовые шаблоны слайдов
 
-**Статус: 3.0–3.3 СДЕЛАНО (контракт + рендерер + T1 + T2 + T3 повестка 16:9 + выбор источника). 3.4–3.5 не начаты.**
+**Статус: 3.0–3.4 СДЕЛАНО (контракт + рендерер + T1 + T2 + T3 + галерея карточек). 3.5 не начат.**
 **Родительский документ:** [`DATA_SOURCES_MASTERPLAN.md`](../DATA_SOURCES_MASTERPLAN.md), фаза 3.
 **Намерение ветки:** остаёмся на текущем контракте слайда (`template` + `fields` + `{{ds:slug.field}}`). Новый runtime плеера не вводим.
 
@@ -28,11 +28,11 @@
 | Подстановка `{{ds:slug.field}}` | `server/lib/slide-render.js`, `interpolateDataSources` | **Готово.** Отсутствующие ключи становятся `''`. `white-space:pre-wrap` уже сохраняет переносы в `agenda_text`. **3.0:** `hide_if_empty`, `show_when`, `bind_status`, `color_when`. |
 | `__status` на resolveData | `getWorkspaceDataMapSync` / `attachSourceStatus` | **Готово (3.0).** `last_status` ряда не кладётся в iCal-payload. |
 | `remaining_today_empty` / `remaining_today_count` | `ical-resolver.js` | **Готово (3.0).** |
-| Модалка New Deck | `frontend/js/views/slides.js`, `openNewDeckModal` | **3.3:** два шага. Шаг 1 — radio (blank / T1 / T2 / `agenda-lcd-16x9`). Шаг 2 — имя + `<select>` источника (D5) + Include-hint для T2 + заголовок доски для T3. Карточки галереи — 3.4. |
+| Модалка New Deck | `frontend/js/views/slides.js`, `openNewDeckModal` | **3.4:** два шага. Шаг 1 — сетка карточек + CSS-миниатюры + чипы `All / Room / Facilities / Agenda / Blank`. Шаг 2 — имя + `<select>` источника (D5) + Include-hint для T2 + заголовок доски для T3. Radio нет. |
 | `buildRoomSignSlide(slug)` | — | **Удалено.** Заменено `server/lib/slide-templates.js`. |
 | `buildWasteCalendarSlide(slug)` | — | **Удалено (3.2).** Немецкий stub заменён фабриками `waste-epaper-5x3` / `waste-lcd-16x9`. |
 | Daily Office Agenda | `server/lib/slide-templates.js` `agenda-lcd-16x9` | **Готово (3.3).** Строки `event_0..7`, не `agenda_text`. `remaining_today_empty` с `hide_if_empty`. |
-| Тесты фабрик | `server/test/slide-templates.test.js` | **3.3:** T1 + T2 + T3 aspect/CANON/midday vs empty evening. |
+| Тесты фабрик | `server/test/slide-templates.test.js`, `server/test/slide-gallery.test.js` | **3.4:** T1–T3 aspect/CANON/midday vs empty evening; CSS-thumbs 1-bit; чипы/стрелки/Blank; wizard без `deckTpl`. |
 | Embedded-профиль 800×480 | `server/lib/embedded-profiles.js`, `seeed-reterminal-sticky` | **Готово.** Floyd–Steinberg, 1-bit. Шаблоны, где смысл несёт цвет, здесь его теряют. |
 
 Пример PiP `Examples/PIP-Room-Status-Calendar/` — **параллельный продукт**: сам опрашивает ICS и шлёт web-overlay через POST. Фаза 3 его не заменяет; в справке новых операторов стоит направлять на Slides + Data Sources.
@@ -412,7 +412,9 @@ E-paper повестка: **не в фазе 3**. 800×480 не удержит 8
 
 Живого ICS-превью в мастере нет (у формы источника уже есть Test Connection). Миниатюры с примерными словами (`AVAILABLE`, `Sprint Planning`) достаточно.
 
-Ключи i18n: оставить `slides.tpl_*` и добавить по ключу на id фабрики (`slides.factory.room-epaper-5x3.title` и т.д.). Существующие `tpl_room_*` могут стать алиасом e-paper карточки комнаты, чтобы не выкинуть переводы, которые уже есть в `de/en/nl/ru/es/fr/pt`.
+Ключи i18n: оставить `slides.tpl_*` и добавить по ключу на id фабрики (`slides.factory.room_epaper_5x3.title` и т.д. — подчёркивания, сканер `t()` не принимает дефисы). Существующие `tpl_room_*` могут стать алиасом e-paper карточки комнаты, чтобы не выкинуть переводы, которые уже есть в `de/en/nl/ru/es/fr/pt`.
+
+**3.4:** шаг 1 — карточки из `GET /api/slide-decks/factories` (CSS `thumbnail.parts`), чипы, стрелки. Radio сняты. Enter с галереи открывает шаг 2, не создаёт дек.
 
 ---
 
@@ -432,7 +434,7 @@ E-paper повестка: **не в фазе 3**. 800×480 не удержит 8
 
 Предпочтительнее: **`frontend/js/lib/slide-templates.js` как ESM, тестируется `server/test/slide-templates.test.js` через маленький лоадер** (`node --experimental-vm-modules` уже так гоняет часть тестов) **или** JSON-снимок в `server/test/fixtures/slide-templates/`.
 
-Самый простой путь в вкусе этого репозитория: **положить фабрику в `server/lib/slide-templates.js` (CJS)**. `GET /api/slide-decks/factories` возвращает `{ id, version, aspect, title_key, desc_key, thumbnail: { background, bars } }`. `POST /api/slide-decks` уже принимает `doc`. Добавить `POST /api/slide-decks { factory: 'room-epaper-5x3', data_source_slug, title, name }`, который собирает doc **на сервере**. Тогда модалка не разъедется с тестами, и PAT сможет выпускать табличку.
+Самый простой путь в вкусе этого репозитория: **положить фабрику в `server/lib/slide-templates.js` (CJS)**. `GET /api/slide-decks/factories` возвращает `{ id, version, aspect, chip, title_key, desc_key, thumbnail: { background, aspect, parts } }`. `POST /api/slide-decks` уже принимает `doc`. Добавить `POST /api/slide-decks { factory: 'room-epaper-5x3', data_source_slug, title, name }`, который собирает doc **на сервере**. Тогда модалка не разъедется с тестами, и PAT сможет выпускать табличку.
 
 Это лучший шов:
 - тесты вызывают `buildFactory('room-epaper-5x3', { slug: 'room', title: 'Berlin' })` и проверяют слоты + привязки;
@@ -513,7 +515,7 @@ color_when: { busy, free, stale } // each via existing color()
 **Не сделано в 3.0 (зафиксировано, не регрессия чеклиста выше):**
 
 - Холст редактора (`frontend/js/views/slides.js` `styleFor` / stage) **не** применяет `hide_if_empty` / `show_when` / `color_when`. На стене (widget render, embedded, preview API) — да. Инспектор не показывает эти четыре ключа: их ставит JSON / будущая фабрика.
-- Фабрики T1–T3, выбор источника в мастере, галерея карточек — 3.1–3.4.
+- Фабрики T1–T3, выбор источника в мастере, галерея карточек — закрыто в 3.1–3.4.
 - `GET /api/slide-templates/:id/doc` — 3.5.
 - Ключи i18n `slides.factory.*` из §10 не добавлены: нет UI, который их читает.
 - Остальные локали SPA кроме en/ru не получили `data_sources.remaining_today_*_label` (fallback на en, как принято тестом покрытия).
@@ -521,7 +523,7 @@ color_when: { busy, free, stale } // each via existing color()
 ### 3.1 — T1 e-paper + T1 LCD + привязка в мастере ✅
 
 1. [x] `server/lib/slide-templates.js` с `room-epaper-5x3` и `room-lcd-16x9`.
-2. [x] Вынести шаг 2 модалки (выбор источника + заголовок). Галерея ещё radio (3.4) — T1 без выбора источника не выпускали (D5).
+2. [x] Вынести шаг 2 модалки (выбор источника + заголовок). Галерея карточек закрыта в 3.4 — T1 без выбора источника не выпускали (D5).
 3. [x] i18n-строки префиксов хрома; `de/en/nl/ru` (плюс en как источник правды). Ключи с подчёркиваниями (`slides.factory.room_epaper_5x3.title`), не с дефисами id фабрики: сканер `t()` принимает только `[a-z0-9_]+`.
 4. [x] Fixture ICS → `renderSlideHtml` → BELEGT/FREI и `Nächstes Meeting:` не появляется, когда next пуст (`slide-templates.test.js`).
 5. [x] Embedded-тест: HTML фабрики рендерится без throw; Sticky `parseProfile` 800×480 1-bit; `postprocess` packed length 48000. Chromium-прогон слайда в пиксели не делали (puppeteer optional; PNG-фикстура по плану опциональна).
@@ -538,12 +540,12 @@ color_when: { busy, free, stale } // each via existing color()
 
 **Не сделано в 3.1:**
 
-- Карточки галереи, чипы, клавиатура — 3.4.
+- Карточки галереи, чипы, клавиатура — закрыто в 3.4.
 - T3 agenda фабрика (T2 закрыт в 3.2).
 - Инспектор флагов и превью `hide_if_empty` на холсте редактора (как в 3.0).
 - `GET /api/slide-templates/:id/doc` как отдельный роутер — 3.5. PAT уже может `GET /api/slide-decks/factories/:id/doc`.
 - Живой прогон HTML→Chromium→1-bit PNG фикстуры; только packed length профиля.
-- `slides.factory.chip.*` — нет UI (галерея 3.4).
+- `slides.factory.chip.*` — закрыто в 3.4.
 - Остальные SPA-локали кроме en/de/nl/ru для factory-ключей (fallback на en).
 
 ### 3.2 — T2 оба соотношения ✅
@@ -564,13 +566,13 @@ color_when: { busy, free, stale } // each via existing color()
 
 **Не сделано в 3.2 (зафиксировано, не регрессия чеклиста выше):**
 
-- Карточки галереи / чипы `All / Room / Facilities / Agenda` — 3.4. Radio остаются.
+- Карточки галереи / чипы `All / Room / Facilities / Agenda` — закрыто в 3.4. Radio сняты.
 - Автоподстановка Include-фильтра при создании источника — подсказка только текстом, как в §5.2.
 - Цвет/иконка фракции из названия события — оператор кладёт PNG в `fraction_icon` сам.
 - Инспектор флагов, `GET /api/slide-templates`, Chromium→PNG фикстура — как в 3.1 (T3 закрыт в 3.3).
 - Ключи `slides.tpl_waste_*` оставлены (алиас, мастер их больше не читает).
 - Остальные SPA-локали кроме en/de/nl/ru для новых T2-ключей (fallback на en).
-- in-app Help (`help.js`) — вместе с галереей (3.4).
+- in-app Help (`help.js`) — закрыто в 3.4 (en/ru; остальные локали падают в en).
 
 ### 3.3 — T3 повестка 16:9 ✅
 
@@ -591,23 +593,46 @@ color_when: { busy, free, stale } // each via existing color()
 
 - Stacked-flex / схлопывание пустых `box.y` после обеда — 3.5. Пустые строки остаются пустыми; шапка и `empty_hint` несут смысл.
 - E-paper повестка — не в фазе 3 (800×480 не держит 8 строк).
-- Карточки галереи / чипы / клавиатура — 3.4.
-- Инспектор флагов, `GET /api/slide-templates`, Chromium→PNG, Help (`help.js`) — как раньше.
+- Карточки галереи / чипы / клавиатура — закрыто в 3.4.
+- Инспектор флагов, `GET /api/slide-templates`, Chromium→PNG — как раньше. Help (`help.js`) закрыт в 3.4.
 - Светлый близнец agenda, недельная сетка, доска на 4 комнаты — 3.5.
 - Остальные SPA-локали кроме en/de/nl/ru для T3-ключей (fallback на en).
 
-### 3.4 — UX галереи
+### 3.4 — UX галереи ✅
 
-1. Сетка карточек + CSS-миниатюры + чипы.
-2. Blank оставить карточкой.
-3. Клавиатура: стрелки двигают выбранную карточку; Enter создаёт.
+1. [x] Сетка карточек + CSS-миниатюры + чипы `All / Room / Facilities / Agenda / Blank`.
+2. [x] Blank оставить карточкой.
+3. [x] Клавиатура: стрелки двигают выбранную карточку; Enter на галерее переходит к шагу 2 (D5, источник обязателен). Enter в поле имени создаёт дек.
+
+**Готово, когда:** оператор видит узнаваемые миниатюры (AVAILABLE / Sprint Planning / Gelber Sack / Today), фильтрует чипами, не встречает radio, и не может создать T1–T3 минуя выбор календаря.
+
+**Сделано в 3.4:**
+
+- Каталог `GET /api/slide-decks/factories` отдаёт `{ id, version, aspect, chip, title_key, desc_key, thumbnail }`. Геометрия миниатюр в `server/lib/slide-templates.js` (те же hex, что фабрика; e-paper thumbs только `#000`/`#FFF`). PNG нет.
+- Сетка и стрелки — `frontend/js/lib/slide-gallery.js` (ESM). `slides.js` только рисует модалку. Двухколоночная сетка; стрелки не зацикливаются.
+- Если GET factories падает или пуст, клиент показывает Blank + FALLBACK_CARDS (id + i18n, пустые пластины без sample-слов), чтобы T1–T3 не исчезли.
+- Enter на карточке = Continue, не Create: шаг 2 с `<select>` источника остаётся (D5). Двойной клик по карточке — тоже шаг 2.
+- Чипы `slides.factory.chip.*` в en/de/nl/ru. Sample-слова на thumbs остаются английскими (это картинка, не SPA-хром).
+- Help → статья «Calendar signs from Data Sources» (en/ru) + shortcuts стрелок/Enter.
+
+**Не сделано в 3.4 (зафиксировано, не регрессия чеклиста выше):**
+
+- Enter на шаге 1 **не** создаёт дек в обход шага 2. Пункт плана «Enter создаёт» прочитан против §6 / D5: создание — после выбора источника.
+- Живого ICS-превью в мастере нет (как в §6).
+- getting-started чеклист не удлиняли (см. §11).
+- Инспектор флагов и превью `hide_if_empty` на холсте редактора — как в 3.0.
+- `GET /api/slide-templates` — 3.5. PAT по-прежнему `GET /api/slide-decks/factories` и `/:id/doc`.
+- Chromium→PNG фикстура миниатюр не делалась: thumbs — CSS.
+- Статья Help не зеркалится в de/nl/es/… (как остальные `help.guide.*`; fallback на en). Чипы и shortcuts галереи есть в de/nl.
+- Остальные SPA-локали кроме en/de/nl/ru для `slides.factory.chip.*` (fallback на en).
+- Светлый близнец, недельная сетка, доска на 4 комнаты, портрет 9:16 — 3.5.
 
 ### 3.5 — Stretch, только после того как 3.1 побывал на живом Sticky
 
 - `rooms-board-16x9` (2×2, четыре slug, мастер с 4 select);
 - `room-lcd-9x16`;
-- опционально `GET /api/slide-templates/:id/doc`, чтобы PAT-пользователи могли выпускать таблички;
-- статья в справке + пункт чеклиста getting-started «Подключить календарь → выбрать табличку комнаты»;
+- опционально `GET /api/slide-templates/:id/doc`, чтобы PAT-пользователи могли выпускать таблички (сейчас `GET /api/slide-decks/factories/:id/doc`);
+- пункт чеклиста getting-started «Подключить календарь → выбрать табличку комнаты» — только если в чеклисте уже есть слайды;
 - пометить PiP-пример устаревшим в его README со ссылкой сюда.
 
 ---
@@ -626,6 +651,8 @@ color_when: { busy, free, stale } // each via existing color()
 | привязки фабрики используют только ключи CANON | опечатка `next_event_title` (имя из masterplan, **не** основной ключ payload — алиасы включают `next_event_time`, но алиас названия — `next_event_summary` / `next_title`. **`next_event_title` нет.** Пример в masterplan врёт. Фабрики должны использовать `next_title`.) |
 | подстановка фабричного слайда против SAMPLE_ICS в 09:30Z и 11:00Z | busy vs free end-to-end |
 | существующий `slide-render.test.js` «правка поля оставляет макет byte-identical» остаётся зелёным | D2 не должен пересобирать template при смене данных — `color_when` это template, перекрытие цвета происходит на рендере из данных и HTML **меняется**. Это правильно и **нельзя** путать с инвариантом правки поля. Отдельный тест: смена `fields.room_name` не меняет число элементов/боксы. Смена `is_busy` в resolveData **меняет** цвет полосы. |
+| CSS-миниатюра e-paper фабрики только `#000`/`#FFF`; sample `AVAILABLE` / `Gelber Sack` | thumbs не PNG и не разъезжаются с 1-bit |
+| `filterGallery` / `moveGalleryIndex` / wizard без `name=deckTpl` | регресс radio-списка |
 
 Обновить пример в `DATA_SOURCES_MASTERPLAN.md` §4 на `next_title` / `next_time`, чтобы RFC перестал врать.
 
@@ -648,9 +675,11 @@ slides.factory.then_prefix          "Then"
 slides.factory.include_hint
 slides.factory.board_title_label
 slides.factory.agenda_headline      "Today"
+slides.factory.chip.all
 slides.factory.chip.room
 slides.factory.chip.facilities
 slides.factory.chip.agenda
+slides.factory.chip.blank
 slides.factory.room_epaper_5x3.title
 slides.factory.room_epaper_5x3.desc
 … по title+desc на каждый id фабрики (подчёркивания, не дефисы id)
@@ -691,10 +720,17 @@ slides.factory.room_epaper_5x3.desc
 - `CHANGELOG.md` Unreleased; README Daily office agenda;
 - `docs/embedded-renderer.md` — agenda 16:9 не на 1-bit Sticky.
 
-**Остаётся на 3.4+:**
+**Сделано в 3.4:**
+
+- in-app Help (`help.js`) — статья Data Sources + shortcuts галереи; en/ru (de/nl — только shortcuts и чипы).
+- `CHANGELOG.md` Unreleased; README Features (gallery chips);
+- [`docs/slide-data-binding.md`](slide-data-binding.md) §5d — галерея;
+- `docs/openapi.yaml` — `GET /slide-decks/factories` отдаёт `chip` + `thumbnail`.
+
+**Остаётся на 3.5+:**
 
 - getting-started: только если в чеклисте уже есть пункт про слайды; не удлинять онбординг ради нишевого hardware-пресета;
-- статья в in-app Help (`help.js`) про Data Sources — вместе с галереей (3.4), не раньше.
+- статья Help в de/nl и прочих SPA-локалях (сейчас fallback на en, как у остальных `help.guide.*`).
 
 ---
 

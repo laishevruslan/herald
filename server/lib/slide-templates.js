@@ -15,6 +15,20 @@ const SLUG_RE = /^[a-zA-Z0-9_-]{1,64}$/;
 const MAX_TITLE = 120;
 const MAX_PREFIX = 80;
 const MAX_NOTE = 160;
+const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const MAX_SAMPLE = 40;
+
+function bar(x, y, w, h, c) {
+  return Object.freeze({ t: 'bar', x, y, w, h, c });
+}
+
+function txt(x, y, v, c, s, weight) {
+  return Object.freeze({ t: 'txt', x, y, v, c, s, w: weight || 400 });
+}
+
+function thumb(background, aspect, parts) {
+  return Object.freeze({ background, aspect, parts: Object.freeze(parts) });
+}
 
 const META = Object.freeze([
   {
@@ -24,6 +38,12 @@ const META = Object.freeze([
     chip: 'room',
     title_key: 'slides.factory.room_epaper_5x3.title',
     desc_key: 'slides.factory.room_epaper_5x3.desc',
+    thumbnail: thumb('#FFFFFF', '5:3', [
+      txt(6, 10, 'Berlin', '#000000', 8, 700),
+      bar(6, 22, 88, 3, '#000000'),
+      txt(6, 32, 'AVAILABLE', '#000000', 13, 700),
+      txt(6, 68, 'Sprint Planning', '#000000', 8, 400),
+    ]),
   },
   {
     id: 'room-lcd-16x9',
@@ -32,6 +52,12 @@ const META = Object.freeze([
     chip: 'room',
     title_key: 'slides.factory.room_lcd_16x9.title',
     desc_key: 'slides.factory.room_lcd_16x9.desc',
+    thumbnail: thumb('#0B1220', '16:9', [
+      bar(0, 0, 8, 100, '#16A34A'),
+      txt(12, 12, 'Berlin', '#F8FAFC', 9, 700),
+      txt(12, 38, 'AVAILABLE', '#F8FAFC', 12, 700),
+      txt(12, 68, 'Sprint Planning', '#94A3B8', 8, 400),
+    ]),
   },
   {
     id: 'waste-epaper-5x3',
@@ -40,6 +66,11 @@ const META = Object.freeze([
     chip: 'facilities',
     title_key: 'slides.factory.waste_epaper_5x3.title',
     desc_key: 'slides.factory.waste_epaper_5x3.desc',
+    thumbnail: thumb('#FFFFFF', '5:3', [
+      txt(6, 12, 'Next collection', '#000000', 8, 700),
+      txt(6, 36, 'Gelber Sack', '#000000', 13, 700),
+      txt(6, 70, 'Sat 5 Sep', '#000000', 8, 400),
+    ]),
   },
   {
     id: 'waste-lcd-16x9',
@@ -48,6 +79,11 @@ const META = Object.freeze([
     chip: 'facilities',
     title_key: 'slides.factory.waste_lcd_16x9.title',
     desc_key: 'slides.factory.waste_lcd_16x9.desc',
+    thumbnail: thumb('#0B1220', '16:9', [
+      txt(6, 12, 'Next collection', '#F8FAFC', 8, 700),
+      txt(6, 36, 'Gelber Sack', '#F8FAFC', 12, 700),
+      txt(6, 68, 'Sat 5 Sep', '#94A3B8', 8, 400),
+    ]),
   },
   {
     id: 'agenda-lcd-16x9',
@@ -56,8 +92,48 @@ const META = Object.freeze([
     chip: 'agenda',
     title_key: 'slides.factory.agenda_lcd_16x9.title',
     desc_key: 'slides.factory.agenda_lcd_16x9.desc',
+    thumbnail: thumb('#0B1220', '16:9', [
+      txt(6, 10, 'Today', '#F8FAFC', 9, 700),
+      txt(6, 40, '09:00  Sprint Planning', '#F8FAFC', 8, 400),
+      txt(6, 64, '14:00  Budget Review', '#94A3B8', 8, 400),
+    ]),
   },
 ]);
+
+function clampPct(n, dflt) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return dflt;
+  return Math.max(0, Math.min(100, v));
+}
+
+function sanitizeThumbnail(raw, aspect) {
+  const src = (raw && typeof raw === 'object') ? raw : {};
+  const bg = HEX_RE.test(src.background) ? src.background : '#1B2029';
+  const asp = src.aspect === '5:3' || src.aspect === '16:9' ? src.aspect : (aspect || '16:9');
+  const partsIn = Array.isArray(src.parts) ? src.parts.slice(0, 12) : [];
+  const parts = [];
+  for (const p of partsIn) {
+    if (!p || typeof p !== 'object') continue;
+    if (p.t === 'bar' && HEX_RE.test(p.c)) {
+      parts.push({
+        t: 'bar',
+        x: clampPct(p.x, 0), y: clampPct(p.y, 0),
+        w: clampPct(p.w, 8), h: clampPct(p.h, 8),
+        c: p.c,
+      });
+    } else if (p.t === 'txt' && HEX_RE.test(p.c)) {
+      parts.push({
+        t: 'txt',
+        x: clampPct(p.x, 4), y: clampPct(p.y, 4),
+        v: String(p.v == null ? '' : p.v).slice(0, MAX_SAMPLE),
+        c: p.c,
+        s: Math.max(6, Math.min(18, Number(p.s) || 8)),
+        w: Number(p.w) === 700 ? 700 : 400,
+      });
+    }
+  }
+  return { background: bg, aspect: asp, parts };
+}
 
 function isWasteFactory(id) {
   return String(id || '').startsWith('waste-');
@@ -406,7 +482,15 @@ const BUILDERS = {
 };
 
 function listFactories() {
-  return META.map((m) => ({ ...m }));
+  return META.map((m) => ({
+    id: m.id,
+    version: m.version,
+    aspect: m.aspect,
+    chip: m.chip,
+    title_key: m.title_key,
+    desc_key: m.desc_key,
+    thumbnail: sanitizeThumbnail(m.thumbnail, m.aspect),
+  }));
 }
 
 /**

@@ -3,6 +3,9 @@ import { esc } from '../utils.js';
 import { showToast } from '../components/toast.js';
 import { t } from '../i18n.js';
 import { renderApprovalBar } from '../components/approval-actions.js';
+import {
+  GALLERY_CHIPS, galleryItems, filterGallery, moveGalleryIndex, thumbHtml,
+} from '../lib/slide-gallery.js';
 
 /*
  * The slide deck editor.
@@ -247,16 +250,6 @@ function newSlide(name = 'Untitled slide') {
   };
 }
 
-function tplRadio(value, title, desc, checked) {
-  return `<label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;background:var(--bg-input)">
-    <input type="radio" name="deckTpl" value="${esc(value)}"${checked ? ' checked' : ''} style="margin-top:3px">
-    <div>
-      <strong style="display:block;font-size:13px">${esc(title)}</strong>
-      <span style="font-size:11px;color:var(--text-muted)">${esc(desc)}</span>
-    </div>
-  </label>`;
-}
-
 function wastePreferredSlug(list) {
   const hit = list.find((x) => /waste|abfall|müll|muell|trash|recycling/i.test(`${x.slug || ''} ${x.name || ''}`));
   return (hit && hit.slug) || (list[0] && list[0].slug) || 'abfall';
@@ -265,6 +258,10 @@ function wastePreferredSlug(list) {
 async function openNewDeckModal(container) {
   try { DATA_SOURCES_LIST = await api.getDataSources(); } catch (_) { DATA_SOURCES_LIST = DATA_SOURCES_LIST || []; }
   const sources = Array.isArray(DATA_SOURCES_LIST) ? DATA_SOURCES_LIST : [];
+  let factories = [];
+  try { factories = await api.get('/slide-decks/factories'); } catch (_) { factories = []; }
+  if (!Array.isArray(factories)) factories = [];
+  const catalog = galleryItems(factories);
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -272,13 +269,17 @@ async function openNewDeckModal(container) {
 
   let step = 1;
   let chosenTpl = 'blank';
+  let galleryChip = 'all';
 
   const modal = document.createElement('div');
   modal.className = 'modal';
-  modal.style.cssText = 'background:var(--bg-card,#1e293b);border-radius:12px;border:1px solid var(--border,#334155);width:100%;max-width:560px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)';
+  modal.style.cssText = 'background:var(--bg-card,#1e293b);border-radius:12px;border:1px solid var(--border,#334155);width:100%;max-width:720px;max-height:min(90vh,840px);overflow:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)';
   overlay.appendChild(modal);
 
-  const close = () => overlay.remove();
+  const close = () => {
+    document.removeEventListener('keydown', onKey);
+    overlay.remove();
+  };
 
   const isRoomFactory = (tpl) => tpl === 'room-epaper-5x3' || tpl === 'room-lcd-16x9';
   const isWasteFactory = (tpl) => tpl === 'waste-epaper-5x3' || tpl === 'waste-lcd-16x9';
@@ -286,6 +287,57 @@ async function openNewDeckModal(container) {
   const isEpaperFactory = (tpl) => tpl === 'room-epaper-5x3' || tpl === 'waste-epaper-5x3';
   const isLcdFactory = (tpl) => tpl === 'room-lcd-16x9' || tpl === 'waste-lcd-16x9' || tpl === 'agenda-lcd-16x9';
   const needsSource = (tpl) => isRoomFactory(tpl) || isWasteFactory(tpl) || isAgendaFactory(tpl);
+
+  const visibleCards = () => filterGallery(catalog, galleryChip);
+
+  function goStep2() {
+    const visible = visibleCards();
+    if (!visible.some((c) => c.id === chosenTpl)) {
+      chosenTpl = (visible[0] && visible[0].id) || 'blank';
+    }
+    step = 2;
+    paint();
+  }
+
+  function onKey(ev) {
+    if (ev.key === 'Escape') {
+      ev.preventDefault();
+      close();
+      return;
+    }
+    const tag = ev.target && ev.target.tagName;
+    const typing = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
+    if (step === 1) {
+      if (ev.key === 'Enter') {
+        const cardId = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-gallery-id');
+        if (cardId) {
+          ev.preventDefault();
+          chosenTpl = cardId;
+          goStep2();
+          return;
+        }
+        if (tag !== 'BUTTON') {
+          ev.preventDefault();
+          goStep2();
+        }
+        return;
+      }
+      if (!typing && (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight' || ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) {
+        ev.preventDefault();
+        const visible = visibleCards();
+        const ids = visible.map((c) => c.id);
+        const cur = Math.max(0, ids.indexOf(chosenTpl));
+        const next = moveGalleryIndex(ids.length, cur, ev.key);
+        chosenTpl = ids[next] || chosenTpl;
+        paint();
+      }
+      return;
+    }
+    if (ev.key === 'Enter' && ev.target && ev.target.id === 'deckNameInput') {
+      ev.preventDefault();
+      createDeck(false);
+    }
+  }
 
   function paint() {
     const header = `<div class="modal-header" style="padding:18px 24px;border-bottom:1px solid var(--border,#334155);display:flex;justify-content:space-between;align-items:center">
@@ -296,17 +348,35 @@ async function openNewDeckModal(container) {
     let body;
     let footer;
     if (step === 1) {
-      body = `<div class="modal-body" style="padding:24px;display:flex;flex-direction:column;gap:16px">
+      const visible = visibleCards();
+      if (!visible.some((c) => c.id === chosenTpl)) {
+        chosenTpl = (visible[0] && visible[0].id) || 'blank';
+      }
+      const chips = GALLERY_CHIPS.map((chip) => {
+        const on = galleryChip === chip;
+        const label = chip === 'room' ? t('slides.factory.chip.room')
+          : chip === 'facilities' ? t('slides.factory.chip.facilities')
+            : chip === 'agenda' ? t('slides.factory.chip.agenda')
+              : chip === 'blank' ? t('slides.factory.chip.blank')
+                : t('slides.factory.chip.all');
+        return `<button type="button" data-gallery-chip="${esc(chip)}" aria-pressed="${on ? 'true' : 'false'}" class="btn ${on ? 'btn-primary' : 'btn-secondary'}" style="padding:4px 10px;font-size:12px">${esc(label)}</button>`;
+      }).join('');
+      const cards = visible.map((card) => {
+        const selected = card.id === chosenTpl;
+        const title = t(card.title_key);
+        const desc = t(card.desc_key);
+        return `<button type="button" data-gallery-id="${esc(card.id)}" aria-pressed="${selected ? 'true' : 'false'}"
+          style="display:flex;flex-direction:column;gap:8px;text-align:left;padding:10px;border-radius:8px;border:2px solid ${selected ? 'var(--accent,#38bdf8)' : 'var(--border,#334155)'};background:var(--bg-input);cursor:pointer;color:inherit">
+          ${thumbHtml(card.thumbnail, esc)}
+          <strong style="display:block;font-size:13px;line-height:1.3">${esc(title)}</strong>
+          <span style="font-size:11px;color:var(--text-muted);line-height:1.35">${esc(desc)}</span>
+        </button>`;
+      }).join('');
+      body = `<div class="modal-body" style="padding:24px;display:flex;flex-direction:column;gap:14px">
         <div>
-          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(t('slides.choose_template'))}</label>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            ${tplRadio('blank', t('slides.tpl_blank_title'), t('slides.tpl_blank_desc'), chosenTpl === 'blank')}
-            ${tplRadio('room-epaper-5x3', t('slides.factory.room_epaper_5x3.title'), t('slides.factory.room_epaper_5x3.desc'), chosenTpl === 'room-epaper-5x3')}
-            ${tplRadio('room-lcd-16x9', t('slides.factory.room_lcd_16x9.title'), t('slides.factory.room_lcd_16x9.desc'), chosenTpl === 'room-lcd-16x9')}
-            ${tplRadio('waste-epaper-5x3', t('slides.factory.waste_epaper_5x3.title'), t('slides.factory.waste_epaper_5x3.desc'), chosenTpl === 'waste-epaper-5x3')}
-            ${tplRadio('waste-lcd-16x9', t('slides.factory.waste_lcd_16x9.title'), t('slides.factory.waste_lcd_16x9.desc'), chosenTpl === 'waste-lcd-16x9')}
-            ${tplRadio('agenda-lcd-16x9', t('slides.factory.agenda_lcd_16x9.title'), t('slides.factory.agenda_lcd_16x9.desc'), chosenTpl === 'agenda-lcd-16x9')}
-          </div>
+          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:8px">${esc(t('slides.choose_template'))}</label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${chips}</div>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${cards}</div>
         </div>
       </div>`;
       footer = `<div class="modal-footer" style="padding:16px 24px;border-top:1px solid var(--border,#334155);display:flex;justify-content:flex-end;gap:10px">
@@ -375,15 +445,29 @@ async function openNewDeckModal(container) {
     const cancel = modal.querySelector('#cancelNewDeckBtn');
     if (cancel) cancel.onclick = close;
 
-    const cont = modal.querySelector('#continueNewDeckBtn');
-    if (cont) {
-      cont.onclick = () => {
-        const picked = modal.querySelector('input[name="deckTpl"]:checked');
-        chosenTpl = (picked && picked.value) || 'blank';
-        step = 2;
+    modal.querySelectorAll('[data-gallery-chip]').forEach((btn) => {
+      btn.onclick = () => {
+        galleryChip = btn.getAttribute('data-gallery-chip') || 'all';
+        const visible = filterGallery(catalog, galleryChip);
+        if (!visible.some((c) => c.id === chosenTpl)) {
+          chosenTpl = (visible[0] && visible[0].id) || 'blank';
+        }
         paint();
       };
-    }
+    });
+    modal.querySelectorAll('[data-gallery-id]').forEach((btn) => {
+      btn.onclick = () => {
+        chosenTpl = btn.getAttribute('data-gallery-id') || 'blank';
+        paint();
+      };
+      btn.ondblclick = () => {
+        chosenTpl = btn.getAttribute('data-gallery-id') || 'blank';
+        goStep2();
+      };
+    });
+
+    const cont = modal.querySelector('#continueNewDeckBtn');
+    if (cont) cont.onclick = () => goStep2();
     const back = modal.querySelector('#backNewDeckBtn');
     if (back) {
       back.onclick = () => { step = 1; paint(); };
@@ -396,6 +480,11 @@ async function openNewDeckModal(container) {
     if (submit) submit.onclick = () => createDeck(false);
     const placeholder = modal.querySelector('#placeholderNewDeckBtn');
     if (placeholder) placeholder.onclick = () => createDeck(true);
+
+    if (step === 1) {
+      const selected = modal.querySelector(`[data-gallery-id="${chosenTpl}"]`);
+      if (selected) selected.focus();
+    }
   }
 
   async function createDeck(usePlaceholder) {
@@ -452,6 +541,7 @@ async function openNewDeckModal(container) {
   }
 
   document.body.appendChild(overlay);
+  document.addEventListener('keydown', onKey);
   paint();
 }
 

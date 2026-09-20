@@ -239,6 +239,11 @@ export default {
     'slides.factory.agenda_headline': 'Vandaag',
     'slides.factory.agenda_lcd_16x9.title': '📋 Dagelijkse kantooragenda (TV 16:9)',
     'slides.factory.agenda_lcd_16x9.desc': 'Lobby- of theekeuken-bord: live datum, acht rijen met tijd, en “vandaag geen vergaderingen meer” als de agenda vanavond leeg is. Zelfde layout op 4K.',
+    'slides.factory.chip.all': 'Alles',
+    'slides.factory.chip.room': 'Vergaderzalen',
+    'slides.factory.chip.facilities': 'Facilitair',
+    'slides.factory.chip.agenda': 'Agenda',
+    'slides.factory.chip.blank': 'Leeg',
     'slides.insert_var': '⚡ Variabele invoegen...',
     'slides.tab_content': 'Inhoud',
     'slides.tab_style': 'Stijl',
@@ -2471,6 +2476,8 @@ export default {
     'help.shortcuts': 'Sneltoetsen',
     'help.shortcut_esc': 'Webspeler resetten (op spelerpagina)',
     'help.shortcut_f': 'Volledig scherm in-/uitschakelen (webspeler)',
+    'help.shortcut_gallery_arrows': 'Geselecteerde New Deck-kaart verplaatsen',
+    'help.shortcut_gallery_enter': 'Doorgaan vanuit de galerij, of aanmaken als de presentatienaam focus heeft',
 
     // Add Display modal (in index.html)
     'add_display.title': 'Scherm toevoegen',

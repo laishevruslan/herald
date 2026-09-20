@@ -60,6 +60,35 @@ test('listFactories names T1, T2 and T3 ids', () => {
   ]);
 });
 
+test('listFactories thumbnails are CSS parts, 1-bit on e-paper, with sample words', () => {
+  const list = listFactories();
+  for (const f of list) {
+    assert.equal(typeof f.chip, 'string');
+    assert.ok(['room', 'facilities', 'agenda'].includes(f.chip), `${f.id} chip`);
+    assert.ok(f.thumbnail && Array.isArray(f.thumbnail.parts));
+    assert.match(f.thumbnail.background, /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+    assert.equal(f.thumbnail.aspect, f.aspect);
+    assert.ok(f.thumbnail.parts.length <= 12);
+    for (const p of f.thumbnail.parts) {
+      assert.ok(p.t === 'bar' || p.t === 'txt', `${f.id} part type`);
+      assert.match(p.c, /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+      if (p.t === 'txt') assert.ok(String(p.v).length <= 40);
+    }
+  }
+  for (const f of list.filter((x) => x.aspect === '5:3')) {
+    const colors = [f.thumbnail.background, ...f.thumbnail.parts.map((p) => p.c)];
+    for (const c of colors) {
+      assert.ok(EPAPER_HEX.has(c.toLowerCase()), `${f.id} gallery thumb leaked chroma: ${c}`);
+    }
+  }
+  const dump = (id) => JSON.stringify(list.find((f) => f.id === id).thumbnail);
+  assert.match(dump('room-epaper-5x3'), /AVAILABLE/);
+  assert.match(dump('room-epaper-5x3'), /Sprint Planning/);
+  assert.match(dump('room-lcd-16x9'), /#16A34A/i);
+  assert.match(dump('waste-epaper-5x3'), /Gelber Sack/);
+  assert.match(dump('agenda-lcd-16x9'), /Today/);
+});
+
 test('unknown factory is null', () => {
   assert.equal(buildFactory('room-epaper-9x16'), null);
   assert.equal(buildDeck('rooms-board-16x9', { slug: 'lobby' }), null);

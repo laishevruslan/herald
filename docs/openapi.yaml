@@ -1584,6 +1584,22 @@ paths:
         '201': { description: 'The created deck, with any publish warnings.' }
         '400': { description: 'A deck needs a name, or the factory id is unknown.' }
 
+  /slide-decks/factories:
+    get:
+      tags: [slides]
+      summary: List factory templates for the New Deck gallery
+      description: |
+        Catalogue for the wizard: id, aspect, filter chip, i18n keys, and a CSS thumbnail
+        (`background`, `aspect`, `parts` of `bar`/`txt`). Geometry lives on the server so a 1-bit
+        e-paper colour cannot drift from the factory that POST creates. Blank is a client-side card,
+        not a factory. Not `GET /api/slide-templates` (that route is not in this phase).
+      x-required-scope: read
+      responses:
+        '200':
+          description: |
+            Array of `{ id, version, aspect, chip, title_key, desc_key, thumbnail }`.
+            `chip` is `room`, `facilities`, or `agenda`. Thumbnail hex is `#RGB` / `#RRGGBB` only.
+
   /slide-decks/{id}:
     get:
       tags: [slides]

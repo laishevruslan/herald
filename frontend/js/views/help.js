@@ -11,6 +11,7 @@ export function render(container) {
     { icon: '&#128421;', title: 'help.guide.remote.title', steps: ['help.guide.remote.s1', 'help.guide.remote.s2', 'help.guide.remote.s3', 'help.guide.remote.s4', 'help.guide.remote.s5'] },
     { icon: '&#128433;', title: 'help.guide.kiosk.title', steps: ['help.guide.kiosk.s1', 'help.guide.kiosk.s2', 'help.guide.kiosk.s3', 'help.guide.kiosk.s4', 'help.guide.kiosk.s5'] },
     { icon: '&#127916;', title: 'help.guide.walls.title', steps: ['help.guide.walls.s1', 'help.guide.walls.s2', 'help.guide.walls.s3', 'help.guide.walls.s4', 'help.guide.walls.s5', 'help.guide.walls.s6'] },
+    { icon: '&#128198;', title: 'help.guide.datasources.title', steps: ['help.guide.datasources.s1', 'help.guide.datasources.s2', 'help.guide.datasources.s3', 'help.guide.datasources.s4', 'help.guide.datasources.s5', 'help.guide.datasources.s6'] },
   ];
   const faqs = [
     'devices', 'trial', 'portrait', 'offline', 'selfhost', 'update',
@@ -48,6 +49,8 @@ export function render(container) {
       <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:13px">
         <kbd style="background:var(--bg-input);padding:2px 8px;border-radius:4px;font-family:monospace">Esc</kbd> <span style="color:var(--text-secondary)">${t('help.shortcut_esc')}</span>
         <kbd style="background:var(--bg-input);padding:2px 8px;border-radius:4px;font-family:monospace">F</kbd> <span style="color:var(--text-secondary)">${t('help.shortcut_f')}</span>
+        <kbd style="background:var(--bg-input);padding:2px 8px;border-radius:4px;font-family:monospace">← ↑ → ↓</kbd> <span style="color:var(--text-secondary)">${t('help.shortcut_gallery_arrows')}</span>
+        <kbd style="background:var(--bg-input);padding:2px 8px;border-radius:4px;font-family:monospace">Enter</kbd> <span style="color:var(--text-secondary)">${t('help.shortcut_gallery_enter')}</span>
       </div>
     </div>
   `;

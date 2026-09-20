@@ -151,6 +151,11 @@ export default {
   'slides.factory.agenda_headline': 'Heute',
   'slides.factory.agenda_lcd_16x9.title': '📋 Tägliche Büro-Agenda (TV 16:9)',
   'slides.factory.agenda_lcd_16x9.desc': 'Lobby- oder Teeküchen-Tafel: lebendes Datum, acht Zeilen mit Uhrzeit und „Heute keine Termine mehr“, wenn der Kalender am Abend leer ist. Dasselbe Layout auf 4K.',
+  'slides.factory.chip.all': 'Alle',
+  'slides.factory.chip.room': 'Räume',
+  'slides.factory.chip.facilities': 'Facility',
+  'slides.factory.chip.agenda': 'Agenda',
+  'slides.factory.chip.blank': 'Leer',
   'slides.insert_var': '⚡ Variable einfügen...',
   'slides.tab_content': 'Inhalt',
   'slides.tab_style': 'Stil',
@@ -1337,6 +1342,8 @@ export default {
   'help.shortcuts': 'Tastaturkürzel',
   'help.shortcut_esc': 'Web-Player zurücksetzen (auf Player-Seite)',
   'help.shortcut_f': 'Vollbild umschalten (Web-Player)',
+  'help.shortcut_gallery_arrows': 'Ausgewählte New-Deck-Karte bewegen',
+  'help.shortcut_gallery_enter': 'Weiter aus der Galerie, oder Erstellen wenn der Deckname fokussiert ist',
 
   // Add Display modal
   'add_display.title': 'Bildschirm hinzufügen',

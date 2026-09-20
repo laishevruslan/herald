@@ -180,6 +180,14 @@ Same module as T1. Invalid slug falls back to `abfall`.
 
 Header: live `date` (long) + `clock` + a stored headline (dashboard language `Today` / «Сегодня» at create). Body is eight timed rows (`row_n_time` / `row_n_title` → `event_n_*`), **not** `agenda_text`. `empty_hint` binds `remaining_today_empty` with `hide_if_empty`. No busy/free bar: this is not a room sign. Empty afternoon rows stay empty (no stack kind). Invalid slug falls back to `lobby`. E-paper agenda is not in phase 3.
 
+## 5d. New Deck gallery (3.4)
+
+Slides → New deck is a two-column card grid, not a radio list. Each factory from `GET /api/slide-decks/factories` carries `chip` (`room` / `facilities` / `agenda`) and a CSS `thumbnail` (`background`, `aspect`, `parts` of `bar`/`txt`). The dashboard paints those parts as absolutely positioned spans — no PNG, so a 1-bit colour cannot rot in a screenshot. Sample words on the thumbs stay English (`AVAILABLE`, `Sprint Planning`, `Gelber Sack`, `Today`); chrome the operator will see on the wall still comes from `t()` at create time.
+
+Filter chips: All / Room / Facilities / Agenda / Blank. Blank remains a card. Arrow keys move the selection in a 2-column grid and do not wrap. Enter (and double-click) continue to the bind step — they do not skip the calendar picker. If the catalogue request fails, the wizard still lists T1–T3 from client fallback ids (empty plates, no sample words).
+
+Implementation: [`server/lib/slide-templates.js`](../server/lib/slide-templates.js) `listFactories`, [`frontend/js/lib/slide-gallery.js`](../frontend/js/lib/slide-gallery.js).
+
 ---
 
 ## 6. Tests that hold the contract
@@ -189,4 +197,5 @@ Header: live `date` (long) + `clock` + a stored headline (dashboard language `To
 | `server/test/data-sources-ical.test.js` | `CANON` keys on busy and free fixtures; `remaining_today_empty` empty vs phrase; `remaining_today_count`; Gelber Sack Abholung → waste factory HTML |
 | `server/test/slide-render.test.js` | `hide_if_empty` hides `Next:  ()` but not a title without a time; `show_when` busy/free inversion; `color_when` + `__status: error` is stale hex, not free green; missing slug is stale; invalid `bind_status` is dropped |
 | `server/test/slide-deck*.test.js` | bind flags survive save; defaults are not written |
-| `server/test/slide-templates.test.js` | T1 aspect/motion/1-bit palette; CANON-only binds; ICS → BELEGT/FREI; empty Next chrome; LCD bar stale ≠ green; Sticky pack 48000 bytes; T2 1-bit / no traffic lights; LCD week list + empty image; Then: hides without event_1; T3 16:9 eight rows / no `agenda_text`; midday list vs empty-evening phrase |
+| `server/test/slide-templates.test.js` | T1 aspect/motion/1-bit palette; CANON-only binds; ICS → BELEGT/FREI; empty Next chrome; LCD bar stale ≠ green; Sticky pack 48000 bytes; T2 1-bit / no traffic lights; LCD week list + empty image; Then: hides without event_1; T3 16:9 eight rows / no `agenda_text`; midday list vs empty-evening phrase; gallery thumbs 1-bit + sample words |
+| `server/test/slide-gallery.test.js` | Blank first; chip filters; 2-col arrows do not wrap; CSS thumbs drop non-hex / escape text; wizard has no `deckTpl` radio |
