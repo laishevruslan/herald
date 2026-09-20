@@ -533,7 +533,9 @@ PoC — **не** Polotno и не CE.SDK. Остров `frontend-studio/` на з
 
 Не брать npm `@scenify/sdk` / GPL-форки / DesignCombo без LICENSE.
 
-Критерий «надо»: после фаз 1–5 продажи всё ещё отваливаются формулировкой «нет Canva-like editor inside». Сначала измерить, не строить. Spike 6.0 (лицензия + PNG 1920×1080) убивается — остаёмся на Canva ingest.
+Критерий «надо»: после фаз 1–5 продажи всё ещё отваливаются формулировкой «нет Canva-like editor inside». Сначала измерить, не строить.
+
+**Spike 6.0 (2026-09-20): DONE / зелёный.** `frontend-studio/` + `docker/studio-spike` (отдельный контейнер): license-check без GPL, PNG 1920×1080 с OFL Inter, бандл ~206 KB gzip. Решение: **npm pin**, не subtree. Ingest / Library UI — 6.1. Если 6.1 Support завалит Fabric — kill-switch кнопки, Canva ingest остаётся.
 
 ### Фаза 7 — не делать
 

@@ -1,9 +1,9 @@
 # Studio на Scenify / Design Editor (фаза 6)
 
-**Статус: ПЛАН. Кода нет.**
+**Статус: ПЛАН + spike 6.0 выполнен (2026-09-20).** Код острова: `frontend-studio/`. Ingest / Library — ещё нет (6.1).
 **Родитель:** [`enterprise-slide-editor-plan.md`](enterprise-slide-editor-plan.md), фаза 6.
 **Соседи:** [`canva-editor-embed-plan.md`](canva-editor-embed-plan.md) (тот же шов «внешний холст → байты в библиотеку»), инварианты I1, I3, I4, I5.
-**Съёмка:** сентябрь 2026.
+**Съёмка:** сентябрь 2026. **Spike:** ветка `spike/studio-6.0`, контейнер `docker/studio-spike/`.
 
 Короткий ответ: **Scenify — лучший бесплатный кандидат на фазу 6**, если и только если он остаётся островом постера: человек рисует в Fabric-редакторе, мы забираем PNG/JPEG через `ingestUploadedFile`, плеер играет файл. Документ Fabric **не** становится слайдом и **не** едет на панель. Это не замена Слайдов и не повод пропускать фазы 1–5.
 
@@ -291,18 +291,38 @@ OFL-шрифты: те же обязательства, что в `slide-fonts.j
 
 Оценки — один человек, знакомый с репо. **Не начинать до фаз 1 и 5 родителя** (галерея + хотя бы ручной upload ingest; Canva не обязателен).
 
-### 6.0 — юридический и технический spike (~2–3 дн.)
+### 6.0 — юридический и технический spike (~2–3 дн.) — **DONE 2026-09-20**
 
-1. Скачать `@layerhub-io/react@0.3.3` и `core`. Прогнать license-check на их дереве.
-2. Поднять hello-world Vite: холст, текст, `toDataURL`, без их полной оболочки.
-3. Зафиксировать коммит Layerhub + решение: npm pin vs subtree.
+1. [x] Скачать `@layerhub-io/react@0.3.3` и `core`. Прогнать license-check на их дереве.
+2. [x] Поднять hello-world Vite: холст, текст, `toDataURL`, без их полной оболочки.
+3. [x] Зафиксировать коммит Layerhub + решение: **npm pin** (не subtree). См. `frontend-studio/LICENSE-AUDIT.md`.
 4. Kill-критерии spike (любой = стоп, вернуться к «только Canva»):
-   - Fabric не экспортирует читаемый 1920×1080 PNG с OFL Inter;
-   - в зависимостях GPL/AGPL;
-   - бандл острова > ~3 MB gzip без шрифтов и это ломает self-host на слабом админ-ПК — не kill, но записать;
-   - не удаётся вырезать video/presentation/Iconscout за день.
+   - [x] Fabric экспортирует читаемый 1920×1080 PNG с OFL Inter — **PASS** (`docker/studio-spike` → `out/studio-spike-export.png`)
+   - [x] в зависимостях GPL/AGPL — **нет** (`license-check.js --root frontend-studio`)
+   - [x] бандл острова > ~3 MB gzip без шрифтов — **нет** (~206 KB JS gzip; зафиксировано в LICENSE-AUDIT)
+   - [x] не удаётся вырезать video/presentation/Iconscout за день — **не тащили оболочку** (hello-world only)
 
-**Готово, когда:** есть ветка-spike с PNG в `/tmp` и таблицей лицензий. Не мержить в main.
+**Готово, когда:** есть ветка-spike с PNG в `/tmp` и таблицей лицензий. Не мержить в main без ревью kill-критериев.
+
+**Артефакты 6.0:**
+
+| Путь | Назначение |
+|---|---|
+| `frontend-studio/` | Vite остров, pin Layerhub 0.3.3, Fabric hello-world |
+| `frontend-studio/LICENSE-AUDIT.md` | таблица лицензий + kill-критерии |
+| `docker/studio-spike/` | отдельный контейнер: `npm ci` → license-check → build → Playwright PNG |
+| `scripts/license-check.js --root` | gate для острова |
+| `scripts/build-studio.sh` | форма релизного хука → `frontend/studio/` |
+| `frontend/js/lib/studio-available.js` | I5 probe (кнопка ещё не подключена) |
+| `frontend/js/i18n/{en,ru,de}.js` | ключи `studio.*` |
+
+**Не сделано в 6.0 (ожидаемо → 6.1+):**
+
+- `POST /api/studio/export`, таблица `studio_designs`, replace
+- кнопки New/Edit poster в Content Library (ключи i18n есть, UI нет)
+- публикация `/studio/` в основной `Dockerfile` / CI release artifact
+- portrait пресет, picker библиотеки, brand kit
+- полный Editor UI из `@layerhub-io/react` (spike использует Fabric напрямую + smoke-import core)
 
 ### 6.1 — остров + ingest (~5–8 дн.)
 
@@ -403,9 +423,9 @@ E2E spike (ручной): Chrome + Firefox, retina 2x (multiplier), кирилл
 
 Не оболочка на 15 панелей. Не video. Не subtree всего layerhub monorepo «на всякий».
 
-**PR 1 = spike, смерженный как `frontend-studio/` за feature-flag / скрытой кнопкой:** Vite, Layerhub pin, один пресет 1920×1080, текст+прямоугольник, export PNG → ingest, без `scene_json` re-edit.
+**PR 1 (эта ветка `spike/studio-6.0`) = spike island, без ingest:** Vite, Layerhub pin, один пресет 1920×1080, текст+прямоугольник, export PNG в `/tmp` через Docker verify, без `scene_json` / Library buttons. Кнопки Library скрыты (I5: остров не в основном image).
 
-PR 2 — `studio_designs` + Edit + replace + кнопка в Library.
+PR 1b / 6.1 — `POST /api/studio/export` + ingest, `studio_designs` + Edit + replace + кнопка в Library.
 PR 3 — шрифты `/fonts`, portrait пресет, picker библиотеки.
 PR 4 — фон слайда.
 
@@ -427,3 +447,12 @@ PR 4 — фон слайда.
 4. PPT (GAP-26) — офисный ingest.
 
 Три редактора не три документа на стене. На стене по-прежнему плейлист виджетов и файлов.
+
+---
+
+## История
+
+| Дата | Что |
+|---|---|
+| 2026-09-20 | Spike **6.0 DONE**: `frontend-studio/` (npm pin Layerhub 0.3.3), `license-check --root`, Docker verify `docker/studio-spike`, i18n `studio.*` en/ru/de, kill-критерии PASS. Не в 6.0: ingest, Library UI, основной Dockerfile. |
+| 2026-09 | Первая версия плана (генеалогия Scenify → Layerhub, D-SC-1…10). |
