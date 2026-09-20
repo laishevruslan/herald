@@ -152,3 +152,25 @@ test('play payload helpers never include scene_json field names in studio list',
     assert.equal('scene_json' in row, false);
   }
 });
+
+test('epaper-5x3 preset records 800×480 metadata (phase 6.2)', async () => {
+  const bytes = await pngBytes(80, 48);
+  const fd = new FormData();
+  fd.append('file', new Blob([bytes], { type: 'image/png' }), 'epaper.png');
+  fd.append('scene_json', JSON.stringify({
+    version: 1,
+    objects: [{ type: 'textbox', text: 'ROOM', left: 0, top: 0, width: 80, fontSize: 12, fontFamily: "'Inter', sans-serif" }],
+  }));
+  fd.append('preset', 'epaper-5x3');
+  fd.append('name', 'E-paper poster.png');
+
+  const r = await fetch(`${base}/export`, { method: 'POST', body: fd });
+  assert.equal(r.status, 201);
+  const body = await r.json();
+  assert.equal(body.width, 800);
+  assert.equal(body.height, 480);
+  const design = studio.getByContentId(body.content_id, WS);
+  assert.equal(design.width, 800);
+  assert.equal(design.height, 480);
+  assert.match(design.scene_json, /Inter/);
+});

@@ -14,7 +14,7 @@
 | Bundle > ~3 MB gzip without fonts | **NOTE (not kill)** | Recorded after `npm run build` in Docker logs / below |
 | Cannot strip video/presentation/Iconscout in a day | **PASS** | Spike never imported their shell — hello-world Fabric only + dynamic `import('@layerhub-io/core')` smoke |
 
-**Verdict:** Spike **green**. Proceed to 6.1 only when product still needs an in-product poster editor after gallery + Canva ingest.
+**Verdict:** Spike **green**. 6.1 ingest + 6.2 fonts/brand/slide-bg shipped; see `docs/scenify-studio-plan.md`.
 
 ## Denied candidates (do not add)
 

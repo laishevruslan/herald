@@ -22,6 +22,7 @@ const MAX_SCENE_JSON_BYTES = 1_500_000;
 const PRESETS = Object.freeze({
   'landscape-1080': { width: 1920, height: 1080 },
   'portrait-1080': { width: 1080, height: 1920 },
+  'epaper-5x3': { width: 800, height: 480 },
 });
 
 function pickPreset(id, width, height) {
@@ -29,6 +30,7 @@ function pickPreset(id, width, height) {
   const w = Number(width) || 1920;
   const h = Number(height) || 1080;
   if (w === 1080 && h === 1920) return { width: w, height: h, preset: 'portrait-1080' };
+  if (w === 800 && h === 480) return { width: w, height: h, preset: 'epaper-5x3' };
   return { width: 1920, height: 1080, preset: 'landscape-1080' };
 }
 

@@ -539,6 +539,8 @@ PoC — **не** Polotno и не CE.SDK. Остров `frontend-studio/` на з
 
 **6.1 (2026-09-20): DONE.** Ingest/replace через `POST /api/studio/export`, `studio_designs`, кнопки Library, Docker/CI собирают `/studio/`. См. [`scenify-studio-plan.md`](scenify-studio-plan.md).
 
+**6.2 (2026-09-20): DONE.** OFL-шрифты до paint, white-label swatches, фон слайда из Studio, пресет e-paper 800×480. Неполное: brand-kit API фазы 4, кириллический language pack. См. [`scenify-studio-plan.md`](scenify-studio-plan.md).
+
 ### Фаза 7 — не делать
 
 - Второй Designer на Fabric/Konva **внутри** `#/slides` (Fabric допустим только в острове Studio, фаза 6).

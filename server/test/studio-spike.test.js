@@ -35,11 +35,14 @@ test('dashboard i18n has studio keys in en and ru', () => {
     'studio.help_blurb',
     'studio.cyrillic_note',
     'studio.unavailable',
+    'studio.slide_bg_from_studio',
+    'studio.slide_bg_applied',
   ]) {
     assert.match(en, new RegExp(`'${key}'`));
     assert.match(ru, new RegExp(`'${key}'`));
   }
   assert.match(ru, /Редактор постеров/);
+  assert.match(ru, /Фон из Studio/);
   assert.doesNotMatch(en, /Scenify/);
   assert.doesNotMatch(ru, /Scenify/);
 });
@@ -50,8 +53,12 @@ test('license-check accepts --root for the studio island', () => {
   assert.match(src, /frontend-studio/);
 });
 
-test('studio 6.1 docker assets exist', () => {
+test('studio 6.1/6.2 docker assets and font/brand modules exist', () => {
   assert.ok(fs.existsSync(path.join(ROOT, 'docker', 'studio-6.1', 'Dockerfile')));
+  assert.ok(fs.existsSync(path.join(ROOT, 'docker', 'studio-6.2', 'Dockerfile')));
   assert.ok(fs.existsSync(path.join(ROOT, 'server', 'routes', 'studio.js')));
   assert.ok(fs.existsSync(path.join(ROOT, 'server', 'lib', 'studio-designs.js')));
+  assert.ok(fs.existsSync(path.join(ROOT, 'frontend-studio', 'src', 'fontCatalogue.ts')));
+  assert.ok(fs.existsSync(path.join(ROOT, 'frontend-studio', 'src', 'brand.ts')));
+  assert.ok(fs.existsSync(path.join(ROOT, 'frontend-studio', 'src', 'fonts.css')));
 });

@@ -89,6 +89,7 @@ export type SceneObject =
       top: number;
       width: number;
       fontSize: number;
+      fontFamily?: string;
       fontWeight?: string | number;
       fill?: string;
       textAlign?: string;

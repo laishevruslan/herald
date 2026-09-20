@@ -86,6 +86,8 @@ frontend-studio/node_modules/
 docker/studio-spike/out/
 # Studio 6.1 docker verify output (built island)
 docker/studio-6.1/out/
+# Studio 6.2 docker verify output (built island)
+docker/studio-6.2/out/
 
 # Uploaded plugin zips waiting for approval. Not a plugin root — the loader
 # never scans it. Default path when DATA_DIR is unset is server/plugin-inbox.

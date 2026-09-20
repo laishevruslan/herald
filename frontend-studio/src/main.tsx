@@ -6,6 +6,7 @@ import {
   displaySize,
   canvasToPngBlob,
   rememberExportForVerify,
+  presetFromDims,
   type FabricCanvas,
   type PresetId,
 } from './exportPng';
@@ -18,21 +19,39 @@ import {
   type ContentRow,
 } from './api';
 import { applyScene, seedDefaultPoster, serializeScene } from './scene';
+import { STUDIO_FONTS, fontStack, waitForStudioFonts } from './fontCatalogue';
+import { loadBrandColors, type BrandColors } from './brand';
 import './fonts.css';
 import './styles.css';
 
 type Status = { kind: 'ok' | 'err' | 'info'; text: string };
 
-function readQuery(): { preset: PresetId; contentId: string | null; lang: StudioLang } {
+const SLIDE_BG_KEY = 'studio.slideBgReturn';
+
+function parsePreset(raw: string | null): PresetId {
+  if (raw === 'portrait-1080' || raw === 'epaper-5x3' || raw === 'landscape-1080') return raw;
+  return 'landscape-1080';
+}
+
+function readQuery(): {
+  preset: PresetId;
+  contentId: string | null;
+  lang: StudioLang;
+  forSlideBg: boolean;
+} {
   const q = new URLSearchParams(window.location.search);
-  const presetRaw = q.get('preset') || 'landscape-1080';
-  const preset: PresetId = presetRaw === 'portrait-1080' ? 'portrait-1080' : 'landscape-1080';
-  return { preset, contentId: q.get('contentId') || q.get('content_id'), lang: detectLang() };
+  return {
+    preset: parsePreset(q.get('preset')),
+    contentId: q.get('contentId') || q.get('content_id'),
+    lang: detectLang(),
+    forSlideBg: q.get('for') === 'slide-bg',
+  };
 }
 
 function App() {
   const initial = useMemo(() => readQuery(), []);
   const lang = initial.lang;
+  const forSlideBg = initial.forSlideBg;
   const [preset, setPreset] = useState<PresetId>(initial.preset);
   const [contentId, setContentId] = useState<string | null>(initial.contentId);
   const [bootstrapped, setBootstrapped] = useState(!initial.contentId);
@@ -45,6 +64,14 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [images, setImages] = useState<ContentRow[]>([]);
+  const [fontCss, setFontCss] = useState<string>(STUDIO_FONTS[0].css);
+  const [brand, setBrand] = useState<BrandColors | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    loadBrandColors().then((c) => { if (alive) setBrand(c); });
+    return () => { alive = false; };
+  }, []);
 
   // Resolve preset from existing design before mounting the canvas.
   useEffect(() => {
@@ -54,8 +81,7 @@ function App() {
       try {
         const design = await loadDesign(initial.contentId!);
         if (!alive) return;
-        if (design.width === 1080 && design.height === 1920) setPreset('portrait-1080');
-        else setPreset('landscape-1080');
+        setPreset(presetFromDims(design.width, design.height));
         setBootstrapped(true);
       } catch (e) {
         if (!alive) return;
@@ -84,8 +110,7 @@ function App() {
     let alive = true;
     (async () => {
       try {
-        await document.fonts.load('700 72px Inter');
-        await document.fonts.ready;
+        await waitForStudioFonts();
         if (!alive) return;
         if (contentId) {
           const design = await loadDesign(contentId);
@@ -124,12 +149,12 @@ function App() {
       left: 40,
       top: 40,
       width: Math.min(400, dw - 80),
-      fontFamily: 'Inter, sans-serif',
+      fontFamily: fontStack(fontCss),
       fontSize: 36,
-      fill: '#111827',
+      fill: brand?.primary || '#111827',
     }));
     canvas.requestRenderAll();
-  }, [lang, dw]);
+  }, [lang, dw, fontCss, brand]);
 
   const addRect = useCallback(() => {
     const canvas = fabricRef.current;
@@ -139,10 +164,42 @@ function App() {
       top: 80,
       width: 200,
       height: 120,
-      fill: '#f59e0b',
+      fill: brand?.primary || '#f59e0b',
       rx: 6,
       ry: 6,
     }));
+    canvas.requestRenderAll();
+  }, [brand]);
+
+  const applyFontToSelection = useCallback((css: string) => {
+    setFontCss(css);
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const active = canvas.getActiveObject() as any;
+    if (!active) return;
+    const stack = fontStack(css);
+    if (active.type === 'activeSelection' && active.forEachObject) {
+      active.forEachObject((o: any) => {
+        if (o.type === 'textbox' || o.type === 'i-text' || o.type === 'text') {
+          o.set('fontFamily', stack);
+        }
+      });
+    } else if (active.type === 'textbox' || active.type === 'i-text' || active.type === 'text') {
+      active.set('fontFamily', stack);
+    }
+    canvas.requestRenderAll();
+  }, []);
+
+  const applyFill = useCallback((hex: string) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const active = canvas.getActiveObject() as any;
+    if (!active) return;
+    if (active.type === 'activeSelection' && active.forEachObject) {
+      active.forEachObject((o: any) => { o.set('fill', hex); });
+    } else {
+      active.set('fill', hex);
+    }
     canvas.requestRenderAll();
   }, []);
 
@@ -205,9 +262,27 @@ function App() {
         preset,
         width: logical.width,
         height: logical.height,
-        name: 'Studio poster.png',
+        name: forSlideBg ? 'Slide background.png' : 'Studio poster.png',
       });
       setContentId(result.content_id);
+      if (forSlideBg) {
+        try {
+          const prev = JSON.parse(sessionStorage.getItem(SLIDE_BG_KEY) || '{}');
+          sessionStorage.setItem(SLIDE_BG_KEY, JSON.stringify({
+            ...prev,
+            contentId: result.content_id,
+            done: true,
+          }));
+        } catch {
+          sessionStorage.setItem(SLIDE_BG_KEY, JSON.stringify({
+            contentId: result.content_id,
+            done: true,
+          }));
+        }
+        setStatus({ kind: 'ok', text: t(lang, 'publishedSlideBg') });
+        window.setTimeout(() => { window.location.href = '/#/slides'; }, 400);
+        return;
+      }
       setStatus({
         kind: 'ok',
         text: t(lang, 'published', { id: result.content_id.slice(0, 8) }),
@@ -217,17 +292,29 @@ function App() {
     } finally {
       setBusy(false);
     }
-  }, [lang, logical, dw, contentId, preset]);
+  }, [lang, logical, dw, contentId, preset, forSlideBg]);
 
-  const backToLibrary = useCallback(() => {
+  const goBack = useCallback(() => {
+    if (forSlideBg) {
+      try {
+        const prev = JSON.parse(sessionStorage.getItem(SLIDE_BG_KEY) || '{}');
+        if (prev && prev.pending && !prev.done) sessionStorage.removeItem(SLIDE_BG_KEY);
+      } catch { /* ignore */ }
+      window.location.href = '/#/slides';
+      return;
+    }
     window.location.href = '/#/content';
-  }, []);
+  }, [forSlideBg]);
+
+  const swatches = brand?.swatches || [];
 
   return (
     <div className="app">
       <header className="toolbar">
         <h1>{t(lang, 'title')}</h1>
-        <button type="button" onClick={backToLibrary}>{t(lang, 'back')}</button>
+        <button type="button" onClick={goBack}>
+          {forSlideBg ? t(lang, 'backSlide') : t(lang, 'back')}
+        </button>
         {!contentId && (
           <select
             className="preset"
@@ -235,10 +322,23 @@ function App() {
             aria-label={t(lang, 'preset')}
             onChange={(e) => setPreset(e.target.value as PresetId)}
           >
-            <option value="landscape-1080">1920×1080</option>
-            <option value="portrait-1080">1080×1920</option>
+            <option value="landscape-1080">{t(lang, 'presetLandscape')}</option>
+            <option value="portrait-1080">{t(lang, 'presetPortrait')}</option>
+            <option value="epaper-5x3">{t(lang, 'presetEpaper')}</option>
           </select>
         )}
+        <select
+          className="preset"
+          value={fontCss}
+          aria-label={t(lang, 'fontFamily')}
+          onChange={(e) => applyFontToSelection(e.target.value)}
+        >
+          {STUDIO_FONTS.map((f) => (
+            <option key={f.id} value={f.css} style={{ fontFamily: fontStack(f.css, f.stack) }}>
+              {f.css}
+            </option>
+          ))}
+        </select>
         <button type="button" onClick={addText}>{t(lang, 'addText')}</button>
         <button type="button" onClick={addRect}>{t(lang, 'addRect')}</button>
         <button type="button" disabled={busy} onClick={() => { void openPicker(); }}>
@@ -253,8 +353,32 @@ function App() {
         >
           {t(lang, 'publish')}
         </button>
-        <p className="hint">{t(lang, 'subtitle')} {t(lang, 'cyrillicNote')}</p>
+        <p className="hint">
+          {t(lang, 'subtitle')}{' '}
+          {forSlideBg ? t(lang, 'forSlideBg') : t(lang, 'cyrillicNote')}
+        </p>
       </header>
+
+      {swatches.length > 0 && (
+        <div className="brand-bar" role="group" aria-label={t(lang, 'brandColors')}>
+          <span className="brand-label">{t(lang, 'brandColors')}</span>
+          {swatches.map((hex) => (
+            <button
+              key={hex}
+              type="button"
+              className="swatch"
+              title={`${t(lang, 'applyFill')} ${hex}`}
+              style={{ background: hex }}
+              onClick={() => applyFill(hex)}
+            />
+          ))}
+        </div>
+      )}
+
+      {preset === 'epaper-5x3' && (
+        <p className="epaper-warn" role="note">{t(lang, 'epaperWarn')}</p>
+      )}
+
       <div className="stage-wrap">
         <div className="stage">
           <canvas ref={canvasEl} />

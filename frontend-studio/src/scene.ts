@@ -1,6 +1,7 @@
 import { fabric } from 'fabric';
 import { fetchImageBlobUrl, type SceneObject } from './api';
 import type { FabricCanvas } from './exportPng';
+import { resolveFontFamily } from './fontCatalogue';
 
 /** Build a compact scene without data URLs (server rejects those). */
 export function serializeScene(canvas: FabricCanvas): { version: 1; objects: SceneObject[] } {
@@ -15,6 +16,7 @@ export function serializeScene(canvas: FabricCanvas): { version: 1; objects: Sce
         top: anyObj.top || 0,
         width: (anyObj.width || 200) * (anyObj.scaleX || 1),
         fontSize: anyObj.fontSize || 36,
+        fontFamily: String(anyObj.fontFamily || resolveFontFamily('Inter')),
         fontWeight: anyObj.fontWeight || '400',
         fill: String(anyObj.fill || '#111827'),
         textAlign: anyObj.textAlign || 'left',
@@ -54,7 +56,7 @@ export async function applyScene(canvas: FabricCanvas, objects: SceneObject[]): 
         left: o.left,
         top: o.top,
         width: o.width,
-        fontFamily: 'Inter, sans-serif',
+        fontFamily: resolveFontFamily(o.fontFamily),
         fontSize: o.fontSize,
         fontWeight: o.fontWeight || '400',
         fill: o.fill || '#111827',
@@ -103,7 +105,7 @@ export function seedDefaultPoster(canvas: FabricCanvas, displayW: number, displa
     left: 40,
     top: Math.round(displayH * 0.28),
     width: displayW - 80,
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: resolveFontFamily('Inter'),
     fontWeight: '700',
     fontSize: Math.round(displayW * 0.075),
     fill: '#111827',
@@ -113,7 +115,7 @@ export function seedDefaultPoster(canvas: FabricCanvas, displayW: number, displa
     left: 40,
     top: Math.round(displayH * 0.48),
     width: displayW - 80,
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: resolveFontFamily('Inter'),
     fontWeight: '400',
     fontSize: Math.round(displayW * 0.03),
     fill: '#4b5563',

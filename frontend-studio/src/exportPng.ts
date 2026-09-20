@@ -3,6 +3,7 @@ export type FabricCanvas = any;
 export const PRESETS = {
   'landscape-1080': { width: 1920, height: 1080, id: 'landscape-1080' as const },
   'portrait-1080': { width: 1080, height: 1920, id: 'portrait-1080' as const },
+  'epaper-5x3': { width: 800, height: 480, id: 'epaper-5x3' as const },
 };
 
 export type PresetId = keyof typeof PRESETS;
@@ -38,4 +39,10 @@ export async function canvasToPngBlob(
 export function rememberExportForVerify(blob: Blob): void {
   const w = window as Window & { __STUDIO_SPIKE_LAST_PNG__?: Blob };
   w.__STUDIO_SPIKE_LAST_PNG__ = blob;
+}
+
+export function presetFromDims(width: number, height: number): PresetId {
+  if (width === 1080 && height === 1920) return 'portrait-1080';
+  if (width === 800 && height === 480) return 'epaper-5x3';
+  return 'landscape-1080';
 }
