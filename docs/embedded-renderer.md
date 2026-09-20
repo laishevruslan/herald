@@ -156,6 +156,7 @@ Fetches the pre-rendered image for the current playlist item.
 Devices assigned to multi-zone layouts are automatically composited on the server:
 - **Native Image-Only Layouts (Zero Browser):** When all zones contain static images (local uploads or remote image URLs), the multi-zone canvas is composited natively using Jimp with zero external browser dependencies.
 - **Dynamic Widgets & Webpage Zones:** When zones include clocks, weather, slides, or web pages, Headless Chromium renders the composite.
+- **Data-source slides:** A slide that binds `{{ds:slug.field}}` is rendered with the **same** workspace map the widget player uses (`dataResolverFor` → `getWorkspaceDataMapSync`). That map stamps each source's `last_status` as reserved `__status`, so `hide_if_empty`, `show_when`, `bind_status`, and `color_when` apply on the embedded path exactly as they do on the wall. A failed calendar fetch paints **stale**, not Available. Colour-coded busy/free bars still dither to noise on 1-bit Sticky panels — keep those hex values to `#000` / `#FFF` and invert copy with `show_when` instead of relying on green/red. Factory templates that ship that geometry (`room-epaper-5x3`) are phase 3.1; the renderer contract is already live. See [`slide-data-binding.md`](slide-data-binding.md).
 
 > [!NOTE]
 > **Full Widget, Slide & Webpage Rendering on E-Paper Displays:**

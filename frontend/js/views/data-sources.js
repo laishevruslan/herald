@@ -168,6 +168,8 @@ function renderDataSourceCard(ds) {
     { key: 'event_0_time', label: t('data_sources.event_1_time_label') },
     { key: 'event_1_title', label: t('data_sources.event_2_title_label') },
     { key: 'event_1_time', label: t('data_sources.event_2_time_label') },
+    { key: 'remaining_today_empty', label: t('data_sources.remaining_today_empty_label') },
+    { key: 'remaining_today_count', label: t('data_sources.remaining_today_count_label') },
   ];
 
   return `

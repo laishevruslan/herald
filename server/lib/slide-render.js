@@ -124,6 +124,34 @@ const KINDS = Object.freeze({
   lettering: { text: true,  glyphs: false, live: null,        config: true  },
 });
 
+/*
+ * ⚠️ FOUR OPT-IN FLAGS ON THE ELEMENT, AND THAT IS THE WHOLE TEMPLATE LANGUAGE.
+ *
+ * Phase 3 room-sign templates need a different picture when the room is busy vs free vs the
+ * source is stale — without a second slide, without an expression language, and without
+ * rebuilding `template` when the payload changes. These four keys are the bounded vocabulary
+ * that does that. Unknown keys are still dropped by normalizeSlide; nothing else is accepted.
+ *
+ *   hide_if_empty — after {{ds:}} interpolation, skip the element if its own slot is empty
+ *                   (trim === '') or is only leftover chrome around empty tokens
+ *                   (`Next: {{ds:x.next_title}}` with no next meeting). Neighbouring slots
+ *                   are not inspected.
+ *   show_when     — 'always' | 'busy' | 'free' | 'stale'. Skip when the bind_status state
+ *                   does not match. Default 'always'.
+ *   bind_status   — data-source slug. The renderer reads is_busy (native boolean) and
+ *                   __status from resolveData; the slug is never concatenated into HTML.
+ *   color_when    — { busy, free, stale } hex colours. Applied to box/rule fill and stat
+ *                   glyph colour at render time. Each value goes through color().
+ *
+ * Order at render: interpolate fields → resolve bind_status → skip on show_when → skip on
+ * hide_if_empty → override style.color from color_when. A data change therefore changes the
+ * HTML (a colour, a missing row) and MUST NOT change the stored template.
+ */
+const SHOW_WHEN = Object.freeze({ always: 1, busy: 1, free: 1, stale: 1 });
+const BIND_STATUS_RE = /^[a-zA-Z0-9_-]{1,64}$/;
+const COLOR_WHEN_STATES = Object.freeze(['busy', 'free', 'stale']);
+const DS_TOKEN_RE = /\{\{ds:[a-zA-Z0-9_-]+\.[a-zA-Z0-9_]+\}\}/g;
+
 const clamp = (v, lo, hi, dflt) => {
   const n = Number(v);
   if (!Number.isFinite(n)) return dflt;
@@ -141,6 +169,52 @@ const clamp = (v, lo, hi, dflt) => {
 function color(v, dflt) {
   return (typeof v === 'string' && /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v.trim()))
     ? v.trim() : dflt;
+}
+
+/** Three hex colours or nothing. Invalid keys and non-hex values are dropped, never interpolated. */
+function colorWhen(src) {
+  if (!src || typeof src !== 'object' || Array.isArray(src)) return null;
+  const out = {};
+  for (const k of COLOR_WHEN_STATES) {
+    const c = color(src[k], null);
+    if (c) out[k] = c;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+/**
+ * busy / free / stale for bind_status, from the raw cache — never from interpolated CSS.
+ *
+ * Missing slug or missing resolveData → stale (fail closed: do not paint AVAILABLE).
+ * `__status === 'error'` → stale even when the last successful cache said the room was free.
+ * is_busy is a boolean in the payload; 'true'/'false' strings are accepted from JSON round-trips.
+ */
+function resolveBindState(slug, resolveData) {
+  if (!slug || typeof resolveData !== 'function') return 'stale';
+  const meta = resolveData(slug, '__status');
+  if (meta === 'error' || meta === 'stale') return 'stale';
+  const busy = resolveData(slug, 'is_busy');
+  if (busy === true || busy === 'true') return 'busy';
+  if (busy === false || busy === 'false') return 'free';
+  const statusWord = resolveData(slug, 'status');
+  if (meta === 'ok' || (statusWord != null && statusWord !== '')) return 'free';
+  return 'stale';
+}
+
+/**
+ * hide_if_empty: the element's own slot, after interpolation.
+ *
+ * Empty is trim() === ''. Chrome that only wrapped tokens (`Next: {{ds:x.next_title}}`, or
+ * `Next: {{ds:x.next_title}} ({{ds:x.next_time}})`) is also empty when every token resolved to
+ * nothing — that is the `Nächstes Meeting:  ()` bug. A title with a missing time still shows,
+ * because the interpolated string is no longer equal to the token-stripped chrome.
+ */
+function slotEmptyAfterInterpolate(original, interpolated) {
+  const out = String(interpolated == null ? '' : interpolated);
+  if (out.trim() === '') return true;
+  if (typeof original !== 'string' || !original.includes('{{ds:')) return false;
+  const chrome = original.replace(DS_TOKEN_RE, '');
+  return out.trim() === chrome.trim();
 }
 
 /*
@@ -372,6 +446,11 @@ function normalizeSlide(raw) {
         duration: clamp(m.duration, 0.05, 10, 0.5),
         easing: Object.prototype.hasOwnProperty.call(EASINGS, m.easing) ? m.easing : 'ease-out',
       } : null,
+      hide_if_empty: src.hide_if_empty === true,
+      show_when: pick(SHOW_WHEN, src.show_when, 'always'),
+      bind_status: (typeof src.bind_status === 'string' && BIND_STATUS_RE.test(src.bind_status))
+        ? src.bind_status : '',
+      color_when: colorWhen(src.color_when),
     };
   });
 
@@ -799,8 +878,16 @@ function renderSlideHtml(rawConfig, opts = {}) {
     return `'${f.css_family}', ${generic}`;
   };
 
-  const body = slide.elements.map((e) => {
+  const parts = [];
+  for (const e of slide.elements) {
+    const needsState = e.show_when !== 'always' || e.color_when;
+    const bindState = needsState ? resolveBindState(e.bind_status, resolveData) : null;
+    if (e.show_when !== 'always' && bindState !== e.show_when) continue;
+    if (e.hide_if_empty && slotEmptyAfterInterpolate(slide.fields[e.slot], fields[e.slot])) continue;
+
     const s = e.style;
+    const paint = (e.color_when && bindState && (e.kind === 'box' || e.kind === 'rule' || e.kind === 'stat')
+      && e.color_when[bindState]) || s.color;
     const css = [
       `left:${e.x}%`, `top:${e.y}%`, `width:${e.w}%`,
       e.h == null ? '' : `height:${e.h}%`,
@@ -823,8 +910,9 @@ function renderSlideHtml(rawConfig, opts = {}) {
     }
 
     if (e.kind === 'rule' || e.kind === 'box') {
-      css.push(`background:${s.color}`);
-      return `<div class="e" style="${css.filter(Boolean).join(';')}"></div>`;
+      css.push(`background:${paint}`);
+      parts.push(`<div class="e" style="${css.filter(Boolean).join(';')}"></div>`);
+      continue;
     }
 
     if (e.kind === 'image') {
@@ -838,7 +926,8 @@ function renderSlideHtml(rawConfig, opts = {}) {
         // A slide whose photo is missing says so, quietly, rather than leaving a hole an operator
         // has to guess at. It is deliberately unobtrusive: on a wall this is better than a red box.
         : `<div class="ph"></div>`;
-      return `<div class="e" style="${css.filter(Boolean).join(';')}">${inner}</div>`;
+      parts.push(`<div class="e" style="${css.filter(Boolean).join(';')}">${inner}</div>`);
+      continue;
     }
 
     if (e.kind === 'lettering') {
@@ -853,7 +942,8 @@ function renderSlideHtml(rawConfig, opts = {}) {
       const inner = url
         ? `<img class="fit" src="${escapeHtml(url)}" alt="${words}">`
         : `<div class="ph"></div>`;
-      return `<div class="e" style="${css.filter(Boolean).join(';')}">${inner}</div>`;
+      parts.push(`<div class="e" style="${css.filter(Boolean).join(';')}">${inner}</div>`);
+      continue;
     }
 
     if (e.kind === 'qr') {
@@ -862,11 +952,12 @@ function renderSlideHtml(rawConfig, opts = {}) {
       css.push('overflow:hidden');
       // The same quiet placeholder a missing photo gets, for the same reason: an empty payload or
       // one too long to encode should leave a gap somebody notices, not break the slide.
-      return `<div class="e" style="${css.filter(Boolean).join(';')}">${svg || '<div class="ph"></div>'}</div>`;
+      parts.push(`<div class="e" style="${css.filter(Boolean).join(';')}">${svg || '<div class="ph"></div>'}</div>`);
+      continue;
     }
 
     css.push(
-      `color:${s.color}`,
+      `color:${paint}`,
       `font-family:${fontFamilyFor(s.font)}`,
       `font-size:${s.size}cqw`,
       `font-weight:${s.weight}`,
@@ -890,11 +981,13 @@ function renderSlideHtml(rawConfig, opts = {}) {
         if (e.cfg.tz) attrs.push(`data-tz="${escapeHtml(e.cfg.tz)}"`);
         if (e.cfg.locale) attrs.push(`data-loc="${escapeHtml(e.cfg.locale)}"`);
       }
-      return `<div class="e t live" ${attrs.join(' ')} style="${css.filter(Boolean).join(';')}"></div>`;
+      parts.push(`<div class="e t live" ${attrs.join(' ')} style="${css.filter(Boolean).join(';')}"></div>`);
+      continue;
     }
 
-    return `<div class="e t" style="${css.filter(Boolean).join(';')}">${escapeHtml(fields[e.slot] || '')}</div>`;
-  }).join('\n    ');
+    parts.push(`<div class="e t" style="${css.filter(Boolean).join(';')}">${escapeHtml(fields[e.slot] || '')}</div>`);
+  }
+  const body = parts.join('\n    ');
 
   /*
    * ⚠️ @font-face FOR EXACTLY THE FAMILIES THIS SLIDE USES, emitted into the document itself.
@@ -1042,10 +1135,11 @@ function renderSlideHtml(rawConfig, opts = {}) {
 }
 
 module.exports = {
-  ANIMATIONS, EASINGS, KINDS,
+  ANIMATIONS, EASINGS, KINDS, SHOW_WHEN,
   CLOCK_FORMATS, DATE_FORMATS, QR_EC, IMAGE_FITS,
   MAX_ELEMENTS, MAX_FIELD_CHARS, MAX_FIELDS,
   normalizeSlide, settleTime, renderSlideHtml, interpolateDataSources,
+  resolveBindState,
   // Exported for tests: the QR matrix and the constant script are the two pieces whose properties
   // have to be asserted directly rather than inferred from a rendered document.
   qrSvg, LIVE_SCRIPT,

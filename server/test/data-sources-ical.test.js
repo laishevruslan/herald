@@ -755,5 +755,139 @@ END:VCALENDAR`;
   assert.equal(data.event_1_title, 'Tomorrow Event');
 });
 
+/* ============ phase 3 field contract ============ */
+
+const CANON = [
+  'status', 'status_detail', 'is_busy',
+  'current_title', 'current_time', 'current_organizer',
+  'next_title', 'next_time',
+  'agenda_text',
+  'event_count', 'events_today_count',
+  'remaining_today_count', 'remaining_today_empty',
+];
+
+test('CANON field keys are present on a busy fixture and on a free fixture', async () => {
+  const busy = await resolveIcalData({ raw_data: SAMPLE_ICS, timezone: 'UTC', locale: 'en' }, new Date('2026-09-04T09:30:00Z'));
+  const free = await resolveIcalData({ raw_data: SAMPLE_ICS, timezone: 'UTC', locale: 'en' }, new Date('2026-09-04T11:00:00Z'));
+  for (const payload of [busy, free]) {
+    for (const k of CANON) {
+      assert.ok(k in payload, `CANON key missing from payload: ${k}`);
+    }
+  }
+  assert.equal(busy.is_busy, true);
+  assert.equal(free.is_busy, false);
+  assert.equal(typeof busy.is_busy, 'boolean');
+  assert.ok(!('__status' in busy), '__status is a render-time stamp, not an iCal field');
+});
+
+test('remaining_today_empty is blank while the day still has events, and a phrase after they end', async () => {
+  const busyMorning = await resolveIcalData({ raw_data: SAMPLE_ICS, timezone: 'UTC', locale: 'en' }, new Date('2026-09-04T09:30:00Z'));
+  assert.equal(busyMorning.remaining_today_empty, '');
+  assert.ok(busyMorning.remaining_today_count >= 1);
+
+  const betweenMeetings = await resolveIcalData({ raw_data: SAMPLE_ICS, timezone: 'UTC', locale: 'en' }, new Date('2026-09-04T11:00:00Z'));
+  assert.equal(betweenMeetings.remaining_today_empty, '');
+  assert.equal(betweenMeetings.remaining_today_count, 1, 'the 14:00 meeting is still remaining');
+
+  const emptyEvening = await resolveIcalData({ raw_data: SAMPLE_ICS, timezone: 'UTC', locale: 'en' }, new Date('2026-09-04T16:00:00Z'));
+  assert.equal(emptyEvening.remaining_today_count, 0);
+  assert.equal(emptyEvening.remaining_today_empty, 'No more meetings today');
+  assert.equal(emptyEvening.next_title, 'Gelber Sack Abholung');
+
+  const ruEvening = await resolveIcalData({ raw_data: SAMPLE_ICS, timezone: 'UTC', locale: 'ru' }, new Date('2026-09-04T16:00:00Z'));
+  assert.equal(ruEvening.remaining_today_empty, 'Сегодня встреч больше нет');
+});
+
+test('remaining_today_empty stays blank while an all-day event still covers today', async () => {
+  const ALLDAY_TODAY = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:evt-allday-today
+SUMMARY:Offsite
+DTSTART;VALUE=DATE:20260904
+DTEND;VALUE=DATE:20260905
+END:VEVENT
+END:VCALENDAR`;
+  const data = await resolveIcalData({ raw_data: ALLDAY_TODAY, timezone: 'UTC', locale: 'en' }, new Date('2026-09-04T16:00:00Z'));
+  assert.ok(data.remaining_today_count >= 1, 'the all-day event is remaining today');
+  assert.equal(data.remaining_today_empty, '');
+  assert.equal(data.is_busy, false, 'all-day does not occupy the room');
+});
+
+test('remaining_today_count includes an overnight meeting that began yesterday', async () => {
+  const ICS = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:evt-overnight-remain
+SUMMARY:Night Shift Standup
+DTSTART:20260101T233000Z
+DTEND:20260102T013000Z
+RRULE:FREQ=DAILY
+END:VEVENT
+END:VCALENDAR`;
+  const data = await resolveIcalData({ raw_data: ICS, timezone: 'UTC', locale: 'en' }, new Date('2026-09-07T00:30:00Z'));
+  assert.equal(data.current_title, 'Night Shift Standup');
+  assert.ok(data.remaining_today_count >= 1);
+  assert.equal(data.remaining_today_empty, '');
+});
+
+test('attachSourceStatus stamps last_status as __status without rewriting status', () => {
+  const { attachSourceStatus } = require('../lib/data-sources/service');
+  const stamped = attachSourceStatus({ status: 'AVAILABLE', is_busy: false }, 'error');
+  assert.equal(stamped.status, 'AVAILABLE', 'the room word must stay the room word');
+  assert.equal(stamped.__status, 'error');
+  assert.equal(attachSourceStatus({}, 'ok').__status, 'ok');
+  assert.equal(attachSourceStatus(null, null).__status, 'pending');
+  assert.equal(attachSourceStatus({ __status: 'ok' }, 'error').__status, 'error', 'row last_status wins over a payload copy');
+});
+
+test('getWorkspaceDataMapSync reads last_status so widget/embedded resolveData can serve __status', () => {
+  const src = require('fs').readFileSync(require.resolve('../lib/data-sources/service'), 'utf8');
+  assert.match(src, /SELECT slug, cached_data, last_status FROM data_sources/);
+  assert.match(src, /attachSourceStatus/);
+  assert.match(src, /__status/);
+  const widgets = require('fs').readFileSync(require.resolve('../routes/widgets'), 'utf8');
+  assert.match(widgets, /dataResolverFor/);
+  const embedded = require('fs').readFileSync(require.resolve('../lib/embedded-render'), 'utf8');
+  assert.match(embedded, /dataResolverFor/);
+});
+
+test('hand-assembled slide JSON with color_when + hide_if_empty follows a real iCal payload', async () => {
+  const slide = {
+    template: {
+      background: '#0B1220',
+      elements: [
+        { slot: 'bar', kind: 'box', box: { x: 0, y: 0, w: 8, h: 100 },
+          style: { color: '#111111' },
+          bind_status: 'room', color_when: { busy: '#DC2626', free: '#16A34A', stale: '#6B7280' } },
+        { slot: 'next_meeting', kind: 'body', box: { x: 12, y: 40, w: 80 },
+          hide_if_empty: true },
+      ],
+    },
+    fields: {
+      next_meeting: 'Next: {{ds:room.next_title}}',
+    },
+  };
+  const busyPayload = await resolveIcalData({ raw_data: SAMPLE_ICS, timezone: 'UTC', locale: 'en' }, new Date('2026-09-04T09:30:00Z'));
+  const freeLater = await resolveIcalData({ raw_data: SAMPLE_ICS, timezone: 'UTC', locale: 'en' }, new Date('2026-09-04T16:00:00Z'));
+  const resolve = (payload) => (slug, key) => (slug === 'room' ? payload[key] : undefined);
+
+  const busyHtml = renderSlideHtml(slide, { resolveData: resolve({ ...busyPayload, __status: 'ok' }) });
+  assert.match(busyHtml, /background:#DC2626/);
+  assert.match(busyHtml, /Next: Kunden-Präsentation/);
+
+  const eveningHtml = renderSlideHtml(slide, { resolveData: resolve({ ...freeLater, __status: 'ok' }) });
+  assert.match(eveningHtml, /background:#16A34A/);
+  // next_title is tomorrow's Gelber Sack, so the row stays — hide_if_empty is about empty, not "today".
+  assert.match(eveningHtml, /Next: Gelber Sack Abholung/);
+
+  const noNext = { ...freeLater, next_title: '', next_time: '', __status: 'ok' };
+  const hidden = renderSlideHtml(slide, { resolveData: resolve(noNext) });
+  assert.ok(!hidden.includes('Next:'), 'empty next_title must hide the chrome row');
+
+  const stale = renderSlideHtml(slide, { resolveData: resolve({ ...busyPayload, is_busy: false, __status: 'error' }) });
+  assert.match(stale, /background:#6B7280/);
+});
+
 
 

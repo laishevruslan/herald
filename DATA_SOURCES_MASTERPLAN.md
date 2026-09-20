@@ -85,29 +85,33 @@ When an iCal feed is ingested by `server/lib/data-sources/ical-resolver.js`, it 
 {
   "status": "AVAILABLE",
   "status_de": "FREI",
-  "status_detail": "Frei bis 14:00",
+  "status_en": "AVAILABLE",
+  "status_detail": "Free until 14:00",
   "is_busy": false,
-  
-  "current_event_title": null,
-  "current_event_time": null,
-  "current_event_organizer": null,
-  
-  "next_event_title": "Sprint Planning",
-  "next_event_time": "14:00 – 15:30",
-  "next_event_organizer": "Max Mustermann",
-  "next_event_starts_in": "in 45 Min.",
-  
-  "events_today_count": 3,
-  "agenda_today_text": "14:00 Sprint Planning\n16:00 Budget Review",
-  
+
+  "current_title": "",
+  "current_time": "",
+  "current_organizer": "",
+
+  "next_title": "Sprint Planning",
+  "next_time": "Today, 14:00",
+  "next_organizer": "Max Mustermann",
+
+  "event_count": 3,
+  "events_today_count": 2,
+  "remaining_today_count": 2,
+  "remaining_today_empty": "",
+
+  "agenda_text": "14:00 Sprint Planning\n16:00 Budget Review",
+
   "event_0_title": "Sprint Planning",
-  "event_0_date": "Heute, 14:00",
+  "event_0_time": "14:00 – 15:30",
   "event_1_title": "Budget Review",
-  "event_1_date": "Heute, 16:00",
-  "event_2_title": "Papiermüll",
-  "event_2_date": "Morgen, 07:00"
+  "event_1_time": "16:00 – 17:00"
 }
 ```
+
+Canonical bind keys (do not rename): `status`, `status_detail`, `is_busy`, `current_title`, `current_time`, `current_organizer`, `next_title`, `next_time`, `agenda_text`, `event_{n}_title`, `event_{n}_time`, `event_count`, `events_today_count`, `remaining_today_count`, `remaining_today_empty`. Aliases such as `next_event_summary` remain for older decks. There is no `next_event_title`.
 
 ---
 
@@ -122,16 +126,23 @@ In ScreenTinker Slides, fields in `config.fields` can reference any data source 
     "headline": "Konferenzraum Berlin",
     "badge": "{{ds:room_berlin.status_de}}",
     "sub": "{{ds:room_berlin.status_detail}}",
-    "next_event": "{{ds:room_berlin.next_event_title}} ({{ds:room_berlin.next_event_time}})",
+    "next_event": "{{ds:room_berlin.next_title}} ({{ds:room_berlin.next_time}})",
     "qr_link": "https://cal.company.com/book/berlin"
   }
 }
 ```
 
 ### Rendering Pipeline:
-1. `slideRender.renderSlideHtml(config)` checks each field for `{{ds:SLUG.KEY}}`.
-2. Replaces placeholders with current cached values.
-3. If a data source is temporarily unreachable, fallback text is gracefully inserted (or cached value is retained).
+1. `slideRender.renderSlideHtml(config)` interpolates `{{ds:SLUG.KEY}}` in `config.fields`.
+2. `getWorkspaceDataMapSync` stamps each source with reserved `__status` from the row's `last_status` (`ok` / `error` / `pending`). That key is not part of the iCal dictionary — `status` stays the room word.
+3. Per-element flags (opt-in, stored on the template, applied at render):
+   - `hide_if_empty` — skip the element if its own slot is empty after interpolation, including leftover chrome around empty tokens (`Next:  ()` must not appear).
+   - `show_when` — `always` | `busy` | `free` | `stale`. Skip when the bound source does not match.
+   - `bind_status` — data-source slug. Reads `is_busy` and `__status`. Missing slug or `__status: error` → **stale** (fail closed: do not paint AVAILABLE).
+   - `color_when` — `{ busy, free, stale }` hex on box/rule fill and stat glyphs.
+4. A payload change changes the HTML (colour, missing row) and must not rewrite `template`. Cached values are retained on a failed fetch; the flags then paint stale rather than inventing a fallback word.
+
+Operator / author contract: [`docs/slide-data-binding.md`](docs/slide-data-binding.md).
 
 ---
 
@@ -189,7 +200,7 @@ Implementation plan (competitive analysis, renderer gaps, factory IDs, PR split)
 
 Two stubs exist in the New Deck modal (`buildRoomSignSlide` / `buildWasteCalendarSlide` in `frontend/js/views/slides.js`). They are not the shipped templates: no source picker, German chrome, 5:3 only, colours that dither badly on 1-bit e-paper, no agenda board.
 
-- [ ] **3.0** Renderer: `hide_if_empty`, `show_when`, `bind_status` / `color_when`; pass `__status` so a failed fetch cannot look AVAILABLE.
+- [x] **3.0** Renderer: `hide_if_empty`, `show_when`, `bind_status` / `color_when`; pass `__status` so a failed fetch cannot look AVAILABLE. (`remaining_today_empty` / `remaining_today_count` are in the resolver; factory templates are 3.1+.)
 - [ ] **3.1** Template 1: **Meeting Room Door Sign** — `room-epaper-5x3` (800×480 Sticky) and `room-lcd-16x9` (green/red bar). Wizard binds a data source.
 - [ ] **3.2** Template 2: **Waste / Trash Pickup** — `waste-epaper-5x3` and `waste-lcd-16x9`.
 - [ ] **3.3** Template 3: **Daily Office Agenda Board** — `agenda-lcd-16x9` (4K uses the same 16:9 + `cqw`).

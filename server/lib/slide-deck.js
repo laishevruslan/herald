@@ -141,6 +141,20 @@ function storedCfg(e) {
   }
 }
 
+/*
+ * Phase 3 bind flags. Defaults are omitted so a headline does not grow hide_if_empty:false on
+ * every save; a non-default value is named here or it is dropped the next time the deck is
+ * touched, the same silent-loss trap storedCfg exists for.
+ */
+function storedBindFlags(e) {
+  const out = {};
+  if (e.hide_if_empty) out.hide_if_empty = true;
+  if (e.show_when && e.show_when !== 'always') out.show_when = e.show_when;
+  if (e.bind_status) out.bind_status = e.bind_status;
+  if (e.color_when) out.color_when = e.color_when;
+  return out;
+}
+
 function sanitizeStored(templateIn, fieldsIn) {
   const rawTemplate = (templateIn && typeof templateIn === 'object' && !Array.isArray(templateIn)) ? templateIn : { elements: [] };
   const rawFields = (fieldsIn && typeof fieldsIn === 'object' && !Array.isArray(fieldsIn)) ? fieldsIn : {};
@@ -184,6 +198,7 @@ function sanitizeStored(templateIn, fieldsIn) {
       },
       motion: e.motion,
       ...storedCfg(e),
+      ...storedBindFlags(e),
     })),
   };
 

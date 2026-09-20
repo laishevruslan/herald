@@ -16,6 +16,22 @@ what to enter for the reviewer.
 
 ### Added
 
+**Slide data binding, phase 3.0 — busy / free / stale without a template language.** Room-sign
+decks need a different picture when the room is occupied, free, or the calendar fetch failed, and
+they need the "Next:" line gone when there is no next meeting — without a second slide, without
+expressions, and without rebuilding `template` when the payload changes. `slide-render.js` now
+honours four opt-in element flags: `hide_if_empty` (skip after interpolation if the slot is empty,
+including leftover chrome around empty `{{ds:}}` tokens so `Next:  ()` cannot appear), `show_when`
+(`always` / `busy` / `free` / `stale`), `bind_status` (data-source slug), and `color_when` (hex
+map applied to box/rule fill and stat glyphs). A failed or missing source is **stale**, never
+painted AVAILABLE: `getWorkspaceDataMapSync` stamps the row's `last_status` as reserved `__status`
+on every widget and embedded render path, distinct from the iCal room word `status`. The iCal
+resolver adds `remaining_today_count` and `remaining_today_empty` (localised empty-board phrase,
+including Russian «Сегодня встреч больше нет») so an evening agenda can collapse without treating
+the count `"0"` as content. Flags survive save; defaults are not written. The designer canvas does
+not preview the flags; the wall does. No factory gallery yet (3.1+). Contract:
+[`docs/slide-data-binding.md`](docs/slide-data-binding.md).
+
 **Scale-out, phase C1: one writer, many readers.** A second server can now hold a live, read-only
 copy of another server's workspaces and serve their dashboards — the same tables, the same 40
 route files, no mirror schema. It is the mesh, not a new cluster product: the replica is the

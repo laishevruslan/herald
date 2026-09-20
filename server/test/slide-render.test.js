@@ -373,3 +373,212 @@ test('the stage is body’s direct child and sized without container units', () 
   assert.match(stage, /height:100%/);
   assert.ok(!/cq[wh]/.test(stage), `the stage’s own size must not use container units: ${stage}`);
 });
+
+/* ============ phase 3 bind flags: hide_if_empty, show_when, bind_status, color_when ============ */
+
+const COLOR_WHEN = { busy: '#DC2626', free: '#16A34A', stale: '#6B7280' };
+
+const roomSlide = (over = {}) => ({
+  template: {
+    background: '#0B1220',
+    elements: [
+      { slot: 'bar', kind: 'box', box: { x: 0, y: 0, w: 8, h: 100 },
+        style: { color: '#111111' },
+        bind_status: 'room', color_when: COLOR_WHEN },
+      { slot: 'status', kind: 'stat', box: { x: 12, y: 10, w: 70, h: 20 },
+        style: { color: '#FFFFFF', size_cqw: 8, weight: 700 } },
+      { slot: 'next_meeting', kind: 'body', box: { x: 12, y: 40, w: 80, h: 10 },
+        style: { color: '#A3AEC0', size_cqw: 3 }, hide_if_empty: true },
+      ...(over.elements || []),
+    ],
+  },
+  fields: {
+    status: '{{ds:room.status}}',
+    next_meeting: 'Next: {{ds:room.next_title}} ({{ds:room.next_time}})',
+    ...(over.fields || {}),
+  },
+});
+
+const ds = (payload) => ({
+  resolveData: (slug, key) => (slug === 'room' ? payload[key] : undefined),
+});
+
+test('⚠️ hide_if_empty drops the Next: row when every token is empty — the () bug', () => {
+  /*
+   * Without hide_if_empty the interpolator still emits "Next:  ()" and the element stays in the
+   * document. A test that only looked for the words "Sprint" would pass on the old renderer.
+   * Asserting the ELEMENT is absent is the mutation: delete hide_if_empty handling and this fails.
+   */
+  const empty = S.renderSlideHtml(roomSlide(), ds({ status: 'AVAILABLE', is_busy: false, next_title: '', next_time: '' }));
+  assert.equal((empty.match(/class="e/g) || []).length, 2, 'the Next row must not be emitted');
+  assert.ok(!empty.includes('Next:'), 'leftover chrome "Next:  ()" leaked onto the wall');
+  assert.ok(!empty.includes('Next:  ()'), 'the empty-parentheses bug is back');
+
+  const withNext = S.renderSlideHtml(roomSlide(), ds({
+    status: 'AVAILABLE', is_busy: false, next_title: 'Sprint Planning', next_time: 'Today, 14:00',
+  }));
+  assert.match(withNext, /Next: Sprint Planning \(Today, 14:00\)/);
+  assert.equal((withNext.match(/class="e/g) || []).length, 3);
+});
+
+test('hide_if_empty keeps a Next: row when the title is present and the time is not', () => {
+  // The greedy failure: treating any empty token as "the whole slot is empty" would hide a
+  // meeting that exists. Empty is the assembled string, not "any token was blank".
+  const html = S.renderSlideHtml(roomSlide(), ds({
+    status: 'AVAILABLE', is_busy: false, next_title: 'Sprint Planning', next_time: '',
+  }));
+  assert.match(html, /Next: Sprint Planning/);
+  assert.ok(html.includes('class="e t"'), 'the row vanished because time was empty');
+});
+
+test('hide_if_empty on a slot that is only {{ds:…}} hides when that token is empty', () => {
+  const cfg = {
+    template: { elements: [
+      { slot: 'only', kind: 'body', box: { x: 0, y: 0, w: 50 }, hide_if_empty: true },
+    ] },
+    fields: { only: '{{ds:room.next_title}}' },
+  };
+  const hidden = S.renderSlideHtml(cfg, ds({ next_title: '' }));
+  assert.equal((hidden.match(/class="e/g) || []).length, 0);
+  const shown = S.renderSlideHtml(cfg, ds({ next_title: 'Budget Review' }));
+  assert.match(shown, /Budget Review/);
+});
+
+test('⚠️ show_when busy/free emits exactly one of two overlapping stats', () => {
+  const cfg = {
+    template: { elements: [
+      { slot: 'busy_word', kind: 'stat', box: { x: 10, y: 20, w: 80 },
+        style: { color: '#FFFFFF', size_cqw: 11, weight: 700 },
+        bind_status: 'room', show_when: 'busy' },
+      { slot: 'free_word', kind: 'stat', box: { x: 10, y: 20, w: 80 },
+        style: { color: '#000000', size_cqw: 11, weight: 700 },
+        bind_status: 'room', show_when: 'free' },
+    ] },
+    fields: { busy_word: 'BUSY', free_word: 'AVAILABLE' },
+  };
+  const busy = S.renderSlideHtml(cfg, ds({ is_busy: true, __status: 'ok' }));
+  assert.match(busy, />BUSY</);
+  assert.ok(!busy.includes('AVAILABLE'), 'the free word leaked while the room is busy');
+  assert.equal((busy.match(/class="e/g) || []).length, 1);
+
+  const free = S.renderSlideHtml(cfg, ds({ is_busy: false, __status: 'ok' }));
+  assert.match(free, />AVAILABLE</);
+  assert.ok(!free.includes('BUSY'), 'the busy word leaked while the room is free');
+  assert.equal((free.match(/class="e/g) || []).length, 1);
+});
+
+test('⚠️ color_when + __status:error paints stale, not the free green', () => {
+  /*
+   * The last successful cache still says AVAILABLE / is_busy:false. Painting that as green is
+   * the D6 lie. A test that only checked "a hex appears" would pass if we kept using free.
+   */
+  const html = S.renderSlideHtml(roomSlide(), ds({
+    status: 'AVAILABLE', is_busy: false, __status: 'error', next_title: '', next_time: '',
+  }));
+  assert.match(html, /background:#6B7280/);
+  assert.ok(!html.includes('background:#16A34A'), 'error looked AVAILABLE (free green)');
+  assert.ok(!html.includes('background:#DC2626'), 'error looked BUSY');
+});
+
+test('color_when + missing slug paints stale, not free — fail closed', () => {
+  const html = S.renderSlideHtml(roomSlide(), {
+    resolveData: () => undefined,
+  });
+  assert.match(html, /background:#6B7280/);
+  assert.ok(!html.includes('background:#16A34A'), 'an unknown slug painted as free');
+});
+
+test('color_when follows is_busy when __status is ok', () => {
+  const busy = S.renderSlideHtml(roomSlide(), ds({
+    status: 'BUSY', is_busy: true, __status: 'ok', next_title: 'X', next_time: '14:00',
+  }));
+  assert.match(busy, /background:#DC2626/);
+
+  const free = S.renderSlideHtml(roomSlide(), ds({
+    status: 'AVAILABLE', is_busy: false, __status: 'ok', next_title: 'X', next_time: '14:00',
+  }));
+  assert.match(free, /background:#16A34A/);
+});
+
+test('without __status an error-looking cache still paints free — that is why the call site must attach it', () => {
+  // Documents the call-site duty. The renderer cannot invent last_status from the iCal payload;
+  // is_busy:false without __status is free. getWorkspaceDataMapSync is what closes this hole.
+  const html = S.renderSlideHtml(roomSlide(), ds({ status: 'AVAILABLE', is_busy: false }));
+  assert.match(html, /background:#16A34A/);
+});
+
+test('bind_status is a slug and is never concatenated into HTML', () => {
+  const html = S.renderSlideHtml({
+    template: { elements: [
+      { slot: 'bar', kind: 'box', box: { x: 0, y: 0, w: 8, h: 100 },
+        style: { color: '#111111' },
+        bind_status: 'room"><script>', color_when: COLOR_WHEN },
+    ] },
+    fields: {},
+  }, ds({ is_busy: true, __status: 'ok' }));
+  assert.ok(!html.includes('room"><script>'), 'bind_status leaked into markup');
+  assert.ok(!html.includes('background:url(x)'), 'a dropped slug must not reach CSS');
+  // Invalid slug is treated as missing → stale, not the busy red from is_busy.
+  assert.match(html, /background:#6B7280/);
+  assert.ok(!html.includes('background:#DC2626'));
+});
+
+test('⚠️ a hostile color_when value cannot break out of the style attribute', () => {
+  const html = S.renderSlideHtml({
+    template: { elements: [
+      { slot: 'bar', kind: 'box', box: { x: 0, y: 0, w: 8 },
+        style: { color: '#111111' },
+        bind_status: 'room',
+        color_when: { busy: 'red;width:300vw', free: 'url(javascript:alert(1))', stale: '#6B7280' } },
+    ] },
+    fields: {},
+  }, ds({ is_busy: true, __status: 'ok' }));
+  assert.ok(!html.includes('width:300vw'), 'a CSS breakout in color_when.busy survived');
+  assert.ok(!html.includes('javascript:'), 'a javascript: colour survived');
+  assert.match(html, /background:#111111/, 'invalid busy colour must not override');
+});
+
+test('unknown show_when and bind_status values are dropped, not interpolated', () => {
+  const n = S.normalizeSlide({
+    template: { elements: [
+      { slot: 'a', kind: 'stat', box: {},
+        show_when: 'occupied', bind_status: 'room;background:url(x)',
+        color_when: { busy: 'not-a-color' }, hide_if_empty: 'yes' },
+    ] },
+  });
+  const e = n.elements[0];
+  assert.equal(e.show_when, 'always');
+  assert.equal(e.bind_status, '');
+  assert.equal(e.color_when, null);
+  assert.equal(e.hide_if_empty, false);
+});
+
+test('editing a field does not change element count or boxes; changing is_busy changes the bar colour', () => {
+  const base = roomSlide({ fields: { room_name: 'Berlin' } });
+  base.template.elements.push({
+    slot: 'room_name', kind: 'head', box: { x: 12, y: 2, w: 50 },
+    style: { color: '#FFFFFF', size_cqw: 4, weight: 700 },
+  });
+  base.fields.room_name = 'Berlin';
+  const a = S.normalizeSlide(base);
+  const renamed = JSON.parse(JSON.stringify(base));
+  renamed.fields.room_name = 'Munich';
+  const b = S.normalizeSlide(renamed);
+  assert.equal(a.elements.length, b.elements.length);
+  assert.deepEqual(a.elements.map((e) => ({ slot: e.slot, x: e.x, y: e.y, w: e.w, h: e.h })),
+    b.elements.map((e) => ({ slot: e.slot, x: e.x, y: e.y, w: e.w, h: e.h })));
+
+  const busyHtml = S.renderSlideHtml(base, ds({ is_busy: true, __status: 'ok', status: 'BUSY', next_title: 'X', next_time: '1' }));
+  const freeHtml = S.renderSlideHtml(base, ds({ is_busy: false, __status: 'ok', status: 'AVAILABLE', next_title: 'X', next_time: '1' }));
+  assert.match(busyHtml, /background:#DC2626/);
+  assert.match(freeHtml, /background:#16A34A/);
+  assert.notEqual(busyHtml, freeHtml, 'is_busy must change the rendered HTML (colour overlay is render-time)');
+});
+
+test('color_when is a template property: normalize keeps it when a field is edited', () => {
+  const before = S.normalizeSlide(roomSlide());
+  const after = S.normalizeSlide(roomSlide({ fields: { status: 'edited' } }));
+  assert.deepEqual(before.elements[0].color_when, COLOR_WHEN);
+  assert.deepEqual(after.elements[0].color_when, COLOR_WHEN);
+  assert.equal(before.elements[0].bind_status, 'room');
+});

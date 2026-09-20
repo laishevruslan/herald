@@ -58,17 +58,17 @@ async function fetchCalendar(urlString) {
  * ⚠️ The CJK and Hindi entries (ja/zh/hi) are best-effort and worth a native-speaker check.
  */
 const ROOM_STRINGS = {
-  en: { intl: 'en-US', hour12: true,  busy: 'BUSY', available: 'AVAILABLE', busyUntil: (t) => `Busy until ${t}`, freeUntil: (t) => `Free until ${t}`, freeAllDay: 'Free all day', allDay: 'All day', today: 'Today', tomorrow: 'Tomorrow', busyMask: 'Busy', eventFallback: 'Event' },
-  de: { intl: 'de-DE', hour12: false, busy: 'BELEGT', available: 'FREI', busyUntil: (t) => `Belegt bis ${t}`, freeUntil: (t) => `Frei bis ${t}`, freeAllDay: 'Ganztägig frei', allDay: 'Ganztägig', today: 'Heute', tomorrow: 'Morgen', busyMask: 'Belegt', eventFallback: 'Termin' },
-  nl: { intl: 'nl-NL', hour12: false, busy: 'BEZET', available: 'BESCHIKBAAR', busyUntil: (t) => `Bezet tot ${t}`, freeUntil: (t) => `Vrij tot ${t}`, freeAllDay: 'De hele dag vrij', allDay: 'Hele dag', today: 'Vandaag', tomorrow: 'Morgen', busyMask: 'Bezet', eventFallback: 'Afspraak' },
-  es: { intl: 'es-ES', hour12: false, busy: 'OCUPADO', available: 'DISPONIBLE', busyUntil: (t) => `Ocupado hasta las ${t}`, freeUntil: (t) => `Libre hasta las ${t}`, freeAllDay: 'Libre todo el día', allDay: 'Todo el día', today: 'Hoy', tomorrow: 'Mañana', busyMask: 'Ocupado', eventFallback: 'Evento' },
-  fr: { intl: 'fr-FR', hour12: false, busy: 'OCCUPÉ', available: 'LIBRE', busyUntil: (t) => `Occupé jusqu'à ${t}`, freeUntil: (t) => `Libre jusqu'à ${t}`, freeAllDay: 'Libre toute la journée', allDay: 'Journée entière', today: "Aujourd'hui", tomorrow: 'Demain', busyMask: 'Occupé', eventFallback: 'Événement' },
-  pt: { intl: 'pt-PT', hour12: false, busy: 'OCUPADO', available: 'DISPONÍVEL', busyUntil: (t) => `Ocupado até ${t}`, freeUntil: (t) => `Livre até ${t}`, freeAllDay: 'Livre o dia todo', allDay: 'Dia inteiro', today: 'Hoje', tomorrow: 'Amanhã', busyMask: 'Ocupado', eventFallback: 'Evento' },
-  it: { intl: 'it-IT', hour12: false, busy: 'OCCUPATO', available: 'LIBERO', busyUntil: (t) => `Occupato fino alle ${t}`, freeUntil: (t) => `Libero fino alle ${t}`, freeAllDay: 'Libero tutto il giorno', allDay: 'Tutto il giorno', today: 'Oggi', tomorrow: 'Domani', busyMask: 'Occupato', eventFallback: 'Evento' },
-  hi: { intl: 'hi-IN', hour12: false, busy: 'व्यस्त', available: 'उपलब्ध', busyUntil: (t) => `${t} तक व्यस्त`, freeUntil: (t) => `${t} तक उपलब्ध`, freeAllDay: 'पूरे दिन उपलब्ध', allDay: 'पूरा दिन', today: 'आज', tomorrow: 'कल', busyMask: 'व्यस्त', eventFallback: 'कार्यक्रम' },
-  ja: { intl: 'ja-JP', hour12: false, busy: '使用中', available: '空き', busyUntil: (t) => `${t} まで使用中`, freeUntil: (t) => `${t} まで空き`, freeAllDay: '終日空き', allDay: '終日', today: '今日', tomorrow: '明日', busyMask: '使用中', eventFallback: '予定' },
-  zh: { intl: 'zh-CN', hour12: false, busy: '使用中', available: '空闲', busyUntil: (t) => `使用中，至 ${t}`, freeUntil: (t) => `空闲，至 ${t}`, freeAllDay: '全天空闲', allDay: '全天', today: '今天', tomorrow: '明天', busyMask: '使用中', eventFallback: '活动' },
-  ru: { intl: 'ru-RU', hour12: false, busy: 'ЗАНЯТО', available: 'СВОБОДНО', busyUntil: (t) => `Занято до ${t}`, freeUntil: (t) => `Свободно до ${t}`, freeAllDay: 'Свободно весь день', allDay: 'Весь день', today: 'Сегодня', tomorrow: 'Завтра', busyMask: 'Занято', eventFallback: 'Событие' },
+  en: { intl: 'en-US', hour12: true,  busy: 'BUSY', available: 'AVAILABLE', busyUntil: (t) => `Busy until ${t}`, freeUntil: (t) => `Free until ${t}`, freeAllDay: 'Free all day', allDay: 'All day', today: 'Today', tomorrow: 'Tomorrow', busyMask: 'Busy', eventFallback: 'Event', remainingTodayEmpty: 'No more meetings today' },
+  de: { intl: 'de-DE', hour12: false, busy: 'BELEGT', available: 'FREI', busyUntil: (t) => `Belegt bis ${t}`, freeUntil: (t) => `Frei bis ${t}`, freeAllDay: 'Ganztägig frei', allDay: 'Ganztägig', today: 'Heute', tomorrow: 'Morgen', busyMask: 'Belegt', eventFallback: 'Termin', remainingTodayEmpty: 'Heute keine weiteren Termine' },
+  nl: { intl: 'nl-NL', hour12: false, busy: 'BEZET', available: 'BESCHIKBAAR', busyUntil: (t) => `Bezet tot ${t}`, freeUntil: (t) => `Vrij tot ${t}`, freeAllDay: 'De hele dag vrij', allDay: 'Hele dag', today: 'Vandaag', tomorrow: 'Morgen', busyMask: 'Bezet', eventFallback: 'Afspraak', remainingTodayEmpty: 'Vandaag geen afspraken meer' },
+  es: { intl: 'es-ES', hour12: false, busy: 'OCUPADO', available: 'DISPONIBLE', busyUntil: (t) => `Ocupado hasta las ${t}`, freeUntil: (t) => `Libre hasta las ${t}`, freeAllDay: 'Libre todo el día', allDay: 'Todo el día', today: 'Hoy', tomorrow: 'Mañana', busyMask: 'Ocupado', eventFallback: 'Evento', remainingTodayEmpty: 'Hoy no hay más reuniones' },
+  fr: { intl: 'fr-FR', hour12: false, busy: 'OCCUPÉ', available: 'LIBRE', busyUntil: (t) => `Occupé jusqu'à ${t}`, freeUntil: (t) => `Libre jusqu'à ${t}`, freeAllDay: 'Libre toute la journée', allDay: 'Journée entière', today: "Aujourd'hui", tomorrow: 'Demain', busyMask: 'Occupé', eventFallback: 'Événement', remainingTodayEmpty: "Plus de réunions aujourd'hui" },
+  pt: { intl: 'pt-PT', hour12: false, busy: 'OCUPADO', available: 'DISPONÍVEL', busyUntil: (t) => `Ocupado até ${t}`, freeUntil: (t) => `Livre até ${t}`, freeAllDay: 'Livre o dia todo', allDay: 'Dia inteiro', today: 'Hoje', tomorrow: 'Amanhã', busyMask: 'Ocupado', eventFallback: 'Evento', remainingTodayEmpty: 'Não há mais reuniões hoje' },
+  it: { intl: 'it-IT', hour12: false, busy: 'OCCUPATO', available: 'LIBERO', busyUntil: (t) => `Occupato fino alle ${t}`, freeUntil: (t) => `Libero fino alle ${t}`, freeAllDay: 'Libero tutto il giorno', allDay: 'Tutto il giorno', today: 'Oggi', tomorrow: 'Domani', busyMask: 'Occupato', eventFallback: 'Evento', remainingTodayEmpty: 'Oggi non ci sono altre riunioni' },
+  hi: { intl: 'hi-IN', hour12: false, busy: 'व्यस्त', available: 'उपलब्ध', busyUntil: (t) => `${t} तक व्यस्त`, freeUntil: (t) => `${t} तक उपलब्ध`, freeAllDay: 'पूरे दिन उपलब्ध', allDay: 'पूरा दिन', today: 'आज', tomorrow: 'कल', busyMask: 'व्यस्त', eventFallback: 'कार्यक्रम', remainingTodayEmpty: 'आज और कोई बैठक नहीं' },
+  ja: { intl: 'ja-JP', hour12: false, busy: '使用中', available: '空き', busyUntil: (t) => `${t} まで使用中`, freeUntil: (t) => `${t} まで空き`, freeAllDay: '終日空き', allDay: '終日', today: '今日', tomorrow: '明日', busyMask: '使用中', eventFallback: '予定', remainingTodayEmpty: '本日の予定はこれ以上ありません' },
+  zh: { intl: 'zh-CN', hour12: false, busy: '使用中', available: '空闲', busyUntil: (t) => `使用中，至 ${t}`, freeUntil: (t) => `空闲，至 ${t}`, freeAllDay: '全天空闲', allDay: '全天', today: '今天', tomorrow: '明天', busyMask: '使用中', eventFallback: '活动', remainingTodayEmpty: '今天没有更多会议' },
+  ru: { intl: 'ru-RU', hour12: false, busy: 'ЗАНЯТО', available: 'СВОБОДНО', busyUntil: (t) => `Занято до ${t}`, freeUntil: (t) => `Свободно до ${t}`, freeAllDay: 'Свободно весь день', allDay: 'Весь день', today: 'Сегодня', tomorrow: 'Завтра', busyMask: 'Занято', eventFallback: 'Событие', remainingTodayEmpty: 'Сегодня встреч больше нет' },
 };
 
 // Map a data source's `locale` (may be null, 'en-US', 'nl', etc.) to a table key. Default English.
@@ -385,6 +385,22 @@ async function resolveIcalData(config = {}, nowRef = new Date()) {
     event_count: selectedEvents.length,
     events_today_count: flatEvents.filter(e => e.isAllDay ? (e.dayKey <= todayKey && e.endDayKey > todayKey) : (dateKey(e.start) === todayKey)).length,
   };
+
+  /*
+   * remaining_today_count: events that have not ended yet and that overlap today.
+   * Distinct from events_today_count, which keys off start-date and therefore drops an overnight
+   * meeting that began yesterday and is still running. remaining_today_empty is the localised
+   * phrase when that count is 0 (empty string otherwise) — templates bind it with hide_if_empty
+   * so an agenda board can say "no more meetings today" without a mini-language.
+   */
+  const remainingToday = flatEvents.filter((e) => {
+    if (e.isAllDay) return e.dayKey <= todayKey && e.endDayKey > todayKey;
+    if (!(e.end > now)) return false;
+    if (dateKey(e.start) === todayKey) return true;
+    return e.start <= now && dateKey(e.end) >= todayKey;
+  });
+  payload.remaining_today_count = remainingToday.length;
+  payload.remaining_today_empty = remainingToday.length > 0 ? '' : L.remainingTodayEmpty;
 
   // Populate indexed items (event_0_title, event_1_title, ...)
   selectedEvents.forEach((ev, idx) => {

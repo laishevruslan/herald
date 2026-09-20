@@ -1,6 +1,6 @@
 # Data Sources, фаза 3 — готовые шаблоны слайдов
 
-**Статус: ПЛАН. В коде есть только два черновых дека в модалке New Deck.**
+**Статус: 3.0 СДЕЛАНО (контракт + рендерер). 3.1–3.5 не начаты.**
 **Родительский документ:** [`DATA_SOURCES_MASTERPLAN.md`](../DATA_SOURCES_MASTERPLAN.md), фаза 3.
 **Намерение ветки:** остаёмся на текущем контракте слайда (`template` + `fields` + `{{ds:slug.field}}`). Новый runtime плеера не вводим.
 
@@ -25,7 +25,9 @@
 | Часть | Где | Состояние |
 |---|---|---|
 | Payload iCal-резолвера (`status`, `status_detail`, `is_busy`, `current_*`, `next_*`, `event_N_*`, `agenda_text`) | `server/lib/data-sources/ical-resolver.js` | **Готово.** Есть алиасы (`next_title` = `next_event_summary`). Локализация через `locale` источника. |
-| Подстановка `{{ds:slug.field}}` | `server/lib/slide-render.js`, `interpolateDataSources` | **Готово.** Отсутствующие ключи становятся `''`. `white-space:pre-wrap` уже сохраняет переносы в `agenda_text`. |
+| Подстановка `{{ds:slug.field}}` | `server/lib/slide-render.js`, `interpolateDataSources` | **Готово.** Отсутствующие ключи становятся `''`. `white-space:pre-wrap` уже сохраняет переносы в `agenda_text`. **3.0:** `hide_if_empty`, `show_when`, `bind_status`, `color_when`. |
+| `__status` на resolveData | `getWorkspaceDataMapSync` / `attachSourceStatus` | **Готово (3.0).** `last_status` ряда не кладётся в iCal-payload. |
+| `remaining_today_empty` / `remaining_today_count` | `ical-resolver.js` | **Готово (3.0).** |
 | Модалка New Deck с тремя radio: blank / room / waste | `frontend/js/views/slides.js`, `openNewDeckModal` | **Черновик.** Список radio, без превью, без выбора источника. |
 | `buildRoomSignSlide(slug)` | тот же файл | **Черновик.** Только 5:3. Циан `#38BDF8` на `#0F172A` — на 1-bit e-paper дизерится в грязь. Немецкий текст зашит (`Nächstes Meeting`, `Konferenzraum Berlin`). Берётся slug первого источника или `testraum`. |
 | `buildWasteCalendarSlide(slug)` | тот же файл | **Черновик.** Только 5:3. Жёлтый `#FACC15`. Немецкий текст. Slug угадывается по `abfall`/`waste` в идентификаторе. Варианта 1080p нет. |
@@ -491,15 +493,30 @@ color_when: { busy, free, stale } // each via existing color()
 
 Оценки — инженерные дни одного человека, который уже знает этот репозиторий. Не календарное время.
 
-### 3.0 — контракт и рендерер (блокирует всё визуальное)
+### 3.0 — контракт и рендерер (блокирует всё визуальное) ✅
 
-1. Заморозить таблицу полей в `server/test/data-sources-ical.test.js` (`assert.deepEqual(Object.keys(payload).sort(), CANON.sort())` слишком жёстко из-за алиасов). Вместо этого: `CANON.forEach(k => assert.ok(k in payload))`.
-2. Добавить `remaining_today_empty` + тесты (занятый день, пустой вечер, остаток all-day).
-3. Реализовать `hide_if_empty`, `show_when`, `bind_status`, `color_when` в `slide-render.js` с mutation-тестами (стиль репозитория: тест, который прошёл бы на старом рендерере, бесполезен).
-4. Прокинуть `__status` с путей widget + embedded render.
-5. Задокументировать четыре новых ключа элемента комментарием у `KINDS` — пока не пользовательская страница docs.
+1. [x] Заморозить таблицу полей в `server/test/data-sources-ical.test.js` (`assert.deepEqual(Object.keys(payload).sort(), CANON.sort())` слишком жёстко из-за алиасов). Вместо этого: `CANON.forEach(k => assert.ok(k in payload))`.
+2. [x] Добавить `remaining_today_empty` + тесты (занятый день, пустой вечер, остаток all-day). Также `remaining_today_count` (включая overnight, начавшийся вчера).
+3. [x] Реализовать `hide_if_empty`, `show_when`, `bind_status`, `color_when` в `slide-render.js` с mutation-тестами (стиль репозитория: тест, который прошёл бы на старом рендерере, бесполезен).
+4. [x] Прокинуть `__status` с путей widget + embedded render (`getWorkspaceDataMapSync` → `attachSourceStatus`; оба пути уже ходят в `dataResolverFor`).
+5. [x] Задокументировать четыре новых ключа элемента комментарием у `KINDS` и операторской страницей [`docs/slide-data-binding.md`](slide-data-binding.md) (CHANGELOG Unreleased, masterplan §5, абзац в `embedded-renderer.md`).
 
 **Готово, когда:** руками собранный JSON слайда с `color_when` и `hide_if_empty` рисует busy/free/stale и прячет пустую строку «следующая», в `slide-render.test.js` и `data-sources-ical.test.js`, без какой-либо фабрики.
+
+**Сделано в 3.0, с оговорками (не фабрики):**
+
+- `hide_if_empty` прячет слот, если после подстановки `trim() === ''` **или** строка равна хрому вокруг пустых `{{ds:}}` токенов (`Next: {{ds:x.next_title}}` / `Next: … ()`). Название без времени по-прежнему видно.
+- Новые ключи элемента переживают save (`slide-deck.js` `storedBindFlags`); дефолты не записываются, чтобы headline не обрастал `hide_if_empty:false`.
+- Строки `remaining_today_empty` живут в `ROOM_STRINGS` (включая `ru`: «Сегодня встреч больше нет»). SPA-ключи `data_sources.remaining_today_*_label` — в `en.js` и `ru.js`; остальные локали падают в английский.
+- Подсказки переменных: карточка Data Sources и picker в дизайнере слайда отдают `remaining_today_empty`.
+
+**Не сделано в 3.0 (зафиксировано, не регрессия чеклиста выше):**
+
+- Холст редактора (`frontend/js/views/slides.js` `styleFor` / stage) **не** применяет `hide_if_empty` / `show_when` / `color_when`. На стене (widget render, embedded, preview API) — да. Инспектор не показывает эти четыре ключа: их ставит JSON / будущая фабрика.
+- Фабрики T1–T3, выбор источника в мастере, галерея карточек — 3.1–3.4.
+- `GET /api/slide-templates/:id/doc` — 3.5.
+- Ключи i18n `slides.factory.*` из §10 не добавлены: нет UI, который их читает.
+- Остальные локали SPA кроме en/ru не получили `data_sources.remaining_today_*_label` (fallback на en, как принято тестом покрытия).
 
 ### 3.1 — T1 e-paper + T1 LCD + привязка в мастере
 
@@ -584,10 +601,21 @@ slides.factory.room-epaper-5x3.desc
 
 ## 11. Справка и миграция
 
-- empty state Data Sources уже упоминает статус комнаты и повестки — добавить «или начните со Slides → New deck → Meeting Room Sign»;
+**Сделано в 3.0:**
+
+- [`docs/slide-data-binding.md`](slide-data-binding.md) — контракт ключей CANON, `{{ds:}}`, четырёх флагов, `__status`, `remaining_today_*`, пример JSON, что редактор не превьюит флаги;
+- `DATA_SOURCES_MASTERPLAN.md` §4–§5 — канонические ключи и pipeline с `__status` / флагами;
+- `CHANGELOG.md` Unreleased; README Features (Data sources / Meeting-room signs);
+- `docs/embedded-renderer.md` §3.2 — тот же `getWorkspaceDataMapSync` на e-paper; stale, не Available; зелёный/красный на 1-bit — шум, инверсия через `show_when`. **Не** абзац про фабрику `room-epaper-5x3` (её ещё нет);
+- empty state Data Sources (`data_sources.empty_desc` en/ru) упоминает next meeting / agenda / empty-board hint и `{{ds:slug.field}}`. Фразу «или начните со Slides → New deck → Meeting Room Sign» **не** добавляли: фабрики нет.
+
+**Остаётся на 3.1+:**
+
+- empty state: «или начните со Slides → New deck → Meeting Room Sign» — после T1;
 - `Examples/PIP-Room-Status-Calendar/README.md`: 10 строк «Prefer Slides + Data Sources (2.1+)» сверху. Пример не удалять; air-gapped overlay всё ещё нужен;
-- `docs/embedded-renderer.md`: один абзац без скриншота «шаблон таблички комнаты, 5:3, профиль Sticky»;
-- getting-started: только если в чеклисте уже есть пункт про слайды; не удлинять онбординг ради нишевого hardware-пресета.
+- `docs/embedded-renderer.md`: один абзац без скриншота «шаблон таблички комнаты, 5:3, профиль Sticky» — когда появится `room-epaper-5x3`;
+- getting-started: только если в чеклисте уже есть пункт про слайды; не удлинять онбординг ради нишевого hardware-пресета;
+- статья в in-app Help (`help.js`) про Data Sources — вместе с галереей, не раньше.
 
 ---
 

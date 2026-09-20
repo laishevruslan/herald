@@ -1349,6 +1349,7 @@ function renderProps(container) {
                       <option value="{{ds:${esc(ds.slug)}.next_title}}">Next Event (${esc(ds.slug)}.next_title)</option>
                       <option value="{{ds:${esc(ds.slug)}.next_time}}">Next Time (${esc(ds.slug)}.next_time)</option>
                       <option value="{{ds:${esc(ds.slug)}.agenda_text}}">Agenda Text (${esc(ds.slug)}.agenda_text)</option>
+                      <option value="{{ds:${esc(ds.slug)}.remaining_today_empty}}">${esc(t('data_sources.remaining_today_empty_label'))} (${esc(ds.slug)}.remaining_today_empty)</option>
                     </optgroup>
                   `).join('')}
                 </select>

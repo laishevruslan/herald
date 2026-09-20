@@ -282,7 +282,7 @@ test('⚠️ the AI generator is not offered kinds it cannot fill', () => {
   // It can write a headline. It cannot invent a URL to encode or a date to count down to, and a
   // kind built entirely from defaults reads as a broken slide rather than an empty one.
   const src = require('fs').readFileSync(require.resolve('../routes/ai.js'), 'utf8');
-  const listed = src.match(/const SLIDE_KINDS = [\s\S]*?;\n/)[0];
+  const listed = src.match(/const SLIDE_KINDS = [\s\S]*?;\r?\n/)[0];
   assert.ok(listed.includes('.config'), 'ai.js must exclude kinds that need configuration');
   // And the flag is actually set on the four that need it, so the filter above has something to bite.
   assert.deepEqual(
@@ -358,7 +358,8 @@ test('⚠️ hostile config does not survive a save either', () => {
 
 test('a kind that needs no config gains no keys on save', () => {
   const e = savedEl(deckWith([{ kind: 'head', slot: 'a' }], { a: 'hi' }));
-  for (const k of ['clock_format', 'date_format', 'tz', 'locale', 'target', 'qr_ec', 'qr_bg', 'fit']) {
+  for (const k of ['clock_format', 'date_format', 'tz', 'locale', 'target', 'qr_ec', 'qr_bg', 'fit',
+    'hide_if_empty', 'show_when', 'bind_status', 'color_when']) {
     assert.ok(!(k in e), `a headline should not carry ${k}`);
   }
 });
@@ -495,6 +496,24 @@ test('fit survives a save like every other per-element setting', () => {
   // The same silent-loss trap: unnamed keys are dropped by sanitizeStored on every save.
   assert.equal(savedEl(deckWith([{ kind: 'image', slot: 'a', fit: 'contain' }])).fit, 'contain');
   assert.equal(savedEl(deckWith([{ kind: 'image', slot: 'a' }])).fit, 'cover');
+});
+
+test('⚠️ hide_if_empty, show_when, bind_status and color_when survive a save', () => {
+  const colorWhen = { busy: '#DC2626', free: '#16A34A', stale: '#6B7280' };
+  const e = savedEl(deckWith([{
+    kind: 'box', slot: 'bar',
+    hide_if_empty: true, show_when: 'busy', bind_status: 'room_berlin', color_when: colorWhen,
+  }]));
+  assert.equal(e.hide_if_empty, true);
+  assert.equal(e.show_when, 'busy');
+  assert.equal(e.bind_status, 'room_berlin');
+  assert.deepEqual(e.color_when, colorWhen);
+
+  const twice = deckLib.normalizeDeck(deckWith([{
+    kind: 'stat', slot: 'word', show_when: 'free', bind_status: 'room',
+    color_when: colorWhen, hide_if_empty: true,
+  }]));
+  assert.deepEqual(deckLib.normalizeDeck(twice), twice);
 });
 
 /* ============ layered placement: keeping objects out of the words ============ */
