@@ -24,6 +24,11 @@ server/certs
 # not needed at runtime (NOTE: scripts/ IS needed - database.js requires
 # scripts/migrate-multitenancy at boot - so it must stay in the image)
 server/test
+# Studio 6.3 docker verify needs these suites inside the image:
+!server/test/studio-export.test.js
+!server/test/studio-spike.test.js
+!server/test/brand-kit.test.js
+!server/test/slide-fonts.test.js
 android
 tizen
 video

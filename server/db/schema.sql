@@ -796,6 +796,31 @@ CREATE TABLE IF NOT EXISTS plugin_submissions (
 CREATE INDEX IF NOT EXISTS idx_plugin_submissions_plugin_status
     ON plugin_submissions(plugin_id, status);
 
+-- Studio poster sidecar (phase 6.1). scene_json is for re-edit only; players use content PNG.
+CREATE TABLE IF NOT EXISTS studio_designs (
+    content_id   TEXT PRIMARY KEY REFERENCES content(id) ON DELETE CASCADE,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    scene_json   TEXT NOT NULL DEFAULT '{}',
+    width        INTEGER NOT NULL DEFAULT 1920,
+    height       INTEGER NOT NULL DEFAULT 1080,
+    updated_at   INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_studio_designs_ws ON studio_designs(workspace_id);
+
+-- Workspace brand kit (authoring). Distinct from white_labels (login chrome).
+CREATE TABLE IF NOT EXISTS workspace_brand_kits (
+    workspace_id     TEXT PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
+    color_primary    TEXT NOT NULL DEFAULT '#3B82F6',
+    color_secondary  TEXT NOT NULL DEFAULT '#1E293B',
+    color_accent     TEXT NOT NULL DEFAULT '#F59E0B',
+    color_bg         TEXT NOT NULL DEFAULT '#111827',
+    font_heading     TEXT NOT NULL DEFAULT 'archivo',
+    font_body        TEXT NOT NULL DEFAULT 'inter',
+    logo_content_id  TEXT REFERENCES content(id) ON DELETE SET NULL,
+    updated_at       INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+
 CREATE TABLE IF NOT EXISTS plugin_allowlist (
     plugin_id      TEXT PRIMARY KEY,
     sha256         TEXT NOT NULL,

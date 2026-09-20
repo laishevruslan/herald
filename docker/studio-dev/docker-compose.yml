@@ -1,0 +1,34 @@
+# Studio island — local Vite in Docker Desktop (separate from verify containers).
+#
+# Prerequisite: Herald CMS already up (service name `screentinker` on network `herald_default`).
+#   docker compose up -d
+#
+# Then:
+#   docker compose -f docker/studio-dev/docker-compose.yml up -d --build
+#   http://localhost:5174/studio/?lang=ru
+#
+# Stop:
+#   docker compose -f docker/studio-dev/docker-compose.yml down
+
+services:
+  studio-dev:
+    build:
+      context: ../..
+      dockerfile: docker/studio-dev/Dockerfile
+    container_name: herald-studio-dev
+    ports:
+      - "5174:5174"
+    environment:
+      STUDIO_API_PROXY: http://screentinker:3001
+    volumes:
+      # Live reload — edit frontend-studio on the host
+      - ../../frontend-studio:/app
+      - /app/node_modules
+      - ../../server/fonts:/server/fonts:ro
+    networks:
+      - herald_default
+    restart: unless-stopped
+
+networks:
+  herald_default:
+    external: true

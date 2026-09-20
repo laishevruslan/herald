@@ -6,6 +6,51 @@ import { renderApprovalBar } from '../components/approval-actions.js';
 import {
   GALLERY_CHIPS, galleryItems, filterGallery, moveGalleryIndex, thumbHtml,
 } from '../lib/slide-gallery.js';
+import { studioIslandAvailable } from '../lib/studio-available.js';
+
+const STUDIO_SLIDE_BG_KEY = 'studio.slideBgReturn';
+
+/** Map deck aspect to Studio canvas preset (D-SC-6). */
+function studioPresetForDeck() {
+  const a = deckAspect();
+  if (a === '5:3') return 'epaper-5x3';
+  if (a === '9:16' || a === '3:4' || a === '2:3' || a === '10:16') return 'portrait-1080';
+  return 'landscape-1080';
+}
+
+function studioLangParam() {
+  try {
+    const lang = (localStorage.getItem('lang') || navigator.language || 'en').slice(0, 2);
+    return lang === 'ru' ? 'ru' : 'en';
+  } catch {
+    return 'en';
+  }
+}
+
+function openStudioForSlideBackground() {
+  if (!state.deck) return;
+  sessionStorage.setItem(STUDIO_SLIDE_BG_KEY, JSON.stringify({
+    deckId: state.deck.id,
+    slideIndex: state.si,
+    pending: true,
+  }));
+  const preset = studioPresetForDeck();
+  const lang = studioLangParam();
+  window.location.href =
+    `/studio/?for=slide-bg&preset=${encodeURIComponent(preset)}&lang=${encodeURIComponent(lang)}`;
+}
+
+function openStudioEditBackgroundPoster(contentId) {
+  if (!state.deck || !contentId) return;
+  sessionStorage.setItem(STUDIO_SLIDE_BG_KEY, JSON.stringify({
+    deckId: state.deck.id,
+    slideIndex: state.si,
+    pending: true,
+  }));
+  const lang = studioLangParam();
+  window.location.href =
+    `/studio/?for=slide-bg&contentId=${encodeURIComponent(contentId)}&lang=${encodeURIComponent(lang)}`;
+}
 
 /*
  * The slide deck editor.
@@ -609,8 +654,50 @@ export async function render(container) {
       `<p style="color:var(--danger)">${t('slides.load_failed', { error: esc(e.message || '') })}</p>`;
     return;
   }
+
+  // Studio → slide background return (phase 6.2). Apply before list/editor paint.
+  if (await applyPendingStudioSlideBackground(container)) return;
+
   if (state.deck) return renderEditor(container);
   renderList(container);
+}
+
+async function applyPendingStudioSlideBackground(container) {
+  let raw;
+  try { raw = sessionStorage.getItem(STUDIO_SLIDE_BG_KEY); } catch { return false; }
+  if (!raw) return false;
+  let payload;
+  try { payload = JSON.parse(raw); } catch {
+    try { sessionStorage.removeItem(STUDIO_SLIDE_BG_KEY); } catch { /* ignore */ }
+    return false;
+  }
+  if (!payload || !payload.done || !payload.contentId || !payload.deckId) {
+    // Abandoned navigation without publish — drop the pending marker.
+    if (payload && payload.pending && !payload.done) {
+      try { sessionStorage.removeItem(STUDIO_SLIDE_BG_KEY); } catch { /* ignore */ }
+    }
+    return false;
+  }
+  try { sessionStorage.removeItem(STUDIO_SLIDE_BG_KEY); } catch { /* ignore */ }
+  try {
+    await openDeck(container, payload.deckId);
+    if (!state.deck) return true;
+    const max = Math.max(0, (state.deck.doc.slides || []).length - 1);
+    state.si = Math.min(Number(payload.slideIndex) || 0, max);
+    state.tab = 'slide';
+    const s = slide();
+    if (s) {
+      s.template.background_content_id = payload.contentId;
+      if (s.template.background_dim == null) s.template.background_dim = 0.35;
+      state.dirty = true;
+    }
+    await loadContent();
+    paintAll(container);
+    showToast(t('studio.slide_bg_applied'), 'success');
+  } catch (e) {
+    showToast(e.message || t('studio.slide_bg_apply_failed'), 'error');
+  }
+  return true;
 }
 
 function renderList(container) {
@@ -1354,6 +1441,7 @@ function renderProps(container) {
     const bgId = s.template.background_content_id || '';
     const bgVid = s.template.background_video_content_id || '';
     const dim = s.template.background_dim == null ? 0 : s.template.background_dim;
+    const bgStudio = !!(bgId && (state.contentIndex || []).find((c) => c.id === bgId && c.studio_design));
     host.innerHTML =
       `<div class="sl-group"><p class="sl-legend">Slide</p>
          <div class="sl-row"><label for="sName">Name</label>
@@ -1381,6 +1469,12 @@ function renderProps(container) {
              <select class="input" id="sBgImg"><option value="">— none —</option>${
                imageContent().map((c) => `<option value="${esc(c.id)}" ${
                  c.id === bgId ? 'selected' : ''}>${esc(c.filename)}</option>`).join('')}</select></div>
+           <div class="sl-row" id="studioBgRow" hidden style="flex-wrap:wrap;gap:8px">
+             <button type="button" class="btn btn-secondary btn-sm" id="studioBgNew"
+               title="${esc(t('studio.slide_bg_help'))}">${esc(t('studio.slide_bg_from_studio'))}</button>
+             ${bgStudio ? `<button type="button" class="btn btn-secondary btn-sm" id="studioBgEdit"
+               title="${esc(t('studio.edit_poster'))}">${esc(t('studio.edit_poster'))}</button>` : ''}
+           </div>
            <div class="sl-row"><label for="sBgVid">Video</label>
              <select class="input" id="sBgVid"><option value="">— none —</option>${
                videoContent().map((c) => `<option value="${esc(c.id)}" ${
@@ -1419,6 +1513,16 @@ function renderProps(container) {
       else if (s.template.background_dim == null) s.template.background_dim = 0.35;
       state.dirty = true; paintAll(container);
     };
+    const studioBgRow = host.querySelector('#studioBgRow');
+    const studioBgNew = host.querySelector('#studioBgNew');
+    const studioBgEdit = host.querySelector('#studioBgEdit');
+    if (studioBgRow) {
+      studioIslandAvailable().then((ok) => {
+        if (ok) studioBgRow.hidden = false;
+      });
+    }
+    if (studioBgNew) studioBgNew.onclick = () => openStudioForSlideBackground();
+    if (studioBgEdit) studioBgEdit.onclick = () => openStudioEditBackgroundPoster(bgId);
     const bindSlidePair = (id, set, dec) => {
       const r = host.querySelector(`#${id}`); const n = host.querySelector(`#${id}n`);
       if (!r || !n) return;
@@ -2284,6 +2388,7 @@ async function loadContent() {
       .flatMap((list) => (Array.isArray(list) ? list : []))
       .map((c) => ({
         id: c.id, filename: c.filename, filepath: c.filepath, remote_url: c.remote_url, mime_type: c.mime_type,
+        studio_design: c.studio_design ? 1 : 0,
       }));
   } catch (e) { state.contentIndex = []; }
 }

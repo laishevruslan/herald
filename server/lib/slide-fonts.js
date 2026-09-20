@@ -31,8 +31,10 @@
  *
  * ⚠️ NOT SUBSETTED BY CHARACTER, only by script. latin AND latin-ext ship, because latin alone drops
  * the accented characters half of Europe writes its own place names in — a slide reading "Zurich"
- * for "Zürich" is worse than 30KB. Anything beyond that (Cyrillic, Greek, Vietnamese) is a language
- * pack decision, not a default, and is deliberately absent.
+ * for "Zürich" is worse than 30KB. Cyrillic + cyrillic-ext ship as an OFL language pack for families
+ * that Google publishes those subsets for (Inter, Oswald, Bitter, JetBrains Mono). Archivo has no
+ * Cyrillic cut from Google — it stays latin-only; the UI says so. These are official Google css2
+ * subsets with the same Reserved Font Name — not a custom per-character subset we cut ourselves.
  */
 
 const path = require('path');
@@ -51,6 +53,20 @@ const RANGE_LATIN = 'U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02
 const RANGE_LATIN_EXT = 'U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, '
   + 'U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, '
   + 'U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF';
+/* Google css2 unicode-range for cyrillic / cyrillic-ext — verbatim from the API. */
+const RANGE_CYRILLIC = 'U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116';
+const RANGE_CYRILLIC_EXT = 'U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F';
+
+/** Script → file suffix + unicode-range. Empty suffix = latin (legacy filenames). */
+const SCRIPT_FACES = Object.freeze([
+  { script: 'latin', suffix: '', range: RANGE_LATIN },
+  { script: 'latin-ext', suffix: '-ext', range: RANGE_LATIN_EXT },
+  { script: 'cyrillic', suffix: '-cyrillic', range: RANGE_CYRILLIC },
+  { script: 'cyrillic-ext', suffix: '-cyrillic-ext', range: RANGE_CYRILLIC_EXT },
+]);
+
+const SCRIPTS_LATIN = Object.freeze(['latin', 'latin-ext']);
+const SCRIPTS_LATIN_CYR = Object.freeze(['latin', 'latin-ext', 'cyrillic', 'cyrillic-ext']);
 
 /*
  * ⚠️ VARIABLE FONTS, ONE FILE PER FAMILY. A static set would be one file per weight — five families
@@ -67,26 +83,31 @@ const FAMILIES = Object.freeze({
     css: 'Inter', label: 'Inter', role: 'Text',
     note: 'Neutral and highly legible at distance — the safe default for body copy.',
     weights: [400, 800], stack: 'sans-serif', file: 'inter', ofl: 'OFL-inter.txt',
+    scripts: SCRIPTS_LATIN_CYR,
   },
   archivo: {
     css: 'Archivo', label: 'Archivo', role: 'Display',
-    note: 'A grotesque with presence. Made for headlines rather than paragraphs.',
+    note: 'A grotesque with presence. Made for headlines rather than paragraphs. Latin only — no Cyrillic cut from Google.',
     weights: [400, 800], stack: 'sans-serif', file: 'archivo', ofl: 'OFL-archivo.txt',
+    scripts: SCRIPTS_LATIN,
   },
   oswald: {
     css: 'Oswald', label: 'Oswald', role: 'Condensed',
     note: 'Narrow, so a long headline fits a wide screen without shrinking.',
     weights: [300, 700], stack: 'sans-serif', file: 'oswald', ofl: 'OFL-oswald.txt',
+    scripts: SCRIPTS_LATIN_CYR,
   },
   bitter: {
     css: 'Bitter', label: 'Bitter', role: 'Serif',
     note: 'A slab serif — warmer than the sans faces, still solid at size.',
     weights: [400, 800], stack: 'serif', file: 'bitter', ofl: 'OFL-bitter.txt',
+    scripts: SCRIPTS_LATIN_CYR,
   },
   'jetbrains-mono': {
     css: 'JetBrains Mono', label: 'JetBrains Mono', role: 'Monospace',
     note: 'Fixed width, so columns of numbers line up. Good for times and counts.',
     weights: [400, 700], stack: 'monospace', file: 'jetbrains-mono', ofl: 'OFL-jetbrains-mono.txt',
+    scripts: SCRIPTS_LATIN_CYR,
   },
 });
 
@@ -144,12 +165,14 @@ function fontFaceCss(familyKeys, opts = {}) {
     if (seen.has(k)) continue;
     seen.add(k);
     const f = FAMILIES[k];
-    for (const [suffix, range] of [['', RANGE_LATIN], ['-ext', RANGE_LATIN_EXT]]) {
+    const wanted = new Set(f.scripts || SCRIPTS_LATIN);
+    for (const face of SCRIPT_FACES) {
+      if (!wanted.has(face.script)) continue;
       out.push(
         `@font-face{font-family:'${f.css}';font-style:normal;`
         + `font-weight:${f.weights[0]} ${f.weights[1]};font-display:swap;`
-        + `src:url(${base}/${f.file}${suffix}.woff2) format('woff2');`
-        + `unicode-range:${range}}`);
+        + `src:url(${base}/${f.file}${face.suffix}.woff2) format('woff2');`
+        + `unicode-range:${face.range}}`);
     }
   }
   return out.join('\n  ');
@@ -203,12 +226,22 @@ function catalogue() {
   return Object.entries(FAMILIES).map(([id, f]) => ({
     id, label: f.label, role: f.role, note: f.note,
     weights: f.weights, file: f.file, css: f.css, stack: f.stack,
+    scripts: [...(f.scripts || SCRIPTS_LATIN)],
   }));
+}
+
+/** File basenames a family must ship (licence test + docs). */
+function familyFileNames(f) {
+  const wanted = new Set(f.scripts || SCRIPTS_LATIN);
+  return SCRIPT_FACES
+    .filter((face) => wanted.has(face.script))
+    .map((face) => `${f.file}${face.suffix}.woff2`);
 }
 
 module.exports = {
   FAMILIES, ALIASES, DEFAULT_FAMILY, FONT_DIR,
   CUSTOM_PREFIX, isCustom, customId, customFace,
-  RANGE_LATIN, RANGE_LATIN_EXT,
-  resolveFamily, fontStack, fontFaceCss, catalogue,
+  RANGE_LATIN, RANGE_LATIN_EXT, RANGE_CYRILLIC, RANGE_CYRILLIC_EXT,
+  SCRIPT_FACES, SCRIPTS_LATIN, SCRIPTS_LATIN_CYR,
+  resolveFamily, fontStack, fontFaceCss, catalogue, familyFileNames,
 };

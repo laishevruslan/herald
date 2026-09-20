@@ -4,13 +4,16 @@
 /*
  * Licence gate for the dependencies that actually SHIP.
  *
- *   node scripts/license-check.js [--sbom <path>] [--include-dev]
+ *   node scripts/license-check.js [--sbom <path>] [--include-dev] [--root <dir>]
  *
  * Run from a PRODUCTION install (`npm ci --omit=dev`). That is the whole point: a developer
  * checkout carries `sharp`, whose `@img/sharp-wasm32` declares LGPL-3.0-or-later. It is a test
  * fixture generator, it is devDependencies-only, and it never reaches a server — but a scanner
  * pointed at a dev tree reports LGPL and contradicts the answer we give customers. Auditing the
  * installed production tree is what makes the answer defensible.
+ *
+ * `--root` defaults to `server/`. Pass `frontend-studio` for the Studio island (phase 6 / D-SC-2)
+ * so a GPL transitive cannot hide behind the server-only scan.
  *
  * Exits non-zero on anything denied or unresolved, so CI fails before a licence can arrive
  * unnoticed through a transitive bump.
@@ -25,7 +28,11 @@ const { execFileSync } = require('child_process');
 const args = process.argv.slice(2);
 const INCLUDE_DEV = args.includes('--include-dev');
 const SBOM_OUT = args.includes('--sbom') ? args[args.indexOf('--sbom') + 1] : null;
-const SERVER_DIR = path.join(__dirname, '..', 'server');
+const rootArgIdx = args.indexOf('--root');
+const ROOT_DIR = rootArgIdx >= 0
+  ? path.resolve(process.cwd(), args[rootArgIdx + 1])
+  : path.join(__dirname, '..', 'server');
+const SERVER_DIR = ROOT_DIR;
 
 /* ── policy ───────────────────────────────────────────────────────────────────
  * ALLOW: permissive, no distribution obligation beyond keeping the notice.
@@ -91,7 +98,13 @@ function readLicense(dir) {
  */
 function listInstalled() {
   const argv = ['ls', ...(INCLUDE_DEV ? [] : ['--omit=dev']), '--all', '--parseable'];
-  const opts = { cwd: SERVER_DIR, maxBuffer: 64 * 1024 * 1024, encoding: 'utf8' };
+  const opts = {
+    cwd: SERVER_DIR,
+    maxBuffer: 64 * 1024 * 1024,
+    encoding: 'utf8',
+    // Windows: npm is a cmd shim; execFile without a shell yields ENOENT/EINVAL.
+    shell: process.platform === 'win32',
+  };
   try {
     return execFileSync('npm', argv, opts);
   } catch (e) {
@@ -126,7 +139,8 @@ const review = pkgs.filter(p => p.verdict === 'REVIEW');
 const unknown = pkgs.filter(p => p.verdict === 'UNKNOWN');
 
 const counts = pkgs.reduce((m, p) => (m[p.license || '(none)'] = (m[p.license || '(none)'] || 0) + 1, m), {});
-console.log(`\nScope: ${pkgs.length} packages (${INCLUDE_DEV ? 'INCLUDING dev' : 'production only, --omit=dev'})\n`);
+console.log(`\nRoot: ${ROOT_DIR}`);
+console.log(`Scope: ${pkgs.length} packages (${INCLUDE_DEV ? 'INCLUDING dev' : 'production only, --omit=dev'})\n`);
 Object.entries(counts).sort((a, b) => b[1] - a[1]).forEach(([l, n]) => console.log(`  ${String(n).padStart(4)}  ${l}`));
 
 if (SBOM_OUT) {

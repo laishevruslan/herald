@@ -1,9 +1,9 @@
 # Studio на Scenify / Design Editor (фаза 6)
 
-**Статус: ПЛАН. Кода нет.**
+**Статус: ПЛАН + 6.0/6.1/6.2/6.3a/6.3b выполнены (2026-09-20).** Код: `frontend-studio/` на `@layerhub-io/react` (`Provider` + `Canvas` + chrome), `/api/studio`, `studio_designs`, фон слайда из Studio, Library New poster с выбором пресета. **6.3 (запреты плана) — не делать** (Fabric JSON в плеере, GSAP, Mongo-шаблоны, node-canvas, video DesignCombo).
 **Родитель:** [`enterprise-slide-editor-plan.md`](enterprise-slide-editor-plan.md), фаза 6.
 **Соседи:** [`canva-editor-embed-plan.md`](canva-editor-embed-plan.md) (тот же шов «внешний холст → байты в библиотеку»), инварианты I1, I3, I4, I5.
-**Съёмка:** сентябрь 2026.
+**Съёмка:** сентябрь 2026. **Spike:** ветка `spike/studio-6.0`, контейнер `docker/studio-spike/`.
 
 Короткий ответ: **Scenify — лучший бесплатный кандидат на фазу 6**, если и только если он остаётся островом постера: человек рисует в Fabric-редакторе, мы забираем PNG/JPEG через `ingestUploadedFile`, плеер играет файл. Документ Fabric **не** становится слайдом и **не** едет на панель. Это не замена Слайдов и не повод пропускать фазы 1–5.
 
@@ -291,38 +291,129 @@ OFL-шрифты: те же обязательства, что в `slide-fonts.j
 
 Оценки — один человек, знакомый с репо. **Не начинать до фаз 1 и 5 родителя** (галерея + хотя бы ручной upload ingest; Canva не обязателен).
 
-### 6.0 — юридический и технический spike (~2–3 дн.)
+### 6.0 — юридический и технический spike (~2–3 дн.) — **DONE 2026-09-20**
 
-1. Скачать `@layerhub-io/react@0.3.3` и `core`. Прогнать license-check на их дереве.
-2. Поднять hello-world Vite: холст, текст, `toDataURL`, без их полной оболочки.
-3. Зафиксировать коммит Layerhub + решение: npm pin vs subtree.
+1. [x] Скачать `@layerhub-io/react@0.3.3` и `core`. Прогнать license-check на их дереве.
+2. [x] Поднять hello-world Vite: холст, текст, `toDataURL`, без их полной оболочки.
+3. [x] Зафиксировать коммит Layerhub + решение: **npm pin** (не subtree). См. `frontend-studio/LICENSE-AUDIT.md`.
 4. Kill-критерии spike (любой = стоп, вернуться к «только Canva»):
-   - Fabric не экспортирует читаемый 1920×1080 PNG с OFL Inter;
-   - в зависимостях GPL/AGPL;
-   - бандл острова > ~3 MB gzip без шрифтов и это ломает self-host на слабом админ-ПК — не kill, но записать;
-   - не удаётся вырезать video/presentation/Iconscout за день.
+   - [x] Fabric экспортирует читаемый 1920×1080 PNG с OFL Inter — **PASS** (`docker/studio-spike` → `out/studio-spike-export.png`)
+   - [x] в зависимостях GPL/AGPL — **нет** (`license-check.js --root frontend-studio`)
+   - [x] бандл острова > ~3 MB gzip без шрифтов — **нет** (~206 KB JS gzip; зафиксировано в LICENSE-AUDIT)
+   - [x] не удаётся вырезать video/presentation/Iconscout за день — **не тащили оболочку** (hello-world only)
 
-**Готово, когда:** есть ветка-spike с PNG в `/tmp` и таблицей лицензий. Не мержить в main.
+**Готово, когда:** есть ветка-spike с PNG в `/tmp` и таблицей лицензий. Не мержить в main без ревью kill-критериев.
 
-### 6.1 — остров + ingest (~5–8 дн.)
+**Артефакты 6.0:**
 
-1. `frontend-studio` в main, сборка в CI.
-2. Auth, пресеты 1920×1080 и 1080×1920.
-3. Текст, прямоугольник, изображение из Library.
-4. `POST /api/studio/export`, `studio_designs`, кнопка в Library.
-5. Replace при повторном Edit.
-6. i18n en/de/ru на кнопках дашборда (остров можно en-first, но подписи вокруг — нет).
+| Путь | Назначение |
+|---|---|
+| `frontend-studio/` | Vite остров, pin Layerhub 0.3.3, Fabric hello-world |
+| `frontend-studio/LICENSE-AUDIT.md` | таблица лицензий + kill-критерии |
+| `docker/studio-spike/` | отдельный контейнер: `npm ci` → license-check → build → Playwright PNG |
+| `scripts/license-check.js --root` | gate для острова |
+| `scripts/build-studio.sh` | форма релизного хука → `frontend/studio/` |
+| `frontend/js/lib/studio-available.js` | I5 probe (кнопка ещё не подключена) |
+| `frontend/js/i18n/{en,ru,de}.js` | ключи `studio.*` |
 
-**Готово, когда:** оператор на hosted и на self-host tarball рисует «SALE −30%», жмёт Publish to library, назначает в плейлист, Android/web/Tizen показывают PNG **без WAN**. Edit открывает тот же макет.
+**Не сделано в 6.0 (ожидаемо → 6.1+; статус на 2026-09-20):**
 
-### 6.2 — шрифты, бренд, слайд-фон (~3–5 дн.)
+- [x] `POST /api/studio/export`, таблица `studio_designs`, replace — **закрыто в 6.1**
+- [x] кнопки New/Edit poster в Content Library (I5) — **закрыто в 6.1**; New poster с 6.3b открывает модалку пресета (landscape / portrait / e-paper)
+- [x] публикация `/studio/` в основной `Dockerfile` (`studio-builder` → `/app/frontend/studio/`) + CI build — **закрыто в 6.1**; CI также кладёт `frontend-studio/dist` в artifact `studio-island` (6.3b)
+- [x] portrait пресет + picker библиотеки — **закрыто в 6.1**; brand kit как white-label swatches — **закрыто в 6.2** (настоящий brand-kit API фазы 4 родителя — **не** сделан, см. §6.2)
+- [x] полный Editor UI из `@layerhub-io/react` — **закрыто в 6.3a**
 
-1. Регистрация `/fonts` в Fabric до первого paint.
-2. Цвета brand kit, если фаза 4 родителя есть.
-3. Со слайда: «фон из Studio» / «редактировать постер».
-4. Честная подпись для 800×480.
+### 6.1 — остров + ingest (~5–8 дн.) — **DONE 2026-09-20**
 
-### 6.3 — не делать в этой фазе
+1. [x] `frontend-studio` в main (ветка `feat/studio-6.1`), сборка в CI + stage в `Dockerfile` → `/frontend/studio/`.
+2. [x] Auth (JWT `localStorage.token` + `X-Workspace-Id`), пресеты **1920×1080** и **1080×1920**.
+3. [x] Текст, прямоугольник, изображение из Library (auth fetch → blob URL; в `scene_json` только `contentId`).
+4. [x] `POST /api/studio/export`, таблица `studio_designs`, кнопки New/Edit poster в Library (скрыты без `/studio/` — I5).
+5. [x] Replace при повторном Edit (тот же `content_id`).
+6. [x] i18n en/de/ru на кнопках дашборда; остров en/ru.
+
+**Готово, когда:** оператор рисует «SALE −30%», Publish to library, плейлист играет PNG офлайн; Edit открывает макет.
+
+**Артефакты 6.1:**
+
+| Путь | Назначение |
+|---|---|
+| `server/lib/studio-designs.js` | sanitize scene, upsert, ingest/replace |
+| `server/routes/studio.js` | JWT `/api/studio` |
+| `server/test/studio-export.test.js` | auth shape, IDOR, data URL reject, replace id |
+| `docker/studio-6.1/` | отдельный контейнер: build island + unit tests |
+| `Dockerfile` studio-builder stage | self-host получает `/studio/` |
+
+**Не сделано полностью / отложено после 6.1:**
+
+- Полный UI `@layerhub-io/react` Editor — **закрыто в 6.3a**
+- Approval-workflow draft path при replace (Studio пишет live bytes как обычный image replace без draft ветки approvalOn — упрощение 6.1; при включённом approval оператору лучше Publish через Content replace)
+
+### 6.2 — шрифты, бренд, слайд-фон (~3–5 дн.) — **DONE 2026-09-20**
+
+1. [x] Регистрация `/fonts` в Fabric до первого paint (`waitForStudioFonts`, полный каталог Inter/Archivo/Oswald/Bitter/JetBrains Mono из `server/fonts`).
+2. [x] Цвета brand kit: **stand-in** через `/api/white-label` + 8 swatches (фаза 4 родителя brand-kit API ещё нет — зафиксировано ниже).
+3. [x] Со слайда: «Фон из Studio» / «Редактировать постер» → `?for=slide-bg` → Publish пишет `template.background_content_id` через `sessionStorage`.
+4. [x] Честная подпись для 800×480 (`epaper-5x3` + предупреждение о дизеринге).
+
+**Артефакты 6.2:**
+
+| Путь | Назначение |
+|---|---|
+| `frontend-studio/src/fontCatalogue.ts` + `fonts.css` | OFL семьи, await до paint |
+| `frontend-studio/src/brand.ts` | white-label → 8 swatches |
+| `frontend/js/views/slides.js` | кнопки фона (I5), return hook |
+| `docker/studio-6.2/` | отдельный контейнер: build + unit tests (epaper) |
+
+**Не сделано полностью в 6.2 (обновлено 6.3c):**
+
+- [x] Настоящий **brand-kit API** фазы 4 родителя (палитры workspace, роли цветов) — `GET/PUT /api/brand-kit`, таблица `workspace_brand_kits`, Studio читает kit (fallback: white-label → defaults)
+- [x] Кириллический OFL language pack — Inter / Oswald / Bitter / JetBrains Mono (`*-cyrillic*.woff2`); **Archivo без кириллицы** (Google не публикует cut) — UI честно предупреждает
+- [x] Полный `@layerhub-io/react` Editor chrome — **закрыто в 6.3a**
+- [x] Approval draft path при Studio replace (как в 6.1) — `require_approval` → `draft_json`, live bytes не трогаем
+- [ ] Авто-save дека после применения фона (оператор должен Save сам — **намеренно**, dirty flag; не делаем)
+
+### 6.3c — brand kit + кириллица + approval draft (~1–2 дн.) — **DONE 2026-09-20**
+
+Закрывает остаток gap-листа 6.2 (строки 371–374) без auto-save дека.
+
+1. [x] `workspace_brand_kits` + `server/lib/brand-kit.js` + JWT `GET/PUT /api/brand-kit` (PUT = workspace_admin).
+2. [x] Studio `brand.ts` предпочитает brand-kit, затем white-label.
+3. [x] Cyrillic + cyrillic-ext OFL files в `server/fonts/`; `slide-fonts.js` + `frontend-studio` `fonts.css`.
+4. [x] `replacePngBytes` / `POST /api/studio/export` при approval → draft + `pending_review`.
+5. [x] i18n en/ru/de + island ru; тесты `brand-kit` / `slide-fonts` / `studio-export`.
+
+**Неполное в 6.3c:**
+
+- Dashboard UI настроек brand kit (только API; Studio/пикер уже потребляет GET)
+- Fill-режим / `locked` / Save-as-template / org pack — остальная фаза 4 родителя
+- Archivo Cyrillic — нет upstream cut
+- Auto-save дека после фона Studio — намеренно не делаем
+
+### 6.3a — Editor UI на `@layerhub-io/react` (~2–3 дн.) — **DONE 2026-09-20**
+
+Заменяет Fabric hello-world toolbar на настоящий Layerhub chrome **без** чужой оболочки Scenify (Iconscout / video / presentation — по-прежнему запрещены, D-SC-2 / §6).
+
+1. [x] `Provider` + `Canvas` из `@layerhub-io/react`; side-effect `@layerhub-io/objects`.
+2. [x] Панели: Layers (`useObjects`), Properties (`useActiveObject`), context menu (`useContextMenuRequest`).
+3. [x] History undo/redo (`history:changed`), zoom in/out/fit/100%, align, z-order, duplicate/delete/lock.
+4. [x] Текст / StaticPath-прямоугольник / StaticImage из Library (`metadata.contentId`).
+5. [x] Экспорт PNG через `editor.renderer.toDataURL` на логическом кадре (D-SC-6); `scene_json` v2 в logical coords + миграция legacy v1 display-space.
+6. [x] i18n острова en/ru для chrome; ingest / slide-bg / пресеты 6.1–6.2 сохранены.
+7. [x] `docker/studio-6.3` — license-check + build + unit tests + headless PNG 1920×1080.
+
+**Готово, когда:** оператор видит слои и инспектор, Undo работает, Publish пишет тот же PNG+scene путь, что 6.1.
+
+**Не сделано полностью в 6.3a (зафиксировано):**
+
+- Чужие панели Scenify (templates marketplace, Pixabay, Iconscout, video timeline) — сознательно не тащим
+- Group/ungroup UI (SDK умеет, план §2 помечает как несделанное upstream — кнопок в chrome нет)
+- Crop объекта, presentation mode, share design
+- brand-kit API / кириллица / approval draft — **закрыто в 6.3c**
+- `scene_json` не хранит полный Layerhub `IScene` (компактный v2 без blob/`src`) — re-edit поднимает blob URL из `contentId`
+
+### 6.3 — не делать в этой фазе (запреты)
 
 - Fabric JSON в плеере;
 - GSAP-анимации;
@@ -403,11 +494,10 @@ E2E spike (ручной): Chrome + Firefox, retina 2x (multiplier), кирилл
 
 Не оболочка на 15 панелей. Не video. Не subtree всего layerhub monorepo «на всякий».
 
-**PR 1 = spike, смерженный как `frontend-studio/` за feature-flag / скрытой кнопкой:** Vite, Layerhub pin, один пресет 1920×1080, текст+прямоугольник, export PNG → ingest, без `scene_json` re-edit.
+**PR 1 (эта ветка `spike/studio-6.0`) = spike island, без ingest:** Vite, Layerhub pin, один пресет 1920×1080, текст+прямоугольник, export PNG в `/tmp` через Docker verify, без `scene_json` / Library buttons. Кнопки Library скрыты (I5: остров не в основном image).
 
-PR 2 — `studio_designs` + Edit + replace + кнопка в Library.
-PR 3 — шрифты `/fonts`, portrait пресет, picker библиотеки.
-PR 4 — фон слайда.
+PR 1b / 6.1 — `POST /api/studio/export` + ingest, `studio_designs` + Edit + replace + кнопка в Library.
+PR 3 / 6.2 — шрифты `/fonts`, brand swatches (white-label), фон слайда, epaper-5x3. **DONE.**
 
 Если PR 1 кладёт Fabric JSON в `slide_decks.doc` — вынести. Это D-SC-1.
 
@@ -427,3 +517,17 @@ PR 4 — фон слайда.
 4. PPT (GAP-26) — офисный ingest.
 
 Три редактора не три документа на стене. На стене по-прежнему плейлист виджетов и файлов.
+
+---
+
+## История
+
+| Дата | Что |
+|---|---|
+| 2026-09-20 | Spike **6.0 DONE**: `frontend-studio/` (npm pin Layerhub 0.3.3), `license-check --root`, Docker verify `docker/studio-spike`, i18n `studio.*` en/ru/de, kill-критерии PASS. Не в 6.0: ingest, Library UI, основной Dockerfile. |
+| 2026-09-20 | **6.1 DONE**: `studio_designs` + `POST /api/studio/export`, Library New/Edit, presets landscape/portrait, Library image picker, Dockerfile studio stage, CI build, `docker/studio-6.1`. Неполное: Layerhub Editor chrome, brand kit, slide background, approval draft replace. |
+| 2026-09-20 | **6.2 DONE**: OFL `/fonts` до paint, font picker, white-label swatches, «Фон из Studio» (`?for=slide-bg` + sessionStorage → `background_content_id`), пресет `epaper-5x3` с честной подписью, i18n en/ru/de + island ru, `docker/studio-6.2`. Неполное: brand-kit API фазы 4, кириллический language pack, Layerhub Editor chrome, approval draft replace, auto-save дека после фона. |
+| 2026-09-20 | **6.3a DONE**: полный Editor UI на `@layerhub-io/react` (`Provider`/`Canvas`, Layers/Properties/context menu, undo/redo/zoom/align), PNG через `renderer.toDataURL`, `scene_json` v2 + миграция v1, i18n chrome en/ru, `docker/studio-6.3`. Неполное: group UI, crop, чужие панели Scenify, brand-kit API, кириллический pack, approval draft. **6.3 запреты** (Fabric в плеере / GSAP / Mongo / video) — по-прежнему не делать. |
+| 2026-09-20 | **6.3b docs/UX:** бэклог «Не сделано в 6.0» (§321–324) явно закрыт ссылками на 6.1/6.2/6.3a; New poster в Library — модалка пресета (landscape/portrait/e-paper); CI artifact `studio-island`. Brand-kit API фазы 4 — по-прежнему только white-label stand-in. |
+| 2026-09-20 | **6.3c DONE:** `GET/PUT /api/brand-kit` + `workspace_brand_kits`; Cyrillic OFL pack (Inter/Oswald/Bitter/JetBrains Mono; Archivo latin-only); Studio replace → approval `draft_json`; i18n en/ru/de. Неполное: dashboard UI kit, Archivo Cyrillic, auto-save дека (намеренно). |
+| 2026-09 | Первая версия плана (генеалогия Scenify → Layerhub, D-SC-1…10). |

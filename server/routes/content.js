@@ -121,6 +121,14 @@ router.get('/', (req, res) => {
     c.tags = parseTags(c.tags);
     c.meta = parseMeta(c.meta);
   }
+  // Studio badge (phase 6.1): mark rows that have a re-editable scene without joining into SELECT *.
+  try {
+    const studio = require('../lib/studio-designs');
+    const withDesign = studio.contentIdsWithDesign(content.map((c) => c.id));
+    for (const c of content) c.studio_design = withDesign.has(c.id) ? 1 : 0;
+  } catch {
+    for (const c of content) c.studio_design = 0;
+  }
   res.json(content);
 });
 

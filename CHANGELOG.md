@@ -16,6 +16,31 @@ what to enter for the reviewer.
 
 ### Added
 
+**Studio 6.3c — brand kit API, Cyrillic OFL pack, approval draft on Studio replace.** Workspace
+authoring palette is no longer only white-label stand-in: `GET/PUT /api/brand-kit` stores four
+colours, heading/body catalogue fonts and an optional logo `content_id` in `workspace_brand_kits`
+(PUT = workspace admin). Studio prefers this kit, then white-label, then defaults. Official Google
+Cyrillic + cyrillic-ext `woff2` subsets ship for Inter, Oswald, Bitter and JetBrains Mono (Archivo
+stays Latin-only — no upstream cut; UI says so). With `workspaces.require_approval`, Studio
+re-publish parks new PNG bytes in `content.draft_json` like Content Library replace and leaves live
+screens unchanged until review. See [`docs/scenify-studio-plan.md`](docs/scenify-studio-plan.md).
+
+**Studio 6.3b — Library New poster picks a size; 6.0 backlog marked done.** Content Library
+→ New poster opens a preset modal (1920×1080 / 1080×1920 / 800×480) instead of always jumping
+to landscape. Russian/German copy for the chooser. CI uploads the built island as the
+`studio-island` artifact alongside the Dockerfile `studio-builder` stage. The scenify plan’s
+“not done in 6.0” list (export, Library buttons, `/studio/` in image, portrait/picker/brand
+stand-in) is checked off against 6.1–6.2. Brand-kit API landed in **6.3c**. See
+[`docs/scenify-studio-plan.md`](docs/scenify-studio-plan.md).
+
+**Studio 6.3a — full Layerhub Editor UI on the poster island.** The Studio island no longer
+drives a bare Fabric canvas. It mounts `@layerhub-io/react` `Provider` + `Canvas` with Layers,
+Properties, context menu, undo/redo, zoom, align and z-order — still without Scenify’s Iconscout /
+video / presentation shell. Publish keeps the same PNG ingest + `studio_designs.scene_json` path;
+scenes are stored as compact v2 (logical frame coords) with a one-shot upgrade from legacy v1
+display-space JSON. Island chrome is translated en/ru. Verify: `docker/studio-6.3`. See
+[`docs/scenify-studio-plan.md`](docs/scenify-studio-plan.md).
+
 **Stretch factories, phase 3.5 — portrait door tablet and a four-room corridor board.** `room-lcd-9x16`
 is the 9:16 twin of the 16:9 door sign: same CANON binds and green/red/grey contract, strip on
 top so the status word can use the full width. `rooms-board-16x9` is a 2×2 lobby wall of four

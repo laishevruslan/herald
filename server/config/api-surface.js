@@ -67,6 +67,11 @@ const JWT_ONLY_ROUTERS = [
   { path: '/api/provision',   mod: './routes/provisioning', tenancy: true },
   { path: '/api/teams',       mod: './routes/teams',        tenancy: true },
   { path: '/api/white-label', mod: './routes/white-label',  tenancy: true },
+  /*
+   * Workspace brand kit (authoring colours / fonts / logo). Distinct from white-label
+   * (login chrome). JWT-only like Studio — not a PAT write surface.
+   */
+  { path: '/api/brand-kit',   mod: './routes/brand-kit',    tenancy: true },
   { path: '/api/workspaces',  mod: './routes/workspaces' },
   { path: '/api/admin',       mod: './routes/admin' },
   /*
@@ -81,6 +86,12 @@ const JWT_ONLY_ROUTERS = [
    */
   { path: '/api/admin/diagnostics', mod: './routes/diagnostics' },
   { path: '/api/tokens',      mod: './routes/tokens',       tenancy: true },
+  /*
+   * Poster Studio (phase 6). JWT-only: scene_json is authoring state for the operator island,
+   * not something an API token should write. PNG still goes through the same ingest/replace
+   * path as Content Library uploads.
+   */
+  { path: '/api/studio',      mod: './routes/studio',       tenancy: true },
 ];
 
 // #73: AGENCY_ROUTERS - capability-restricted ('agency' scope) surface. Mounted with

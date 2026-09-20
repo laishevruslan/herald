@@ -18,6 +18,7 @@ Everything is enforced on the server. The dashboard only reflects what `/api/app
 | Widget edit | `routes/widgets.js` PUT parks the edit in `widgets.draft_config` when approval is on |
 | Layout edit (name, size, zones) | `routes/layouts.js` PUT parks in `layouts.draft_zones`; per-zone add/edit/delete routes answer 409 `approval_required` |
 | Content file replace | `routes/content.js` parks the new bytes in `content.draft_json` |
+| Studio poster re-publish (`POST /api/studio/export` with `content_id`) | `lib/studio-designs.replacePngBytes` parks the new PNG in `content.draft_json` the same way; `scene_json` still updates for Edit |
 | Content playback fields (remote URL, MIME type, captions, subtitle settings, quality ceiling) | `routes/content.js` PUT parks them in `content.draft_json` |
 | Playlist item add, edit, remove, duplicate, reorder, schedule | recorded as revisions with their author (the no-self-approval check reads these); the playlist publishes through the gate |
 | Agency auto-publish | `routes/agency.js` publishes directly when allowed, otherwise leaves a draft and opens a submission on the token's behalf |

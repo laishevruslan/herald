@@ -1,0 +1,8 @@
+# Isolated Studio 6.2 verify — not the main CMS compose stack.
+services:
+  studio-62:
+    build:
+      context: ../..
+      dockerfile: docker/studio-6.2/Dockerfile
+    volumes:
+      - ./out:/out

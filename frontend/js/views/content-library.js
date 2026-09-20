@@ -6,6 +6,7 @@ import { t } from '../i18n.js';
 import { openHistoryModal } from '../components/history-modal.js';
 import { renderApprovalBar } from '../components/approval-actions.js';
 import { isPdf, renderPdfToPages, baseName } from '../components/pdf-pages.js';
+import { studioIslandAvailable } from '../lib/studio-available.js';
 
 /* The mime lib/html-bundle.js stamps on an uploaded HTML bundle. Kept as a constant rather than
  * spelled out at each site: it is compared in three places here, and a typo in one of them is a
@@ -155,6 +156,7 @@ export function render(container) {
       </select>
       <span id="contentResultCount" style="font-size:13px;color:var(--text-muted)"></span>
       <button class="btn btn-secondary btn-sm" id="newFolderBtn">${t('content.new_folder_btn')}</button>
+      <button class="btn btn-secondary btn-sm" id="newPosterBtn" hidden title="${t('studio.help_blurb')}">${t('studio.new_poster')}</button>
       <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);cursor:pointer;margin-left:auto">
         <input type="checkbox" id="showExpiredToggle" ${state.showExpired ? 'checked' : ''}> ${t('content.show_expired')}
       </label>
@@ -297,6 +299,14 @@ export function render(container) {
       loadContent();
     } catch (err) { showToast(err.message, 'error'); }
   };
+
+  // I5: show New poster only when /studio/ was built into this install.
+  const newPosterBtn = document.getElementById('newPosterBtn');
+  studioIslandAvailable().then((ok) => {
+    if (!ok || !newPosterBtn) return;
+    newPosterBtn.hidden = false;
+    newPosterBtn.onclick = () => openNewPosterPresetModal();
+  }).catch(() => {});
 
   loadContent();
 }
@@ -592,7 +602,7 @@ async function loadContent() {
           }
         </div>
         <div class="content-item-body">
-          <div class="content-item-name" title="${esc(c.filename)}">${esc(c.filename)}</div>
+          <div class="content-item-name" title="${esc(c.filename)}">${esc(c.filename)}${c.studio_design ? ` <span style="font-size:10px;padding:1px 6px;border-radius:4px;background:var(--bg-input);color:var(--text-muted);vertical-align:middle" title="${esc(t('studio.badge_title'))}">${esc(t('studio.badge'))}</span>` : ''}</div>
           ${Array.isArray(c.tags) && c.tags.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${c.tags.map((tg) => `<span data-tag="${esc(tg)}" style="font-size:10px;padding:1px 6px;border-radius:4px;background:var(--bg-input);color:var(--text-muted);cursor:pointer">#${esc(tg)}</span>`).join('')}</div>` : ''}
           <div class="content-item-size">
             ${c.mime_type === 'video/hls' || c.mime_type === 'video/rtsp' ? t('content.type_live') : c.mime_type === 'video/youtube' ? t('content.type_youtube') : c.mime_type === BUNDLE_MIME ? t('content.type_bundle') : c.remote_url ? t('content.type_remote') : (c.mime_type?.startsWith('video/') ? t('content.type_video') : t('content.type_image'))}
@@ -606,6 +616,7 @@ async function loadContent() {
         </div>
         <div class="content-item-actions">
           <button class="btn btn-secondary btn-sm" data-history-content="${c.id}" title="${t('history.button')}">${t('history.button')}</button>
+          ${c.studio_design ? `<button class="btn btn-secondary btn-sm" data-edit-poster="${c.id}" title="${t('studio.edit_poster')}">${t('studio.edit_poster')}</button>` : ''}
           <button class="btn btn-secondary btn-sm" data-edit-content="${c.id}" title="${t('content.btn_edit')}">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -694,6 +705,14 @@ async function loadContent() {
         const id = editBtn.dataset.editContent;
         const c = content.find(x => x.id === id);
         if (c) showEditModal(c, loadContent);
+        return;
+      }
+
+      const editPosterBtn = e.target.closest('[data-edit-poster]');
+      if (editPosterBtn) {
+        const id = editPosterBtn.dataset.editPoster;
+        const lang = (localStorage.getItem('rd_lang') || 'en').slice(0, 2);
+        window.location.href = `/studio/?contentId=${encodeURIComponent(id)}&lang=${encodeURIComponent(lang)}`;
         return;
       }
 
@@ -1140,6 +1159,52 @@ function folderPath(folder, all) {
     parts.unshift(cursor.name);
   }
   return parts.join(' / ');
+}
+
+/** Library → New poster: pick canvas size before opening the Studio island (6.1 presets). */
+function openNewPosterPresetModal() {
+  const lang = (localStorage.getItem('rd_lang') || 'en').slice(0, 2);
+  const presets = [
+    { id: 'landscape-1080', labelKey: 'studio.preset_landscape', hintKey: 'studio.preset_landscape_hint' },
+    { id: 'portrait-1080', labelKey: 'studio.preset_portrait', hintKey: 'studio.preset_portrait_hint' },
+    { id: 'epaper-5x3', labelKey: 'studio.preset_epaper', hintKey: 'studio.preset_epaper_hint' },
+  ];
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:420px;width:95vw" role="dialog" aria-modal="true" aria-labelledby="studioPresetTitle">
+      <div class="modal-header">
+        <h3 id="studioPresetTitle">${esc(t('studio.pick_preset'))}</h3>
+        <button type="button" class="modal-close" id="studioPresetClose" aria-label="${esc(t('common.cancel'))}">&times;</button>
+      </div>
+      <div class="modal-body" style="display:grid;gap:10px">
+        <p style="margin:0;font-size:13px;color:var(--text-muted)">${esc(t('studio.pick_preset_help'))}</p>
+        ${presets.map((p, i) => `
+          <label style="display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer">
+            <input type="radio" name="studioPreset" value="${esc(p.id)}" ${i === 0 ? 'checked' : ''} style="margin-top:3px">
+            <span>
+              <strong style="display:block">${esc(t(p.labelKey))}</strong>
+              <span style="font-size:12px;color:var(--text-muted)">${esc(t(p.hintKey))}</span>
+            </span>
+          </label>
+        `).join('')}
+      </div>
+      <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn btn-secondary btn-sm" id="studioPresetCancel">${esc(t('common.cancel'))}</button>
+        <button type="button" class="btn btn-primary btn-sm" id="studioPresetGo">${esc(t('studio.open_editor'))}</button>
+      </div>
+    </div>
+  `;
+  const close = () => overlay.remove();
+  overlay.onclick = (e) => { if (e.target === overlay) close(); };
+  overlay.querySelector('#studioPresetClose').onclick = close;
+  overlay.querySelector('#studioPresetCancel').onclick = close;
+  overlay.querySelector('#studioPresetGo').onclick = () => {
+    const picked = overlay.querySelector('input[name="studioPreset"]:checked')?.value || 'landscape-1080';
+    window.location.href = `/studio/?preset=${encodeURIComponent(picked)}&lang=${encodeURIComponent(lang)}`;
+  };
+  document.body.appendChild(overlay);
 }
 
 export function cleanup() {}

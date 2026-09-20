@@ -79,6 +79,17 @@ brightsign/server-payload.json
 temp/
 server/data/
 
+# Studio island (Vite) — never commit install or build artefacts
+frontend-studio/dist/
+frontend-studio/node_modules/
+# Spike docker verify output (PNG written by docker/studio-spike)
+docker/studio-spike/out/
+# Studio 6.1 docker verify output (built island)
+docker/studio-6.1/out/
+# Studio 6.2 docker verify output (built island)
+docker/studio-6.2/out/
+docker/studio-6.3/out/
+
 # Uploaded plugin zips waiting for approval. Not a plugin root — the loader
 # never scans it. Default path when DATA_DIR is unset is server/plugin-inbox.
 server/plugin-inbox/

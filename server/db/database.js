@@ -1832,9 +1832,32 @@ const migrations = [
     table_name   TEXT NOT NULL,
     row_id       TEXT NOT NULL,
     op           TEXT NOT NULL CHECK (op IN ('upsert','delete')),
+    payload_json TEXT,
     ts           INTEGER NOT NULL DEFAULT (strftime('%s','now'))
   )`,
   "CREATE INDEX IF NOT EXISTS idx_mesh_change_log_ws ON mesh_change_log(workspace_id, rev)",
+  // Studio poster designs (phase 6.1) — scene JSON beside content PNG; never on the player.
+  `CREATE TABLE IF NOT EXISTS studio_designs (
+     content_id   TEXT PRIMARY KEY REFERENCES content(id) ON DELETE CASCADE,
+     workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+     scene_json   TEXT NOT NULL DEFAULT '{}',
+     width        INTEGER NOT NULL DEFAULT 1920,
+     height       INTEGER NOT NULL DEFAULT 1080,
+     updated_at   INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+   )`,
+  'CREATE INDEX IF NOT EXISTS idx_studio_designs_ws ON studio_designs(workspace_id)',
+  // Workspace brand kit (enterprise phase 4 / Studio 6.3c) — authoring palette, not white-label.
+  `CREATE TABLE IF NOT EXISTS workspace_brand_kits (
+     workspace_id     TEXT PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
+     color_primary    TEXT NOT NULL DEFAULT '#3B82F6',
+     color_secondary  TEXT NOT NULL DEFAULT '#1E293B',
+     color_accent     TEXT NOT NULL DEFAULT '#F59E0B',
+     color_bg         TEXT NOT NULL DEFAULT '#111827',
+     font_heading     TEXT NOT NULL DEFAULT 'archivo',
+     font_body        TEXT NOT NULL DEFAULT 'inter',
+     logo_content_id  TEXT REFERENCES content(id) ON DELETE SET NULL,
+     updated_at       INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+   )`,
 ];
 // Apply each ALTER idempotently. A "duplicate column name" / "already exists"
 // error means the column is already present (expected on a migrated DB) - benign.

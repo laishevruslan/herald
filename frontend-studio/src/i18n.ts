@@ -1,0 +1,168 @@
+/**
+ * Minimal island copy. Dashboard buttons use frontend/js/i18n.
+ * Prefer ?lang=ru | en; default from navigator.
+ */
+
+export type StudioLang = 'en' | 'ru';
+
+const dict: Record<StudioLang, Record<string, string>> = {
+  en: {
+    title: 'Poster editor',
+    subtitle: 'Not a slide. Publish writes a PNG to the library.',
+    addText: 'Add text',
+    addRect: 'Add rectangle',
+    addImage: 'Image from library',
+    publish: 'Publish to library',
+    publishing: 'Publishing…',
+    published: 'Saved to library ({id}…). Assign it to a playlist like any image.',
+    publishedDraft: 'Submitted for review ({id}…). Screens keep the previous file until a reviewer publishes.',
+    publishedSlideBg: 'Background saved. Returning to the slide…',
+    back: 'Back to library',
+    backSlide: 'Back to slide',
+    preset: 'Size',
+    ready: 'Ready. Frame {w}×{h}.',
+    readyEdit: 'Editing poster {w}×{h}. Publish replaces the same library file.',
+    fontWait: 'Loading studio fonts…',
+    fontFail: 'Studio fonts did not load — export may use a fallback face.',
+    fontFamily: 'Font',
+    brandColors: 'Brand colours',
+    applyFill: 'Fill selection',
+    cyrillicNote:
+      'Inter, Oswald, Bitter and JetBrains Mono include Cyrillic. Archivo is Latin-only — Cyrillic may show .notdef there.',
+    needLogin: 'Sign in to the dashboard first — Studio reuses the same session.',
+    pickImage: 'Choose an image from the library',
+    close: 'Close',
+    noImages: 'No images in this workspace yet. Upload one in the Content Library.',
+    newTextDefault: 'New text',
+    presetLandscape: '1920×1080 landscape',
+    presetPortrait: '1080×1920 portrait',
+    presetEpaper: '800×480 e-paper (colour PNG — panel will dither)',
+    epaperWarn:
+      'E-paper preset exports a colour PNG. Room-sign panels dither it to 1-bit — do not expect crisp colour on the wall.',
+    forSlideBg: 'Publishing will set this PNG as the current slide background.',
+    layers: 'Layers',
+    properties: 'Properties',
+    noSelection: 'Select an object on the canvas.',
+    undo: 'Undo',
+    redo: 'Redo',
+    delete: 'Delete',
+    duplicate: 'Duplicate',
+    bringForward: 'Bring forward',
+    sendBackward: 'Send backward',
+    alignLeft: 'Align left',
+    alignCenter: 'Align center',
+    alignRight: 'Align right',
+    alignTop: 'Align top',
+    alignMiddle: 'Align middle',
+    alignBottom: 'Align bottom',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    zoomFit: 'Fit',
+    zoomOne: '100%',
+    textContent: 'Text',
+    fillColor: 'Fill',
+    fontSize: 'Size',
+    opacity: 'Opacity',
+    lock: 'Lock',
+    unlock: 'Unlock',
+    layerText: 'Text',
+    layerRect: 'Rectangle',
+    layerImage: 'Image',
+    layerOther: 'Object',
+    background: 'Canvas background',
+    ctxCopy: 'Copy',
+    ctxPaste: 'Paste',
+    ctxDelete: 'Delete',
+    ctxDuplicate: 'Duplicate',
+    ctxForward: 'Bring forward',
+    ctxBackward: 'Send backward',
+  },
+  ru: {
+    title: 'Редактор постеров',
+    subtitle: 'Это не слайд. «Опубликовать» сохраняет PNG в библиотеку.',
+    addText: 'Добавить текст',
+    addRect: 'Добавить прямоугольник',
+    addImage: 'Картинка из библиотеки',
+    publish: 'Опубликовать в библиотеку',
+    publishing: 'Публикация…',
+    published: 'Сохранено в библиотеку ({id}…). Назначьте в плейлист как обычное изображение.',
+    publishedDraft: 'Отправлено на проверку ({id}…). Экраны показывают прежний файл, пока рецензент не опубликует.',
+    publishedSlideBg: 'Фон сохранён. Возвращаемся к слайду…',
+    back: 'Назад в библиотеку',
+    backSlide: 'Назад к слайду',
+    preset: 'Размер',
+    ready: 'Готово. Кадр {w}×{h}.',
+    readyEdit: 'Редактирование постера {w}×{h}. Публикация заменит тот же файл в библиотеке.',
+    fontWait: 'Загрузка шрифтов Studio…',
+    fontFail: 'Шрифты Studio не загрузились — в экспорте может быть запасной шрифт.',
+    fontFamily: 'Шрифт',
+    brandColors: 'Цвета бренда',
+    applyFill: 'Залить выделение',
+    cyrillicNote:
+      'Inter, Oswald, Bitter и JetBrains Mono включают кириллицу. Archivo — только латиница; кириллица там может стать .notdef.',
+    needLogin: 'Сначала войдите в панель — Studio использует ту же сессию.',
+    pickImage: 'Выберите изображение из библиотеки',
+    close: 'Закрыть',
+    noImages: 'В этом workspace ещё нет изображений. Загрузите в библиотеке контента.',
+    newTextDefault: 'Новый текст',
+    presetLandscape: '1920×1080 альбом',
+    presetPortrait: '1080×1920 портрет',
+    presetEpaper: '800×480 e-paper (цветной PNG — панель сделает дизеринг)',
+    epaperWarn:
+      'Пресет e-paper экспортирует цветной PNG. Панели room-sign дизерят его в 1 бит — не ждите чёткого цвета на стене.',
+    forSlideBg: 'Публикация установит этот PNG фоном текущего слайда.',
+    layers: 'Слои',
+    properties: 'Свойства',
+    noSelection: 'Выберите объект на холсте.',
+    undo: 'Отменить',
+    redo: 'Повторить',
+    delete: 'Удалить',
+    duplicate: 'Дублировать',
+    bringForward: 'На передний план',
+    sendBackward: 'На задний план',
+    alignLeft: 'По левому краю',
+    alignCenter: 'По центру',
+    alignRight: 'По правому краю',
+    alignTop: 'По верхнему краю',
+    alignMiddle: 'По середине',
+    alignBottom: 'По нижнему краю',
+    zoomIn: 'Приблизить',
+    zoomOut: 'Отдалить',
+    zoomFit: 'Вписать',
+    zoomOne: '100%',
+    textContent: 'Текст',
+    fillColor: 'Заливка',
+    fontSize: 'Кегль',
+    opacity: 'Прозрачность',
+    lock: 'Заблокировать',
+    unlock: 'Разблокировать',
+    layerText: 'Текст',
+    layerRect: 'Прямоугольник',
+    layerImage: 'Изображение',
+    layerOther: 'Объект',
+    background: 'Фон холста',
+    ctxCopy: 'Копировать',
+    ctxPaste: 'Вставить',
+    ctxDelete: 'Удалить',
+    ctxDuplicate: 'Дублировать',
+    ctxForward: 'Вперёд',
+    ctxBackward: 'Назад',
+  },
+};
+
+export function detectLang(): StudioLang {
+  const q = new URLSearchParams(window.location.search).get('lang');
+  if (q === 'ru' || q === 'en') return q;
+  const nav = (navigator.language || 'en').slice(0, 2).toLowerCase();
+  return nav === 'ru' ? 'ru' : 'en';
+}
+
+export function t(lang: StudioLang, key: string, vars?: Record<string, string | number>): string {
+  let s = dict[lang][key] ?? dict.en[key] ?? key;
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) {
+      s = s.replaceAll(`{${k}}`, String(v));
+    }
+  }
+  return s;
+}
