@@ -161,13 +161,24 @@ Create from Slides → New deck → pick the card → pick the calendar → room
 
 `current_organizer` is not bound (privacy). Bindings are CANON keys only. Implementation: [`server/lib/slide-templates.js`](../server/lib/slide-templates.js).
 
+## 5b. Waste collection factories (3.2)
+
+| id | Aspect | For |
+|---|---|---|
+| `waste-epaper-5x3` | 5:3 | Seeed Sticky / Waveshare 7.5″ — black/white only, no traffic-light fills |
+| `waste-lcd-16x9` | 16:9 | Lobby / kitchen TV — dark, week list `event_0..4`, empty image slot |
+
+Headline (`Next collection`), put-the-bin-out note, and `Then:` prefix are written from the dashboard language at create time. Fraction identity is the calendar word (`Gelber Sack`, `Restmüll`), not a yellow/blue fill. `Then:` binds `event_1_title` with `hide_if_empty` (the upcoming bag is `next_title` / `event_0`). The wizard hints to set an Include filter; it does not write one.
+
+Same module as T1. Invalid slug falls back to `abfall`.
+
 ---
 
 ## 6. Tests that hold the contract
 
 | File | What it refuses to regress |
 |---|---|
-| `server/test/data-sources-ical.test.js` | `CANON` keys on busy and free fixtures; `remaining_today_empty` empty vs phrase; `remaining_today_count` |
+| `server/test/data-sources-ical.test.js` | `CANON` keys on busy and free fixtures; `remaining_today_empty` empty vs phrase; `remaining_today_count`; Gelber Sack Abholung → waste factory HTML |
 | `server/test/slide-render.test.js` | `hide_if_empty` hides `Next:  ()` but not a title without a time; `show_when` busy/free inversion; `color_when` + `__status: error` is stale hex, not free green; missing slug is stale; invalid `bind_status` is dropped |
 | `server/test/slide-deck*.test.js` | bind flags survive save; defaults are not written |
-| `server/test/slide-templates.test.js` | T1 aspect/motion/1-bit palette; CANON-only binds; ICS → BELEGT/FREI; empty Next chrome; LCD bar stale ≠ green; Sticky pack 48000 bytes |
+| `server/test/slide-templates.test.js` | T1 aspect/motion/1-bit palette; CANON-only binds; ICS → BELEGT/FREI; empty Next chrome; LCD bar stale ≠ green; Sticky pack 48000 bytes; T2 1-bit / no traffic lights; LCD week list + empty image; Then: hides without event_1 |

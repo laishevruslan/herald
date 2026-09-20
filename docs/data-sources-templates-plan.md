@@ -1,6 +1,6 @@
 # Data Sources, фаза 3 — готовые шаблоны слайдов
 
-**Статус: 3.0 и 3.1 СДЕЛАНО (контракт + рендерер + T1 e-paper/LCD + выбор источника). 3.2–3.5 не начаты.**
+**Статус: 3.0, 3.1 и 3.2 СДЕЛАНО (контракт + рендерер + T1 + T2 e-paper/LCD + выбор источника + Include-фильтр). 3.3–3.5 не начаты.**
 **Родительский документ:** [`DATA_SOURCES_MASTERPLAN.md`](../DATA_SOURCES_MASTERPLAN.md), фаза 3.
 **Намерение ветки:** остаёмся на текущем контракте слайда (`template` + `fields` + `{{ds:slug.field}}`). Новый runtime плеера не вводим.
 
@@ -28,11 +28,11 @@
 | Подстановка `{{ds:slug.field}}` | `server/lib/slide-render.js`, `interpolateDataSources` | **Готово.** Отсутствующие ключи становятся `''`. `white-space:pre-wrap` уже сохраняет переносы в `agenda_text`. **3.0:** `hide_if_empty`, `show_when`, `bind_status`, `color_when`. |
 | `__status` на resolveData | `getWorkspaceDataMapSync` / `attachSourceStatus` | **Готово (3.0).** `last_status` ряда не кладётся в iCal-payload. |
 | `remaining_today_empty` / `remaining_today_count` | `ical-resolver.js` | **Готово (3.0).** |
-| Модалка New Deck | `frontend/js/views/slides.js`, `openNewDeckModal` | **3.1:** два шага. Шаг 1 — radio (blank / `room-epaper-5x3` / `room-lcd-16x9` / waste-черновик). Шаг 2 — имя + `<select>` источника (D5). Карточки галереи — 3.4. |
+| Модалка New Deck | `frontend/js/views/slides.js`, `openNewDeckModal` | **3.2:** два шага. Шаг 1 — radio (blank / T1 / T2 e-paper+LCD). Шаг 2 — имя + `<select>` источника (D5) + Include-hint для T2. Карточки галереи — 3.4. |
 | `buildRoomSignSlide(slug)` | — | **Удалено.** Заменено `server/lib/slide-templates.js`. |
-| `buildWasteCalendarSlide(slug)` | тот же файл | **Черновик (3.2).** Мастер уже требует источник; геометрия и немецкий хром — ещё stub. |
-| Daily Office Agenda | — | **Нет.** Резолвер уже отдаёт `agenda_text` и `event_0..N`. Ни один макет их не потребляет. |
-| Тесты фабрик | `server/test/slide-templates.test.js` | **3.1:** T1 aspect/1-bit/CANON/ICS/stale bar/48000. T2/T3 — нет. |
+| `buildWasteCalendarSlide(slug)` | — | **Удалено (3.2).** Немецкий stub заменён фабриками `waste-epaper-5x3` / `waste-lcd-16x9`. |
+| Daily Office Agenda | — | **Нет.** Резолвер уже отдаёт `agenda_text` и `event_0..N`. Ни один макет их не потребляет как T3. |
+| Тесты фабрик | `server/test/slide-templates.test.js` | **3.2:** T1 + T2 aspect/1-bit/CANON/ICS/Gelber Sack/Then hide. T3 — нет. |
 | Embedded-профиль 800×480 | `server/lib/embedded-profiles.js`, `seeed-reterminal-sticky` | **Готово.** Floyd–Steinberg, 1-bit. Шаблоны, где смысл несёт цвет, здесь его теряют. |
 
 Пример PiP `Examples/PIP-Room-Status-Calendar/` — **параллельный продукт**: сам опрашивает ICS и шлёт web-overlay через POST. Фаза 3 его не заменяет; в справке новых операторов стоит направлять на Slides + Data Sources.
@@ -534,23 +534,43 @@ color_when: { busy, free, stale } // each via existing color()
 - E-paper: только `#000`/`#FFF`, motion null, инверсия двух stat + `show_when`, stale — линейка 50%. LCD: полоса `color_when` green/red/grey, список `slideU` 0.2s stagger 0.05s.
 - Организатор не биндится. CANON-only, нет `next_event_title`.
 - Нет источников → «Сначала подключить календарь» (`#/data-sources`) + вторичная «с placeholder `room`».
-- Waste остаётся radio + шаг 2 с источником, но stub `buildWasteCalendarSlide` (немецкий хром) — 3.2.
+- Waste в 3.1 оставался radio + stub — закрыто в 3.2.
 
 **Не сделано в 3.1:**
 
 - Карточки галереи, чипы, клавиатура — 3.4.
-- T2 waste / T3 agenda фабрики.
+- T3 agenda фабрика (T2 закрыт в 3.2).
 - Инспектор флагов и превью `hide_if_empty` на холсте редактора (как в 3.0).
 - `GET /api/slide-templates/:id/doc` как отдельный роутер — 3.5. PAT уже может `GET /api/slide-decks/factories/:id/doc`.
 - Живой прогон HTML→Chromium→1-bit PNG фикстуры; только packed length профиля.
-- `slides.factory.waste_note` и `slides.factory.chip.*` — нет UI.
+- `slides.factory.chip.*` — нет UI (галерея 3.4).
 - Остальные SPA-локали кроме en/de/nl/ru для factory-ключей (fallback на en).
 
-### 3.2 — T2 оба соотношения
+### 3.2 — T2 оба соотношения ✅
 
-1. Фабрики `waste-epaper-5x3`, `waste-lcd-16x9`.
-2. Текст мастера про Include-фильтр.
-3. Тест на существующем фикстуре `Gelber Sack Abholung` в `data-sources-ical.test.js`.
+1. [x] Фабрики `waste-epaper-5x3`, `waste-lcd-16x9`.
+2. [x] Текст мастера про Include-фильтр.
+3. [x] Тест на существующем фикстуре `Gelber Sack Abholung` в `data-sources-ical.test.js`.
+
+**Готово, когда:** оператор выбирает Waste e-paper или TV, привязывает отфильтрованный Abfallkalender, видит `Gelber Sack` крупно и `Then:` прячется, когда следующего вывоза нет.
+
+**Сделано в 3.2:**
+
+- Тот же CJS-модуль `server/lib/slide-templates.js`. E-paper: белый/чёрный, без motion, без `color_when`; headline из i18n (`Next collection` / «Следующий вывоз»), stat `next_title` 9cqw, дата `next_time`, статичный `waste_note`, `Then: event_1_title` с `hide_if_empty`. LCD: тёмный, та же иерархия, правый список `event_0..4` (`slideU`), пустой `kind: image` слот `fraction_icon`.
+- Идентичность фракции — слово из календаря, не жёлтая/синяя заливка.
+- Мастер: две radio-карточки T2; шаг 2 — подсказка Include Restmüll / Gelber Sack / Papier (текст, не логика); placeholder slug `abfall`. `buildWasteCalendarSlide` удалён.
+- Хром с `t()` при создании: `headline`, `waste_note`, `then_prefix` (en/de/nl/ru).
+- Тесты: 1-bit палитра; CANON-only; Gelber Sack в `data-sources-ical.test.js`; Then: прячется без `event_1`; Then: Papier когда есть второй вывоз.
+
+**Не сделано в 3.2 (зафиксировано, не регрессия чеклиста выше):**
+
+- Карточки галереи / чипы `All / Room / Facilities / Agenda` — 3.4. Radio остаются.
+- Автоподстановка Include-фильтра при создании источника — подсказка только текстом, как в §5.2.
+- Цвет/иконка фракции из названия события — оператор кладёт PNG в `fraction_icon` сам.
+- T3 agenda, инспектор флагов, `GET /api/slide-templates`, Chromium→PNG фикстура — как в 3.1.
+- Ключи `slides.tpl_waste_*` оставлены (алиас, мастер их больше не читает).
+- Остальные SPA-локали кроме en/de/nl/ru для новых T2-ключей (fallback на en).
+- in-app Help (`help.js`) — вместе с галереей (3.4).
 
 ### 3.3 — T3 повестка 16:9
 
@@ -605,12 +625,15 @@ slides.factory.room_title_label
 slides.factory.next_prefix          "Next"
 slides.factory.now_prefix           "Now"
 slides.factory.waste_note           "Please put the bin out by 06:00."
+slides.factory.waste_headline       "Next collection"
+slides.factory.then_prefix          "Then"
+slides.factory.include_hint
 slides.factory.chip.room
 slides.factory.chip.facilities
 slides.factory.chip.agenda
-slides.factory.room-epaper-5x3.title
-slides.factory.room-epaper-5x3.desc
-… по title+desc на каждый id фабрики
+slides.factory.room_epaper_5x3.title
+slides.factory.room_epaper_5x3.desc
+… по title+desc на каждый id фабрики (подчёркивания, не дефисы id)
 ```
 
 Строки резолвера для `remaining_today_empty` идут в `ROOM_STRINGS`, не в SPA.
@@ -634,11 +657,18 @@ slides.factory.room-epaper-5x3.desc
 - `CHANGELOG.md` Unreleased; README Meeting-room signs;
 - `Examples/PIP-Room-Status-Calendar/README.md` — prefer Slides + Data Sources сверху.
 
-**Остаётся на 3.2+:**
+**Сделано в 3.2:**
+
+- [`docs/slide-data-binding.md`](slide-data-binding.md) §5b — T2 фабрики;
+- `docs/embedded-renderer.md` §3.2 — `waste-epaper-5x3` на Sticky; LCD waste на 1-bit не использовать;
+- empty state Data Sources (en/de/nl/ru) упоминает Waste Collection Reminder;
+- `CHANGELOG.md` Unreleased; README Waste collection.
+
+**Остаётся на 3.3+:**
 
 - getting-started: только если в чеклисте уже есть пункт про слайды; не удлинять онбординг ради нишевого hardware-пресета;
 - статья в in-app Help (`help.js`) про Data Sources — вместе с галереей (3.4), не раньше;
-- T2/T3 справка в empty state (waste / agenda), когда появятся фабрики.
+- T3 справка в empty state, когда появится agenda-фабрика.
 
 ---
 

@@ -247,48 +247,6 @@ function newSlide(name = 'Untitled slide') {
   };
 }
 
-function buildWasteCalendarSlide(slug = 'abfall') {
-  const head = {
-    id: uid('el'), kind: 'head', slot: 'headline',
-    box: { x: 6, y: 10, w: 88, h: null },
-    style: { color: '#FFFFFF', font: 'sans', size_cqw: 4.5, weight: 700, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-  const stat = {
-    id: uid('el'), kind: 'stat', slot: 'waste_type',
-    box: { x: 6, y: 28, w: 88, h: null },
-    style: { color: '#FACC15', font: 'sans', size_cqw: 8, weight: 700, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-  const date = {
-    id: uid('el'), kind: 'body', slot: 'waste_date',
-    box: { x: 6, y: 50, w: 88, h: null },
-    style: { color: '#F8FAFC', font: 'sans', size_cqw: 4, weight: 600, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-  const sub = {
-    id: uid('el'), kind: 'body', slot: 'waste_note',
-    box: { x: 6, y: 72, w: 88, h: null },
-    style: { color: '#94A3B8', font: 'sans', size_cqw: 2.8, weight: 400, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-
-  return {
-    id: uid('s'), name: 'Waste Pickup', dwell_sec: 30, widget_id: null,
-    template: {
-      background: '#0F172A',
-      aspect: '5:3',
-      elements: [head, stat, date, sub],
-    },
-    fields: {
-      headline: '🗑️ Nächste Müllabfuhr',
-      waste_type: `{{ds:${slug}.next_title}}`,
-      waste_date: `Termin: {{ds:${slug}.next_time}}`,
-      waste_note: 'Bitte die Tonne bis spätestens 06:00 Uhr am Straßenrand bereitstellen.',
-    }
-  };
-}
-
 function tplRadio(value, title, desc, checked) {
   return `<label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;background:var(--bg-input)">
     <input type="radio" name="deckTpl" value="${esc(value)}"${checked ? ' checked' : ''} style="margin-top:3px">
@@ -322,8 +280,11 @@ async function openNewDeckModal(container) {
 
   const close = () => overlay.remove();
 
-  const needsSource = (tpl) => tpl === 'room-epaper-5x3' || tpl === 'room-lcd-16x9' || tpl === 'waste';
   const isRoomFactory = (tpl) => tpl === 'room-epaper-5x3' || tpl === 'room-lcd-16x9';
+  const isWasteFactory = (tpl) => tpl === 'waste-epaper-5x3' || tpl === 'waste-lcd-16x9';
+  const isEpaperFactory = (tpl) => tpl === 'room-epaper-5x3' || tpl === 'waste-epaper-5x3';
+  const isLcdFactory = (tpl) => tpl === 'room-lcd-16x9' || tpl === 'waste-lcd-16x9';
+  const needsSource = (tpl) => isRoomFactory(tpl) || isWasteFactory(tpl);
 
   function paint() {
     const header = `<div class="modal-header" style="padding:18px 24px;border-bottom:1px solid var(--border,#334155);display:flex;justify-content:space-between;align-items:center">
@@ -341,7 +302,8 @@ async function openNewDeckModal(container) {
             ${tplRadio('blank', t('slides.tpl_blank_title'), t('slides.tpl_blank_desc'), chosenTpl === 'blank')}
             ${tplRadio('room-epaper-5x3', t('slides.factory.room_epaper_5x3.title'), t('slides.factory.room_epaper_5x3.desc'), chosenTpl === 'room-epaper-5x3')}
             ${tplRadio('room-lcd-16x9', t('slides.factory.room_lcd_16x9.title'), t('slides.factory.room_lcd_16x9.desc'), chosenTpl === 'room-lcd-16x9')}
-            ${tplRadio('waste', t('slides.tpl_waste_title'), t('slides.tpl_waste_desc'), chosenTpl === 'waste')}
+            ${tplRadio('waste-epaper-5x3', t('slides.factory.waste_epaper_5x3.title'), t('slides.factory.waste_epaper_5x3.desc'), chosenTpl === 'waste-epaper-5x3')}
+            ${tplRadio('waste-lcd-16x9', t('slides.factory.waste_lcd_16x9.title'), t('slides.factory.waste_lcd_16x9.desc'), chosenTpl === 'waste-lcd-16x9')}
           </div>
         </div>
       </div>`;
@@ -350,12 +312,12 @@ async function openNewDeckModal(container) {
         <button type="button" id="continueNewDeckBtn" class="btn btn-primary">${esc(t('slides.factory.continue'))}</button>
       </div>`;
     } else {
-      const aspectHint = chosenTpl === 'room-epaper-5x3'
+      const aspectHint = isEpaperFactory(chosenTpl)
         ? t('slides.factory.aspect_hint_epaper')
-        : chosenTpl === 'room-lcd-16x9'
+        : isLcdFactory(chosenTpl)
           ? t('slides.factory.aspect_hint_lcd')
           : '';
-      const defaultSlug = chosenTpl === 'waste'
+      const defaultSlug = isWasteFactory(chosenTpl)
         ? wastePreferredSlug(sources)
         : (sources[0] && sources[0].slug) || 'room';
       const defaultName = needsSource(chosenTpl)
@@ -384,11 +346,13 @@ async function openNewDeckModal(container) {
         </div>
         ${needsSource(chosenTpl) ? sourceSelect : ''}
         ${roomTitle}
+        ${isWasteFactory(chosenTpl) ? `<p style="margin:0;font-size:12px;color:var(--text-muted)">${esc(t('slides.factory.include_hint'))}</p>` : ''}
         ${aspectHint ? `<p style="margin:0;font-size:12px;color:var(--text-muted)">${esc(aspectHint)}</p>` : ''}
       </div>`;
 
+      const placeholderSlug = isWasteFactory(chosenTpl) ? 'abfall' : 'room';
       const bindActions = needsSource(chosenTpl) && !sources.length
-        ? `<button type="button" id="placeholderNewDeckBtn" class="btn btn-secondary">${esc(t('slides.factory.create_placeholder'))}</button>
+        ? `<button type="button" id="placeholderNewDeckBtn" class="btn btn-secondary">${esc(t('slides.factory.create_placeholder', { slug: placeholderSlug }))}</button>
            <button type="button" id="connectSourceBtn" class="btn btn-primary">${esc(t('slides.factory.connect_first'))}</button>`
         : `<button type="button" id="submitNewDeckBtn" class="btn btn-primary">${esc(t('slides.create_deck_btn'))}</button>`;
 
@@ -432,8 +396,8 @@ async function openNewDeckModal(container) {
     const name = (nameInput && nameInput.value.trim()) || 'New Slide Deck';
     const selected = modal.querySelector('#deckSourceSelect');
     const slug = usePlaceholder
-      ? (chosenTpl === 'waste' ? 'abfall' : 'room')
-      : ((selected && selected.value) || (sources[0] && sources[0].slug) || 'room');
+      ? (isWasteFactory(chosenTpl) ? 'abfall' : 'room')
+      : ((selected && selected.value) || (sources[0] && sources[0].slug) || (isWasteFactory(chosenTpl) ? 'abfall' : 'room'));
     const titleInput = modal.querySelector('#deckRoomTitle');
     const roomTitle = (titleInput && titleInput.value.trim())
       || (sources.find((s) => s.slug === slug) || {}).name
@@ -446,21 +410,23 @@ async function openNewDeckModal(container) {
 
     try {
       let d;
-      if (isRoomFactory(chosenTpl)) {
+      if (isRoomFactory(chosenTpl) || isWasteFactory(chosenTpl)) {
+        const chrome = isWasteFactory(chosenTpl)
+          ? {
+              headline: t('slides.factory.waste_headline'),
+              waste_note: t('slides.factory.waste_note'),
+              then_prefix: t('slides.factory.then_prefix'),
+            }
+          : {
+              next_prefix: t('slides.factory.next_prefix'),
+              now_prefix: t('slides.factory.now_prefix'),
+            };
         d = await api.post('/slide-decks', {
           name,
           factory: chosenTpl,
           data_source_slug: slug,
-          title: roomTitle,
-          chrome: {
-            next_prefix: t('slides.factory.next_prefix'),
-            now_prefix: t('slides.factory.now_prefix'),
-          },
-        });
-      } else if (chosenTpl === 'waste') {
-        d = await api.post('/slide-decks', {
-          name,
-          doc: { aspect: '5:3', slides: [buildWasteCalendarSlide(slug)] },
+          title: isRoomFactory(chosenTpl) ? roomTitle : name,
+          chrome,
         });
       } else {
         d = await api.post('/slide-decks', {

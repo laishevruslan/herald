@@ -139,6 +139,36 @@ test('iCal resolver respects keyword filters', async () => {
   assert.equal(data.next_event_summary, 'Gelber Sack Abholung');
 });
 
+test('waste-epaper factory against Gelber Sack Abholung fixture shows the bag and hides Then', async () => {
+  const { buildFactory } = require('../lib/slide-templates');
+  const now = new Date('2026-09-04T07:00:00Z');
+  const data = await resolveIcalData({
+    raw_data: SAMPLE_ICS,
+    filter_include: 'Gelber Sack',
+    timezone: 'UTC',
+  }, now);
+
+  assert.equal(data.next_title, 'Gelber Sack Abholung');
+  assert.equal(data.event_count, 1);
+  assert.equal(data.event_1_title, undefined);
+
+  const built = buildFactory('waste-epaper-5x3', {
+    slug: 'abfall',
+    chrome: {
+      headline: 'Next collection',
+      waste_note: 'Please put the bin out by 06:00.',
+      then_prefix: 'Then',
+    },
+  });
+  const html = renderSlideHtml(built.slide, {
+    resolveData: (slug, key) => (slug === 'abfall' ? ({ ...data, __status: 'ok' })[key] : undefined),
+  });
+  assert.match(html, /Gelber Sack Abholung/);
+  assert.match(html, /Next collection/);
+  assert.match(html, /Please put the bin out by 06:00/);
+  assert.ok(!html.includes('Then:'), 'Then: chrome leaked when Gelber Sack is the only remaining event');
+});
+
 test('iCal resolver respects privacy mode', async () => {
   const now = new Date('2026-09-04T09:30:00Z');
   const data = await resolveIcalData({

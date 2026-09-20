@@ -16,6 +16,17 @@ what to enter for the reviewer.
 
 ### Added
 
+**Waste collection reminders, phase 3.2 — next bag, date, then the following pickup.** Two factory
+templates join the door signs in `server/lib/slide-templates.js`: `waste-epaper-5x3` (800×480 Sticky,
+black/white, no traffic-light fills) and `waste-lcd-16x9` (dark kitchen TV with `event_0..4` and an
+empty fraction-icon slot). Headline, put-the-bin-out note and `Then:` prefix come from the dashboard
+language at create time — including Russian «Следующий вывоз» / «Пожалуйста, выставьте бак к 06:00.»
+/ «Затем» — and then sit in `fields` as ordinary editable text. Fraction identity is the calendar
+word (`Gelber Sack`, `Restmüll`), not a yellow fill. `Then:` binds `event_1_title` with
+`hide_if_empty`. The German stub `buildWasteCalendarSlide` is gone. The wizard hints to set an
+Include filter; it does not write one. Invalid slug falls back to `abfall`. Agenda factory and the
+card gallery are still 3.3–3.4. See [`docs/slide-data-binding.md`](docs/slide-data-binding.md).
+
 **Meeting-room door signs, phase 3.1 — pick a calendar, get a slide.** The New Deck wizard
 binds a data source instead of guessing the first slug or `testraum`. Two factory templates live
 in `server/lib/slide-templates.js` so the dashboard and the tests cannot drift:

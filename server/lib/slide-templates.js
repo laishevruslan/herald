@@ -2,8 +2,8 @@
 
 /*
  * Phase-3 factory templates. Geometry and {{ds:slug.field}} bindings live here so the wizard and
- * the tests cannot drift. Chrome prefixes (Next / Now) are passed in by the dashboard at create
- * time — the wall is not the dashboard, so t() is not called from this file.
+ * the tests cannot drift. Chrome prefixes (Next / Now / Next collection / Then) are passed in by
+ * the dashboard at create time — the wall is not the dashboard, so t() is not called from this file.
  *
  * ⚠️ ONE MODULE, NOT TWO. A frontend copy of these boxes would be a second source of truth the
  * first time somebody fixes a 1-bit colour. The SPA POSTs { factory, slug, title, chrome } and
@@ -13,6 +13,7 @@
 const SLUG_RE = /^[a-zA-Z0-9_-]{1,64}$/;
 const MAX_TITLE = 120;
 const MAX_PREFIX = 80;
+const MAX_NOTE = 160;
 
 const META = Object.freeze([
   {
@@ -31,20 +32,50 @@ const META = Object.freeze([
     title_key: 'slides.factory.room_lcd_16x9.title',
     desc_key: 'slides.factory.room_lcd_16x9.desc',
   },
+  {
+    id: 'waste-epaper-5x3',
+    version: 1,
+    aspect: '5:3',
+    chip: 'facilities',
+    title_key: 'slides.factory.waste_epaper_5x3.title',
+    desc_key: 'slides.factory.waste_epaper_5x3.desc',
+  },
+  {
+    id: 'waste-lcd-16x9',
+    version: 1,
+    aspect: '16:9',
+    chip: 'facilities',
+    title_key: 'slides.factory.waste_lcd_16x9.title',
+    desc_key: 'slides.factory.waste_lcd_16x9.desc',
+  },
 ]);
 
-function sanitizeSlug(raw) {
-  const s = String(raw == null ? '' : raw).trim();
-  return SLUG_RE.test(s) ? s : 'room';
+function isWasteFactory(id) {
+  return String(id || '').startsWith('waste-');
 }
 
-function sanitizeTitle(raw) {
+function fallbackSlug(factoryId) {
+  return isWasteFactory(factoryId) ? 'abfall' : 'room';
+}
+
+function sanitizeSlug(raw, factoryId) {
+  const s = String(raw == null ? '' : raw).trim();
+  return SLUG_RE.test(s) ? s : fallbackSlug(factoryId);
+}
+
+function sanitizeTitle(raw, factoryId) {
   const s = String(raw == null ? '' : raw).trim().slice(0, MAX_TITLE);
-  return s || 'Meeting room';
+  if (s) return s;
+  return isWasteFactory(factoryId) ? 'Waste collection' : 'Meeting room';
 }
 
 function sanitizePrefix(raw, fallback) {
   const s = String(raw == null ? '' : raw).trim().slice(0, MAX_PREFIX);
+  return s || fallback;
+}
+
+function sanitizeNote(raw, fallback) {
+  const s = String(raw == null ? '' : raw).trim().slice(0, MAX_NOTE);
   return s || fallback;
 }
 
@@ -85,7 +116,27 @@ function applyChrome(fields, slug, chrome) {
   if (Object.prototype.hasOwnProperty.call(fields, 'now_meeting')) {
     fields.now_meeting = `${now}: ${tok(slug, 'current_title')} (${tok(slug, 'current_time')})`;
   }
+  if (Object.prototype.hasOwnProperty.call(fields, 'headline')) {
+    fields.headline = sanitizePrefix(chrome && chrome.headline, 'Next collection');
+  }
+  if (Object.prototype.hasOwnProperty.call(fields, 'waste_note')) {
+    fields.waste_note = sanitizeNote(chrome && chrome.waste_note, 'Please put the bin out by 06:00.');
+  }
+  if (Object.prototype.hasOwnProperty.call(fields, 'then_line')) {
+    const then = sanitizePrefix(chrome && chrome.then_prefix, 'Then');
+    fields.then_line = `${then}: ${tok(slug, 'event_1_title')}`;
+  }
   return fields;
+}
+
+function wasteCoreFields(slug) {
+  return {
+    headline: '',
+    waste_type: tok(slug, 'next_title'),
+    waste_date: tok(slug, 'next_time'),
+    waste_note: '',
+    then_line: '',
+  };
 }
 
 /*
@@ -207,9 +258,80 @@ function buildRoomLcd(slug, title) {
   };
 }
 
+/*
+ * Kitchen / mail-room 800×480. Fraction identity is the calendar word (Gelber Sack, Restmüll),
+ * never a traffic-light fill — yellow and blue dither to noise on 1-bit. Then: is event_1 because
+ * next_title / event_0 is the upcoming bag.
+ */
+function buildWasteEpaper(slug, title) {
+  const elements = [
+    el('head', 'headline', { x: 4, y: 6, w: 92 }, { size_cqw: 4, weight: 700, color: '#000000' }),
+    el('stat', 'waste_type', { x: 4, y: 20, w: 92 }, {
+      size_cqw: 9, weight: 700, color: '#000000',
+    }, { hide_if_empty: true }),
+    el('body', 'waste_date', { x: 4, y: 48, w: 92 }, {
+      size_cqw: 4, weight: 600, color: '#000000',
+    }, { hide_if_empty: true }),
+    el('body', 'waste_note', { x: 4, y: 64, w: 92 }, { size_cqw: 2.8, color: '#000000' }),
+    el('body', 'then_line', { x: 4, y: 82, w: 92 }, { size_cqw: 3, color: '#000000' }, { hide_if_empty: true }),
+  ];
+
+  return {
+    name: title,
+    dwell_sec: 30,
+    template: { background: '#FFFFFF', aspect: '5:3', elements },
+    fields: wasteCoreFields(slug),
+  };
+}
+
+/*
+ * Lobby / kitchen TV. Same hierarchy on the left; the week lives on the right as event_0..4 so a
+ * filtered Abfallkalender reads as a week, not a single bag. Image slot is empty until the
+ * operator drops in a 1-bit PNG of the fraction — we do not invent a colour from the word.
+ */
+function buildWasteLcd(slug, title) {
+  const ink = '#F8FAFC';
+  const muted = '#94A3B8';
+  const elements = [
+    el('head', 'headline', { x: 4, y: 4, w: 52 }, { size_cqw: 3.2, weight: 700, color: ink }),
+    el('stat', 'waste_type', { x: 4, y: 14, w: 52 }, {
+      size_cqw: 7, weight: 700, color: ink,
+    }, { hide_if_empty: true }),
+    el('body', 'waste_date', { x: 4, y: 38, w: 52 }, {
+      size_cqw: 2.8, weight: 600, color: '#E2E8F0',
+    }, { hide_if_empty: true }),
+    el('body', 'waste_note', { x: 4, y: 50, w: 52 }, { size_cqw: 2.2, color: muted }),
+    el('body', 'then_line', { x: 4, y: 64, w: 52 }, { size_cqw: 2.4, color: ink }, { hide_if_empty: true }),
+    el('image', 'fraction_icon', { x: 82, y: 4, w: 14, h: 24 }, { color: '#0B1220' }),
+  ];
+  for (let n = 0; n < 5; n++) {
+    const y = 36 + n * 12;
+    const motion = { animation: 'slideU', delay: n * 0.05, duration: 0.2, easing: 'ease-out' };
+    elements.push(
+      el('body', `ev${n}_time`, { x: 58, y, w: 14 }, { size_cqw: 2.4, weight: 600, color: muted }, { hide_if_empty: true, motion }),
+      el('body', `ev${n}_title`, { x: 74, y, w: 22 }, { size_cqw: 2.4, color: ink }, { hide_if_empty: true, motion }),
+    );
+  }
+
+  const fields = wasteCoreFields(slug);
+  for (let n = 0; n < 5; n++) {
+    fields[`ev${n}_time`] = tok(slug, `event_${n}_time`);
+    fields[`ev${n}_title`] = tok(slug, `event_${n}_title`);
+  }
+
+  return {
+    name: title,
+    dwell_sec: 30,
+    template: { background: '#0B1220', aspect: '16:9', elements },
+    fields,
+  };
+}
+
 const BUILDERS = {
   'room-epaper-5x3': buildRoomEpaper,
   'room-lcd-16x9': buildRoomLcd,
+  'waste-epaper-5x3': buildWasteEpaper,
+  'waste-lcd-16x9': buildWasteLcd,
 };
 
 function listFactories() {
@@ -218,15 +340,18 @@ function listFactories() {
 
 /**
  * @param {string} id
- * @param {{ slug?: string, title?: string, chrome?: { next_prefix?: string, now_prefix?: string } }} [opts]
+ * @param {{ slug?: string, title?: string, chrome?: {
+ *   next_prefix?: string, now_prefix?: string,
+ *   headline?: string, waste_note?: string, then_prefix?: string,
+ * } }} [opts]
  * @returns {{ id: string, version: number, aspect: string, slide: object } | null}
  */
 function buildFactory(id, opts = {}) {
   const meta = META.find((m) => m.id === id);
   const builder = BUILDERS[id];
   if (!meta || !builder) return null;
-  const slug = sanitizeSlug(opts.slug);
-  const title = sanitizeTitle(opts.title);
+  const slug = sanitizeSlug(opts.slug, id);
+  const title = sanitizeTitle(opts.title, id);
   const slide = builder(slug, title);
   applyChrome(slide.fields, slug, opts.chrome);
   return { id: meta.id, version: meta.version, aspect: meta.aspect, slide };
@@ -251,4 +376,5 @@ module.exports = {
   buildFactory,
   buildDeck,
   sanitizeSlug,
+  isWasteFactory,
 };
