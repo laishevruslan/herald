@@ -198,11 +198,11 @@ Add a dedicated item in the sidebar ([`frontend/index.html`](file:///Users/rene/
 Implementation plan (competitive analysis, renderer gaps, factory IDs, PR split):
 [`docs/data-sources-templates-plan.md`](docs/data-sources-templates-plan.md).
 
-T1 door signs and T2 waste reminders ship from `server/lib/slide-templates.js` (`room-epaper-5x3`, `room-lcd-16x9`, `waste-epaper-5x3`, `waste-lcd-16x9`); the wizard binds a data source. There is no agenda factory yet (3.3).
+T1 door signs, T2 waste reminders and T3 daily agenda ship from `server/lib/slide-templates.js` (`room-epaper-5x3`, `room-lcd-16x9`, `waste-epaper-5x3`, `waste-lcd-16x9`, `agenda-lcd-16x9`); the wizard binds a data source.
 
 - [x] **3.0** Renderer: `hide_if_empty`, `show_when`, `bind_status` / `color_when`; pass `__status` so a failed fetch cannot look AVAILABLE. (`remaining_today_empty` / `remaining_today_count` are in the resolver; factory templates are 3.1+.)
 - [x] **3.1** Template 1: **Meeting Room Door Sign** — `room-epaper-5x3` (800×480 Sticky) and `room-lcd-16x9` (green/red bar). Wizard binds a data source.
 - [x] **3.2** Template 2: **Waste / Trash Pickup** — `waste-epaper-5x3` and `waste-lcd-16x9`.
-- [ ] **3.3** Template 3: **Daily Office Agenda Board** — `agenda-lcd-16x9` (4K uses the same 16:9 + `cqw`).
+- [x] **3.3** Template 3: **Daily Office Agenda Board** — `agenda-lcd-16x9` (4K uses the same 16:9 + `cqw`).
 - [ ] **3.4** Gallery UX (preview cards), replacing the radio list.
 - [ ] **3.5** Stretch: 4-room corridor board, portrait 9:16 door sign. Not required to tick Phase 3.

@@ -51,17 +51,18 @@ function resolveOf(payload, slug = 'room') {
   };
 }
 
-test('listFactories names T1 and T2 ids and no agenda yet', () => {
+test('listFactories names T1, T2 and T3 ids', () => {
   const ids = listFactories().map((f) => f.id);
   assert.deepEqual(ids, [
     'room-epaper-5x3', 'room-lcd-16x9',
     'waste-epaper-5x3', 'waste-lcd-16x9',
+    'agenda-lcd-16x9',
   ]);
 });
 
 test('unknown factory is null', () => {
   assert.equal(buildFactory('room-epaper-9x16'), null);
-  assert.equal(buildDeck('agenda-lcd-16x9', { slug: 'lobby' }), null);
+  assert.equal(buildDeck('rooms-board-16x9', { slug: 'lobby' }), null);
 });
 
 test('room-epaper-5x3 is 5:3, motionless, and only black or white', () => {
@@ -101,7 +102,7 @@ test('room-lcd-16x9 paints a corridor bar and animates only the agenda column', 
 });
 
 test('factory bindings use only CANON keys — never next_event_title or organizer', () => {
-  for (const id of ['room-epaper-5x3', 'room-lcd-16x9', 'waste-epaper-5x3', 'waste-lcd-16x9']) {
+  for (const id of ['room-epaper-5x3', 'room-lcd-16x9', 'waste-epaper-5x3', 'waste-lcd-16x9', 'agenda-lcd-16x9']) {
     const built = buildFactory(id, { slug: 'room', title: 'Berlin' });
     const keys = dsTokens(built.slide);
     assert.ok(keys.length > 0, id);
@@ -313,4 +314,76 @@ END:VCALENDAR`;
   const html = renderSlideHtml(built.slide, resolveOf({ ...data, __status: 'ok' }, 'abfall'));
   assert.match(html, /Gelber Sack Abholung/);
   assert.ok(!html.includes('Then:'), 'Then: chrome leaked with no following pickup');
+});
+
+test('invalid agenda slug falls back to lobby', () => {
+  const built = buildFactory('agenda-lcd-16x9', { slug: 'tea point!', title: 'X' });
+  assert.match(JSON.stringify(built.slide.fields), /\{\{ds:lobby\.event_0_title\}\}/);
+  assert.match(JSON.stringify(built.slide.fields), /\{\{ds:lobby\.remaining_today_empty\}\}/);
+});
+
+test('agenda-lcd-16x9 is 16:9 dark, eight rows, live date, no traffic lights, no agenda_text', () => {
+  const built = buildFactory('agenda-lcd-16x9', { slug: 'lobby', title: 'HQ' });
+  assert.equal(built.aspect, '16:9');
+  const slide = normalizeSlide(built.slide);
+  assert.equal(slide.background, '#0B1220');
+  const date = slide.elements.find((e) => e.slot === 'header_date');
+  assert.ok(date && date.kind === 'date');
+  assert.equal(date.cfg.format, 'long');
+  const clock = slide.elements.find((e) => e.slot === 'clock');
+  assert.ok(clock && clock.kind === 'clock');
+  const header = slide.elements.filter((e) => ['headline', 'header_date', 'clock', 'rule_top', 'empty_hint'].includes(e.slot));
+  for (const e of header) assert.equal(e.motion, null, `${e.slot} is header — no motion`);
+  const rows = slide.elements.filter((e) => /^row_\d_/.test(e.slot));
+  assert.equal(rows.length, 16);
+  for (const e of rows) {
+    assert.ok(e.motion && e.motion.animation === 'slideU', `${e.slot} should rise on LCD`);
+    assert.equal(e.hide_if_empty, true);
+  }
+  const hint = slide.elements.find((e) => e.slot === 'empty_hint');
+  assert.equal(hint.hide_if_empty, true);
+  assert.equal(built.slide.fields.empty_hint, '{{ds:lobby.remaining_today_empty}}');
+  for (const e of slide.elements) {
+    assert.equal(e.color_when, null, `${e.slot} must not paint busy/free on an agenda`);
+    assert.equal(e.show_when, 'always');
+  }
+  assert.ok(!JSON.stringify(built.slide.fields).includes('agenda_text'));
+  assert.ok(!JSON.stringify(built.slide.fields).includes('current_organizer'));
+});
+
+test('agenda chrome headline lands in fields and empty_hint stays a resolver bind', () => {
+  const built = buildFactory('agenda-lcd-16x9', {
+    slug: 'lobby',
+    chrome: { headline: 'Heute' },
+  });
+  assert.equal(built.slide.fields.headline, 'Heute');
+  assert.equal(built.slide.fields.empty_hint, '{{ds:lobby.remaining_today_empty}}');
+});
+
+test('agenda factory shows the midday list and the empty-evening phrase, never leftover chrome', async () => {
+  const midday = await resolveIcalData(
+    { raw_data: ROOM_ICS, timezone: 'UTC', locale: 'en' },
+    new Date('2026-09-04T11:00:00Z'),
+  );
+  const evening = await resolveIcalData(
+    { raw_data: ROOM_ICS, timezone: 'UTC', locale: 'en' },
+    new Date('2026-09-04T16:00:00Z'),
+  );
+  assert.equal(midday.remaining_today_empty, '');
+  assert.equal(evening.remaining_today_empty, 'No more meetings today');
+  assert.equal(midday.event_0_title, 'Kunden-Präsentation');
+  assert.equal(evening.event_0_title, undefined);
+
+  const built = buildFactory('agenda-lcd-16x9', {
+    slug: 'lobby',
+    chrome: { headline: 'Today' },
+  });
+  const dayHtml = renderSlideHtml(built.slide, resolveOf({ ...midday, __status: 'ok' }, 'lobby'));
+  const eveHtml = renderSlideHtml(built.slide, resolveOf({ ...evening, __status: 'ok' }, 'lobby'));
+  assert.match(dayHtml, /Kunden-Präsentation/);
+  assert.match(dayHtml, /Today/);
+  assert.ok(!dayHtml.includes('No more meetings today'), 'empty-board phrase leaked while the afternoon still had a meeting');
+  assert.match(eveHtml, /No more meetings today/);
+  assert.ok(!eveHtml.includes('Kunden-Präsentation'), 'ended afternoon meeting stayed on the evening board');
+  assert.ok(!eveHtml.includes('Projekt-Sync'), 'ended morning meeting stayed on the evening board');
 });

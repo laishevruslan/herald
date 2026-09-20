@@ -1,6 +1,6 @@
 # Data Sources, фаза 3 — готовые шаблоны слайдов
 
-**Статус: 3.0, 3.1 и 3.2 СДЕЛАНО (контракт + рендерер + T1 + T2 e-paper/LCD + выбор источника + Include-фильтр). 3.3–3.5 не начаты.**
+**Статус: 3.0–3.3 СДЕЛАНО (контракт + рендерер + T1 + T2 + T3 повестка 16:9 + выбор источника). 3.4–3.5 не начаты.**
 **Родительский документ:** [`DATA_SOURCES_MASTERPLAN.md`](../DATA_SOURCES_MASTERPLAN.md), фаза 3.
 **Намерение ветки:** остаёмся на текущем контракте слайда (`template` + `fields` + `{{ds:slug.field}}`). Новый runtime плеера не вводим.
 
@@ -28,11 +28,11 @@
 | Подстановка `{{ds:slug.field}}` | `server/lib/slide-render.js`, `interpolateDataSources` | **Готово.** Отсутствующие ключи становятся `''`. `white-space:pre-wrap` уже сохраняет переносы в `agenda_text`. **3.0:** `hide_if_empty`, `show_when`, `bind_status`, `color_when`. |
 | `__status` на resolveData | `getWorkspaceDataMapSync` / `attachSourceStatus` | **Готово (3.0).** `last_status` ряда не кладётся в iCal-payload. |
 | `remaining_today_empty` / `remaining_today_count` | `ical-resolver.js` | **Готово (3.0).** |
-| Модалка New Deck | `frontend/js/views/slides.js`, `openNewDeckModal` | **3.2:** два шага. Шаг 1 — radio (blank / T1 / T2 e-paper+LCD). Шаг 2 — имя + `<select>` источника (D5) + Include-hint для T2. Карточки галереи — 3.4. |
+| Модалка New Deck | `frontend/js/views/slides.js`, `openNewDeckModal` | **3.3:** два шага. Шаг 1 — radio (blank / T1 / T2 / `agenda-lcd-16x9`). Шаг 2 — имя + `<select>` источника (D5) + Include-hint для T2 + заголовок доски для T3. Карточки галереи — 3.4. |
 | `buildRoomSignSlide(slug)` | — | **Удалено.** Заменено `server/lib/slide-templates.js`. |
 | `buildWasteCalendarSlide(slug)` | — | **Удалено (3.2).** Немецкий stub заменён фабриками `waste-epaper-5x3` / `waste-lcd-16x9`. |
-| Daily Office Agenda | — | **Нет.** Резолвер уже отдаёт `agenda_text` и `event_0..N`. Ни один макет их не потребляет как T3. |
-| Тесты фабрик | `server/test/slide-templates.test.js` | **3.2:** T1 + T2 aspect/1-bit/CANON/ICS/Gelber Sack/Then hide. T3 — нет. |
+| Daily Office Agenda | `server/lib/slide-templates.js` `agenda-lcd-16x9` | **Готово (3.3).** Строки `event_0..7`, не `agenda_text`. `remaining_today_empty` с `hide_if_empty`. |
+| Тесты фабрик | `server/test/slide-templates.test.js` | **3.3:** T1 + T2 + T3 aspect/CANON/midday vs empty evening. |
 | Embedded-профиль 800×480 | `server/lib/embedded-profiles.js`, `seeed-reterminal-sticky` | **Готово.** Floyd–Steinberg, 1-bit. Шаблоны, где смысл несёт цвет, здесь его теряют. |
 
 Пример PiP `Examples/PIP-Room-Status-Calendar/` — **параллельный продукт**: сам опрашивает ICS и шлёт web-overlay через POST. Фаза 3 его не заменяет; в справке новых операторов стоит направлять на Slides + Data Sources.
@@ -567,16 +567,34 @@ color_when: { busy, free, stale } // each via existing color()
 - Карточки галереи / чипы `All / Room / Facilities / Agenda` — 3.4. Radio остаются.
 - Автоподстановка Include-фильтра при создании источника — подсказка только текстом, как в §5.2.
 - Цвет/иконка фракции из названия события — оператор кладёт PNG в `fraction_icon` сам.
-- T3 agenda, инспектор флагов, `GET /api/slide-templates`, Chromium→PNG фикстура — как в 3.1.
+- Инспектор флагов, `GET /api/slide-templates`, Chromium→PNG фикстура — как в 3.1 (T3 закрыт в 3.3).
 - Ключи `slides.tpl_waste_*` оставлены (алиас, мастер их больше не читает).
 - Остальные SPA-локали кроме en/de/nl/ru для новых T2-ключей (fallback на en).
 - in-app Help (`help.js`) — вместе с галереей (3.4).
 
-### 3.3 — T3 повестка 16:9
+### 3.3 — T3 повестка 16:9 ✅
 
-1. Фабрика `agenda-lcd-16x9` со строками 0–7.
-2. Резолвер `remaining_today_empty`.
-3. Тест пустого вечера vs списка среди дня.
+1. [x] Фабрика `agenda-lcd-16x9` со строками 0–7.
+2. [x] Резолвер `remaining_today_empty` (отгружен в 3.0; фабрика биндит слот `empty_hint`).
+3. [x] Тест пустого вечера vs списка среди дня.
+
+**Готово, когда:** оператор выбирает Daily Office Agenda, привязывает офисный календарь, среди дня видит timed-строки, после последнего события — локализованную фразу «Сегодня встреч больше нет», без `agenda_text` одним кеглем.
+
+**Сделано в 3.3:**
+
+- Тот же CJS-модуль. LCD 16:9 тёмный: живые `date` (long) + `clock` + headline из i18n (`Today` / «Сегодня») при создании. Тело — `row_n_time` / `row_n_title` → `event_n_*` (n=0..7), `hide_if_empty` на обеих колонках. `empty_hint` = `{{ds:slug.remaining_today_empty}}`. Нет `agenda_text`, нет `color_when` / `show_when` busy-free (повестка — не комната). Motion `slideU` только на строках. 4K — тот же JSON.
+- Мастер: radio T3, поле заголовка доски, placeholder slug `lobby`.
+- Хром headline с `t()`; фраза пустой доски — из резолвера (`ROOM_STRINGS`), не из SPA.
+- Тесты: CANON-only; midday `Kunden-Präsentation` и evening «No more meetings today»; дефолт headline Today.
+
+**Не сделано в 3.3 (зафиксировано, принято в §5.3):**
+
+- Stacked-flex / схлопывание пустых `box.y` после обеда — 3.5. Пустые строки остаются пустыми; шапка и `empty_hint` несут смысл.
+- E-paper повестка — не в фазе 3 (800×480 не держит 8 строк).
+- Карточки галереи / чипы / клавиатура — 3.4.
+- Инспектор флагов, `GET /api/slide-templates`, Chromium→PNG, Help (`help.js`) — как раньше.
+- Светлый близнец agenda, недельная сетка, доска на 4 комнаты — 3.5.
+- Остальные SPA-локали кроме en/de/nl/ru для T3-ключей (fallback на en).
 
 ### 3.4 — UX галереи
 
@@ -628,6 +646,8 @@ slides.factory.waste_note           "Please put the bin out by 06:00."
 slides.factory.waste_headline       "Next collection"
 slides.factory.then_prefix          "Then"
 slides.factory.include_hint
+slides.factory.board_title_label
+slides.factory.agenda_headline      "Today"
 slides.factory.chip.room
 slides.factory.chip.facilities
 slides.factory.chip.agenda
@@ -664,11 +684,17 @@ slides.factory.room_epaper_5x3.desc
 - empty state Data Sources (en/de/nl/ru) упоминает Waste Collection Reminder;
 - `CHANGELOG.md` Unreleased; README Waste collection.
 
-**Остаётся на 3.3+:**
+**Сделано в 3.3:**
+
+- [`docs/slide-data-binding.md`](slide-data-binding.md) §5c — T3 фабрика;
+- empty state Data Sources (en/de/nl/ru) упоминает Daily Office Agenda;
+- `CHANGELOG.md` Unreleased; README Daily office agenda;
+- `docs/embedded-renderer.md` — agenda 16:9 не на 1-bit Sticky.
+
+**Остаётся на 3.4+:**
 
 - getting-started: только если в чеклисте уже есть пункт про слайды; не удлинять онбординг ради нишевого hardware-пресета;
-- статья в in-app Help (`help.js`) про Data Sources — вместе с галереей (3.4), не раньше;
-- T3 справка в empty state, когда появится agenda-фабрика.
+- статья в in-app Help (`help.js`) про Data Sources — вместе с галереей (3.4), не раньше.
 
 ---
 

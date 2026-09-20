@@ -1576,9 +1576,9 @@ paths:
               properties:
                 name: { type: string, maxLength: 120 }
                 doc: { $ref: '#/components/schemas/DeckDocument' }
-                factory: { type: string, description: 'Factory id (`room-epaper-5x3`, `room-lcd-16x9`, `waste-epaper-5x3`, `waste-lcd-16x9`). When set, the server builds `doc` and ignores a client-supplied document.' }
+                factory: { type: string, description: 'Factory id (`room-epaper-5x3`, `room-lcd-16x9`, `waste-epaper-5x3`, `waste-lcd-16x9`, `agenda-lcd-16x9`). When set, the server builds `doc` and ignores a client-supplied document.' }
                 data_source_slug: { type: string, maxLength: 64 }
-                title: { type: string, maxLength: 120, description: 'Room name written into fields.room_name (T1), or slide name (T2).' }
+                title: { type: string, maxLength: 120, description: 'Room name written into fields.room_name (T1), slide name (T2/T3).' }
                 chrome: { type: object, properties: { next_prefix: { type: string }, now_prefix: { type: string }, headline: { type: string }, waste_note: { type: string }, then_prefix: { type: string } } }
       responses:
         '201': { description: 'The created deck, with any publish warnings.' }

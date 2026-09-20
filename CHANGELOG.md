@@ -16,6 +16,16 @@ what to enter for the reviewer.
 
 ### Added
 
+**Daily office agenda, phase 3.3 — eight timed rows and an honest empty evening.** `agenda-lcd-16x9`
+joins the door signs and waste reminders in `server/lib/slide-templates.js`. The header is a live
+long date, a clock, and a stored headline from the dashboard language at create time — including
+Russian «Сегодня». The body is structured `event_0..7` rows, not one `agenda_text` block, so a 4K
+lobby can keep a time column. After the last meeting the resolver's `remaining_today_empty` fills
+`empty_hint` (Russian «Сегодня встреч больше нет») and hides when the afternoon still has events.
+No busy/free bar: this is not a room sign. Empty rows do not restack (no flex kind). Invalid slug
+falls back to `lobby`. The card gallery is still 3.4. See
+[`docs/slide-data-binding.md`](docs/slide-data-binding.md).
+
 **Waste collection reminders, phase 3.2 — next bag, date, then the following pickup.** Two factory
 templates join the door signs in `server/lib/slide-templates.js`: `waste-epaper-5x3` (800×480 Sticky,
 black/white, no traffic-light fills) and `waste-lcd-16x9` (dark kitchen TV with `event_0..4` and an
@@ -24,8 +34,8 @@ language at create time — including Russian «Следующий вывоз» 
 / «Затем» — and then sit in `fields` as ordinary editable text. Fraction identity is the calendar
 word (`Gelber Sack`, `Restmüll`), not a yellow fill. `Then:` binds `event_1_title` with
 `hide_if_empty`. The German stub `buildWasteCalendarSlide` is gone. The wizard hints to set an
-Include filter; it does not write one. Invalid slug falls back to `abfall`. Agenda factory and the
-card gallery are still 3.3–3.4. See [`docs/slide-data-binding.md`](docs/slide-data-binding.md).
+Include filter; it does not write one. Invalid slug falls back to `abfall`. The card gallery is
+still 3.4. See [`docs/slide-data-binding.md`](docs/slide-data-binding.md).
 
 **Meeting-room door signs, phase 3.1 — pick a calendar, get a slide.** The New Deck wizard
 binds a data source instead of guessing the first slug or `testraum`. Two factory templates live

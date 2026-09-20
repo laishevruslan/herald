@@ -172,6 +172,14 @@ Headline (`Next collection`), put-the-bin-out note, and `Then:` prefix are writt
 
 Same module as T1. Invalid slug falls back to `abfall`.
 
+## 5c. Daily office agenda (3.3)
+
+| id | Aspect | For |
+|---|---|---|
+| `agenda-lcd-16x9` | 16:9 | Lobby / tea-point TV — and 4K, same JSON (`cqw`) |
+
+Header: live `date` (long) + `clock` + a stored headline (dashboard language `Today` / «Сегодня» at create). Body is eight timed rows (`row_n_time` / `row_n_title` → `event_n_*`), **not** `agenda_text`. `empty_hint` binds `remaining_today_empty` with `hide_if_empty`. No busy/free bar: this is not a room sign. Empty afternoon rows stay empty (no stack kind). Invalid slug falls back to `lobby`. E-paper agenda is not in phase 3.
+
 ---
 
 ## 6. Tests that hold the contract
@@ -181,4 +189,4 @@ Same module as T1. Invalid slug falls back to `abfall`.
 | `server/test/data-sources-ical.test.js` | `CANON` keys on busy and free fixtures; `remaining_today_empty` empty vs phrase; `remaining_today_count`; Gelber Sack Abholung → waste factory HTML |
 | `server/test/slide-render.test.js` | `hide_if_empty` hides `Next:  ()` but not a title without a time; `show_when` busy/free inversion; `color_when` + `__status: error` is stale hex, not free green; missing slug is stale; invalid `bind_status` is dropped |
 | `server/test/slide-deck*.test.js` | bind flags survive save; defaults are not written |
-| `server/test/slide-templates.test.js` | T1 aspect/motion/1-bit palette; CANON-only binds; ICS → BELEGT/FREI; empty Next chrome; LCD bar stale ≠ green; Sticky pack 48000 bytes; T2 1-bit / no traffic lights; LCD week list + empty image; Then: hides without event_1 |
+| `server/test/slide-templates.test.js` | T1 aspect/motion/1-bit palette; CANON-only binds; ICS → BELEGT/FREI; empty Next chrome; LCD bar stale ≠ green; Sticky pack 48000 bytes; T2 1-bit / no traffic lights; LCD week list + empty image; Then: hides without event_1; T3 16:9 eight rows / no `agenda_text`; midday list vs empty-evening phrase |

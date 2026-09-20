@@ -4,6 +4,7 @@
  * Phase-3 factory templates. Geometry and {{ds:slug.field}} bindings live here so the wizard and
  * the tests cannot drift. Chrome prefixes (Next / Now / Next collection / Then) are passed in by
  * the dashboard at create time — the wall is not the dashboard, so t() is not called from this file.
+ * Agenda empty-board copy (`remaining_today_empty`) lives in the resolver, not in t().
  *
  * ⚠️ ONE MODULE, NOT TWO. A frontend copy of these boxes would be a second source of truth the
  * first time somebody fixes a 1-bit colour. The SPA POSTs { factory, slug, title, chrome } and
@@ -48,14 +49,28 @@ const META = Object.freeze([
     title_key: 'slides.factory.waste_lcd_16x9.title',
     desc_key: 'slides.factory.waste_lcd_16x9.desc',
   },
+  {
+    id: 'agenda-lcd-16x9',
+    version: 1,
+    aspect: '16:9',
+    chip: 'agenda',
+    title_key: 'slides.factory.agenda_lcd_16x9.title',
+    desc_key: 'slides.factory.agenda_lcd_16x9.desc',
+  },
 ]);
 
 function isWasteFactory(id) {
   return String(id || '').startsWith('waste-');
 }
 
+function isAgendaFactory(id) {
+  return String(id || '').startsWith('agenda-');
+}
+
 function fallbackSlug(factoryId) {
-  return isWasteFactory(factoryId) ? 'abfall' : 'room';
+  if (isWasteFactory(factoryId)) return 'abfall';
+  if (isAgendaFactory(factoryId)) return 'lobby';
+  return 'room';
 }
 
 function sanitizeSlug(raw, factoryId) {
@@ -66,7 +81,9 @@ function sanitizeSlug(raw, factoryId) {
 function sanitizeTitle(raw, factoryId) {
   const s = String(raw == null ? '' : raw).trim().slice(0, MAX_TITLE);
   if (s) return s;
-  return isWasteFactory(factoryId) ? 'Waste collection' : 'Meeting room';
+  if (isWasteFactory(factoryId)) return 'Waste collection';
+  if (isAgendaFactory(factoryId)) return 'Office agenda';
+  return 'Meeting room';
 }
 
 function sanitizePrefix(raw, fallback) {
@@ -107,7 +124,7 @@ function el(kind, slot, box, style, extra) {
   };
 }
 
-function applyChrome(fields, slug, chrome) {
+function applyChrome(fields, slug, chrome, factoryId) {
   const next = sanitizePrefix(chrome && chrome.next_prefix, 'Next');
   const now = sanitizePrefix(chrome && chrome.now_prefix, 'Now');
   if (Object.prototype.hasOwnProperty.call(fields, 'next_meeting')) {
@@ -117,7 +134,8 @@ function applyChrome(fields, slug, chrome) {
     fields.now_meeting = `${now}: ${tok(slug, 'current_title')} (${tok(slug, 'current_time')})`;
   }
   if (Object.prototype.hasOwnProperty.call(fields, 'headline')) {
-    fields.headline = sanitizePrefix(chrome && chrome.headline, 'Next collection');
+    const fallback = isAgendaFactory(factoryId) ? 'Today' : 'Next collection';
+    fields.headline = sanitizePrefix(chrome && chrome.headline, fallback);
   }
   if (Object.prototype.hasOwnProperty.call(fields, 'waste_note')) {
     fields.waste_note = sanitizeNote(chrome && chrome.waste_note, 'Please put the bin out by 06:00.');
@@ -327,11 +345,64 @@ function buildWasteLcd(slug, title) {
   };
 }
 
+/*
+ * Lobby / tea-point TV. Structured rows, not agenda_text: a 4K wall needs a time column and
+ * wrapping titles at one kehl. Empty rows after 17:00 stay empty (no stack kind — that is 3.5);
+ * remaining_today_empty is the honest "no more meetings today" line. Not a room sign: no
+ * color_when, no show_when busy/free. Same 16:9 JSON on 4K because cqw scales the type.
+ */
+function buildAgendaLcd(slug, title) {
+  const ink = '#F8FAFC';
+  const muted = '#94A3B8';
+  const elements = [
+    el('head', 'headline', { x: 4, y: 3.5, w: 42 }, { size_cqw: 4, weight: 700, color: ink }),
+    el('date', 'header_date', { x: 48, y: 5, w: 30 }, {
+      size_cqw: 2.2, color: muted, align: 'right',
+    }, { date_format: 'long', tz: '', locale: '' }),
+    el('clock', 'clock', { x: 80, y: 5, w: 16 }, {
+      size_cqw: 2.2, weight: 600, color: muted, align: 'right',
+    }, { clock_format: '24', tz: '', locale: '' }),
+    el('rule', 'rule_top', { x: 4, y: 13, w: 92, h: 0.5 }, { color: '#334155' }),
+  ];
+  for (let n = 0; n < 8; n++) {
+    const y = 16 + n * 8.5;
+    const motion = { animation: 'slideU', delay: n * 0.04, duration: 0.2, easing: 'ease-out' };
+    elements.push(
+      el('body', `row_${n}_time`, { x: 4, y, w: 22 }, {
+        size_cqw: 2.4, weight: 600, color: muted,
+      }, { hide_if_empty: true, motion }),
+      el('body', `row_${n}_title`, { x: 28, y, w: 68 }, {
+        size_cqw: 2.4, color: ink,
+      }, { hide_if_empty: true, motion }),
+    );
+  }
+  elements.push(
+    el('body', 'empty_hint', { x: 4, y: 88, w: 92 }, { size_cqw: 2.4, color: muted }, { hide_if_empty: true }),
+  );
+
+  const fields = {
+    headline: '',
+    empty_hint: tok(slug, 'remaining_today_empty'),
+  };
+  for (let n = 0; n < 8; n++) {
+    fields[`row_${n}_time`] = tok(slug, `event_${n}_time`);
+    fields[`row_${n}_title`] = tok(slug, `event_${n}_title`);
+  }
+
+  return {
+    name: title,
+    dwell_sec: 30,
+    template: { background: '#0B1220', aspect: '16:9', elements },
+    fields,
+  };
+}
+
 const BUILDERS = {
   'room-epaper-5x3': buildRoomEpaper,
   'room-lcd-16x9': buildRoomLcd,
   'waste-epaper-5x3': buildWasteEpaper,
   'waste-lcd-16x9': buildWasteLcd,
+  'agenda-lcd-16x9': buildAgendaLcd,
 };
 
 function listFactories() {
@@ -353,7 +424,7 @@ function buildFactory(id, opts = {}) {
   const slug = sanitizeSlug(opts.slug, id);
   const title = sanitizeTitle(opts.title, id);
   const slide = builder(slug, title);
-  applyChrome(slide.fields, slug, opts.chrome);
+  applyChrome(slide.fields, slug, opts.chrome, id);
   return { id: meta.id, version: meta.version, aspect: meta.aspect, slide };
 }
 
@@ -377,4 +448,5 @@ module.exports = {
   buildDeck,
   sanitizeSlug,
   isWasteFactory,
+  isAgendaFactory,
 };
