@@ -247,60 +247,6 @@ function newSlide(name = 'Untitled slide') {
   };
 }
 
-function buildRoomSignSlide(slug = 'room') {
-  const head = {
-    id: uid('el'), kind: 'head', slot: 'room_name',
-    box: { x: 5, y: 8, w: 60, h: null },
-    style: { color: '#FFFFFF', font: 'sans', size_cqw: 5, weight: 700, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-  const clock = {
-    id: uid('el'), kind: 'clock', slot: 'clock', clock_format: '24', tz: '', locale: '',
-    box: { x: 70, y: 8, w: 25, h: null },
-    style: { color: '#94A3B8', font: 'sans', size_cqw: 4.5, weight: 600, align: 'right', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-  const rule = {
-    id: uid('el'), kind: 'rule', slot: 'rule_top',
-    box: { x: 5, y: 22, w: 90, h: 0.5 },
-    style: { color: '#334155', font: 'sans', size_cqw: 0, weight: 400, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-  const stat = {
-    id: uid('el'), kind: 'stat', slot: 'status_badge',
-    box: { x: 5, y: 28, w: 90, h: null },
-    style: { color: '#38BDF8', font: 'sans', size_cqw: 9, weight: 700, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-  const detail = {
-    id: uid('el'), kind: 'body', slot: 'status_detail',
-    box: { x: 5, y: 48, w: 90, h: null },
-    style: { color: '#F8FAFC', font: 'sans', size_cqw: 3.5, weight: 500, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-  const nextMeet = {
-    id: uid('el'), kind: 'body', slot: 'next_meeting',
-    box: { x: 5, y: 68, w: 90, h: null },
-    style: { color: '#94A3B8', font: 'sans', size_cqw: 3, weight: 400, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-
-  return {
-    id: uid('s'), name: 'Room Status', dwell_sec: 30, widget_id: null,
-    template: {
-      background: '#0F172A',
-      aspect: '5:3', // 800:480 for e-paper / Sticky
-      elements: [head, clock, rule, stat, detail, nextMeet],
-    },
-    fields: {
-      room_name: 'Konferenzraum Berlin',
-      status_badge: `{{ds:${slug}.status}}`,
-      status_detail: `{{ds:${slug}.status_detail}}`,
-      next_meeting: `Nächstes Meeting: {{ds:${slug}.next_title}} ({{ds:${slug}.next_time}})`,
-    }
-  };
-}
-
 function buildWasteCalendarSlide(slug = 'abfall') {
   const head = {
     id: uid('el'), kind: 'head', slot: 'headline',
@@ -343,96 +289,195 @@ function buildWasteCalendarSlide(slug = 'abfall') {
   };
 }
 
-async function openNewDeckModal(container) {
-  if (!DATA_SOURCES_LIST || !DATA_SOURCES_LIST.length) {
-    try { DATA_SOURCES_LIST = await api.getDataSources(); } catch (_) { DATA_SOURCES_LIST = []; }
-  }
+function tplRadio(value, title, desc, checked) {
+  return `<label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;background:var(--bg-input)">
+    <input type="radio" name="deckTpl" value="${esc(value)}"${checked ? ' checked' : ''} style="margin-top:3px">
+    <div>
+      <strong style="display:block;font-size:13px">${esc(title)}</strong>
+      <span style="font-size:11px;color:var(--text-muted)">${esc(desc)}</span>
+    </div>
+  </label>`;
+}
 
-  const defaultRoomSlug = DATA_SOURCES_LIST[0]?.slug || 'testraum';
-  const defaultWasteSlug = DATA_SOURCES_LIST.find(x => x.slug.includes('abfall') || x.slug.includes('waste'))?.slug || DATA_SOURCES_LIST[0]?.slug || 'abfall';
+function wastePreferredSlug(list) {
+  const hit = list.find((x) => /waste|abfall|müll|muell|trash|recycling/i.test(`${x.slug || ''} ${x.name || ''}`));
+  return (hit && hit.slug) || (list[0] && list[0].slug) || 'abfall';
+}
+
+async function openNewDeckModal(container) {
+  try { DATA_SOURCES_LIST = await api.getDataSources(); } catch (_) { DATA_SOURCES_LIST = DATA_SOURCES_LIST || []; }
+  const sources = Array.isArray(DATA_SOURCES_LIST) ? DATA_SOURCES_LIST : [];
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px';
 
-  overlay.innerHTML = `
-    <div class="modal" style="background:var(--bg-card,#1e293b);border-radius:12px;border:1px solid var(--border,#334155);width:100%;max-width:540px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)">
-      <div class="modal-header" style="padding:18px 24px;border-bottom:1px solid var(--border,#334155);display:flex;justify-content:space-between;align-items:center">
-        <h2 style="margin:0;font-size:18px;font-weight:600;color:var(--text-primary,#f8fafc)">${esc(t('slides.template_modal_title'))}</h2>
-        <button id="closeNewDeckModal" style="background:none;border:none;color:var(--text-muted,#94a3b8);font-size:20px;cursor:pointer">&times;</button>
-      </div>
-      <div class="modal-body" style="padding:24px;display:flex;flex-direction:column;gap:16px">
-        <div>
-          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(t('slides.deck_name_label'))}</label>
-          <input type="text" id="deckNameInput" class="input" style="width:100%" placeholder="${esc(t('slides.deck_name_placeholder'))}" value="New Slide Deck">
-        </div>
+  let step = 1;
+  let chosenTpl = 'blank';
+
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.style.cssText = 'background:var(--bg-card,#1e293b);border-radius:12px;border:1px solid var(--border,#334155);width:100%;max-width:560px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)';
+  overlay.appendChild(modal);
+
+  const close = () => overlay.remove();
+
+  const needsSource = (tpl) => tpl === 'room-epaper-5x3' || tpl === 'room-lcd-16x9' || tpl === 'waste';
+  const isRoomFactory = (tpl) => tpl === 'room-epaper-5x3' || tpl === 'room-lcd-16x9';
+
+  function paint() {
+    const header = `<div class="modal-header" style="padding:18px 24px;border-bottom:1px solid var(--border,#334155);display:flex;justify-content:space-between;align-items:center">
+      <h2 style="margin:0;font-size:18px;font-weight:600;color:var(--text-primary,#f8fafc)">${esc(t('slides.template_modal_title'))}</h2>
+      <button id="closeNewDeckModal" style="background:none;border:none;color:var(--text-muted,#94a3b8);font-size:20px;cursor:pointer">&times;</button>
+    </div>`;
+
+    let body;
+    let footer;
+    if (step === 1) {
+      body = `<div class="modal-body" style="padding:24px;display:flex;flex-direction:column;gap:16px">
         <div>
           <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(t('slides.choose_template'))}</label>
           <div style="display:flex;flex-direction:column;gap:8px">
-            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;background:var(--bg-input)">
-              <input type="radio" name="deckTpl" value="blank" checked style="margin-top:3px">
-              <div>
-                <strong style="display:block;font-size:13px">${esc(t('slides.tpl_blank_title'))}</strong>
-                <span style="font-size:11px;color:var(--text-muted)">${esc(t('slides.tpl_blank_desc'))}</span>
-              </div>
-            </label>
-            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;background:var(--bg-input)">
-              <input type="radio" name="deckTpl" value="room" style="margin-top:3px">
-              <div>
-                <strong style="display:block;font-size:13px">${esc(t('slides.tpl_room_title'))}</strong>
-                <span style="font-size:11px;color:var(--text-muted)">${esc(t('slides.tpl_room_desc'))}</span>
-              </div>
-            </label>
-            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;background:var(--bg-input)">
-              <input type="radio" name="deckTpl" value="waste" style="margin-top:3px">
-              <div>
-                <strong style="display:block;font-size:13px">${esc(t('slides.tpl_waste_title'))}</strong>
-                <span style="font-size:11px;color:var(--text-muted)">${esc(t('slides.tpl_waste_desc'))}</span>
-              </div>
-            </label>
+            ${tplRadio('blank', t('slides.tpl_blank_title'), t('slides.tpl_blank_desc'), chosenTpl === 'blank')}
+            ${tplRadio('room-epaper-5x3', t('slides.factory.room_epaper_5x3.title'), t('slides.factory.room_epaper_5x3.desc'), chosenTpl === 'room-epaper-5x3')}
+            ${tplRadio('room-lcd-16x9', t('slides.factory.room_lcd_16x9.title'), t('slides.factory.room_lcd_16x9.desc'), chosenTpl === 'room-lcd-16x9')}
+            ${tplRadio('waste', t('slides.tpl_waste_title'), t('slides.tpl_waste_desc'), chosenTpl === 'waste')}
           </div>
         </div>
-      </div>
-      <div class="modal-footer" style="padding:16px 24px;border-top:1px solid var(--border,#334155);display:flex;justify-content:flex-end;gap:10px">
+      </div>`;
+      footer = `<div class="modal-footer" style="padding:16px 24px;border-top:1px solid var(--border,#334155);display:flex;justify-content:flex-end;gap:10px">
         <button type="button" id="cancelNewDeckBtn" class="btn btn-secondary">${esc(t('common.cancel'))}</button>
-        <button type="button" id="submitNewDeckBtn" class="btn btn-primary">${esc(t('slides.create_deck_btn'))}</button>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
-  const close = () => overlay.remove();
-  overlay.querySelector('#closeNewDeckModal').onclick = close;
-  overlay.querySelector('#cancelNewDeckBtn').onclick = close;
-
-  overlay.querySelector('#submitNewDeckBtn').onclick = async () => {
-    const name = overlay.querySelector('#deckNameInput').value.trim() || 'New Slide Deck';
-    const tpl = overlay.querySelector('input[name="deckTpl"]:checked').value;
-
-    let initialSlide;
-    let initialAspect = '16:9';
-    if (tpl === 'room') {
-      initialSlide = buildRoomSignSlide(defaultRoomSlug);
-      initialAspect = '5:3';
-    } else if (tpl === 'waste') {
-      initialSlide = buildWasteCalendarSlide(defaultWasteSlug);
-      initialAspect = '5:3';
+        <button type="button" id="continueNewDeckBtn" class="btn btn-primary">${esc(t('slides.factory.continue'))}</button>
+      </div>`;
     } else {
-      initialSlide = newSlide('Slide 1');
+      const aspectHint = chosenTpl === 'room-epaper-5x3'
+        ? t('slides.factory.aspect_hint_epaper')
+        : chosenTpl === 'room-lcd-16x9'
+          ? t('slides.factory.aspect_hint_lcd')
+          : '';
+      const defaultSlug = chosenTpl === 'waste'
+        ? wastePreferredSlug(sources)
+        : (sources[0] && sources[0].slug) || 'room';
+      const defaultName = needsSource(chosenTpl)
+        ? ((sources.find((s) => s.slug === defaultSlug) || sources[0] || {}).name || t('slides.deck_name_placeholder'))
+        : 'New Slide Deck';
+      const sourceSelect = sources.length
+        ? `<div>
+            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(t('slides.factory.pick_source'))}</label>
+            <select id="deckSourceSelect" class="input" style="width:100%">
+              ${sources.map((s) => `<option value="${esc(s.slug)}"${s.slug === defaultSlug ? ' selected' : ''}>${esc(s.name || s.slug)} (${esc(s.slug)})</option>`).join('')}
+            </select>
+          </div>`
+        : `<p style="margin:0;font-size:13px;color:var(--text-muted)">${esc(t('slides.factory.no_source'))}</p>`;
+
+      const roomTitle = isRoomFactory(chosenTpl)
+        ? `<div>
+            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(t('slides.factory.room_title_label'))}</label>
+            <input type="text" id="deckRoomTitle" class="input" style="width:100%" value="${esc(defaultName)}">
+          </div>`
+        : '';
+
+      body = `<div class="modal-body" style="padding:24px;display:flex;flex-direction:column;gap:16px">
+        <div>
+          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(t('slides.deck_name_label'))}</label>
+          <input type="text" id="deckNameInput" class="input" style="width:100%" placeholder="${esc(t('slides.deck_name_placeholder'))}" value="${esc(defaultName)}">
+        </div>
+        ${needsSource(chosenTpl) ? sourceSelect : ''}
+        ${roomTitle}
+        ${aspectHint ? `<p style="margin:0;font-size:12px;color:var(--text-muted)">${esc(aspectHint)}</p>` : ''}
+      </div>`;
+
+      const bindActions = needsSource(chosenTpl) && !sources.length
+        ? `<button type="button" id="placeholderNewDeckBtn" class="btn btn-secondary">${esc(t('slides.factory.create_placeholder'))}</button>
+           <button type="button" id="connectSourceBtn" class="btn btn-primary">${esc(t('slides.factory.connect_first'))}</button>`
+        : `<button type="button" id="submitNewDeckBtn" class="btn btn-primary">${esc(t('slides.create_deck_btn'))}</button>`;
+
+      footer = `<div class="modal-footer" style="padding:16px 24px;border-top:1px solid var(--border,#334155);display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px">
+        <button type="button" id="backNewDeckBtn" class="btn btn-secondary">${esc(t('slides.factory.back'))}</button>
+        <button type="button" id="cancelNewDeckBtn" class="btn btn-secondary">${esc(t('common.cancel'))}</button>
+        ${bindActions}
+      </div>`;
+    }
+
+    modal.innerHTML = header + body + footer;
+    modal.querySelector('#closeNewDeckModal').onclick = close;
+    const cancel = modal.querySelector('#cancelNewDeckBtn');
+    if (cancel) cancel.onclick = close;
+
+    const cont = modal.querySelector('#continueNewDeckBtn');
+    if (cont) {
+      cont.onclick = () => {
+        const picked = modal.querySelector('input[name="deckTpl"]:checked');
+        chosenTpl = (picked && picked.value) || 'blank';
+        step = 2;
+        paint();
+      };
+    }
+    const back = modal.querySelector('#backNewDeckBtn');
+    if (back) {
+      back.onclick = () => { step = 1; paint(); };
+    }
+    const connect = modal.querySelector('#connectSourceBtn');
+    if (connect) {
+      connect.onclick = () => { close(); window.location.hash = '#/data-sources'; };
+    }
+    const submit = modal.querySelector('#submitNewDeckBtn');
+    if (submit) submit.onclick = () => createDeck(false);
+    const placeholder = modal.querySelector('#placeholderNewDeckBtn');
+    if (placeholder) placeholder.onclick = () => createDeck(true);
+  }
+
+  async function createDeck(usePlaceholder) {
+    const nameInput = modal.querySelector('#deckNameInput');
+    const name = (nameInput && nameInput.value.trim()) || 'New Slide Deck';
+    const selected = modal.querySelector('#deckSourceSelect');
+    const slug = usePlaceholder
+      ? (chosenTpl === 'waste' ? 'abfall' : 'room')
+      : ((selected && selected.value) || (sources[0] && sources[0].slug) || 'room');
+    const titleInput = modal.querySelector('#deckRoomTitle');
+    const roomTitle = (titleInput && titleInput.value.trim())
+      || (sources.find((s) => s.slug === slug) || {}).name
+      || name;
+
+    if (needsSource(chosenTpl) && !usePlaceholder && !sources.length) {
+      showToast(t('slides.factory.need_source'), 'error');
+      return;
     }
 
     try {
-      const d = await api.post('/slide-decks', {
-        name,
-        doc: { aspect: initialAspect, slides: [initialSlide] }
-      });
+      let d;
+      if (isRoomFactory(chosenTpl)) {
+        d = await api.post('/slide-decks', {
+          name,
+          factory: chosenTpl,
+          data_source_slug: slug,
+          title: roomTitle,
+          chrome: {
+            next_prefix: t('slides.factory.next_prefix'),
+            now_prefix: t('slides.factory.now_prefix'),
+          },
+        });
+      } else if (chosenTpl === 'waste') {
+        d = await api.post('/slide-decks', {
+          name,
+          doc: { aspect: '5:3', slides: [buildWasteCalendarSlide(slug)] },
+        });
+      } else {
+        d = await api.post('/slide-decks', {
+          name,
+          doc: { aspect: '16:9', slides: [newSlide('Slide 1')] },
+        });
+      }
       state.decks.unshift({ id: d.id, name: d.name, slide_count: d.doc.slides.length });
       close();
       await openDeck(container, d.id);
     } catch (e) {
       showToast(e.message || 'Could not create the deck', 'error');
     }
-  };
+  }
+
+  document.body.appendChild(overlay);
+  paint();
 }
 
 /* ============================================================ render */

@@ -16,6 +16,18 @@ what to enter for the reviewer.
 
 ### Added
 
+**Meeting-room door signs, phase 3.1 — pick a calendar, get a slide.** The New Deck wizard
+binds a data source instead of guessing the first slug or `testraum`. Two factory templates live
+in `server/lib/slide-templates.js` so the dashboard and the tests cannot drift:
+`room-epaper-5x3` (800×480 Sticky, black/white inversion, no motion) and `room-lcd-16x9` (dark
+16:9 with a green/red/grey bar). Chrome prefixes (Next / Now) come from the dashboard language at
+create time — including Russian «Следующая» / «Сейчас» — and then sit in `fields` as ordinary
+editable text. A workspace with no calendars is sent to Data Sources; designers can still create
+with placeholder slug `room`. `POST /api/slide-decks` accepts `{ factory, data_source_slug, title,
+chrome }`. Waste/agenda factories and the card gallery are still 3.2–3.4. See
+[`docs/slide-data-binding.md`](docs/slide-data-binding.md) and
+[`docs/data-sources-templates-plan.md`](docs/data-sources-templates-plan.md).
+
 **Slide data binding, phase 3.0 — busy / free / stale without a template language.** Room-sign
 decks need a different picture when the room is occupied, free, or the calendar fetch failed, and
 they need the "Next:" line gone when there is no next meeting — without a second slide, without

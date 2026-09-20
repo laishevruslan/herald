@@ -144,12 +144,22 @@ On a failed fetch the bar is `#6B7280`, not green. With no next meeting, `next_l
 
 ---
 
-## 5. What 3.0 does not include
+## 5. What 3.0 does not include (still true)
 
-- No factory gallery (Meeting Room Sign / Waste / Agenda). Those are 3.1–3.3.
-- No inspector UI for the four flags — set them in the slide JSON, or wait for a factory.
+- No inspector UI for the four flags — factories set them; hand JSON still works.
 - The slide **editor canvas** (`styleFor` / stage) ignores the flags so the operator can still select hidden elements. The wall applies them.
-- No `GET /api/slide-templates`. No new player capability.
+- No `GET /api/slide-templates` (3.5). Factories are created via `POST /api/slide-decks { factory }` and listed at `GET /api/slide-decks/factories`.
+
+## 5a. Meeting-room factories (3.1)
+
+| id | Aspect | For |
+|---|---|---|
+| `room-epaper-5x3` | 5:3 | Seeed Sticky / Waveshare 7.5″ — black/white only |
+| `room-lcd-16x9` | 16:9 | Door tablet / small TV — green `#16A34A` / red `#DC2626` / grey `#6B7280` bar |
+
+Create from Slides → New deck → pick the card → pick the calendar → room name → Create. Chrome prefixes (`Next` / `Now`, or the dashboard language) are written into `fields.next_meeting` / `fields.now_meeting` at create time and are then ordinary editable text.
+
+`current_organizer` is not bound (privacy). Bindings are CANON keys only. Implementation: [`server/lib/slide-templates.js`](../server/lib/slide-templates.js).
 
 ---
 
@@ -160,3 +170,4 @@ On a failed fetch the bar is `#6B7280`, not green. With no next meeting, `next_l
 | `server/test/data-sources-ical.test.js` | `CANON` keys on busy and free fixtures; `remaining_today_empty` empty vs phrase; `remaining_today_count` |
 | `server/test/slide-render.test.js` | `hide_if_empty` hides `Next:  ()` but not a title without a time; `show_when` busy/free inversion; `color_when` + `__status: error` is stale hex, not free green; missing slug is stale; invalid `bind_status` is dropped |
 | `server/test/slide-deck*.test.js` | bind flags survive save; defaults are not written |
+| `server/test/slide-templates.test.js` | T1 aspect/motion/1-bit palette; CANON-only binds; ICS → BELEGT/FREI; empty Next chrome; LCD bar stale ≠ green; Sticky pack 48000 bytes |

@@ -1,6 +1,6 @@
 # Data Sources, фаза 3 — готовые шаблоны слайдов
 
-**Статус: 3.0 СДЕЛАНО (контракт + рендерер). 3.1–3.5 не начаты.**
+**Статус: 3.0 и 3.1 СДЕЛАНО (контракт + рендерер + T1 e-paper/LCD + выбор источника). 3.2–3.5 не начаты.**
 **Родительский документ:** [`DATA_SOURCES_MASTERPLAN.md`](../DATA_SOURCES_MASTERPLAN.md), фаза 3.
 **Намерение ветки:** остаёмся на текущем контракте слайда (`template` + `fields` + `{{ds:slug.field}}`). Новый runtime плеера не вводим.
 
@@ -28,11 +28,11 @@
 | Подстановка `{{ds:slug.field}}` | `server/lib/slide-render.js`, `interpolateDataSources` | **Готово.** Отсутствующие ключи становятся `''`. `white-space:pre-wrap` уже сохраняет переносы в `agenda_text`. **3.0:** `hide_if_empty`, `show_when`, `bind_status`, `color_when`. |
 | `__status` на resolveData | `getWorkspaceDataMapSync` / `attachSourceStatus` | **Готово (3.0).** `last_status` ряда не кладётся в iCal-payload. |
 | `remaining_today_empty` / `remaining_today_count` | `ical-resolver.js` | **Готово (3.0).** |
-| Модалка New Deck с тремя radio: blank / room / waste | `frontend/js/views/slides.js`, `openNewDeckModal` | **Черновик.** Список radio, без превью, без выбора источника. |
-| `buildRoomSignSlide(slug)` | тот же файл | **Черновик.** Только 5:3. Циан `#38BDF8` на `#0F172A` — на 1-bit e-paper дизерится в грязь. Немецкий текст зашит (`Nächstes Meeting`, `Konferenzraum Berlin`). Берётся slug первого источника или `testraum`. |
-| `buildWasteCalendarSlide(slug)` | тот же файл | **Черновик.** Только 5:3. Жёлтый `#FACC15`. Немецкий текст. Slug угадывается по `abfall`/`waste` в идентификаторе. Варианта 1080p нет. |
+| Модалка New Deck | `frontend/js/views/slides.js`, `openNewDeckModal` | **3.1:** два шага. Шаг 1 — radio (blank / `room-epaper-5x3` / `room-lcd-16x9` / waste-черновик). Шаг 2 — имя + `<select>` источника (D5). Карточки галереи — 3.4. |
+| `buildRoomSignSlide(slug)` | — | **Удалено.** Заменено `server/lib/slide-templates.js`. |
+| `buildWasteCalendarSlide(slug)` | тот же файл | **Черновик (3.2).** Мастер уже требует источник; геометрия и немецкий хром — ещё stub. |
 | Daily Office Agenda | — | **Нет.** Резолвер уже отдаёт `agenda_text` и `event_0..N`. Ни один макет их не потребляет. |
-| Тесты фабрик | — | **Нет.** Подстановка покрыта; JSON шаблона — нет. |
+| Тесты фабрик | `server/test/slide-templates.test.js` | **3.1:** T1 aspect/1-bit/CANON/ICS/stale bar/48000. T2/T3 — нет. |
 | Embedded-профиль 800×480 | `server/lib/embedded-profiles.js`, `seeed-reterminal-sticky` | **Готово.** Floyd–Steinberg, 1-bit. Шаблоны, где смысл несёт цвет, здесь его теряют. |
 
 Пример PiP `Examples/PIP-Room-Status-Calendar/` — **параллельный продукт**: сам опрашивает ICS и шлёт web-overlay через POST. Фаза 3 его не заменяет; в справке новых операторов стоит направлять на Slides + Data Sources.
@@ -518,15 +518,33 @@ color_when: { busy, free, stale } // each via existing color()
 - Ключи i18n `slides.factory.*` из §10 не добавлены: нет UI, который их читает.
 - Остальные локали SPA кроме en/ru не получили `data_sources.remaining_today_*_label` (fallback на en, как принято тестом покрытия).
 
-### 3.1 — T1 e-paper + T1 LCD + привязка в мастере
+### 3.1 — T1 e-paper + T1 LCD + привязка в мастере ✅
 
-1. `server/lib/slide-templates.js` с `room-epaper-5x3` и `room-lcd-16x9`.
-2. Вынести шаг 2 модалки (выбор источника + заголовок). Галерея ещё может быть radio один релиз, если 3.4 опаздывает — **не выпускать T1 без выбора источника** (D5).
-3. i18n-строки префиксов хрома; минимум `de/en/nl/ru` (у этих локалей уже есть `tpl_room_*`).
-4. Fixture ICS → `renderSlideHtml` → assert слова AVAILABLE/BELEGT и что `Nächstes Meeting:  ()` появиться не может (`hide_if_empty`).
-5. Embedded-тест: прогнать `room-epaper-5x3` через 1-bit путь; assert размер выхода 48000 байт для Sticky; визуальная проверка через закоммиченный PNG-фикстуру опциональна (тяжело). Минимум: не бросает, packed length точный.
+1. [x] `server/lib/slide-templates.js` с `room-epaper-5x3` и `room-lcd-16x9`.
+2. [x] Вынести шаг 2 модалки (выбор источника + заголовок). Галерея ещё radio (3.4) — T1 без выбора источника не выпускали (D5).
+3. [x] i18n-строки префиксов хрома; `de/en/nl/ru` (плюс en как источник правды). Ключи с подчёркиваниями (`slides.factory.room_epaper_5x3.title`), не с дефисами id фабрики: сканер `t()` принимает только `[a-z0-9_]+`.
+4. [x] Fixture ICS → `renderSlideHtml` → BELEGT/FREI и `Nächstes Meeting:` не появляется, когда next пуст (`slide-templates.test.js`).
+5. [x] Embedded-тест: HTML фабрики рендерится без throw; Sticky `parseProfile` 800×480 1-bit; `postprocess` packed length 48000. Chromium-прогон слайда в пиксели не делали (puppeteer optional; PNG-фикстура по плану опциональна).
 
 **Готово, когда:** оператор с одним iCal-источником создаёт дек 5:3, публикует на профиль Sticky, видит FREI/BELEGT. Тот же источник, дек 16:9, зелёная/красная полоса на web-плеере.
+
+**Сделано в 3.1:**
+
+- Геометрия только на сервере. `POST /api/slide-decks { factory, data_source_slug, title, chrome }` собирает doc. `GET /api/slide-decks/factories` и `GET /api/slide-decks/factories/:id/doc` — каталог/скелет (не `GET /api/slide-templates`, это 3.5).
+- E-paper: только `#000`/`#FFF`, motion null, инверсия двух stat + `show_when`, stale — линейка 50%. LCD: полоса `color_when` green/red/grey, список `slideU` 0.2s stagger 0.05s.
+- Организатор не биндится. CANON-only, нет `next_event_title`.
+- Нет источников → «Сначала подключить календарь» (`#/data-sources`) + вторичная «с placeholder `room`».
+- Waste остаётся radio + шаг 2 с источником, но stub `buildWasteCalendarSlide` (немецкий хром) — 3.2.
+
+**Не сделано в 3.1:**
+
+- Карточки галереи, чипы, клавиатура — 3.4.
+- T2 waste / T3 agenda фабрики.
+- Инспектор флагов и превью `hide_if_empty` на холсте редактора (как в 3.0).
+- `GET /api/slide-templates/:id/doc` как отдельный роутер — 3.5. PAT уже может `GET /api/slide-decks/factories/:id/doc`.
+- Живой прогон HTML→Chromium→1-bit PNG фикстуры; только packed length профиля.
+- `slides.factory.waste_note` и `slides.factory.chip.*` — нет UI.
+- Остальные SPA-локали кроме en/de/nl/ru для factory-ключей (fallback на en).
 
 ### 3.2 — T2 оба соотношения
 
@@ -606,16 +624,21 @@ slides.factory.room-epaper-5x3.desc
 - [`docs/slide-data-binding.md`](slide-data-binding.md) — контракт ключей CANON, `{{ds:}}`, четырёх флагов, `__status`, `remaining_today_*`, пример JSON, что редактор не превьюит флаги;
 - `DATA_SOURCES_MASTERPLAN.md` §4–§5 — канонические ключи и pipeline с `__status` / флагами;
 - `CHANGELOG.md` Unreleased; README Features (Data sources / Meeting-room signs);
-- `docs/embedded-renderer.md` §3.2 — тот же `getWorkspaceDataMapSync` на e-paper; stale, не Available; зелёный/красный на 1-bit — шум, инверсия через `show_when`. **Не** абзац про фабрику `room-epaper-5x3` (её ещё нет);
-- empty state Data Sources (`data_sources.empty_desc` en/ru) упоминает next meeting / agenda / empty-board hint и `{{ds:slug.field}}`. Фразу «или начните со Slides → New deck → Meeting Room Sign» **не** добавляли: фабрики нет.
+- `docs/embedded-renderer.md` §3.2 — `__status` на e-paper (дополнено в 3.1 абзацем про фабрику);
 
-**Остаётся на 3.1+:**
+**Сделано в 3.1:**
 
-- empty state: «или начните со Slides → New deck → Meeting Room Sign» — после T1;
-- `Examples/PIP-Room-Status-Calendar/README.md`: 10 строк «Prefer Slides + Data Sources (2.1+)» сверху. Пример не удалять; air-gapped overlay всё ещё нужен;
-- `docs/embedded-renderer.md`: один абзац без скриншота «шаблон таблички комнаты, 5:3, профиль Sticky» — когда появится `room-epaper-5x3`;
+- empty state Data Sources (en/ru) указывает на Slides → New deck → Meeting Room Door Sign;
+- `docs/embedded-renderer.md` §3.2 — абзац про `room-epaper-5x3`, 5:3, профиль Sticky; LCD на 1-bit не использовать;
+- [`docs/slide-data-binding.md`](slide-data-binding.md) §5a — таблица фабрик;
+- `CHANGELOG.md` Unreleased; README Meeting-room signs;
+- `Examples/PIP-Room-Status-Calendar/README.md` — prefer Slides + Data Sources сверху.
+
+**Остаётся на 3.2+:**
+
 - getting-started: только если в чеклисте уже есть пункт про слайды; не удлинять онбординг ради нишевого hardware-пресета;
-- статья в in-app Help (`help.js`) про Data Sources — вместе с галереей, не раньше.
+- статья в in-app Help (`help.js`) про Data Sources — вместе с галереей (3.4), не раньше;
+- T2/T3 справка в empty state (waste / agenda), когда появятся фабрики.
 
 ---
 

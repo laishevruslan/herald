@@ -1576,9 +1576,13 @@ paths:
               properties:
                 name: { type: string, maxLength: 120 }
                 doc: { $ref: '#/components/schemas/DeckDocument' }
+                factory: { type: string, description: 'T1 factory id (`room-epaper-5x3` or `room-lcd-16x9`). When set, the server builds `doc` and ignores a client-supplied document.' }
+                data_source_slug: { type: string, maxLength: 64 }
+                title: { type: string, maxLength: 120, description: 'Room name written into fields.room_name.' }
+                chrome: { type: object, properties: { next_prefix: { type: string }, now_prefix: { type: string } } }
       responses:
         '201': { description: 'The created deck, with any publish warnings.' }
-        '400': { description: 'A deck needs a name.' }
+        '400': { description: 'A deck needs a name, or the factory id is unknown.' }
 
   /slide-decks/{id}:
     get:

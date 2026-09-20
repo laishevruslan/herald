@@ -5,6 +5,7 @@ const { db } = require('../db/database');
 const { accessContext } = require('../lib/tenancy');
 const deckLib = require('../lib/slide-deck');
 const slideRender = require('../lib/slide-render');
+const slideTemplates = require('../lib/slide-templates');
 
 /*
  * Slide decks — the authoring surface for PowerPoint-style slides.
@@ -111,6 +112,23 @@ router.get('/qr-preview', (req, res) => {
   res.json({ svg });
 });
 
+/*
+ * Factory catalogue for the New Deck wizard. Listed before `/:id` so "factories" is not treated
+ * as a deck UUID. Geometry lives in lib/slide-templates.js; the SPA overlays chrome via t().
+ */
+router.get('/factories', (req, res) => {
+  res.json(slideTemplates.listFactories());
+});
+
+router.get('/factories/:id/doc', (req, res) => {
+  const built = slideTemplates.buildFactory(req.params.id, {
+    slug: req.query.slug,
+    title: req.query.title,
+  });
+  if (!built) return res.status(404).json({ error: 'Unknown factory.' });
+  res.json(built);
+});
+
 router.get('/', (req, res) => {
   if (!req.workspaceId) return res.json([]);
   const rows = db.prepare(
@@ -138,8 +156,20 @@ router.post('/', (req, res) => {
   const name = String((req.body && req.body.name) || '').trim().slice(0, 120);
   if (!name) return res.status(400).json({ error: 'A deck needs a name.' });
 
+  const factoryId = req.body && req.body.factory != null ? String(req.body.factory).trim() : '';
+  let rawDoc = req.body && req.body.doc;
+  if (factoryId) {
+    const built = slideTemplates.buildDeck(factoryId, {
+      slug: req.body.data_source_slug,
+      title: req.body.title,
+      chrome: req.body.chrome,
+    });
+    if (!built) return res.status(400).json({ error: 'Unknown factory.' });
+    rawDoc = built;
+  }
+
   const id = uuidv4();
-  const doc = deckLib.normalizeDeck(req.body && req.body.doc);
+  const doc = deckLib.normalizeDeck(rawDoc);
   const ts = nowSec();
   db.prepare(`INSERT INTO slide_decks (id, workspace_id, user_id, name, doc, created_at, updated_at)
               VALUES (?,?,?,?,?,?,?)`)
