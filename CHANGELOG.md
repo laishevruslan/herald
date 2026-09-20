@@ -16,6 +16,17 @@ what to enter for the reviewer.
 
 ### Added
 
+**Stretch factories, phase 3.5 — portrait door tablet and a four-room corridor board.** `room-lcd-9x16`
+is the 9:16 twin of the 16:9 door sign: same CANON binds and green/red/grey contract, strip on
+top so the status word can use the full width. `rooms-board-16x9` is a 2×2 lobby wall of four
+calendars, each tile with its own `bind_status` so a dead feed greys that tile only. The wizard
+offers four calendar selects. `POST /api/slide-decks` accepts `data_source_slugs` and `titles`;
+invalid slugs fall back to `room_a`…`room_d`. PAT may list and fetch skeletons at
+`GET /api/slide-templates` (same CJS module as the dashboard catalogue). Russian copy for the new
+cards and “Календарь 1–4”. Getting-started was not given a fifth calendar step — the checklist is
+still device → content → playlist → assign. The PiP room-status example is marked deprecated as
+the default door-sign path. See [`docs/slide-data-binding.md`](docs/slide-data-binding.md).
+
 **New Deck gallery, phase 3.4 — cards and chips, not a radio list.** Slides → New deck is a
 two-column grid of CSS thumbnails (same hex as the factory, including 1-bit black/white on e-paper
 plates) with filter chips All / Room / Facilities / Agenda / Blank. Blank stays a card. Arrow keys

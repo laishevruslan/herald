@@ -148,7 +148,7 @@ On a failed fetch the bar is `#6B7280`, not green. With no next meeting, `next_l
 
 - No inspector UI for the four flags — factories set them; hand JSON still works.
 - The slide **editor canvas** (`styleFor` / stage) ignores the flags so the operator can still select hidden elements. The wall applies them.
-- No `GET /api/slide-templates` (3.5). Factories are created via `POST /api/slide-decks { factory }` and listed at `GET /api/slide-decks/factories`.
+- Factories are created via `POST /api/slide-decks { factory }` and listed at `GET /api/slide-decks/factories` or `GET /api/slide-templates`.
 
 ## 5a. Meeting-room factories (3.1)
 
@@ -186,7 +186,18 @@ Slides → New deck is a two-column card grid, not a radio list. Each factory fr
 
 Filter chips: All / Room / Facilities / Agenda / Blank. Blank remains a card. Arrow keys move the selection in a 2-column grid and do not wrap. Enter (and double-click) continue to the bind step — they do not skip the calendar picker. If the catalogue request fails, the wizard still lists T1–T3 from client fallback ids (empty plates, no sample words).
 
-Implementation: [`server/lib/slide-templates.js`](../server/lib/slide-templates.js) `listFactories`, [`frontend/js/lib/slide-gallery.js`](../frontend/js/lib/slide-gallery.js).
+## 5e. Stretch factories (3.5)
+
+| id | Aspect | For |
+|---|---|---|
+| `room-lcd-9x16` | 9:16 | Portrait door tablet — top strip, same busy/free/stale hex as `room-lcd-16x9` |
+| `rooms-board-16x9` | 16:9 | Corridor 2×2 — four slugs, four `bind_status` bars |
+
+Portrait is not for 1-bit Sticky. The board is status only (no tap-to-book). `POST /api/slide-decks` accepts `data_source_slugs` and `titles` arrays; invalid slugs fall back to `room_a`…`room_d`. PAT catalogue: `GET /api/slide-templates` and `GET /api/slide-templates/:id/doc?slug=&slugs=&title=&titles=`.
+
+Getting-started was **not** given a fifth “connect a calendar” step: the checklist is still device → content → playlist → assign. A calendar-sign item would lengthen onboarding for every video-only install.
+
+Implementation: same [`server/lib/slide-templates.js`](../server/lib/slide-templates.js). Router: [`server/routes/slide-templates.js`](../server/routes/slide-templates.js). Gallery paint: [`frontend/js/lib/slide-gallery.js`](../frontend/js/lib/slide-gallery.js).
 
 ---
 
@@ -197,5 +208,5 @@ Implementation: [`server/lib/slide-templates.js`](../server/lib/slide-templates.
 | `server/test/data-sources-ical.test.js` | `CANON` keys on busy and free fixtures; `remaining_today_empty` empty vs phrase; `remaining_today_count`; Gelber Sack Abholung → waste factory HTML |
 | `server/test/slide-render.test.js` | `hide_if_empty` hides `Next:  ()` but not a title without a time; `show_when` busy/free inversion; `color_when` + `__status: error` is stale hex, not free green; missing slug is stale; invalid `bind_status` is dropped |
 | `server/test/slide-deck*.test.js` | bind flags survive save; defaults are not written |
-| `server/test/slide-templates.test.js` | T1 aspect/motion/1-bit palette; CANON-only binds; ICS → BELEGT/FREI; empty Next chrome; LCD bar stale ≠ green; Sticky pack 48000 bytes; T2 1-bit / no traffic lights; LCD week list + empty image; Then: hides without event_1; T3 16:9 eight rows / no `agenda_text`; midday list vs empty-evening phrase; gallery thumbs 1-bit + sample words |
-| `server/test/slide-gallery.test.js` | Blank first; chip filters; 2-col arrows do not wrap; CSS thumbs drop non-hex / escape text; wizard has no `deckTpl` radio |
+| `server/test/slide-templates.test.js` | T1 aspect/motion/1-bit palette; CANON-only binds; ICS → BELEGT/FREI; empty Next chrome; LCD bar stale ≠ green; Sticky pack 48000 bytes; T2 1-bit / no traffic lights; LCD week list + empty image; Then: hides without event_1; T3 16:9 eight rows / no `agenda_text`; midday list vs empty-evening phrase; gallery thumbs 1-bit + sample words; T4 2×2 four slugs; portrait 9:16 top strip |
+| `server/test/slide-gallery.test.js` | Blank first; chip filters; 2-col arrows do not wrap; CSS thumbs drop non-hex / escape text; wizard has no `deckTpl` radio; 9:16 plate; board wizard `deckSourceSelect${n}` + `board_slot_4` |

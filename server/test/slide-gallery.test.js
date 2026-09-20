@@ -38,6 +38,8 @@ test('an empty or failed catalogue still offers T1–T3 so the wizard does not r
   assert.ok(ids.includes('room-epaper-5x3'));
   assert.ok(ids.includes('waste-lcd-16x9'));
   assert.ok(ids.includes('agenda-lcd-16x9'));
+  assert.ok(ids.includes('room-lcd-9x16'));
+  assert.ok(ids.includes('rooms-board-16x9'));
   assert.equal(ids[0], 'blank');
 });
 
@@ -87,12 +89,21 @@ test('thumbHtml is CSS boxes, never a PNG, and drops non-hex colours', async () 
   assert.ok(!html.includes('javascript:'));
 });
 
+test('thumbHtml paints 9:16 as a tall plate', async () => {
+  G = G || await import(MOD);
+  const html = G.thumbHtml({ background: '#0B1220', aspect: '9:16', parts: [] });
+  assert.match(html, /aspect-ratio:9 \/ 16/);
+});
+
 test('the New Deck wizard is a card gallery, not a radio list, and Help names Data Sources', () => {
   const slides = fs.readFileSync(SLIDES, 'utf8');
   assert.doesNotMatch(slides, /name=["']deckTpl["']/, 'radio name=deckTpl must not return');
   assert.match(slides, /data-gallery-chip/);
   assert.match(slides, /data-gallery-id/);
   assert.match(slides, /goStep2/);
+  assert.match(slides, /deckSourceSelect\$\{n - 1\}/);
+  assert.match(slides, /board_slot_4/);
+  assert.match(slides, /rooms-board-16x9/);
   const help = fs.readFileSync(HELP, 'utf8');
   assert.match(help, /help\.guide\.datasources\.title/);
   assert.match(help, /help\.shortcut_gallery_arrows/);

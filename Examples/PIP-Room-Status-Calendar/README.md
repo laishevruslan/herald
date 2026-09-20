@@ -1,13 +1,14 @@
 # Room Status sign (calendar-driven Available / Busy)
 
-**Prefer Slides + Data Sources (2.1+).** For a door sign that stays in the product — e-paper
-800×480 or a 16:9 tablet, busy/free/stale, no extra process — connect the room calendar under
-**Data Sources**, then **Slides → New deck → Meeting Room Door Sign**, pick that source, and
-publish. See [`docs/slide-data-binding.md`](../../docs/slide-data-binding.md).
+**Deprecated as the default door-sign path.** New operators should use **Slides + Data Sources**
+(phase 3): connect the room calendar under Data Sources, then Slides → New deck and pick a
+Meeting Room Door Sign (e-paper 800×480, TV 16:9, or portrait tablet 9:16), a four-room corridor
+board, waste reminder, or daily agenda. See
+[`docs/slide-data-binding.md`](../../docs/slide-data-binding.md) and
+[`docs/data-sources-templates-plan.md`](../../docs/data-sources-templates-plan.md).
 
-This example remains for **air-gapped overlays**: a machine that can reach the ICS feed and POST
-a PiP web overlay, without giving the ScreenTinker server the calendar URL. It is not deleted.
-New operators should start with Slides.
+This example remains for **air-gapped overlays** only: a machine that can reach the ICS feed and
+POST a PiP web overlay, without giving the ScreenTinker server the calendar URL. It is not deleted.
 
 Turns a ScreenTinker display into a meeting-room sign. It polls an **ICS calendar
 feed** and pushes a [PiP](../../docs) web overlay that shows **AVAILABLE** (green) or

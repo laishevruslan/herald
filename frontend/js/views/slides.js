@@ -281,12 +281,14 @@ async function openNewDeckModal(container) {
     overlay.remove();
   };
 
-  const isRoomFactory = (tpl) => tpl === 'room-epaper-5x3' || tpl === 'room-lcd-16x9';
+  const isRoomFactory = (tpl) => tpl === 'room-epaper-5x3' || tpl === 'room-lcd-16x9' || tpl === 'room-lcd-9x16';
   const isWasteFactory = (tpl) => tpl === 'waste-epaper-5x3' || tpl === 'waste-lcd-16x9';
   const isAgendaFactory = (tpl) => tpl === 'agenda-lcd-16x9';
+  const isBoardFactory = (tpl) => tpl === 'rooms-board-16x9';
+  const isPortraitFactory = (tpl) => tpl === 'room-lcd-9x16';
   const isEpaperFactory = (tpl) => tpl === 'room-epaper-5x3' || tpl === 'waste-epaper-5x3';
-  const isLcdFactory = (tpl) => tpl === 'room-lcd-16x9' || tpl === 'waste-lcd-16x9' || tpl === 'agenda-lcd-16x9';
-  const needsSource = (tpl) => isRoomFactory(tpl) || isWasteFactory(tpl) || isAgendaFactory(tpl);
+  const isLcdFactory = (tpl) => tpl === 'room-lcd-16x9' || tpl === 'waste-lcd-16x9' || tpl === 'agenda-lcd-16x9' || tpl === 'rooms-board-16x9';
+  const needsSource = (tpl) => isRoomFactory(tpl) || isWasteFactory(tpl) || isAgendaFactory(tpl) || isBoardFactory(tpl);
 
   const visibleCards = () => filterGallery(catalog, galleryChip);
 
@@ -386,23 +388,42 @@ async function openNewDeckModal(container) {
     } else {
       const aspectHint = isEpaperFactory(chosenTpl)
         ? t('slides.factory.aspect_hint_epaper')
-        : isLcdFactory(chosenTpl)
-          ? t('slides.factory.aspect_hint_lcd')
-          : '';
+        : isPortraitFactory(chosenTpl)
+          ? t('slides.factory.aspect_hint_portrait')
+          : isLcdFactory(chosenTpl)
+            ? t('slides.factory.aspect_hint_lcd')
+            : '';
       const defaultSlug = isWasteFactory(chosenTpl)
         ? wastePreferredSlug(sources)
         : (sources[0] && sources[0].slug) || 'room';
       const defaultName = needsSource(chosenTpl)
         ? ((sources.find((s) => s.slug === defaultSlug) || sources[0] || {}).name || t('slides.deck_name_placeholder'))
         : 'New Slide Deck';
-      const sourceSelect = sources.length
-        ? `<div>
+      const optionList = (selectedSlug) => sources.map((s) =>
+        `<option value="${esc(s.slug)}"${s.slug === selectedSlug ? ' selected' : ''}>${esc(s.name || s.slug)} (${esc(s.slug)})</option>`).join('');
+      const sourceSelect = !sources.length
+        ? `<p style="margin:0;font-size:13px;color:var(--text-muted)">${esc(t('slides.factory.no_source'))}</p>`
+        : isBoardFactory(chosenTpl)
+          ? `<div style="display:flex;flex-direction:column;gap:10px">
+              <p style="margin:0;font-size:12px;color:var(--text-muted)">${esc(t('slides.factory.board_hint'))}</p>
+              ${[1, 2, 3, 4].map((n) => {
+                const label = n === 1 ? t('slides.factory.board_slot_1')
+                  : n === 2 ? t('slides.factory.board_slot_2')
+                    : n === 3 ? t('slides.factory.board_slot_3')
+                      : t('slides.factory.board_slot_4');
+                const pick = (sources[n - 1] && sources[n - 1].slug) || defaultSlug;
+                return `<div>
+                  <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(label)}</label>
+                  <select id="deckSourceSelect${n - 1}" class="input" style="width:100%">${optionList(pick)}</select>
+                </div>`;
+              }).join('')}
+            </div>`
+          : `<div>
             <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(t('slides.factory.pick_source'))}</label>
             <select id="deckSourceSelect" class="input" style="width:100%">
-              ${sources.map((s) => `<option value="${esc(s.slug)}"${s.slug === defaultSlug ? ' selected' : ''}>${esc(s.name || s.slug)} (${esc(s.slug)})</option>`).join('')}
+              ${optionList(defaultSlug)}
             </select>
-          </div>`
-        : `<p style="margin:0;font-size:13px;color:var(--text-muted)">${esc(t('slides.factory.no_source'))}</p>`;
+          </div>`;
 
       const roomTitle = isRoomFactory(chosenTpl)
         ? `<div>
@@ -427,7 +448,9 @@ async function openNewDeckModal(container) {
         ${aspectHint ? `<p style="margin:0;font-size:12px;color:var(--text-muted)">${esc(aspectHint)}</p>` : ''}
       </div>`;
 
-      const placeholderSlug = isWasteFactory(chosenTpl) ? 'abfall' : (isAgendaFactory(chosenTpl) ? 'lobby' : 'room');
+      const placeholderSlug = isWasteFactory(chosenTpl)
+        ? 'abfall'
+        : (isAgendaFactory(chosenTpl) ? 'lobby' : (isBoardFactory(chosenTpl) ? 'room_a' : 'room'));
       const bindActions = needsSource(chosenTpl) && !sources.length
         ? `<button type="button" id="placeholderNewDeckBtn" class="btn btn-secondary">${esc(t('slides.factory.create_placeholder', { slug: placeholderSlug }))}</button>
            <button type="button" id="connectSourceBtn" class="btn btn-primary">${esc(t('slides.factory.connect_first'))}</button>`
@@ -491,8 +514,9 @@ async function openNewDeckModal(container) {
     const nameInput = modal.querySelector('#deckNameInput');
     const name = (nameInput && nameInput.value.trim()) || 'New Slide Deck';
     const selected = modal.querySelector('#deckSourceSelect');
+    const boardFallback = ['room_a', 'room_b', 'room_c', 'room_d'];
     const slug = usePlaceholder
-      ? (isWasteFactory(chosenTpl) ? 'abfall' : (isAgendaFactory(chosenTpl) ? 'lobby' : 'room'))
+      ? (isWasteFactory(chosenTpl) ? 'abfall' : (isAgendaFactory(chosenTpl) ? 'lobby' : (isBoardFactory(chosenTpl) ? 'room_a' : 'room')))
       : ((selected && selected.value) || (sources[0] && sources[0].slug) || (isWasteFactory(chosenTpl) ? 'abfall' : (isAgendaFactory(chosenTpl) ? 'lobby' : 'room')));
     const titleInput = modal.querySelector('#deckRoomTitle');
     const roomTitle = (titleInput && titleInput.value.trim())
@@ -506,7 +530,25 @@ async function openNewDeckModal(container) {
 
     try {
       let d;
-      if (isRoomFactory(chosenTpl) || isWasteFactory(chosenTpl) || isAgendaFactory(chosenTpl)) {
+      if (isBoardFactory(chosenTpl)) {
+        const slugs = [0, 1, 2, 3].map((i) => {
+          if (usePlaceholder) return boardFallback[i];
+          const sel = modal.querySelector(`#deckSourceSelect${i}`);
+          return (sel && sel.value) || (sources[i] && sources[i].slug) || (sources[0] && sources[0].slug) || boardFallback[i];
+        });
+        const titles = slugs.map((s) => (sources.find((src) => src.slug === s) || {}).name || s);
+        d = await api.post('/slide-decks', {
+          name,
+          factory: chosenTpl,
+          data_source_slug: slugs[0],
+          data_source_slugs: slugs,
+          titles,
+          chrome: {
+            next_prefix: t('slides.factory.next_prefix'),
+            now_prefix: t('slides.factory.now_prefix'),
+          },
+        });
+      } else if (isRoomFactory(chosenTpl) || isWasteFactory(chosenTpl) || isAgendaFactory(chosenTpl)) {
         const chrome = isWasteFactory(chosenTpl)
           ? {
               headline: t('slides.factory.waste_headline'),

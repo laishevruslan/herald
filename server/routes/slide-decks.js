@@ -123,7 +123,9 @@ router.get('/factories', (req, res) => {
 router.get('/factories/:id/doc', (req, res) => {
   const built = slideTemplates.buildFactory(req.params.id, {
     slug: req.query.slug,
+    slugs: req.query.slugs ? String(req.query.slugs).split(',') : undefined,
     title: req.query.title,
+    titles: req.query.titles ? String(req.query.titles).split(',') : undefined,
   });
   if (!built) return res.status(404).json({ error: 'Unknown factory.' });
   res.json(built);
@@ -161,7 +163,9 @@ router.post('/', (req, res) => {
   if (factoryId) {
     const built = slideTemplates.buildDeck(factoryId, {
       slug: req.body.data_source_slug,
+      slugs: req.body.data_source_slugs,
       title: req.body.title,
+      titles: req.body.titles,
       chrome: req.body.chrome,
     });
     if (!built) return res.status(400).json({ error: 'Unknown factory.' });

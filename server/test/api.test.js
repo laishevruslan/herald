@@ -176,6 +176,13 @@ test('partition: the public token surface is exactly the reviewed set (snapshot 
      */
     '/api/slide-decks',
     /*
+     * Factory catalogue, added deliberately. Same CJS module as POST /api/slide-decks { factory }.
+     * A PAT integrator minting a door sign without the dashboard wizard is the point of 3.5's
+     * GET /api/slide-templates. Read-only GETs; slug is not workspace-validated until publish —
+     * the same contract GET /api/slide-decks/factories/:id/doc already had.
+     */
+    '/api/slide-templates',
+    /*
      * Uploaded slide fonts, added deliberately. Reads and deletes are workspace-scoped through
      * accessContext like every sibling.
      *

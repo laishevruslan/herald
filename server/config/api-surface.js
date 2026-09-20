@@ -37,6 +37,9 @@ const PUBLIC_ROUTERS = [
   // Slide decks: the authoring document. Publishes to a playlist of slide widgets — see
   // lib/slide-deck.js for why that is the whole design rather than a new content type.
   { path: '/api/slide-decks', mod: './routes/slide-decks' },
+  // Factory catalogue for PAT integrators. Same CJS module as POST /api/slide-decks { factory }.
+  // Read-only; slug is not workspace-validated until publish (same as GET .../factories/:id/doc).
+  { path: '/api/slide-templates', mod: './routes/slide-templates' },
   // Uploaded fonts for slides. Workspace-scoped; see routes/fonts.js for why redistribution is
   // the thing to understand about this one.
   { path: '/api/fonts',       mod: './routes/fonts' },

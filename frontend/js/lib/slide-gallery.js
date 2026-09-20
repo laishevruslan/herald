@@ -4,7 +4,8 @@
  * Factory geometry stays on the server. This file only decides which cards are visible and how
  * the mini preview is painted, so the wizard cannot drift from listFactories() on a 1-bit colour.
  * FALLBACK_CARDS is ids + i18n keys only — used when GET /slide-decks/factories fails — so T1–T3
- * remain selectable; sample words and bar colours come from the server catalogue when it answers.
+ * and the 3.5 stretch ids remain selectable; sample words and bar colours come from the server
+ * catalogue when it answers.
  */
 
 export const GALLERY_CHIPS = Object.freeze(['all', 'room', 'facilities', 'agenda', 'blank']);
@@ -44,6 +45,18 @@ export const FALLBACK_CARDS = Object.freeze([
     thumbnail: plate('#0B1220', '16:9'),
   },
   {
+    id: 'room-lcd-9x16', chip: 'room', aspect: '9:16',
+    title_key: 'slides.factory.room_lcd_9x16.title',
+    desc_key: 'slides.factory.room_lcd_9x16.desc',
+    thumbnail: plate('#0B1220', '9:16'),
+  },
+  {
+    id: 'rooms-board-16x9', chip: 'room', aspect: '16:9',
+    title_key: 'slides.factory.rooms_board_16x9.title',
+    desc_key: 'slides.factory.rooms_board_16x9.desc',
+    thumbnail: plate('#0B1220', '16:9'),
+  },
+  {
     id: 'waste-epaper-5x3', chip: 'facilities', aspect: '5:3',
     title_key: 'slides.factory.waste_epaper_5x3.title',
     desc_key: 'slides.factory.waste_epaper_5x3.desc',
@@ -65,7 +78,7 @@ export const FALLBACK_CARDS = Object.freeze([
 
 function inferChip(id) {
   const s = String(id || '');
-  if (s.startsWith('room-')) return 'room';
+  if (s.startsWith('room')) return 'room';
   if (s.startsWith('waste-')) return 'facilities';
   if (s.startsWith('agenda-')) return 'agenda';
   return 'blank';
@@ -75,7 +88,7 @@ function normalizeCard(f) {
   return {
     id: f.id,
     chip: f.chip || inferChip(f.id),
-    aspect: f.aspect === '5:3' ? '5:3' : '16:9',
+    aspect: (f.aspect === '5:3' || f.aspect === '9:16') ? f.aspect : '16:9',
     title_key: f.title_key,
     desc_key: f.desc_key,
     thumbnail: f.thumbnail,
@@ -117,7 +130,7 @@ export function thumbHtml(thumbnail, escapeFn) {
   const esc = typeof escapeFn === 'function' ? escapeFn : (s) => String(s);
   const th = (thumbnail && typeof thumbnail === 'object') ? thumbnail : {};
   const bg = HEX_RE.test(th.background) ? th.background : '#1B2029';
-  const ratio = th.aspect === '5:3' ? '5 / 3' : '16 / 9';
+  const ratio = th.aspect === '5:3' ? '5 / 3' : th.aspect === '9:16' ? '9 / 16' : '16 / 9';
   const parts = Array.isArray(th.parts) ? th.parts.slice(0, 12) : [];
   const inner = parts.map((p) => {
     if (!p || typeof p !== 'object') return '';

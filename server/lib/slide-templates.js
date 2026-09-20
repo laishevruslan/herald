@@ -60,6 +60,38 @@ const META = Object.freeze([
     ]),
   },
   {
+    id: 'room-lcd-9x16',
+    version: 1,
+    aspect: '9:16',
+    chip: 'room',
+    title_key: 'slides.factory.room_lcd_9x16.title',
+    desc_key: 'slides.factory.room_lcd_9x16.desc',
+    thumbnail: thumb('#0B1220', '9:16', [
+      bar(0, 0, 100, 6, '#16A34A'),
+      txt(8, 12, 'Berlin', '#F8FAFC', 8, 700),
+      txt(8, 32, 'AVAILABLE', '#F8FAFC', 11, 700),
+      txt(8, 70, 'Sprint Planning', '#94A3B8', 7, 400),
+    ]),
+  },
+  {
+    id: 'rooms-board-16x9',
+    version: 1,
+    aspect: '16:9',
+    chip: 'room',
+    title_key: 'slides.factory.rooms_board_16x9.title',
+    desc_key: 'slides.factory.rooms_board_16x9.desc',
+    thumbnail: thumb('#0B1220', '16:9', [
+      bar(2, 8, 3, 38, '#16A34A'),
+      txt(7, 12, 'A  AVAILABLE', '#F8FAFC', 7, 700),
+      bar(51, 8, 3, 38, '#DC2626'),
+      txt(56, 12, 'B  BUSY', '#F8FAFC', 7, 700),
+      bar(2, 54, 3, 38, '#16A34A'),
+      txt(7, 58, 'C  AVAILABLE', '#F8FAFC', 7, 700),
+      bar(51, 54, 3, 38, '#6B7280'),
+      txt(56, 58, 'D  stale', '#94A3B8', 7, 400),
+    ]),
+  },
+  {
     id: 'waste-epaper-5x3',
     version: 1,
     aspect: '5:3',
@@ -109,7 +141,9 @@ function clampPct(n, dflt) {
 function sanitizeThumbnail(raw, aspect) {
   const src = (raw && typeof raw === 'object') ? raw : {};
   const bg = HEX_RE.test(src.background) ? src.background : '#1B2029';
-  const asp = src.aspect === '5:3' || src.aspect === '16:9' ? src.aspect : (aspect || '16:9');
+  const asp = src.aspect === '5:3' || src.aspect === '16:9' || src.aspect === '9:16'
+    ? src.aspect
+    : (aspect || '16:9');
   const partsIn = Array.isArray(src.parts) ? src.parts.slice(0, 12) : [];
   const parts = [];
   for (const p of partsIn) {
@@ -143,9 +177,16 @@ function isAgendaFactory(id) {
   return String(id || '').startsWith('agenda-');
 }
 
+function isBoardFactory(id) {
+  return String(id || '').startsWith('rooms-board-');
+}
+
+const BOARD_FALLBACK = Object.freeze(['room_a', 'room_b', 'room_c', 'room_d']);
+
 function fallbackSlug(factoryId) {
   if (isWasteFactory(factoryId)) return 'abfall';
   if (isAgendaFactory(factoryId)) return 'lobby';
+  if (isBoardFactory(factoryId)) return BOARD_FALLBACK[0];
   return 'room';
 }
 
@@ -154,12 +195,35 @@ function sanitizeSlug(raw, factoryId) {
   return SLUG_RE.test(s) ? s : fallbackSlug(factoryId);
 }
 
+function sanitizeSlugs(raw, factoryId) {
+  if (!isBoardFactory(factoryId)) return [sanitizeSlug(raw, factoryId)];
+  let list;
+  if (Array.isArray(raw)) list = raw;
+  else if (typeof raw === 'string' && raw.includes(',')) list = raw.split(',');
+  else list = raw == null || raw === '' ? [] : [raw];
+  const out = [];
+  for (let i = 0; i < 4; i++) {
+    const s = String(list[i] == null ? '' : list[i]).trim();
+    out.push(SLUG_RE.test(s) ? s : BOARD_FALLBACK[i]);
+  }
+  return out;
+}
+
 function sanitizeTitle(raw, factoryId) {
   const s = String(raw == null ? '' : raw).trim().slice(0, MAX_TITLE);
   if (s) return s;
   if (isWasteFactory(factoryId)) return 'Waste collection';
   if (isAgendaFactory(factoryId)) return 'Office agenda';
+  if (isBoardFactory(factoryId)) return 'Corridor board';
   return 'Meeting room';
+}
+
+function sanitizeTitles(raw, slugs) {
+  const list = Array.isArray(raw) ? raw : (raw == null || raw === '' ? [] : [raw]);
+  return slugs.map((slug, i) => {
+    const s = String(list[i] == null ? '' : list[i]).trim().slice(0, MAX_TITLE);
+    return s || slug;
+  });
 }
 
 function sanitizePrefix(raw, fallback) {
@@ -200,14 +264,21 @@ function el(kind, slot, box, style, extra) {
   };
 }
 
-function applyChrome(fields, slug, chrome, factoryId) {
+function applyChrome(fields, slug, chrome, factoryId, slugs) {
   const next = sanitizePrefix(chrome && chrome.next_prefix, 'Next');
   const now = sanitizePrefix(chrome && chrome.now_prefix, 'Now');
-  if (Object.prototype.hasOwnProperty.call(fields, 'next_meeting')) {
-    fields.next_meeting = `${next}: ${tok(slug, 'next_title')} (${tok(slug, 'next_time')})`;
-  }
-  if (Object.prototype.hasOwnProperty.call(fields, 'now_meeting')) {
-    fields.now_meeting = `${now}: ${tok(slug, 'current_title')} (${tok(slug, 'current_time')})`;
+  const pair = (s, nextKey, nowKey) => {
+    if (Object.prototype.hasOwnProperty.call(fields, nextKey)) {
+      fields[nextKey] = `${next}: ${tok(s, 'next_title')} (${tok(s, 'next_time')})`;
+    }
+    if (Object.prototype.hasOwnProperty.call(fields, nowKey)) {
+      fields[nowKey] = `${now}: ${tok(s, 'current_title')} (${tok(s, 'current_time')})`;
+    }
+  };
+  pair(slug, 'next_meeting', 'now_meeting');
+  const list = Array.isArray(slugs) && slugs.length ? slugs : [slug];
+  for (let i = 0; i < list.length; i++) {
+    pair(list[i], `next_meeting_${i}`, `now_meeting_${i}`);
   }
   if (Object.prototype.hasOwnProperty.call(fields, 'headline')) {
     const fallback = isAgendaFactory(factoryId) ? 'Today' : 'Next collection';
@@ -331,14 +402,7 @@ function buildRoomLcd(slug, title) {
     );
   }
 
-  const fields = {
-    room_name: title,
-    status_word: tok(slug, 'status'),
-    status_detail: tok(slug, 'status_detail'),
-    now_meeting: '',
-    next_meeting: '',
-    booking_qr: '',
-  };
+  const fields = roomLcdFields(slug, title);
   for (let n = 0; n < 5; n++) {
     fields[`ev${n}_time`] = tok(slug, `event_${n}_time`);
     fields[`ev${n}_title`] = tok(slug, `event_${n}_title`);
@@ -348,6 +412,66 @@ function buildRoomLcd(slug, title) {
     name: title,
     dwell_sec: 30,
     template: { background: '#0B1220', aspect: '16:9', elements },
+    fields,
+  };
+}
+
+function roomLcdFields(slug, title) {
+  return {
+    room_name: title,
+    status_word: tok(slug, 'status'),
+    status_detail: tok(slug, 'status_detail'),
+    now_meeting: '',
+    next_meeting: '',
+    booking_qr: '',
+  };
+}
+
+/*
+ * Portrait door tablet (Fire / Appspace 9:16). Same bind flags as the landscape LCD — a top
+ * strip instead of a left bar so the status word can use the full width. Not for 1-bit Sticky.
+ */
+function buildRoomLcdPortrait(slug, title) {
+  const bind = { bind_status: slug };
+  const ink = '#F8FAFC';
+  const muted = '#94A3B8';
+  const elements = [
+    el('box', 'status_bar', { x: 0, y: 0, w: 100, h: 5 }, { color: '#6B7280' }, {
+      ...bind,
+      color_when: { busy: '#DC2626', free: '#16A34A', stale: '#6B7280' },
+    }),
+    el('head', 'room_name', { x: 6, y: 8, w: 88 }, { size_cqw: 6, weight: 700, color: ink }),
+    el('clock', 'clock', { x: 6, y: 16, w: 40 }, {
+      size_cqw: 3.2, weight: 600, color: muted,
+    }, { clock_format: '24', tz: '', locale: '' }),
+    el('date', 'header_date', { x: 50, y: 16, w: 44 }, {
+      size_cqw: 3.2, color: muted, align: 'right',
+    }, { date_format: 'short', tz: '', locale: '' }),
+    el('stat', 'status_word', { x: 6, y: 24, w: 88 }, { size_cqw: 12, weight: 700, color: ink }),
+    el('body', 'status_detail', { x: 6, y: 38, w: 88 }, { size_cqw: 3.2, color: '#CBD5E1' }),
+    el('body', 'now_meeting', { x: 6, y: 46, w: 88 }, { size_cqw: 3, color: '#E2E8F0' }, { hide_if_empty: true }),
+    el('body', 'next_meeting', { x: 6, y: 52, w: 88 }, { size_cqw: 3, color: muted }, { hide_if_empty: true }),
+    el('qr', 'booking_qr', { x: 72, y: 88, w: 22, h: 10 }, {}, { hide_if_empty: true }),
+  ];
+  for (let n = 0; n < 5; n++) {
+    const y = 60 + n * 5.4;
+    const motion = { animation: 'slideU', delay: n * 0.05, duration: 0.2, easing: 'ease-out' };
+    elements.push(
+      el('body', `ev${n}_time`, { x: 6, y, w: 22 }, { size_cqw: 2.6, weight: 600, color: muted }, { hide_if_empty: true, motion }),
+      el('body', `ev${n}_title`, { x: 30, y, w: 38 }, { size_cqw: 2.6, color: ink }, { hide_if_empty: true, motion }),
+    );
+  }
+
+  const fields = roomLcdFields(slug, title);
+  for (let n = 0; n < 5; n++) {
+    fields[`ev${n}_time`] = tok(slug, `event_${n}_time`);
+    fields[`ev${n}_title`] = tok(slug, `event_${n}_title`);
+  }
+
+  return {
+    name: title,
+    dwell_sec: 30,
+    template: { background: '#0B1220', aspect: '9:16', elements },
     fields,
   };
 }
@@ -423,8 +547,8 @@ function buildWasteLcd(slug, title) {
 
 /*
  * Lobby / tea-point TV. Structured rows, not agenda_text: a 4K wall needs a time column and
- * wrapping titles at one kehl. Empty rows after 17:00 stay empty (no stack kind — that is 3.5);
- * remaining_today_empty is the honest "no more meetings today" line. Not a room sign: no
+ * wrapping titles at one kehl. Empty rows after 17:00 stay empty (no stack kind — a new layout
+ * language, out of scope); remaining_today_empty is the honest "no more meetings today" line. Not a room sign: no
  * color_when, no show_when busy/free. Same 16:9 JSON on 4K because cqw scales the type.
  */
 function buildAgendaLcd(slug, title) {
@@ -473,9 +597,56 @@ function buildAgendaLcd(slug, title) {
   };
 }
 
+/*
+ * Corridor 2×2: four ICS slugs on one 16:9 slide. OAuth / tap-to-book is out of scope — this is
+ * four {{ds:slug.status}} tiles, each with its own bind_status so a dead feed greys that tile
+ * without painting the whole wall AVAILABLE.
+ */
+function buildRoomsBoard(slugs, titles) {
+  const ink = '#F8FAFC';
+  const muted = '#94A3B8';
+  const elements = [];
+  const fields = {};
+  for (let i = 0; i < 4; i++) {
+    const slug = slugs[i];
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const x = 2 + col * 49;
+    const y = 3 + row * 48;
+    const bind = { bind_status: slug };
+    elements.push(
+      el('box', `status_bar_${i}`, { x, y, w: 3, h: 46 }, { color: '#6B7280' }, {
+        ...bind,
+        color_when: { busy: '#DC2626', free: '#16A34A', stale: '#6B7280' },
+      }),
+      el('head', `room_name_${i}`, { x: x + 5, y: y + 2, w: 40 }, { size_cqw: 2.6, weight: 700, color: ink }),
+      el('stat', `status_word_${i}`, { x: x + 5, y: y + 12, w: 40 }, { size_cqw: 4.2, weight: 700, color: ink }),
+      el('body', `now_meeting_${i}`, { x: x + 5, y: y + 24, w: 40 }, {
+        size_cqw: 2.1, color: '#E2E8F0',
+      }, { hide_if_empty: true }),
+      el('body', `next_meeting_${i}`, { x: x + 5, y: y + 33, w: 40 }, {
+        size_cqw: 2.1, color: muted,
+      }, { hide_if_empty: true }),
+    );
+    fields[`room_name_${i}`] = titles[i];
+    fields[`status_word_${i}`] = tok(slug, 'status');
+    fields[`now_meeting_${i}`] = '';
+    fields[`next_meeting_${i}`] = '';
+  }
+
+  return {
+    name: titles[0] || 'Corridor board',
+    dwell_sec: 30,
+    template: { background: '#0B1220', aspect: '16:9', elements },
+    fields,
+  };
+}
+
 const BUILDERS = {
   'room-epaper-5x3': buildRoomEpaper,
   'room-lcd-16x9': buildRoomLcd,
+  'room-lcd-9x16': buildRoomLcdPortrait,
+  'rooms-board-16x9': buildRoomsBoard,
   'waste-epaper-5x3': buildWasteEpaper,
   'waste-lcd-16x9': buildWasteLcd,
   'agenda-lcd-16x9': buildAgendaLcd,
@@ -505,10 +676,14 @@ function buildFactory(id, opts = {}) {
   const meta = META.find((m) => m.id === id);
   const builder = BUILDERS[id];
   if (!meta || !builder) return null;
-  const slug = sanitizeSlug(opts.slug, id);
-  const title = sanitizeTitle(opts.title, id);
-  const slide = builder(slug, title);
-  applyChrome(slide.fields, slug, opts.chrome, id);
+  const slugs = isBoardFactory(id)
+    ? sanitizeSlugs(opts.slugs != null ? opts.slugs : opts.slug, id)
+    : [sanitizeSlug(opts.slug, id)];
+  const titles = isBoardFactory(id)
+    ? sanitizeTitles(opts.titles != null ? opts.titles : opts.title, slugs)
+    : [sanitizeTitle(opts.title, id)];
+  const slide = isBoardFactory(id) ? builder(slugs, titles) : builder(slugs[0], titles[0]);
+  applyChrome(slide.fields, slugs[0], opts.chrome, id, slugs);
   return { id: meta.id, version: meta.version, aspect: meta.aspect, slide };
 }
 
@@ -531,6 +706,8 @@ module.exports = {
   buildFactory,
   buildDeck,
   sanitizeSlug,
+  sanitizeSlugs,
   isWasteFactory,
   isAgendaFactory,
+  isBoardFactory,
 };

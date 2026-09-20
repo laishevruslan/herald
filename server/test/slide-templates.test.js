@@ -51,10 +51,10 @@ function resolveOf(payload, slug = 'room') {
   };
 }
 
-test('listFactories names T1, T2 and T3 ids', () => {
+test('listFactories names T1–T3 and the 3.5 stretch ids', () => {
   const ids = listFactories().map((f) => f.id);
   assert.deepEqual(ids, [
-    'room-epaper-5x3', 'room-lcd-16x9',
+    'room-epaper-5x3', 'room-lcd-16x9', 'room-lcd-9x16', 'rooms-board-16x9',
     'waste-epaper-5x3', 'waste-lcd-16x9',
     'agenda-lcd-16x9',
   ]);
@@ -85,13 +85,16 @@ test('listFactories thumbnails are CSS parts, 1-bit on e-paper, with sample word
   assert.match(dump('room-epaper-5x3'), /AVAILABLE/);
   assert.match(dump('room-epaper-5x3'), /Sprint Planning/);
   assert.match(dump('room-lcd-16x9'), /#16A34A/i);
+  assert.match(dump('room-lcd-9x16'), /#16A34A/i);
+  assert.equal(list.find((f) => f.id === 'room-lcd-9x16').thumbnail.aspect, '9:16');
+  assert.match(dump('rooms-board-16x9'), /AVAILABLE/);
   assert.match(dump('waste-epaper-5x3'), /Gelber Sack/);
   assert.match(dump('agenda-lcd-16x9'), /Today/);
 });
 
 test('unknown factory is null', () => {
   assert.equal(buildFactory('room-epaper-9x16'), null);
-  assert.equal(buildDeck('rooms-board-16x9', { slug: 'lobby' }), null);
+  assert.equal(buildDeck('calendar-week-16x9', { slug: 'lobby' }), null);
 });
 
 test('room-epaper-5x3 is 5:3, motionless, and only black or white', () => {
@@ -130,8 +133,58 @@ test('room-lcd-16x9 paints a corridor bar and animates only the agenda column', 
   }
 });
 
+test('room-lcd-9x16 is portrait, top strip, same busy/free/stale contract', () => {
+  const built = buildFactory('room-lcd-9x16', { slug: 'room_berlin', title: 'Berlin' });
+  assert.equal(built.aspect, '9:16');
+  const deck = normalizeDeck(buildDeck('room-lcd-9x16', { slug: 'room_berlin', title: 'Berlin' }));
+  assert.equal(deck.aspect, '9:16');
+  const slide = normalizeSlide(built.slide);
+  assert.equal(slide.aspect, '9:16');
+  const bar = slide.elements.find((e) => e.slot === 'status_bar');
+  assert.ok(bar, 'portrait keeps a status_bar slot');
+  assert.equal(bar.w, 100);
+  assert.ok(bar.h < 20, 'portrait uses a top strip, not a left bar');
+  assert.equal(bar.color_when.free, '#16A34A');
+  assert.equal(bar.color_when.busy, '#DC2626');
+  assert.equal(bar.color_when.stale, '#6B7280');
+  assert.equal(bar.bind_status, 'room_berlin');
+  assert.match(built.slide.fields.status_word, /\{\{ds:room_berlin\.status\}\}/);
+});
+
+test('rooms-board-16x9 is 2×2 with four slugs and per-tile stale bars', () => {
+  const built = buildFactory('rooms-board-16x9', {
+    slugs: ['berlin', 'munich', 'hamburg', 'koeln'],
+    titles: ['Berlin', 'Munich', 'Hamburg', 'Köln'],
+    chrome: { next_prefix: 'Next', now_prefix: 'Now' },
+  });
+  assert.equal(built.aspect, '16:9');
+  const slide = normalizeSlide(built.slide);
+  const bars = slide.elements.filter((e) => /^status_bar_/.test(e.slot));
+  assert.equal(bars.length, 4);
+  assert.deepEqual(bars.map((e) => e.bind_status), ['berlin', 'munich', 'hamburg', 'koeln']);
+  for (const bar of bars) {
+    assert.equal(bar.color_when.stale, '#6B7280');
+    assert.equal(bar.color_when.free, '#16A34A');
+  }
+  assert.equal(built.slide.fields.room_name_0, 'Berlin');
+  assert.equal(built.slide.fields.room_name_3, 'Köln');
+  assert.match(built.slide.fields.status_word_1, /\{\{ds:munich\.status\}\}/);
+  assert.match(built.slide.fields.next_meeting_2, /\{\{ds:hamburg\.next_title\}\}/);
+  assert.equal(slide.elements.find((e) => e.slot === 'next_meeting_0').hide_if_empty, true);
+});
+
+test('rooms-board invalid slugs fall back to room_a..room_d, not junk in HTML', () => {
+  const built = buildFactory('rooms-board-16x9', { slug: 'not a slug!' });
+  const dump = JSON.stringify(built.slide.fields);
+  assert.match(dump, /\{\{ds:room_a\.status\}\}/);
+  assert.match(dump, /\{\{ds:room_b\.status\}\}/);
+  assert.match(dump, /\{\{ds:room_c\.status\}\}/);
+  assert.match(dump, /\{\{ds:room_d\.status\}\}/);
+  assert.ok(!dump.includes('not a slug'));
+});
+
 test('factory bindings use only CANON keys — never next_event_title or organizer', () => {
-  for (const id of ['room-epaper-5x3', 'room-lcd-16x9', 'waste-epaper-5x3', 'waste-lcd-16x9', 'agenda-lcd-16x9']) {
+  for (const id of ['room-epaper-5x3', 'room-lcd-16x9', 'room-lcd-9x16', 'rooms-board-16x9', 'waste-epaper-5x3', 'waste-lcd-16x9', 'agenda-lcd-16x9']) {
     const built = buildFactory(id, { slug: 'room', title: 'Berlin' });
     const keys = dsTokens(built.slide);
     assert.ok(keys.length > 0, id);
@@ -202,6 +255,41 @@ test('LCD bar is red when busy, green when free, grey when the source failed', a
   assert.match(freeHtml, /background:#16A34A/);
   assert.match(staleHtml, /background:#6B7280/);
   assert.ok(!staleHtml.includes('background:#16A34A'), 'a failed fetch painted AVAILABLE green');
+});
+
+test('room-lcd-9x16 bar follows the same busy/free/stale hex as landscape', async () => {
+  const busy = await resolveIcalData({ raw_data: ROOM_ICS, timezone: 'UTC', locale: 'en' }, new Date('2026-09-04T09:30:00Z'));
+  const built = buildFactory('room-lcd-9x16', { slug: 'room', title: 'Berlin' });
+  const busyHtml = renderSlideHtml(built.slide, resolveOf({ ...busy, __status: 'ok' }));
+  const staleHtml = renderSlideHtml(built.slide, resolveOf({ ...busy, __status: 'error' }));
+  assert.match(busyHtml, /background:#DC2626/);
+  assert.match(staleHtml, /background:#6B7280/);
+  assert.ok(!staleHtml.includes('background:#16A34A'));
+});
+
+test('rooms-board paints each tile from its own slug, stale only on the dead feed', async () => {
+  const busy = await resolveIcalData({ raw_data: ROOM_ICS, timezone: 'UTC', locale: 'en' }, new Date('2026-09-04T09:30:00Z'));
+  const free = await resolveIcalData({ raw_data: ROOM_ICS, timezone: 'UTC', locale: 'en' }, new Date('2026-09-04T11:00:00Z'));
+  const built = buildFactory('rooms-board-16x9', {
+    slugs: ['berlin', 'munich', 'hamburg', 'koeln'],
+    titles: ['Berlin', 'Munich', 'Hamburg', 'Köln'],
+  });
+  const payload = {
+    berlin: { ...busy, __status: 'ok' },
+    munich: { ...free, __status: 'ok' },
+    hamburg: { __status: 'error' },
+    koeln: { ...free, __status: 'ok' },
+  };
+  const html = renderSlideHtml(built.slide, {
+    resolveData: (s, key) => (payload[s] ? payload[s][key] : undefined),
+  });
+  assert.match(html, /Berlin/);
+  assert.match(html, /Munich/);
+  assert.match(html, /BUSY/);
+  assert.match(html, /AVAILABLE/);
+  assert.match(html, /background:#DC2626/);
+  assert.match(html, /background:#16A34A/);
+  assert.match(html, /background:#6B7280/);
 });
 
 test('editing room_name does not rebuild the template; flipping is_busy does change the bar', () => {

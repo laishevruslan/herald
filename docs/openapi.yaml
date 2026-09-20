@@ -1576,9 +1576,11 @@ paths:
               properties:
                 name: { type: string, maxLength: 120 }
                 doc: { $ref: '#/components/schemas/DeckDocument' }
-                factory: { type: string, description: 'Factory id (`room-epaper-5x3`, `room-lcd-16x9`, `waste-epaper-5x3`, `waste-lcd-16x9`, `agenda-lcd-16x9`). When set, the server builds `doc` and ignores a client-supplied document.' }
+                factory: { type: string, description: 'Factory id (`room-epaper-5x3`, `room-lcd-16x9`, `room-lcd-9x16`, `rooms-board-16x9`, `waste-epaper-5x3`, `waste-lcd-16x9`, `agenda-lcd-16x9`). When set, the server builds `doc` and ignores a client-supplied document.' }
                 data_source_slug: { type: string, maxLength: 64 }
+                data_source_slugs: { type: array, items: { type: string, maxLength: 64 }, description: 'Four slugs for `rooms-board-16x9`. Falls back to `data_source_slug` then `room_a`…`room_d`.' }
                 title: { type: string, maxLength: 120, description: 'Room name written into fields.room_name (T1), slide name (T2/T3).' }
+                titles: { type: array, items: { type: string, maxLength: 120 }, description: 'Per-tile names for `rooms-board-16x9`.' }
                 chrome: { type: object, properties: { next_prefix: { type: string }, now_prefix: { type: string }, headline: { type: string }, waste_note: { type: string }, then_prefix: { type: string } } }
       responses:
         '201': { description: 'The created deck, with any publish warnings.' }
@@ -1592,13 +1594,61 @@ paths:
         Catalogue for the wizard: id, aspect, filter chip, i18n keys, and a CSS thumbnail
         (`background`, `aspect`, `parts` of `bar`/`txt`). Geometry lives on the server so a 1-bit
         e-paper colour cannot drift from the factory that POST creates. Blank is a client-side card,
-        not a factory. Not `GET /api/slide-templates` (that route is not in this phase).
+        not a factory. Alias: `GET /api/slide-templates`.
       x-required-scope: read
       responses:
         '200':
           description: |
             Array of `{ id, version, aspect, chip, title_key, desc_key, thumbnail }`.
             `chip` is `room`, `facilities`, or `agenda`. Thumbnail hex is `#RGB` / `#RRGGBB` only.
+
+  /slide-decks/factories/{id}/doc:
+    get:
+      tags: [slides]
+      summary: Fetch a factory skeleton (dashboard catalogue)
+      description: |
+        Same builder as `POST /slide-decks { factory }` and `GET /slide-templates/{id}/doc`.
+        Query `slug` / `slugs` (comma-separated) and `title` / `titles` fill the `{{ds:}}` tokens.
+      x-required-scope: read
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: slug, in: query, schema: { type: string } }
+        - { name: slugs, in: query, schema: { type: string } }
+        - { name: title, in: query, schema: { type: string } }
+        - { name: titles, in: query, schema: { type: string } }
+      responses:
+        '200': { description: '{ id, version, aspect, slide }' }
+        '404': { description: 'Unknown factory.' }
+
+  /slide-templates:
+    get:
+      tags: [slides]
+      summary: List factory templates (PAT catalogue)
+      description: |
+        Same payload as `GET /slide-decks/factories`. Read-only. Slug is not workspace-validated
+        until a deck is published.
+      x-required-scope: read
+      responses:
+        '200':
+          description: Array of `{ id, version, aspect, chip, title_key, desc_key, thumbnail }`.
+
+  /slide-templates/{id}/doc:
+    get:
+      tags: [slides]
+      summary: Fetch a factory skeleton
+      description: |
+        Same CJS builder as `POST /slide-decks { factory }`. Query `slug` / `slugs` (comma-separated)
+        and `title` / `titles` fill the `{{ds:}}` tokens. Unknown id is 404.
+      x-required-scope: read
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: slug, in: query, schema: { type: string } }
+        - { name: slugs, in: query, schema: { type: string }, description: 'Comma-separated, for rooms-board-16x9' }
+        - { name: title, in: query, schema: { type: string } }
+        - { name: titles, in: query, schema: { type: string } }
+      responses:
+        '200': { description: '{ id, version, aspect, slide }' }
+        '404': { description: 'Unknown factory.' }
 
   /slide-decks/{id}:
     get:
