@@ -16,6 +16,14 @@ what to enter for the reviewer.
 
 ### Added
 
+**Studio 6.3b — Library New poster picks a size; 6.0 backlog marked done.** Content Library
+→ New poster opens a preset modal (1920×1080 / 1080×1920 / 800×480) instead of always jumping
+to landscape. Russian/German copy for the chooser. CI uploads the built island as the
+`studio-island` artifact alongside the Dockerfile `studio-builder` stage. The scenify plan’s
+“not done in 6.0” list (export, Library buttons, `/studio/` in image, portrait/picker/brand
+stand-in) is checked off against 6.1–6.2; full brand-kit API remains a parent-phase gap. See
+[`docs/scenify-studio-plan.md`](docs/scenify-studio-plan.md).
+
 **Studio 6.3a — full Layerhub Editor UI on the poster island.** The Studio island no longer
 drives a bare Fabric canvas. It mounts `@layerhub-io/react` `Provider` + `Canvas` with Layers,
 Properties, context menu, undo/redo, zoom, align and z-order — still without Scenify’s Iconscout /

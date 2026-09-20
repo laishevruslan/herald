@@ -305,10 +305,7 @@ export function render(container) {
   studioIslandAvailable().then((ok) => {
     if (!ok || !newPosterBtn) return;
     newPosterBtn.hidden = false;
-    newPosterBtn.onclick = () => {
-      const lang = (localStorage.getItem('rd_lang') || 'en').slice(0, 2);
-      window.location.href = `/studio/?preset=landscape-1080&lang=${encodeURIComponent(lang)}`;
-    };
+    newPosterBtn.onclick = () => openNewPosterPresetModal();
   }).catch(() => {});
 
   loadContent();
@@ -1162,6 +1159,52 @@ function folderPath(folder, all) {
     parts.unshift(cursor.name);
   }
   return parts.join(' / ');
+}
+
+/** Library → New poster: pick canvas size before opening the Studio island (6.1 presets). */
+function openNewPosterPresetModal() {
+  const lang = (localStorage.getItem('rd_lang') || 'en').slice(0, 2);
+  const presets = [
+    { id: 'landscape-1080', labelKey: 'studio.preset_landscape', hintKey: 'studio.preset_landscape_hint' },
+    { id: 'portrait-1080', labelKey: 'studio.preset_portrait', hintKey: 'studio.preset_portrait_hint' },
+    { id: 'epaper-5x3', labelKey: 'studio.preset_epaper', hintKey: 'studio.preset_epaper_hint' },
+  ];
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.style.display = 'flex';
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:420px;width:95vw" role="dialog" aria-modal="true" aria-labelledby="studioPresetTitle">
+      <div class="modal-header">
+        <h3 id="studioPresetTitle">${esc(t('studio.pick_preset'))}</h3>
+        <button type="button" class="modal-close" id="studioPresetClose" aria-label="${esc(t('common.cancel'))}">&times;</button>
+      </div>
+      <div class="modal-body" style="display:grid;gap:10px">
+        <p style="margin:0;font-size:13px;color:var(--text-muted)">${esc(t('studio.pick_preset_help'))}</p>
+        ${presets.map((p, i) => `
+          <label style="display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer">
+            <input type="radio" name="studioPreset" value="${esc(p.id)}" ${i === 0 ? 'checked' : ''} style="margin-top:3px">
+            <span>
+              <strong style="display:block">${esc(t(p.labelKey))}</strong>
+              <span style="font-size:12px;color:var(--text-muted)">${esc(t(p.hintKey))}</span>
+            </span>
+          </label>
+        `).join('')}
+      </div>
+      <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn btn-secondary btn-sm" id="studioPresetCancel">${esc(t('common.cancel'))}</button>
+        <button type="button" class="btn btn-primary btn-sm" id="studioPresetGo">${esc(t('studio.open_editor'))}</button>
+      </div>
+    </div>
+  `;
+  const close = () => overlay.remove();
+  overlay.onclick = (e) => { if (e.target === overlay) close(); };
+  overlay.querySelector('#studioPresetClose').onclick = close;
+  overlay.querySelector('#studioPresetCancel').onclick = close;
+  overlay.querySelector('#studioPresetGo').onclick = () => {
+    const picked = overlay.querySelector('input[name="studioPreset"]:checked')?.value || 'landscape-1080';
+    window.location.href = `/studio/?preset=${encodeURIComponent(picked)}&lang=${encodeURIComponent(lang)}`;
+  };
+  document.body.appendChild(overlay);
 }
 
 export function cleanup() {}

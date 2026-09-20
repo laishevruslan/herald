@@ -37,12 +37,17 @@ test('dashboard i18n has studio keys in en and ru', () => {
     'studio.unavailable',
     'studio.slide_bg_from_studio',
     'studio.slide_bg_applied',
+    'studio.pick_preset',
+    'studio.preset_portrait',
+    'studio.open_editor',
   ]) {
     assert.match(en, new RegExp(`'${key}'`));
     assert.match(ru, new RegExp(`'${key}'`));
   }
   assert.match(ru, /Редактор постеров/);
   assert.match(ru, /Фон из Studio/);
+  assert.match(ru, /Размер постера/);
+  assert.match(ru, /портрет/);
   assert.doesNotMatch(en, /Scenify/);
   assert.doesNotMatch(ru, /Scenify/);
 });
@@ -51,6 +56,14 @@ test('license-check accepts --root for the studio island', () => {
   const src = fs.readFileSync(path.join(ROOT, 'scripts', 'license-check.js'), 'utf8');
   assert.match(src, /--root/);
   assert.match(src, /frontend-studio/);
+});
+
+test('content library New poster opens a preset picker (landscape/portrait/epaper)', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'frontend', 'js', 'views', 'content-library.js'), 'utf8');
+  assert.match(src, /openNewPosterPresetModal/);
+  assert.match(src, /portrait-1080/);
+  assert.match(src, /epaper-5x3/);
+  assert.match(src, /studio\.pick_preset/);
 });
 
 test('studio 6.1/6.2/6.3 docker assets and Layerhub Editor modules exist', () => {

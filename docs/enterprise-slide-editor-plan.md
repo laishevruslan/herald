@@ -543,6 +543,8 @@ PoC — **не** Polotno и не CE.SDK. Остров `frontend-studio/` на з
 
 **6.3a (2026-09-20): DONE.** Полный Editor UI на `@layerhub-io/react` (Layers / Properties / undo / zoom), без чужой оболочки Scenify. Запреты 6.3 (Fabric в плеере и т.д.) не трогали. См. [`scenify-studio-plan.md`](scenify-studio-plan.md).
 
+**6.3b (2026-09-20):** бэклог 6.0 (export / Library buttons / Dockerfile+CI `/studio/` / portrait+picker+brand stand-in) явно закрыт в плане; New poster выбирает пресет; CI artifact `studio-island`.
+
 ### Фаза 7 — не делать
 
 - Второй Designer на Fabric/Konva **внутри** `#/slides` (Fabric допустим только в острове Studio, фаза 6).

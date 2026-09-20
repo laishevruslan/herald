@@ -14,6 +14,7 @@ Isolated Vite + React app on **`@layerhub-io/react`** (`Provider` + `Canvas` + c
 - Slide background via `?for=slide-bg`
 - JWT from `localStorage.token` (same session as dashboard)
 - Island i18n: `?lang=ru` | `en`
+- Content Library **New poster** asks for size (landscape / portrait / e-paper) before opening `/studio/`
 
 ## Local (host Node)
 

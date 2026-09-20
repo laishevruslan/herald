@@ -1,6 +1,6 @@
 # Studio на Scenify / Design Editor (фаза 6)
 
-**Статус: ПЛАН + 6.0/6.1/6.2/6.3a выполнены (2026-09-20).** Код: `frontend-studio/` на `@layerhub-io/react` (`Provider` + `Canvas` + chrome), `/api/studio`, `studio_designs`, фон слайда из Studio. **6.3 (запреты плана) — не делать** (Fabric JSON в плеере, GSAP, Mongo-шаблоны, node-canvas, video DesignCombo).
+**Статус: ПЛАН + 6.0/6.1/6.2/6.3a/6.3b выполнены (2026-09-20).** Код: `frontend-studio/` на `@layerhub-io/react` (`Provider` + `Canvas` + chrome), `/api/studio`, `studio_designs`, фон слайда из Studio, Library New poster с выбором пресета. **6.3 (запреты плана) — не делать** (Fabric JSON в плеере, GSAP, Mongo-шаблоны, node-canvas, video DesignCombo).
 **Родитель:** [`enterprise-slide-editor-plan.md`](enterprise-slide-editor-plan.md), фаза 6.
 **Соседи:** [`canva-editor-embed-plan.md`](canva-editor-embed-plan.md) (тот же шов «внешний холст → байты в библиотеку»), инварианты I1, I3, I4, I5.
 **Съёмка:** сентябрь 2026. **Spike:** ветка `spike/studio-6.0`, контейнер `docker/studio-spike/`.
@@ -316,13 +316,13 @@ OFL-шрифты: те же обязательства, что в `slide-fonts.j
 | `frontend/js/lib/studio-available.js` | I5 probe (кнопка ещё не подключена) |
 | `frontend/js/i18n/{en,ru,de}.js` | ключи `studio.*` |
 
-**Не сделано в 6.0 (ожидаемо → 6.1+):**
+**Не сделано в 6.0 (ожидаемо → 6.1+; статус на 2026-09-20):**
 
-- `POST /api/studio/export`, таблица `studio_designs`, replace
-- кнопки New/Edit poster в Content Library (ключи i18n есть, UI нет)
-- публикация `/studio/` в основной `Dockerfile` / CI release artifact
-- portrait пресет, picker библиотеки, brand kit
-- полный Editor UI из `@layerhub-io/react` — **закрыто в 6.3a**
+- [x] `POST /api/studio/export`, таблица `studio_designs`, replace — **закрыто в 6.1**
+- [x] кнопки New/Edit poster в Content Library (I5) — **закрыто в 6.1**; New poster с 6.3b открывает модалку пресета (landscape / portrait / e-paper)
+- [x] публикация `/studio/` в основной `Dockerfile` (`studio-builder` → `/app/frontend/studio/`) + CI build — **закрыто в 6.1**; CI также кладёт `frontend-studio/dist` в artifact `studio-island` (6.3b)
+- [x] portrait пресет + picker библиотеки — **закрыто в 6.1**; brand kit как white-label swatches — **закрыто в 6.2** (настоящий brand-kit API фазы 4 родителя — **не** сделан, см. §6.2)
+- [x] полный Editor UI из `@layerhub-io/react` — **закрыто в 6.3a**
 
 ### 6.1 — остров + ingest (~5–8 дн.) — **DONE 2026-09-20**
 
@@ -511,4 +511,5 @@ PR 3 / 6.2 — шрифты `/fonts`, brand swatches (white-label), фон сл�
 | 2026-09-20 | **6.1 DONE**: `studio_designs` + `POST /api/studio/export`, Library New/Edit, presets landscape/portrait, Library image picker, Dockerfile studio stage, CI build, `docker/studio-6.1`. Неполное: Layerhub Editor chrome, brand kit, slide background, approval draft replace. |
 | 2026-09-20 | **6.2 DONE**: OFL `/fonts` до paint, font picker, white-label swatches, «Фон из Studio» (`?for=slide-bg` + sessionStorage → `background_content_id`), пресет `epaper-5x3` с честной подписью, i18n en/ru/de + island ru, `docker/studio-6.2`. Неполное: brand-kit API фазы 4, кириллический language pack, Layerhub Editor chrome, approval draft replace, auto-save дека после фона. |
 | 2026-09-20 | **6.3a DONE**: полный Editor UI на `@layerhub-io/react` (`Provider`/`Canvas`, Layers/Properties/context menu, undo/redo/zoom/align), PNG через `renderer.toDataURL`, `scene_json` v2 + миграция v1, i18n chrome en/ru, `docker/studio-6.3`. Неполное: group UI, crop, чужие панели Scenify, brand-kit API, кириллический pack, approval draft. **6.3 запреты** (Fabric в плеере / GSAP / Mongo / video) — по-прежнему не делать. |
+| 2026-09-20 | **6.3b docs/UX:** бэклог «Не сделано в 6.0» (§321–324) явно закрыт ссылками на 6.1/6.2/6.3a; New poster в Library — модалка пресета (landscape/portrait/e-paper); CI artifact `studio-island`. Brand-kit API фазы 4 — по-прежнему только white-label stand-in. |
 | 2026-09 | Первая версия плана (генеалогия Scenify → Layerhub, D-SC-1…10). |

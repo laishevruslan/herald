@@ -222,6 +222,12 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
+          name: studio-island
+          path: frontend-studio/dist/
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
           name: sbom
           path: sbom/
           if-no-files-found: error
