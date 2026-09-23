@@ -137,7 +137,8 @@ const WRITE_CATEGORIES = Object.freeze({
      * the same commit.
      */
     consequence: 'This hub will be able to restart your screens, turn them on and off, relaunch ' +
-                 'the player, and change volume, brightness, screen timeout, clock and status bar. ' +
+                 'the player, set a weekly schedule for when their displays switch off, and change ' +
+                 'volume, brightness, screen timeout, clock and status bar. ' +
                  'It will NOT be able to run commands on them, install software, or change what ' +
                  'the person standing at the screen can do.',
     /*
@@ -158,6 +159,20 @@ const WRITE_CATEGORIES = Object.freeze({
      * rendered unavailable, per the note in client-roles.js: a capability that does not exist
      * reads as a promise the product does not keep.
      */
+  },
+  /*
+   * Scale-out C2 (docs/scale-out-design.md §6). Set on the PRIMARY, by the primary's operator, for
+   * the edge to a replica that declared `terminates-players`. It is the I2 accounting for a player
+   * event arriving over the wire: a write at the data owner, permitted only because the owner's
+   * operator ticked this. Scope is the workspaces whose screens may report through that replica.
+   */
+  'player-events': {
+    summary: 'Let screens connect through the other server and report back here',
+    consequence: 'Screens that connect to the other server will be verified here and their ' +
+                 'reports — online/offline, health, what played, command results — will be ' +
+                 'written to this server as if they were connected directly. Commands you send ' +
+                 'those screens travel through the other server. A screen\'s token never leaves ' +
+                 'this server.',
   },
 });
 
@@ -227,7 +242,19 @@ function validateGrant(requested) {
 function grantAllows(grantedCategories, category) {
   if (!Array.isArray(grantedCategories)) return false;
   // No wildcard on purpose: a future category must never be implicitly included in an old grant.
-  return grantedCategories.includes(category);
+  if (grantedCategories.includes(category)) return true;
+  /*
+   * ⚠️ `implies` IS honoured here, and it is not the wildcard the line above forbids: it is a list
+   * AUTHORED on the granting category, with the consent text saying so ("a complete copy of these
+   * workspaces"). Found on a live estate: a workspace-replication-only edge sent device summaries
+   * carrying nothing but an id, so a copied screen's status on the replica only ever changed when a
+   * player attached to the replica set it — a screen heartbeating to its primary went stale on the
+   * replica for good, and a hub's mirror of a relayed grandchild read "0 online" of everything.
+   */
+  return grantedCategories.some((g) => {
+    const meta = READ_CATEGORIES[g];
+    return meta && Array.isArray(meta.implies) && meta.implies.includes(category);
+  });
 }
 
 /**

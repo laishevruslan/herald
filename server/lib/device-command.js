@@ -36,6 +36,13 @@ const ALLOWED_COMMANDS = Object.freeze([
   // reachable before committing and rolls back if not (a fat-fingered URL must not strand a fleet),
   // which is why it is gated on remote.set_server_url — a player only declares it once it does that.
   'set_server_url',
+  /*
+   * Display power schedule — the weekly backlight clock (lib/power-window.js). This hands the panel
+   * a DEFINITION, not an instruction to go dark now: the panel evaluates it locally and keeps
+   * evaluating it with the WAN down, which is the whole reason it is pushed rather than enforced
+   * server-side. Gated on display.power_schedule, NOT display.power — see COMMAND_CAPABILITY.
+   */
+  'set_power_schedule',
 ]);
 
 /*
@@ -67,6 +74,15 @@ const MESH_COMMANDS = Object.freeze([
   'screen_on', 'screen_off', 'reboot', 'launch',
   'set_volume', 'set_brightness', 'set_system_brightness', 'set_screen_timeout',
   'set_time', 'set_timezone', 'status_bar',
+  /*
+   * set_power_schedule is IN, and the consent sentence already covers it: "change settings on
+   * screens". A weekly backlight clock is a setting of exactly the kind set_screen_timeout beside
+   * it already is, and it is strictly gentler than the screen_off two lines up — that one blanks a
+   * screen NOW with no end, this one blanks it between hours the customer can read back in their
+   * own dashboard. The grant's consequence text gained the sentence naming it in this same commit,
+   * per the ⚠️ above.
+   */
+  'set_power_schedule',
 ]);
 
 function isMeshCommand(type) {
@@ -82,7 +98,7 @@ function isMeshCommand(type) {
  * long enough to be rendering controls the panel no longer declares. A command delivered and
  * silently ignored is the failure the capability mechanism exists to end.
  *
- * @returns {{status:'sent'|'queued'|'offline'|'unsupported', capability?:string}}
+ * @returns {{status:'sent'|'relayed'|'queued'|'offline'|'unsupported', capability?:string, via?:string}}
  */
 function deliverCommand(deviceNs, device, type, payload) {
   const verdict = playerCapabilities.commandAllowed(device, type);
@@ -107,6 +123,20 @@ function deliverCommand(deviceNs, device, type, payload) {
   if (room && room.size > 0) {
     deviceNs.to(device.id).emit('device:command', { type, payload: outPayload });
     return { status: 'sent' };
+  }
+
+  /*
+   * Scale-out C2: no socket here, but the screen is attached to a replica — the command travels UP
+   * that edge as a command-relay and the replica emits it to the socket it holds. 'relayed' is a
+   * delivery, not a queue: the uplink buffers across a brief reconnect and the relay carries the
+   * same TTL discipline the queue does on the far side.
+   */
+  if (device.attached_node_id) {
+    try {
+      if (require('./mesh/command-relay').relayToAttached(db, device.id, 'device:command', { type, payload: outPayload })) {
+        return { status: 'relayed', via: device.attached_node_id };
+      }
+    } catch (e) { /* fall through to the queue */ }
   }
 
   /*

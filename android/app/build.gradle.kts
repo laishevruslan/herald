@@ -46,8 +46,8 @@ android {
         targetSdk = 34
         // Env-overridable so device-owner reinstalls (which require an ever-increasing
         // versionCode — downgrades are blocked) don't churn this file each build.
-        versionCode = (System.getenv("VERSION_CODE") ?: findProperty("VERSION_CODE") as String? ?: "160").toInt()
-        versionName = System.getenv("VERSION_NAME") ?: findProperty("VERSION_NAME") as String? ?: "2.1.4"
+        versionCode = (System.getenv("VERSION_CODE") ?: findProperty("VERSION_CODE") as String? ?: "161").toInt()
+        versionName = System.getenv("VERSION_NAME") ?: findProperty("VERSION_NAME") as String? ?: "2.1.5"
     }
 
     signingConfigs {
@@ -189,6 +189,10 @@ tasks.withType<Test> {
     // packet changes what is on a screen, and it has two implementations in two languages — so the
     // shared vectors are the contract and TriggerResolveTest holds this one to it.
     systemProperty("triggerVectors", File(rootProject.projectDir.parentFile, "shared/trigger-vectors.json").absolutePath)
+    // Display power windows. ⚠️ This one decides whether a panel goes DARK unattended, and it fails
+    // in the opposite direction from ScheduleEval above (to ON, never to off) — a difference that
+    // only the shared vectors can keep honest across two languages. PowerWindowTest holds it.
+    systemProperty("powerWindowVectors", File(rootProject.projectDir.parentFile, "shared/power-window-vectors.json").absolutePath)
 }
 
 // #81: AGP ignores enableV1Signing at minSdk>=24, so `assembleRelease` produces a
@@ -209,11 +213,8 @@ tasks.register<Exec>("resignReleaseV1") {
         val buildTools = File(sdkDir, "build-tools").listFiles()
             ?.filter { it.isDirectory }?.maxByOrNull { it.name }
             ?: throw GradleException("#81 resign: no build-tools found under $sdkDir")
-        // Windows ships apksigner.bat; Unix ships a shell script named apksigner.
-        val apksignerName = if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true))
-            "apksigner.bat" else "apksigner"
         commandLine(
-            File(buildTools, apksignerName).absolutePath, "sign",
+            File(buildTools, "apksigner").absolutePath, "sign",
             "--ks", file("../release-key.jks").absolutePath,
             "--ks-key-alias", (System.getenv("KEY_ALIAS") ?: "remotedisplay"),
             "--ks-pass", "pass:" + (System.getenv("KEYSTORE_PASSWORD") ?: ""),

@@ -448,7 +448,25 @@ function setupMeshSocket(io, deps) {
     };
   }
 
-  return { meshNs, backpressure, readFrom, writeTo, contentOfferTo, contentPurgeTo };
+  /** Is one child's socket live right now? The NOC and the replica loop ask this instead of waiting
+   *  for their next read to fail — a killed primary showed "connected" for up to 30 s otherwise. */
+  function isConnected(childNodeId) {
+    for (const sock of meshNs.sockets.values()) {
+      if (sock.data && sock.data.childNodeId === childNodeId && sock.connected) return true;
+    }
+    return false;
+  }
+
+  /** Disconnect every live socket of one child: the parent ended the edge, and the door is now shut. */
+  function dropChild(childNodeId) {
+    let n = 0;
+    for (const sock of meshNs.sockets.values()) {
+      if (sock.data && sock.data.childNodeId === childNodeId) { try { sock.disconnect(true); n++; } catch (e) { /* */ } }
+    }
+    return n;
+  }
+
+  return { meshNs, backpressure, readFrom, writeTo, contentOfferTo, contentPurgeTo, dropChild, isConnected };
 }
 
 module.exports = setupMeshSocket;

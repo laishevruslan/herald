@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### Added
+
+**Display power schedules, failed-payment handling, and scale-out player termination from upstream.**
+The weekly backlight clock is now on the playlist payload (`power_schedule`), not only in the
+dashboard: Android evaluates it on the panel, other players store it and report it unsupported.
+A declined card starts a seven-day grace (email plus a dashboard banner) and then moves the
+account to Free without blanking screens; Stripe return links go to `/app#/billing` instead of
+the marketing homepage. Replica-attached players forward register, heartbeats and commands
+through the mesh (`player-termination`, content cache, command relay) instead of applying them
+to a mirror that does not own the row.
+
+### Fixed
+
+**Raspberry Pi: the stock labwc `rc.xml` stub is replaced so the pointer actually hides.** Pi OS
+ships an `<openbox_config/>` stub that labwc will not read keybindings from. The installer now
+replaces that stub (keeping a `.screentinker-bak`), merges into a real `<labwc_config>`, and runs
+`labwc --reconfigure`.
+
 ### Fixed
 
 **Tizen: multitasking resumes media, Return offers to exit, and a store-ready package.** Hidden

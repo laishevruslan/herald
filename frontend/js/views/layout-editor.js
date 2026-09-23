@@ -3,7 +3,6 @@ import { showToast } from '../components/toast.js';
 import { t, tn } from '../i18n.js';
 import { esc } from '../utils.js';
 import { renderApprovalBar } from '../components/approval-actions.js';
-import { layoutLabel, zoneLabel } from '../lib/layout-labels.js';
 
 // A refused request must reject, not resolve.
 //
@@ -104,12 +103,12 @@ function renderLayoutCard(layout, isTemplate) {
           ${(layout.zones || []).map(z => `
             <div style="position:absolute;left:${z.x_percent}%;top:${z.y_percent}%;width:${z.width_percent}%;height:${z.height_percent}%;
               background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.4);display:flex;align-items:center;justify-content:center;
-              font-size:9px;color:var(--text-muted);overflow:hidden">${esc(zoneLabel(z.name))}</div>
+              font-size:9px;color:var(--text-muted);overflow:hidden">${esc(z.name)}</div>
           `).join('')}
         </div>
       </div>
       <div class="content-item-body">
-        <div class="content-item-name">${esc(layoutLabel(layout.name))}</div>
+        <div class="content-item-name">${esc(layout.name)}</div>
         <div class="content-item-size">${zonesText}${isTemplate ? ' • ' + t('layout.template_label') : ''}</div>
       </div>
       <div class="content-item-actions">
@@ -295,7 +294,7 @@ async function renderEditor(container, layoutId) {
       <div style="padding:8px 10px;background:${selectedZone === i ? 'var(--bg-card-hover)' : 'var(--bg-secondary)'};
         border:1px solid ${selectedZone === i ? 'var(--accent)' : 'var(--border)'};border-radius:var(--radius);
         margin-bottom:4px;cursor:pointer;font-size:13px" data-zone-idx="${i}">
-        <div style="font-weight:500">${esc(zoneLabel(z.name))}</div>
+        <div style="font-weight:500">${esc(z.name)}</div>
         <div style="font-size:11px;color:var(--text-muted)">${Math.round(z.width_percent)}% x ${Math.round(z.height_percent)}% • ${esc(z.zone_type)}</div>
       </div>
     `).join('');

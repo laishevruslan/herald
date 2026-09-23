@@ -20,7 +20,7 @@ const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..', '..');
 const SCRIPT = path.join(ROOT, 'scripts', 'raspberry-pi-setup.sh');
-const SRC = fs.readFileSync(SCRIPT, 'utf8');
+const SRC = fs.readFileSync(SCRIPT, 'utf8').replace(/\r\n/g, '\n');
 
 // The kiosk launcher as the installer will write it, with the install-time expansions applied.
 function generatedKioskScript() {
@@ -37,8 +37,12 @@ function generatedKioskScript() {
 function bashSyntaxOk(text) {
   const p = path.join(os.tmpdir(), `st-kiosk-${process.pid}-${Math.abs(text.length)}.sh`);
   fs.writeFileSync(p, text);
+  // WSL/Git Bash on Windows: a backslash is an escape, and the drive is /mnt/c not C:.
+  const forBash = process.platform === 'win32'
+    ? path.resolve(p).replace(/\\/g, '/').replace(/^([A-Za-z]):/, (_, d) => `/mnt/${d.toLowerCase()}`)
+    : p;
   try {
-    execFileSync('bash', ['-n', p], { stdio: 'pipe' });
+    execFileSync('bash', ['-n', forBash], { stdio: 'pipe' });
     return true;
   } catch (e) {
     throw new Error(`generated script is not valid bash:\n${e.stderr?.toString() || e.message}`);
@@ -248,4 +252,91 @@ test('one launcher: the management scripts no longer assume the kiosk unit exist
   for (const m of SRC.matchAll(/journalctl -u screentinker-kiosk\.service/g)) {
     assert.ok(guarded(m.index), `journalctl on the kiosk unit at offset ${m.index} assumes the unit exists`);
   }
+});
+
+const labwcBlock = () => {
+  const start = SRC.indexOf('elif [ "$HAS_DESKTOP" = true ]; then');
+  return SRC.slice(start, SRC.indexOf('# 10. Pi display and boot optimizations'));
+};
+
+test('#409: the labwc cursor config cannot abort the install', () => {
+  // The script runs under `set -euo pipefail`, so `cat > ~/.config/labwc/rc.xml` into a directory
+  // that does not exist does not skip the cursor, it kills the install.
+  const block = labwcBlock();
+  assert.ok(block.includes('command -v labwc'), 'the labwc branch moved — retarget this test');
+  assert.match(block, /mkdir -p "\$LABWC_DIR"/, 'the directory must exist before the redirect');
+  assert.ok(block.indexOf('mkdir -p') < block.indexOf('cat > "$LABWC_RC"'),
+    'and it must be created BEFORE the write, not after');
+  assert.match(block, /screentinker-bak/, 'an existing rc.xml must be backed up before any change');
+  assert.match(block, /chown -R "\$PI_USER"/, 'the pi user must own its own config');
+});
+
+test('#409: the stock <openbox_config/> stub IS replaced — refusing to is what broke this', () => {
+  /*
+   * ⚠️ The first version of this hardening said "never overwrite an existing rc.xml", reasoning
+   * from wayfire.ini that an existing file must hold the owner's keybindings. On Pi OS it does
+   * not: the shipped rc.xml is a STUB rooted at <openbox_config/>, and labwc ignores every
+   * keybinding while that root is present (labwc/labwc#3190) — silently, with no error. So the
+   * "safe" branch was the common branch, and the cursor never hid on a stock image.
+   *
+   * Replacing is only safe because that stub has nothing to lose, hence the `! grep '<keybind'`
+   * half of the condition: a file that DOES carry bindings must never take this path.
+   */
+  const block = labwcBlock();
+  assert.match(block, /grep -q '<openbox_config' "\$LABWC_RC" && ! grep -q '<keybind' "\$LABWC_RC"/,
+    'the stub is replaced only when it demonstrably carries no keybindings');
+  assert.doesNotMatch(block, /not overwriting it/,
+    'the old refuse-everything warning is what made this a no-op on a stock Pi');
+});
+
+test('#409: a real labwc config is MERGED into, never clobbered', () => {
+  const block = labwcBlock();
+  assert.match(block, /grep -q '<labwc_config' "\$LABWC_RC"/, 'a real config must be detected');
+  // Same contract as the wayfire.ini path directly above it: keep what the owner wrote.
+  assert.match(block, /awk -v kb="\$LABWC_KEYBIND"/, 'the merge must be an insert, not a rewrite');
+  assert.match(block, /mv "\$\{LABWC_RC\}\.st-tmp" "\$LABWC_RC"/,
+    'write via a temp file so a failed merge cannot truncate the config');
+});
+
+test('#409: the merge actually puts the keybind inside <keyboard> (runs the real awk)', (t) => {
+  /*
+   * A regex on the source only proves an awk call exists. This runs the awk program lifted OUT of
+   * the installer against a real config, so the test fails if the program itself is wrong.
+   * Windows CI images often have no awk; the source assertions above still run there.
+   */
+  try { execFileSync('awk', ['--version'], { stdio: 'ignore' }); }
+  catch { t.skip('awk is not on PATH'); return; }
+  const { execFileSync: execAwk } = require('node:child_process');
+  const block = labwcBlock();
+  const prog = block.match(/awk -v kb="\$LABWC_KEYBIND" '([^']+)'\s*\\?\s*\n?\s*"\$LABWC_RC"/);
+  assert.ok(prog, 'could not lift the merge awk program out of the installer');
+
+  const KEYBIND = '  <keybind key="W-h">\n    <action name="HideCursor" />\n  </keybind>';
+  const existing = [
+    '<?xml version="1.0"?>', '<labwc_config>', '<keyboard>',
+    '  <keybind key="W-Return"><action name="Execute" command="lxterminal" /></keybind>',
+    '</keyboard>', '</labwc_config>', '',
+  ].join('\n');
+
+  const out = execAwk('awk', ['-v', `kb=${KEYBIND}`, prog[1]], { input: existing }).toString();
+  assert.match(out, /HideCursor/, 'our binding must be added');
+  assert.match(out, /lxterminal/, "and the owner's own binding must survive");
+  assert.ok(out.indexOf('HideCursor') < out.indexOf('</keyboard>'),
+    'the binding has to land INSIDE the keyboard block, or labwc ignores it');
+});
+
+test('#409: rc.xml changes are applied without demanding a reboot', () => {
+  // labwc re-reads rc.xml only on SIGHUP, so writing the file while a session runs does nothing.
+  const block = labwcBlock();
+  assert.match(block, /labwc --reconfigure[^\n]*\|\| true/,
+    'reconfigure must be attempted, and must never fail the install when there is no session');
+});
+
+test('#409: the cursor keypress is guarded like every other optional tool', () => {
+  // wtype is not on every image, and the launcher runs on Lite as well as Desktop. Unguarded, it
+  // logs "command not found" and silently does not hide the cursor — the exact failure this
+  // section of the launcher was written to stop.
+  const code = SRC.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  assert.match(code, /command -v wtype >\/dev\/null 2>&1 && wtype .* \|\| true/,
+    'wtype must be probed before it is called, and must never fail the launcher');
 });

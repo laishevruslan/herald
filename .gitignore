@@ -97,3 +97,12 @@ server/plugin-inbox/
 # Local Android signing credentials (never commit)
 android/keystore.local.env
 android/local.properties
+
+# Working-tree drafts that are NOT part of the published repo.
+#
+# ⚠️ Both of these were swept onto public main by #413, by a `git add docs/` in a tree that also
+# held unrelated untracked work. Listing them here is what makes that unrepeatable — staging a
+# directory cannot pick up an ignored path. Keep the pattern, not just the two names, if more
+# drafts land here.
+docs/samsung-partnership-request.txt
+docs/cec-display-power-plan.md

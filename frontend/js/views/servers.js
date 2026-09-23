@@ -844,10 +844,16 @@ async function renderTopology(panel) {
             // made once and nobody revisits unless a screen shows it.
             ? '<span class="badge" style="background:#ef4444">TLS unverified</span>' : ''}</td>
         <td style="${TD}">${esc(e.lastSyncAt ? hhmm(e.lastSyncAt) : 'never')}</td>
+        <!-- ⚠️ The parent can end it too. The node HOLDING a copy must be able to stop holding it
+             (consent from below, read from this side); waiting a year for the pairing token is
+             not a control. Same retain-and-mark-stale outcome as the child's own Revoke. -->
+        <td style="${TD}"><button class="btn btn-secondary btn-sm" data-disconnect-node="${esc(e.peerNodeId)}">Disconnect</button></td>
       </tr>`;
   }).join('');
 
   panel.innerHTML = `
+    <!-- The live version of this tab: one poll every few seconds while open, this server only. -->
+    <p style="margin:0 0 12px"><a href="#/noc" class="btn btn-secondary btn-sm">Open the live NOC</a></p>
     <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:16px">
       <div><div style="color:var(--text-muted);font-size:11px">Connected servers</div>
            <div style="font-size:20px">${edges.length}</div></div>
@@ -878,7 +884,7 @@ async function renderTopology(panel) {
 
     <div class="settings-section" style="margin-top:16px">
       <h3 style="margin-top:0">Servers paired with this one</h3>
-      ${table(['Server', 'Client', 'Link', 'Version', 'Shares', 'Transport', 'Last sync'],
+      ${table(['Server', 'Client', 'Link', 'Version', 'Shares', 'Transport', 'Last sync', ''],
               rows, 'No servers are connected.')}
     </div>
 
@@ -893,6 +899,22 @@ async function renderTopology(panel) {
       </p>
       ${table(['Server', 'Distance', 'Route', 'Reached through'], hopRows, '')}
     </div>` : ''}`;
+
+  panel.querySelectorAll('[data-disconnect-node]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const nodeId = btn.dataset.disconnectNode;
+      // Says what happens BEFORE it happens: kept rows, dropped media, screens, and no new ones.
+      if (!window.confirm('Disconnect this server?\n\nIt stops reporting here and stops being served ' +
+        'from here. Copied workspaces are kept read-only and no longer updated; media files cached ' +
+        'for it are removed; screens already attached keep playing what they have and no new screen ' +
+        'is accepted for those workspaces. The other server sees the link refused at its next connection.')) return;
+      try {
+        const r = await api.delete(`/mesh/links/${encodeURIComponent(nodeId)}`);
+        showToast(r.summary || 'Disconnected.', 'success');
+        renderTopology(panel);
+      } catch (e) { showToast(e.message, 'error'); }
+    });
+  });
 }
 
 /* ===================== connecting servers ===================== */
@@ -941,19 +963,48 @@ function renderMintPanel(host, caps) {
             <strong>${esc(summary)}</strong>
             ${warn ? `<div style="margin-left:22px;color:var(--text-muted);font-size:11px">${esc(warn)}</div>` : ''}
           </label>`).join('')}
+        <!-- Scale-out C2 (docs/scale-out.md). A ROLE this server takes on, not data it receives, so
+             it sits apart from the grant list: only meaningful with the copy above, and only DOES
+             anything once the other server's operator grants player-events on their side. -->
+        <label id="terminatesPlayers" style="display:block;margin:10px 0 0 22px;font-size:13px;opacity:.55">
+          <input type="checkbox" value="terminates-players" disabled>
+          <strong>Also let screens connect to this server</strong>
+          <div style="margin-left:22px;color:var(--text-muted);font-size:11px">Screens in the copied workspaces can be pointed at this server. They are verified by the other server (their tokens stay there), play from the copy here, and report back through this server. Needs the copy above, and the other server's operator must then allow it under "What this server may change" on their side.</div>
+        </label>
+        <!-- Scale-out C3 (docs/scale-out.md). Disk this server agrees to spend; the authority for the
+             data is the copy above. -->
+        <label id="cachesContent" style="display:block;margin:6px 0 0 22px;font-size:13px;opacity:.55">
+          <input type="checkbox" value="caches-content" disabled>
+          <strong>Also keep copies of the media files here</strong>
+          <div style="margin-left:22px;color:var(--text-muted);font-size:11px">Media of the copied workspaces is stored on this server's disk as it is used (up to REPLICA_CACHE_BYTES per server, 10 GB unless set), so dashboards and screens here can still get files while the other server is unreachable. Removed when the file, the copy, or this link goes.</div>
+        </label>
       </div>
       <button class="btn btn-primary btn-sm" id="mintBtn">Generate a pairing code</button>
       <div id="mintOut" style="margin-top:12px"></div>
     </div>`;
 
+  // The role tick follows the copy tick: no copy, nothing to terminate players from.
+  const replBox = host.querySelector('#grantList input[value="workspace-replication"]');
+  const termWrap = host.querySelector('#terminatesPlayers');
+  const termBox = termWrap.querySelector('input');
+  const cacheWrap = host.querySelector('#cachesContent');
+  const cacheBox = cacheWrap.querySelector('input');
+  const syncTerm = () => {
+    for (const [wrap, box] of [[termWrap, termBox], [cacheWrap, cacheBox]]) {
+      box.disabled = !replBox.checked; if (!replBox.checked) box.checked = false; wrap.style.opacity = replBox.checked ? '1' : '.55';
+    }
+  };
+  replBox.addEventListener('change', syncTerm); syncTerm();
+
   host.querySelector('#mintBtn').addEventListener('click', async () => {
-    const grant = [...host.querySelectorAll('#grantList input:checked')].map((c) => c.value);
+    const grant = [...host.querySelectorAll('#grantList input:checked')].map((c) => c.value).filter((v) => v !== 'terminates-players' && v !== 'caches-content');
     const out = host.querySelector('#mintOut');
     try {
       // A replication grant is what makes THIS server a replica of the other: it takes on the
       // serves-dashboard role for the code, alongside the ordinary telemetry consumer role.
+      // terminates-players (C2) rides on top of that when ticked.
       const capabilities = grant.includes('workspace-replication')
-        ? ['serves-dashboard', 'consumes-telemetry']
+        ? ['serves-dashboard', ...(termBox.checked ? ['terminates-players'] : []), ...(cacheBox.checked ? ['caches-content'] : []), 'consumes-telemetry']
         : ['consumes-telemetry'];
       const r = await api.post('/mesh/pair/code', { grant, capabilities });
       out.innerHTML = `

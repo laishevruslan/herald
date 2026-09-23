@@ -204,7 +204,7 @@ test('⚠️ mesh writes address LOCAL administration only (I2)', () => {
    * up, never down. Nothing above can set it. A hub renaming its customers' servers is precisely
    * the thing this guard exists to keep out, and this is the opposite of it.
    */
-  const LOCAL = ['/mesh/pair/code', '/mesh/uplink', '/mesh/clients', '/mesh/identity'];
+  const LOCAL = ['/mesh/pair/code', '/mesh/uplink', '/mesh/clients', '/mesh/identity', '/mesh/links'];
 
   /*
    * ⚠️ AND ONE THAT DELIBERATELY IS NOT LOCAL. /mesh/content asks a customer's server to accept
@@ -512,7 +512,7 @@ test('every readable path names the grant it needs', () => {
   const rules = [...block.matchAll(/\{\s*pattern:\s*'([^']+)'([^}]*)\}/g)];
   assert.ok(rules.length >= 4, 'there must be readable paths');
   for (const [, pat, rest] of rules) {
-    assert.match(rest, /grant:/, `${pat} must declare a grant`);
+    assert.match(rest, /grant:|writeGrant:/, `${pat} must declare a grant`);
   }
 });
 

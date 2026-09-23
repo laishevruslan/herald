@@ -673,6 +673,17 @@ const migrations = [
   "ALTER TABLE users ADD COLUMN trial_expired_at INTEGER",
   "ALTER TABLE users ADD COLUMN trial_ending_email_sent_at INTEGER",
   "ALTER TABLE users ADD COLUMN trial_expired_email_sent_at INTEGER",
+  /*
+   * Dunning: a PAID subscription whose payment failed. `past_due_since` is the grace clock —
+   * stamped when Stripe reports the first failed invoice and cleared the moment a payment
+   * succeeds, so it answers "how long have they been failing" rather than "are they failing",
+   * which is what a 7-day grace needs. The two *_sent_at columns are the once-per-episode
+   * idempotency stamps (cleared alongside the clock, so a customer who lapses, pays, and lapses
+   * again months later is told again rather than silently).
+   */
+  "ALTER TABLE users ADD COLUMN past_due_since INTEGER",
+  "ALTER TABLE users ADD COLUMN payment_failed_email_sent_at INTEGER",
+  "ALTER TABLE users ADD COLUMN subscription_lapsed_email_sent_at INTEGER",
   "ALTER TABLE organizations ADD COLUMN widget_sandbox_isolation_disabled INTEGER NOT NULL DEFAULT 0",
   // AUTH-05: make break-glass recovery revocable, single-use and auditable.
   //
@@ -1428,6 +1439,49 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_triggers_ws     ON triggers (workspace_id)`,
   `CREATE INDEX IF NOT EXISTS idx_trigger_assign  ON trigger_assignments (target_type, target_id)`,
 
+  /* ==============================================================================================
+   * DISPLAY POWER SCHEDULES — the BACKLIGHT on a weekly clock. Nothing here powers a device off.
+   *
+   * ⚠️ NOT the `schedules` table, and the separation is the point. That one answers "what plays
+   * when", is per-zone, carries content/widget/layout/playlist ids, priorities and colours, and a
+   * row in it is a programming decision. This answers "is the panel lit", has no content at all,
+   * and a row in it is an electricity decision. Overloading `schedules` would mean every content
+   * query grew an "and is this actually a power row" filter, which is the shape that eventually
+   * gets forgotten in exactly one query.
+   *
+   * ⚠️ The windows are evaluated ON THE PANEL, from its local copy, by lib/power-window.js and its
+   * Kotlin port against shared/power-window-vectors.json. The server never decides "off now" and
+   * pushes it — a screen whose WAN is down must still sleep and wake on time, and a schedule that
+   * depended on a live socket would strand a dark panel the moment the network blinked.
+   * ============================================================================================ */
+  `CREATE TABLE IF NOT EXISTS display_power_schedules (
+     id           TEXT PRIMARY KEY,
+     workspace_id TEXT NOT NULL,
+     name         TEXT NOT NULL DEFAULT '',
+     /* Device XOR group, same shape and the same CHECK the content schedules table uses, so the
+      * precedence rule (device beats group) reads identically in both. See device-power-schedule.js,
+      * which is the ONE definition of which schedule a given screen obeys. */
+     device_id    TEXT REFERENCES devices(id) ON DELETE CASCADE,
+     group_id     TEXT REFERENCES device_groups(id) ON DELETE CASCADE,
+     /* IANA zone the windows are WRITTEN in. Resolved at push time through lib/device-timezone so
+      * creation and evaluation agree — a schedule authored in one zone and evaluated in another is
+      * the bug that makes a screen sleep an hour early twice a year. NULL = the device's own. */
+     timezone     TEXT,
+     enabled      INTEGER NOT NULL DEFAULT 1,
+     /* JSON array of { days:[0-6], start:"HH:MM", end:"HH:MM" }. Stored as a document rather than
+      * a child table because it is only ever read and written WHOLE — the player gets the entire
+      * list or none of it, and no query ever asks "which schedules contain a Tuesday". */
+     windows      TEXT NOT NULL DEFAULT '[]',
+     created_at   INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+     updated_at   INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+     CHECK ((device_id IS NOT NULL AND group_id IS NULL) OR (device_id IS NULL AND group_id IS NOT NULL))
+   )`,
+  /* One schedule per target. A screen with two contradictory power schedules has no defined
+   * behaviour, and the resolver would have to invent a tiebreak; the database refuses instead. */
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_dps_device ON display_power_schedules (device_id) WHERE device_id IS NOT NULL`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_dps_group  ON display_power_schedules (group_id)  WHERE group_id IS NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_dps_ws ON display_power_schedules (workspace_id)`,
+
   /*
    * ─── Playlist inheritance ────────────────────────────────────────────────────────────────
    *
@@ -1836,6 +1890,55 @@ const migrations = [
     ts           INTEGER NOT NULL DEFAULT (strftime('%s','now'))
   )`,
   "CREATE INDEX IF NOT EXISTS idx_mesh_change_log_ws ON mesh_change_log(workspace_id, rev)",
+  /*
+   * Scale-out C2 (docs/scale-out-design.md §6).
+   *   devices.attached_node_id — the replica this screen is connected THROUGH, written by the
+   *     primary when it applies a player-event from that replica; NULL for a screen connected here.
+   *     deliverCommand reads it to send a command-relay up the edge instead of to a local socket.
+   *   mesh_player_events   — REPLICA side: the durable, ordered outbox of player events for the
+   *     primary. Proof-of-play rows are never thinned; heartbeat-shaped kinds coalesce by key.
+   *   mesh_player_verdicts — REPLICA side: "the primary said yes to this device + token hash".
+   *     Lets a screen with a prior verified session reconnect while the primary is unreachable.
+   *     Holds a HASH of the token, never the token (design: the token never leaves the primary).
+   */
+  'ALTER TABLE devices ADD COLUMN attached_node_id TEXT',
+  `CREATE TABLE IF NOT EXISTS mesh_player_events (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    edge_id      TEXT NOT NULL,
+    device_id    TEXT NOT NULL,
+    kind         TEXT NOT NULL,
+    op_id        TEXT NOT NULL UNIQUE,
+    coalesce_key TEXT,
+    payload      TEXT NOT NULL,
+    created_at   INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    attempts     INTEGER NOT NULL DEFAULT 0,
+    last_error   TEXT
+  )`,
+  'CREATE INDEX IF NOT EXISTS idx_mesh_player_events_edge ON mesh_player_events(edge_id, id)',
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_mesh_player_events_coalesce ON mesh_player_events(coalesce_key) WHERE coalesce_key IS NOT NULL',
+  /*
+   * Scale-out C3: REPLICA side — which copied content rows have their bytes on this disk. One row
+   * per content id; the file sits under uploads/content/<filename> exactly as the copied row names
+   * it, so the ordinary readers serve it as a local hit. Empty on every node that declared no
+   * caches-content edge. Evicted LRU by last_read_at; swept when the row or the edge goes.
+   */
+  `CREATE TABLE IF NOT EXISTS mesh_content_cache (
+    content_id     TEXT PRIMARY KEY,
+    edge_id        TEXT NOT NULL,
+    filename       TEXT NOT NULL,
+    thumb_filename TEXT,
+    bytes          INTEGER NOT NULL DEFAULT 0,
+    fetched_at     INTEGER NOT NULL,
+    last_read_at   INTEGER NOT NULL
+  )`,
+  'CREATE INDEX IF NOT EXISTS idx_mesh_content_cache_edge ON mesh_content_cache(edge_id, last_read_at)',
+  'CREATE INDEX IF NOT EXISTS idx_mesh_content_cache_file ON mesh_content_cache(filename)',
+  `CREATE TABLE IF NOT EXISTS mesh_player_verdicts (
+    device_id    TEXT PRIMARY KEY,
+    edge_id      TEXT NOT NULL,
+    token_hash   TEXT NOT NULL,
+    verified_at  INTEGER NOT NULL
+  )`,
   // Studio poster designs (phase 6.1) — scene JSON beside content PNG; never on the player.
   `CREATE TABLE IF NOT EXISTS studio_designs (
      content_id   TEXT PRIMARY KEY REFERENCES content(id) ON DELETE CASCADE,

@@ -440,10 +440,23 @@ test('every existing install becomes a node with zero edges (migration is a no-o
        *     workspace-replication grant (lib/mesh/replication.js). Its emptiness here is also what
        *     test_change_log_triggers_absent_without_replication_grant checks from the outside.
        */
-      'mesh_change_log', 'mesh_client_access', 'mesh_clients', 'mesh_content_provenance', 'mesh_edges',
-      'mesh_mirror_alerts', 'mesh_mirror_devices', 'mesh_mirror_nodes', 'mesh_mirror_play_logs',
+      /*
+       * Scale-out C2 added two, both REPLICA-side and empty on every install that terminates no
+       * players:
+       *   mesh_player_events   — the durable, ordered outbox of player events for a primary
+       *     (lib/mesh/player-termination.js). Proof-of-play is never thinned here.
+       *   mesh_player_verdicts — "the primary said yes to this device + token HASH", so a screen
+       *     with a prior session can reconnect while the primary is unreachable. Never the token.
+       */
+      /*
+       * Scale-out C3 added one, REPLICA-side, empty on every node without a caches-content edge:
+       *   mesh_content_cache — which copied content rows have their bytes on this disk
+       *     (lib/mesh/content-cache.js). Never a content row; only a note that the file is here.
+       */
+      'mesh_change_log', 'mesh_client_access', 'mesh_clients', 'mesh_content_cache', 'mesh_content_provenance',
+      'mesh_edges', 'mesh_mirror_alerts', 'mesh_mirror_devices', 'mesh_mirror_nodes', 'mesh_mirror_play_logs',
       'mesh_mirror_workspaces', 'mesh_node', 'mesh_node_paths', 'mesh_pairing_codes',
-      'mesh_pull_tickets', 'mesh_tombstones', 'mesh_write_ops',
+      'mesh_player_events', 'mesh_player_verdicts', 'mesh_pull_tickets', 'mesh_tombstones', 'mesh_write_ops',
     ]);
 
     /*

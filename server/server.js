@@ -1146,10 +1146,20 @@ app.get('/api/content/:id/file', (req, res) => {
   if (!inPlaylist && !inWidget && !requesterCanAccessContent(req, content)) return res.status(403).json({ error: 'Content not assigned to any playlist or widget' });
   const safePath = path.resolve(config.contentDir, path.basename(content.filepath));
   if (!safePath.startsWith(path.resolve(config.contentDir))) return res.status(403).json({ error: 'Invalid path' });
-  // Scale-out (docs/scale-out.md): the row was copied, the bytes were not — fetch through (no cache in C1).
+  // Scale-out (docs/scale-out.md): the row was copied, the bytes were not — fetch through, or (C3,
+  // under a caches-content edge) store them here first and then serve the local file.
   if (config.primaryUrl && content.workspace_id && !fs.existsSync(safePath) &&
       replicaProxy.isCopiedWorkspace(db.prepare('SELECT origin_node_id FROM workspaces WHERE id = ?').get(content.workspace_id))) {
-    return replicaProxy.proxyToPrimary(req, res, config);
+    const contentCache = require('./lib/mesh/content-cache');
+    if (!contentCache.edgeForContent(db, content)) return replicaProxy.proxyToPrimary(req, res, config);
+    return contentCache.ensure(db, config, content).then((r) => {
+      if (!(r.ok && fs.existsSync(safePath))) return replicaProxy.proxyToPrimary(req, res, config);
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      hardenUploadResponse(res, content.filepath);
+      res.setHeader('x-st-replica-cache', 'stored');
+      res.sendFile(safePath);
+    });
   }
   // Widget boards (logo / background images) render inside the player's sandboxed
   // (opaque-origin) widget iframe, so these image loads are cross-origin. The helmet
@@ -1813,6 +1823,8 @@ app.use('/uploads/content', (req, res, next) => {
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   res.setHeader('Cache-Control', 'public, max-age=2592000, immutable'); // 30 days
   hardenUploadResponse(res, req.path);
+  // Scale-out C3: a cached copy read counts as recently used (LRU); a no-op on a stock install.
+  if (config.primaryUrl) { try { require('./lib/mesh/content-cache').touch(require('./db/database').db, path.basename(req.path)); } catch (e) { /* */ } }
   next();
 }, express.static(config.contentDir, {
   setHeaders: (res, filePath) => {
@@ -1842,7 +1854,26 @@ app.use('/uploads/content', (req, res, next) => {
   res.removeHeader('Content-Disposition');
   // Scale-out (docs/scale-out.md): a copied workspace's file lives on the primary. Only a name that
   // belongs to a copied content row is fetched through; anything else stays the miss above.
+  // C3: under a caches-content edge the fetch-through STORES the file first, then serves it
+  // locally; if the fetch fails (primary down, disk full) it serves through exactly as before.
   if (config.primaryUrl && replicaProxy.isCopiedUploadName(require('./db/database').db, path.basename(req.path))) {
+    const db = require('./db/database').db;
+    const contentCache = require('./lib/mesh/content-cache');
+    const content = contentCache.contentForName(db, path.basename(req.path));
+    if (content && contentCache.edgeForContent(db, content)) {
+      return contentCache.ensure(db, config, content).then((r) => {
+        const local = path.resolve(config.contentDir, path.basename(req.path));
+        if (r.ok && fs.existsSync(local)) {
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+          res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+          hardenUploadResponse(res, local);
+          res.setHeader('x-st-replica-cache', 'stored');
+          return res.sendFile(local);
+        }
+        return replicaProxy.proxyToPrimary(req, res, config);
+      });
+    }
     return replicaProxy.proxyToPrimary(req, res, config);
   }
   res.type('application/json').status(404).json({ error: 'Not found' });
@@ -1901,6 +1932,8 @@ startDataSourcesPoller(io);
 try {
   const { startMeshUplinks } = require('./services/mesh-uplink');
   meshUplinks = startMeshUplinks(require('./db/database').db, { config: require('./config') });
+  // Scale-out C2: deliverCommand reaches a replica-attached screen through this (lib/mesh/command-relay.js).
+  global.__meshUplinks = meshUplinks;
   /*
    * Scale-out: the change-log triggers exist only while an up edge carries workspace-replication,
    * and the uplink service maintains them. With the flag OFF that service never runs, so a set left
@@ -1968,7 +2001,10 @@ startActivationNudge();
 // Nightly trial-expiry sweep: lapsed trials -> Free, T-3 + expiry emails (gated on !selfHosted;
 // emails additionally on HOSTED_INSTANCE). `io` so a just-blocked screen is told right away.
 const { startTrialExpiry } = require('./services/trialExpiry');
+const { startDunning } = require('./services/dunning');
 startTrialExpiry(io);
+
+startDunning(io);
 
 // #73: agency-upload digest flush (batched draft/published notifications to admins + owner)
 const { startAgencyDigest } = require('./services/agency-digest');
@@ -2196,8 +2232,11 @@ app.post('/api/provision/pair', requireAuth, resolveTenancy, checkDeviceLimit, (
   db.prepare("UPDATE device_fingerprints SET user_id = ?, device_id = ? WHERE device_id = ?")
     .run(req.user.id, device.id, device.id);
 
-  // Notify the device via WebSocket
-  deviceNs.to(device.id).emit('device:paired', { device_id: device.id, name: deviceName, settings_pin: settingsPin });
+  // Notify the device via WebSocket — or, scale-out C2, through the replica it is attached to.
+  const pairedMsg = { device_id: device.id, name: deviceName, settings_pin: settingsPin };
+  const pairedRoom = deviceNs.adapter.rooms.get(device.id);
+  if (pairedRoom && pairedRoom.size > 0) deviceNs.to(device.id).emit('device:paired', pairedMsg);
+  else if (device.attached_node_id) { try { require('./lib/mesh/command-relay').relayToAttached(db, device.id, 'device:paired', pairedMsg); } catch (e) { /* the screen learns on its next register */ } }
 
   const updated = db.prepare('SELECT * FROM devices WHERE id = ?').get(device.id);
   require('./lib/device-sanitize').stripDeviceSecrets(updated); // never leak device_token to clients

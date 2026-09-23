@@ -8,12 +8,111 @@ import { showDeviceOwnerQRModal } from '../components/device-owner-qr-modal.js';
 import { frameDeviceOutput, displayAspectRatio } from '../lib/device-frame.js';
 import * as gettingStarted from '../components/getting-started.js';
 import { LiveViewer, whenVisible } from '../lib/webrtc-viewer.js';
-import { layoutLabel, zoneLabel } from '../lib/layout-labels.js';
+import { renderPowerScheduleEditor, readPowerScheduleEditor, presetWindows } from '../components/power-schedule-editor.js';
 
 // The player distinguishes three cases for the Wi-Fi name, because "--" was hiding a real
 // answer: Android 8.1+ refuses to reveal the SSID to an app without location permission, and a
 // customer reasonably read the blank as a bug in the player. "permission" means we are not
 // allowed to know; empty means there is genuinely no Wi-Fi (an Ethernet panel).
+/*
+ * The weekly backlight schedule section.
+ *
+ * ⚠️ Reads GET /effective rather than filtering the schedule list, because the question the
+ * operator is asking is "what will THIS screen do", and the answer may be a schedule that belongs
+ * to a group this page has never heard of. Filtering a list client-side would show an empty editor
+ * on a screen that goes dark every night, which is the single most confusing thing this feature
+ * could do.
+ */
+async function wirePowerSchedule(device) {
+  const host = document.getElementById('powerScheduleHost');
+  if (!host) return;
+
+  /*
+   * ⚠️ `supported` comes from the SERVER, not from parsing device.capabilities here. The server
+   * answers with playerCapabilities.supports(), which knows the per-platform baselines a fielded
+   * player falls back to when it declares nothing — a rule this view has no business reimplementing
+   * and would get subtly wrong for exactly the old devices that matter.
+   */
+  let supported = true;
+  let groupSchedules = [];
+  let current = null;     // the schedule this SCREEN owns (null when it inherits or has none)
+  let inherited = null;   // a group schedule it is following
+
+  async function load() {
+    try {
+      const res = await api.effectivePowerSchedule(device.id);
+      const eff = res.schedule;
+      supported = res.supported !== false;
+      groupSchedules = res.group_schedules || [];
+      // Only a schedule targeting this device is editable here; a group's is shown as inherited.
+      current = eff && eff.source === 'device' ? eff : null;
+      inherited = eff && eff.source === 'group' ? eff : null;
+      host.innerHTML = renderPowerScheduleEditor(current || { windows: [], enabled: true }, {
+        supported,
+        inherited,
+        groupSchedules,
+        state: res.state,
+        nextEdge: res.next_edge,
+      });
+      bind();
+    } catch (err) {
+      host.textContent = err.message;
+    }
+  }
+
+  function redraw(windows, enabled) {
+    host.innerHTML = renderPowerScheduleEditor({ ...(current || {}), windows, enabled }, { supported, inherited, groupSchedules });
+    bind();
+  }
+
+  function bind() {
+    host.querySelector('#powerAddWindow')?.addEventListener('click', () => {
+      const s = readPowerScheduleEditor(document);
+      redraw([...(s?.windows || []), { days: [1, 2, 3, 4, 5], start: '22:00', end: '06:00' }], s?.enabled !== false);
+    });
+    host.querySelectorAll('.power-preset').forEach((b) => b.addEventListener('click', () => {
+      redraw(presetWindows(b.getAttribute('data-preset')), true);
+    }));
+    host.querySelectorAll('.power-remove').forEach((b) => b.addEventListener('click', () => {
+      const i = Number(b.getAttribute('data-win'));
+      const s = readPowerScheduleEditor(document);
+      redraw((s?.windows || []).filter((_, n) => n !== i), s?.enabled !== false);
+    }));
+    // Re-render on a time change so the "crosses midnight" hint appears as soon as it is true —
+    // an overnight window is the common case and the least obvious thing about this editor.
+    host.querySelectorAll('.power-start, .power-end').forEach((el) => el.addEventListener('change', () => {
+      const s = readPowerScheduleEditor(document);
+      redraw(s?.windows || [], s?.enabled !== false);
+    }));
+
+    host.querySelector('#powerSave')?.addEventListener('click', async () => {
+      const s = readPowerScheduleEditor(document);
+      if (!s) return;
+      try {
+        if (current?.id) await api.updatePowerSchedule(current.id, s);
+        else await api.createPowerSchedule({ device_id: device.id, ...s });
+        showToast(t('power.saved'), 'success');
+        await load();
+      } catch (err) {
+        showToast(`${t('power.save_failed')}: ${err.message}`, 'error');
+      }
+    });
+
+    host.querySelector('#powerDelete')?.addEventListener('click', async () => {
+      if (!current?.id) return;
+      try {
+        await api.deletePowerSchedule(current.id);
+        showToast(t('power.saved'), 'success');
+        await load();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  }
+
+  await load();
+}
+
 // #238: turn the Now Playing screenshot the way the wall mount turns the panel. The placeholder
 // ("no screenshot yet") is deliberately left alone — it is dashboard chrome, not device output.
 function frameNowPlaying() {
@@ -1093,6 +1192,16 @@ async function loadDevice(deviceId, activeTab = null) {
       ${(can('audio.volume') || can('display.brightness') || can('system.brightness') || can('system.screen_timeout')) ? `
       <!-- Controls Tab (#160 Track-A system control — no device owner needed) -->
       <div class="tab-content" id="tab-controls">
+        <!--
+          The weekly backlight schedule. Rendered EMPTY here and filled by loadPowerSchedule() after
+          the view is on screen: it needs GET /effective, which answers the question the operator is
+          actually asking ("what will THIS screen do"), including a schedule inherited from a group
+          that this page knows nothing about.
+        -->
+        <div id="powerScheduleSection" style="margin-bottom:22px">
+          <h4 style="margin:0 0 8px">${t('power.section_title')}</h4>
+          <div id="powerScheduleHost" style="font-size:13px;color:var(--text-muted)">…</div>
+        </div>
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">${t('device.sysctl.subtitle')}</div>
         <div style="display:grid;grid-template-columns:130px 1fr;gap:14px 14px;align-items:center;font-size:13px;max-width:480px">
           ${can('audio.volume') ? `
@@ -1960,6 +2069,8 @@ function setupActions(device) {
   document.getElementById('sysTimeout')?.addEventListener('change', (e) =>
     sendCommand(device.id, 'set_screen_timeout', { ms: parseInt(e.target.value, 10) }));
 
+  wirePowerSchedule(device);
+
   const blockBtn = document.getElementById('blockDeviceBtn');
   blockBtn?.addEventListener('click', async () => {
     blockBtn.disabled = true;
@@ -2303,7 +2414,7 @@ async function setupPlaylistActions(device) {
       layouts.filter(l => l.is_template).forEach(l => {
         const opt = document.createElement('option');
         opt.value = l.id;
-        opt.textContent = t('device.layout.template_zones_count', { name: layoutLabel(l.name), n: l.zones?.length || 0 });
+        opt.textContent = t('device.layout.template_zones_count', { name: l.name, n: l.zones?.length || 0 });
         if (device.layout_id === l.id) opt.selected = true;
         select.appendChild(opt);
       });
@@ -2385,7 +2496,7 @@ async function setupPlaylistActions(device) {
               ${zones.length > 0 ? `
                 <select id="assignZone" class="input" style="background:var(--bg-input)">
                   <option value="">${t('device.assign.zone_default')}</option>
-                  ${zones.map(z => `<option value="${z.id}">${esc(zoneLabel(z.name))} (${Math.round(z.width_percent)}% x ${Math.round(z.height_percent)}%)</option>`).join('')}
+                  ${zones.map(z => `<option value="${z.id}">${esc(z.name)} (${Math.round(z.width_percent)}% x ${Math.round(z.height_percent)}%)</option>`).join('')}
                 </select>
               ` : !device.layout_id ? `
                 <div style="font-size:12px;color:var(--text-muted);padding:6px 0;line-height:1.5">${t('device.assign.zone_no_layout')}</div>
@@ -2503,12 +2614,12 @@ async function setupPlaylistActions(device) {
           } else if (selectedType === 'widget') {
             await api.addAssignment(device.id, { widget_id: selectedId, duration_sec: duration, zone_id: zoneId });
           } else if (selectedType === 'kiosk') {
-            // For kiosk pages, create a webpage widget pointing to the kiosk render URL
-            const serverUrl = window.location.origin;
+            // Keep this same-origin. A dashboard opened through localhost is reachable only from
+            // the dashboard machine, not from the display that will render the widget.
             const wRes = await fetch('/api/widgets', {
               method: 'POST',
               headers: { ...headers, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ widget_type: 'webpage', name: t('device.assign.kiosk_widget_name', { name: kioskPages.find(k => k.id === selectedId)?.name || 'Page' }), config: { url: `${serverUrl}/api/kiosk/${selectedId}/render` } })
+              body: JSON.stringify({ widget_type: 'webpage', name: t('device.assign.kiosk_widget_name', { name: kioskPages.find(k => k.id === selectedId)?.name || 'Page' }), config: { url: `/api/kiosk/${selectedId}/render` } })
             });
             const widget = await wRes.json();
             await api.addAssignment(device.id, { widget_id: widget.id, duration_sec: 0 });
@@ -2560,7 +2671,7 @@ function attachRemoveHandlers(device) {
         (zones || []).forEach(z => {
           const opt = document.createElement('option');
           opt.value = z.id;
-          opt.textContent = zoneLabel(z.name);
+          opt.textContent = z.name;
           select.appendChild(opt);
         });
         const orphan = !!currentZoneId && !activeIds.has(currentZoneId);

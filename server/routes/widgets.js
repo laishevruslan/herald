@@ -98,6 +98,24 @@ function safeTimezone(tz) {
   return isRealTimezone(tz) ? tz : 'UTC';
 }
 
+function serverTimezone() {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; }
+  catch (_) { return 'UTC'; }
+}
+
+function clockDateFormat(format) {
+  switch (format) {
+    case 'long': return "year:'numeric', month:'long', day:'numeric'";
+    case 'medium': return "year:'numeric', month:'short', day:'numeric'";
+    case 'short': return "year:'2-digit', month:'2-digit', day:'2-digit'";
+    default: return "weekday:'long', year:'numeric', month:'long', day:'numeric'";
+  }
+}
+
+function clockDatePosition(position) {
+  return ['above', 'below', 'left', 'right'].includes(position) ? position : 'below';
+}
+
 /*
  * A BCP-47 tag, structurally — same approach and same expression as slide-render.js's LOCALE_RE.
  *
@@ -184,6 +202,10 @@ router.get('/slide-fonts', (req, res) => {
  */
 router.get('/plugin-types', (req, res) => {
   res.json({ types: pluginRegistry.listWidgetTypes() });
+});
+
+router.get('/clock-defaults', (req, res) => {
+  res.json({ timezone: serverTimezone() });
 });
 
 // Phase 2.2d: workspace-aware access. Mirrors the device/content pattern.
@@ -300,7 +322,7 @@ function renderWidgetHtml(type, config, opts = {}) {
     case 'weather': return renderWeather(config);
     case 'rss': return renderRSS(config);
     case 'text': return renderText(config, iframeSandbox);
-    case 'webpage': return renderWebpage(config, iframeSandbox);
+    case 'webpage': return renderWebpage(config, iframeSandbox, opts.origin);
     case 'social': return renderSocial(config);
     case 'directory-board': return renderDirectoryBoard(config);
     case 'directory-search': return renderDirectorySearch(config);
@@ -399,6 +421,7 @@ router.get('/:id/render', (req, res) => {
   res.setHeader('Content-Type', 'text/html');
   res.send(renderWidgetHtml(widget.widget_type, config, {
     iframeSandbox,
+    origin: `${req.protocol}://${req.get('host')}`,
     resolveImage: imageResolverFor(widget),
     resolveFont: require('./fonts').fontResolverFor(widget),
     resolveData: dataResolverFor(widget),
@@ -591,20 +614,28 @@ router.get('/preview-session/:id', (req, res) => {
 });
 
 function renderClock(c) {
+  const datePosition = clockDatePosition(c.date_position);
+  const dateFirst = datePosition === 'above' || datePosition === 'left';
+  const row = datePosition === 'left' || datePosition === 'right';
+  const dateMargin = row
+    ? (dateFirst ? 'margin-right:8px;' : 'margin-left:8px;')
+    : (dateFirst ? 'margin-bottom:8px;' : 'margin-top:8px;');
+  const dateHtml = c.show_date !== false ? '<div id="date"></div>' : '';
   return `<!DOCTYPE html><html><head><style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:${safeCss(c.background, 'transparent')}; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:-apple-system,sans-serif; overflow:hidden; }
+  body { background:${safeCss(c.background, 'transparent')}; display:flex; flex-direction:${row ? 'row' : 'column'}; align-items:center; justify-content:center; height:100vh; font-family:-apple-system,sans-serif; overflow:hidden; }
   #time { font-size:${safeNumber(c.font_size, 64)}px; font-weight:700; color:${safeCss(c.color, '#FFFFFF')}; }
-  #date { font-size:${Math.max(16, safeNumber(c.font_size, 64) / 3)}px; color:${safeCss(c.color, '#FFFFFF')}; opacity:0.7; margin-top:8px; }
+  #date { font-size:${Math.max(8, safeNumber(c.date_font_size, Math.max(16, safeNumber(c.font_size, 64) / 3)))}px; color:${safeCss(c.date_color, safeCss(c.color, '#FFFFFF'))}; opacity:${c.date_color ? 1 : 0.7}; ${dateMargin} }
 </style></head><body>
+${dateFirst ? dateHtml : ''}
 <div id="time"></div>
-${c.show_date !== false ? '<div id="date"></div>' : ''}
+${dateFirst ? '' : dateHtml}
 <script>
 function update() {
   // show_seconds defaults TRUE so existing widgets keep the clock they already had (#323).
   const opts = { hour12: ${c.format !== '24h'}, timeZone: '${safeTimezone(c.timezone)}', hour:'2-digit', minute:'2-digit'${c.show_seconds === false ? '' : ", second:'2-digit'"} };
   document.getElementById('time').textContent = new Date().toLocaleTimeString(${safeLocale(c.locale)}, opts);
-  ${c.show_date !== false ? `document.getElementById('date').textContent = new Date().toLocaleDateString(${safeLocale(c.locale)}, { timeZone: '${safeTimezone(c.timezone)}', weekday:'long', year:'numeric', month:'long', day:'numeric' });` : ''}
+  ${c.show_date !== false ? `document.getElementById('date').textContent = new Date().toLocaleDateString(${safeLocale(c.locale)}, { timeZone: '${safeTimezone(c.timezone)}', ${clockDateFormat(c.date_format)} });` : ''}
 }
 setInterval(update, 1000); update();
 </script></body></html>`;
@@ -831,14 +862,27 @@ function renderText(c, iframeSandbox = 'allow-scripts') {
 </style></head><body><iframe sandbox="${escapeHtml(iframeSandbox)}" srcdoc="${escapeHtml(inner)}"></iframe></body></html>`;
 }
 
-function renderWebpage(c, iframeSandbox = 'allow-scripts') {
+function renderWebpage(c, iframeSandbox = 'allow-scripts', origin) {
   const zoom = (c.zoom || 100) / 100;
   const invZoom = 100 / (c.zoom || 100) * 100;
+  const kioskPath = typeof c.url === 'string' && /^\/api\/kiosk\/[a-f0-9-]+\/render(?:\?|$)/i.test(c.url);
+  let url = kioskPath ? c.url : safeUrl(c.url);
+  // Older kiosk assignments saved the dashboard's absolute origin. When the dashboard was
+  // opened at localhost, that origin points at the display itself. Kiosk renders are served by
+  // this widget's origin, so only rewrite that known-bad generated URL.
+  try {
+    const parsed = new URL(url);
+    if (['localhost', '127.0.0.1', '::1'].includes(parsed.hostname) &&
+        /^\/api\/kiosk\/[a-f0-9-]+\/render$/i.test(parsed.pathname)) {
+      const path = parsed.pathname + parsed.search;
+      url = origin ? new URL(path, origin).toString() : path;
+    }
+  } catch (_) { /* safeUrl already reduced invalid input to about:blank */ }
   return `<!DOCTYPE html><html><head><style>
   * { margin:0; } body { height:100vh; overflow:hidden; }
   iframe { width:${invZoom}%; height:${invZoom}%; border:0; transform:scale(${zoom}); transform-origin:0 0; }
 </style></head><body>
-<iframe src="${escapeHtml(safeUrl(c.url))}" sandbox="${escapeHtml(iframeSandbox)}"></iframe>
+<iframe src="${escapeHtml(url)}" sandbox="${escapeHtml(iframeSandbox)}"></iframe>
 ${c.refresh_interval > 0 ? `<script>setInterval(()=>document.querySelector('iframe').src=document.querySelector('iframe').src,${c.refresh_interval * 1000});</script>` : ''}
 </body></html>`;
 }

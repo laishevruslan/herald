@@ -165,7 +165,7 @@ test('⚠️ every device row carries its tri-state status and as-of age', async
       // and search for every row at once, and is very hard to undo once customers read it that way.
       assert.equal(d.originNodeId, 'node-acme');
       assert.equal(d.name, 'Acme Lobby', 'the name is unmodified');
-      assert.equal(d.deepLink, 'https://acme.example/#/devices/d1');
+      assert.equal(d.deepLink, 'https://acme.example/app#/devices/d1');  // /app, or it lands on the marketing page
     } finally { await close(); }
   } finally { cleanup(db); }
 });
@@ -268,6 +268,18 @@ test('⚠️ THE HUB API HAS EXACTLY ONE WRITE ROUTE, AND IT ONLY ASKS (I2)', ()
    * argued for, and the one that proxies to the child is still the only one that leaves this node.
    */
   const HUB_LOCAL_ADMIN = [
+    /*
+     * ⚠️ THE PARENT ENDING AN EDGE — the mount of lib/mesh/edge-status disenroll(by:'parent') that
+     * was missing for three phases. Local: it revokes THIS node's own edge row and drops its own
+     * cached media; nothing is sent to the child, which learns at its next connection when the door
+     * is shut (the same way a child-side revoke is learned from below). The node holding a copy
+     * must be able to stop holding it; a 365-day token expiry is not a control.
+     *
+     * ⚠️ /links, NOT /nodes — do not "fix" this back. mesh-servers-view's guard forbids writes to
+     * /mesh/nodes on purpose: a URL that reads "write to a node" is one somebody later extends
+     * into writing to a node. This route modifies this hub's LINK and nothing on the other server.
+     */
+    'DELETE /links/:nodeId',
     'POST /clients',                  // create a customer record
     'PUT /clients/:id/nodes/:nodeId', // file a linked server under one
     /*

@@ -602,7 +602,7 @@ async function loadContent() {
           }
         </div>
         <div class="content-item-body">
-          <div class="content-item-name" title="${esc(c.filename)}">${esc(c.filename)}${c.studio_design ? ` <span style="font-size:10px;padding:1px 6px;border-radius:4px;background:var(--bg-input);color:var(--text-muted);vertical-align:middle" title="${esc(t('studio.badge_title'))}">${esc(t('studio.badge'))}</span>` : ''}</div>
+          <div class="content-item-name" title="${esc(c.filename)}">${esc(c.filename)}</div>
           ${Array.isArray(c.tags) && c.tags.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${c.tags.map((tg) => `<span data-tag="${esc(tg)}" style="font-size:10px;padding:1px 6px;border-radius:4px;background:var(--bg-input);color:var(--text-muted);cursor:pointer">#${esc(tg)}</span>`).join('')}</div>` : ''}
           <div class="content-item-size">
             ${c.mime_type === 'video/hls' || c.mime_type === 'video/rtsp' ? t('content.type_live') : c.mime_type === 'video/youtube' ? t('content.type_youtube') : c.mime_type === BUNDLE_MIME ? t('content.type_bundle') : c.remote_url ? t('content.type_remote') : (c.mime_type?.startsWith('video/') ? t('content.type_video') : t('content.type_image'))}

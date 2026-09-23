@@ -34,6 +34,7 @@ ScreenTinker is a free, open-source **digital signage CMS** you can self-host on
 - **Live video & Talk** — optional WebRTC path via a [go2rtc](https://github.com/AlexxIT/go2rtc) sidecar: sub-second live video of what a screen is actually playing (one screen watched by many dashboards without re-encoding), plus **Talk** — one-way announce or two-way intercom to a single screen, and one-way PA broadcast to a whole group or workspace, with an optional operator webcam shown fullscreen. Off by default and enabled per organization; an org can bring its own TURN/STUN. See [`docs/live-video.md`](docs/live-video.md)
 - **Live TV / IPTV & camera feeds** — play a **live stream on a screen** as an ordinary playlist item: an IPTV/TV channel over **HLS** (`.m3u8`, every player type), or an **RTSP** camera/NVR on native Android (lowest latency). The screen opens the URL itself, so it can be a LAN address and the server never ingests or restreams it — a channel on 40 screens is 40 pulls from your source, not 40 through ScreenTinker. Capability-gated per transport, so a player only receives a stream it can decode. See [`docs/live-playback.md`](docs/live-playback.md)
 - **Scheduling** — visual weekly calendar with recurrence rules (daily/weekly/monthly), priority-based conflict resolution, both device-level and group-level schedules (device-level overrides win over group-level), timezone support
+- **Display power schedules** — blank the **screen** on a weekly clock ("off 22:00–06:00, Mon–Fri") to save backlight hours, per device or per group, with device-level overriding group-level as everywhere else. The panel keeps running the whole time — playlists, downloads, heartbeats and remote control all continue, and waking it is instant — so this is **not** the same as switching the device off, which ScreenTinker deliberately does not schedule (see [`docs/android-troubleshooting.md`](docs/android-troubleshooting.md#scheduled-screen-off-vs-device-off)). Windows are evaluated **on the player** against its own timezone, so a screen sleeps and wakes on time with the network down. Android today; other players accept and store the schedule and report it as unsupported until their local evaluator lands
 - **Widgets** — clocks, weather, RSS tickers, text/HTML, webpages, social feeds, and Directory Board (scrolling lobby tenant/room/staff directories with dark/light themes, category management, and anti-burn-in motion)
 - **Data sources** — bind live external data into a slide or widget with `{{ds:slug.field}}`: an iCal/Webcal calendar or any JSON-over-HTTP feed, refreshed on its own schedule. Secret fields in a source's config are encrypted at rest. Slide elements can hide when a bound field is empty, invert busy/free copy, and colour a bar from the source state — including **stale** when the feed failed, so a dead calendar cannot look Available. See [`docs/slide-data-binding.md`](docs/slide-data-binding.md)
 - **Meeting-room signs** — Slides → New deck, filter Room, pick Meeting Room Door Sign (e-paper, TV 16:9, or portrait tablet 9:16), bind the room calendar, and publish. A 2×2 corridor board binds four calendars on one 16:9 slide. After the last meeting of the day the resolver supplies a localised empty-board hint (`remaining_today_empty`) instead of leaving a `Next:  ()` line. The gallery is CSS cards with chips All / Room / Facilities / Agenda / Blank, not a radio list
@@ -57,7 +58,7 @@ ScreenTinker is a free, open-source **digital signage CMS** you can self-host on
 - **Security** — JWT auth, bcrypt hashing, parameterized SQL, rate-limited endpoints, per-user ownership checks on all resources, ongoing auth/IDOR/XSS audits
 - **Built-in billing** — Stripe integration for SaaS subscriptions (optional)
 - **Auto-update** — OTA updates pushed to devices automatically
-- **Public REST API** — scoped personal access tokens (`read` / `write` / `full`) over the same resources the dashboard uses, workspace-confined by construction. A PAT can list factory slide templates at `GET /api/slide-templates` (same catalogue as the New Deck wizard) and create a deck with `POST /api/slide-decks { factory, data_source_slug }` or four slugs for the corridor board. Documented as an OpenAPI 3.1 contract ([`docs/openapi.yaml`](docs/openapi.yaml)) and browsable on any instance at `/docs` (served locally, no CDN, so it works air-gapped)
+- **Public REST API** — scoped personal access tokens (`read` / `write` / `full`) over the same resources the dashboard uses, workspace-confined by construction. A PAT can list factory slide templates at `GET /api/slide-templates` (same catalogue as the New Deck wizard), create a deck with `POST /api/slide-decks { factory, data_source_slug }` or four slugs for the corridor board, and set a display power schedule at `/api/display-power-schedules`. Documented as an OpenAPI 3.1 contract ([`docs/openapi.yaml`](docs/openapi.yaml)) and browsable on any instance at `/docs` (served locally, no CDN, so it works air-gapped)
 - **Node Mesh** — link ScreenTinker servers together so one dashboard can watch many. A site server reports upward to a hub over a consent-scoped link; a hub can relay content back down to a customer's server. Data flows up by default and nothing flows down uninvited: every write is a *request* the receiving server decides on against its own grant. See [Node Mesh](#node-mesh) below
 - **Triggers** — let an external system interrupt a playlist with different content, fired over the LAN by HTTP POST or a UDP datagram (`ST1 <secret> <token>`). Resolved entirely on the device, so an evacuation message still appears with the WAN down. Targets a published playlist whose items are all cached locally, checked when you save rather than when it fires
 - **Embedded & E-Paper Displays** — server-side renderer for low-power MCUs (ESP32-S3, Seeed Studio reTerminal Sticky, Waveshare e-paper, SPI TFTs). Delivers pre-dithered 1-bit bitstreams, RGB565, BMP, or PNG over HTTP with ETag/304 caching and deep sleep coordination. See [`docs/embedded-renderer.md`](docs/embedded-renderer.md)
@@ -1023,7 +1024,20 @@ and `--password-store=basic` stops it asking for a keyring password no kiosk has
 
 Blanking and cursor-hiding belong to the compositor on Wayland. The launcher calls `wlopm` when it
 is present; if your image does not ship it, set the equivalent in your compositor's config
-(`~/.config/wayfire.ini` `[idle]` for wayfire, or the labwc equivalent).
+(`~/.config/wayfire.ini` `[idle]` for wayfire).
+
+**labwc** (the compositor on newer Pi OS) has no hide-cursor setting, only a `HideCursor` *action* —
+so the installer binds it to Super+H in `~/.config/labwc/rc.xml` and the launcher presses that once
+at session start with `wtype`. Two things make this fiddlier than it looks:
+
+- ⚠️ **The root element must be `<labwc_config>`.** Pi OS ships an rc.xml that is a stub rooted at
+  `<openbox_config/>`, and labwc ignores *every* keybinding while that root is there
+  ([labwc#3190](https://github.com/labwc/labwc/discussions/3190)) — with no error to say so. The
+  installer replaces that stub (keeping a `.screentinker-bak`) and merges into a real
+  `<labwc_config>` rather than overwriting it.
+- **Changes need a reboot or `labwc --reconfigure`** — labwc re-reads rc.xml only on SIGHUP, so
+  writing the file while a session is running does nothing until one or the other happens. The
+  installer attempts `--reconfigure` and the reboot it asks for at the end covers the rest.
 
 **A white page on every boot but the first** was Chromium restoring a session it believed crashed —
 a kiosk is killed by shutdown and never exits cleanly, so it came back with a restore surface on

@@ -14,6 +14,7 @@ import * as reviews from './views/reviews.js';
 import * as videoWall from './views/video-wall.js';
 import * as reports from './views/reports.js';
 import * as servers from './views/servers.js';
+import * as noc from './views/noc.js';
 import * as triggers from './views/triggers.js';
 import * as activity from './views/activity.js';
 import * as kiosk from './views/kiosk.js';
@@ -611,6 +612,11 @@ function route() {
      */
     currentView = servers;
     servers.render(app);
+  } else if (hash === '#/noc') {
+    // The live graph of THIS server's mesh (docs/scale-out.md "NOC on this server"). Same gate as
+    // Servers: only shown where the mesh is on, and the route behind it is instance-owner only.
+    currentView = noc;
+    noc.render(app);
   } else if (hash === '#/reports') {
     currentView = reports;
     reports.render(app);
@@ -657,7 +663,10 @@ function route() {
   } else if (hash === '#/settings') {
     currentView = settings;
     settings.render(app);
-  } else if (hash === '#/billing') {
+  } else if (hash.startsWith('#/billing')) {
+    // Prefix, not equality: Stripe returns to `#/billing?payment=success`, and `hash === '#/billing'`
+    // sent every one of those to the default view — a customer who had just paid saw the Displays
+    // list and no confirmation. Same reasoning as the admin/player-debug route above.
     // #116: when HIDE_BILLING is set, a direct #/billing navigation is bounced to the
     // dashboard. replaceState (not a hash assignment) so it doesn't add a history entry
     // — the back button skips over it instead of looping back into the guard.
@@ -679,6 +688,7 @@ function updateSidebarUser() {
   const user = getCurrentUser();
   if (!user) return;
   updateVerifyBanner(user);
+  updateBillingBanner(user);
   updateWidgetSandboxWarningBanner(user);
 
   // Show admin nav only for platform admins (legacy 'superadmin' or Phase 1 renamed 'platform_admin')
@@ -726,13 +736,26 @@ function updateSidebarUser() {
     const meshEnroll = meshCapability('enroll');
     if (meshEnroll !== null) {
       serversNav.style.display = meshEnroll ? '' : 'none';
+      syncNocNav();
     } else {
       api.get('/mesh/capabilities')
-        .then(() => { serversNav.style.display = ''; })
+        .then(() => { serversNav.style.display = ''; syncNocNav(); })
         .catch(() => api.get('/mesh/nodes')
-          .then(() => { serversNav.style.display = ''; })
-          .catch(() => { serversNav.style.display = 'none'; }));
+          .then(() => { serversNav.style.display = ''; syncNocNav(); })
+          .catch(() => { serversNav.style.display = 'none'; syncNocNav(); }));
     }
+  }
+
+  /*
+   * The NOC follows the Servers gate exactly (it is that section's live graph) and is additionally
+   * owner-only, because the route behind it refuses everyone else. Derived, never asked separately:
+   * one gate, so the two items can never disagree about whether this node is in a mesh.
+   */
+  function syncNocNav() {
+    const nocNav = document.getElementById('nocNavItem');
+    if (!nocNav || !serversNav) return;
+    const role = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}').role; } catch (_) { return null; } })();
+    nocNav.style.display = serversNav.style.display !== 'none' && role === 'platform_admin' ? '' : 'none';
   }
 
   let userEl = document.getElementById('sidebarUser');
@@ -791,6 +814,39 @@ function updateVerifyBanner(user) {
     try { await api.resendVerification(user.email); showToast(t('auth.verify_resent'), 'success'); }
     catch { showToast(t('auth.verify_resend_failed'), 'error'); }
   });
+  b.appendChild(btn);
+  bannersEl.appendChild(b);
+}
+
+/*
+ * A payment that failed, said out loud. Until this existed the only signal a customer got was
+ * their screens quietly hitting the Free limit a week later — `subscription_status` was written by
+ * the Stripe webhook and read by nothing.
+ *
+ * Two states, deliberately worded differently: `past_due` is "this is fixable and nothing has
+ * happened yet", `unpaid` is "the grace ran out and you are on Free now". An undefined status —
+ * a user object cached before this shipped — stays hidden rather than guessing, the same rule the
+ * verify banner uses.
+ */
+function updateBillingBanner(user) {
+  const existing = document.getElementById('billingBanner');
+  const state = user && user.subscription_status;
+  if (state !== 'past_due' && state !== 'unpaid') { if (existing) existing.remove(); return; }
+  if (existing && existing.dataset.state === state) return;
+  if (existing) existing.remove();
+  const bannersEl = document.getElementById('banners');
+  if (!bannersEl) return;
+  const lapsed = state === 'unpaid';
+  const b = document.createElement('div');
+  b.id = 'billingBanner';
+  b.dataset.state = state;
+  b.style.cssText = `background:${lapsed ? 'var(--danger,#ef4444)' : 'var(--warning,#f59e0b)'};color:${lapsed ? '#fff' : '#1a1200'};padding:9px 16px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap`;
+  b.innerHTML = `<span>${lapsed ? '⚠️' : '💳'} ${esc(t(lapsed ? 'billing.banner.lapsed' : 'billing.banner.past_due'))}</span>`;
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-sm';
+  btn.style.cssText = `background:${lapsed ? '#7f1d1d' : '#1a1200'};color:#fff;padding:4px 12px`;
+  btn.textContent = t('billing.banner.update_card');
+  btn.addEventListener('click', () => { window.location.hash = '#/billing'; });
   b.appendChild(btn);
   bannersEl.appendChild(b);
 }
