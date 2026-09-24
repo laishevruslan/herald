@@ -393,14 +393,6 @@ const migrations = [
   // first may be pulled back to stable. Without it, publishing a beta would drag every existing
   // pre-release tester backwards, which is the harm the opt-in exists to prevent.
   "ALTER TABLE devices ADD COLUMN ota_channel_served TEXT",
-  // Repair for schedules orphaned by a group deletion before the conversion carried workspace_id.
-  // Such rows are invisible (list/calendar filter on workspace), undeletable (PUT/DELETE 403 on a
-  // null workspace) and still firing (the scheduler has no workspace filter) — so an operator
-  // cannot fix them from the dashboard at all. Recover the workspace from the device the schedule
-  // targets; anything still unresolvable is left alone rather than guessed at.
-  `UPDATE schedules SET workspace_id = (SELECT d.workspace_id FROM devices d WHERE d.id = schedules.device_id)
-     WHERE workspace_id IS NULL AND device_id IS NOT NULL
-       AND (SELECT d.workspace_id FROM devices d WHERE d.id = schedules.device_id) IS NOT NULL`,
   // #161: privilege tier reported by the player (0 unprivileged / 1 device-admin / 2 owner-or-
   // delegated-install) + whether a foreign device owner (MDM) manages it. Drives dashboard gating
   // of Tier-2 controls (reboot/kiosk/time) — shown only for owned panels.
@@ -684,7 +676,6 @@ const migrations = [
   "ALTER TABLE users ADD COLUMN past_due_since INTEGER",
   "ALTER TABLE users ADD COLUMN payment_failed_email_sent_at INTEGER",
   "ALTER TABLE users ADD COLUMN subscription_lapsed_email_sent_at INTEGER",
-  "ALTER TABLE organizations ADD COLUMN widget_sandbox_isolation_disabled INTEGER NOT NULL DEFAULT 0",
   // AUTH-05: make break-glass recovery revocable, single-use and auditable.
   //
   // scripts/reset-admin.js mints a JWT carrying `recovery: true`, which middleware/auth.js
@@ -2386,6 +2377,10 @@ ensureMultitenancyMigration();
  * ssoOnlyForEmail() catching `no such column` and returning "not SSO-only", which is password
  * login proceeding for an organization that had switched it off. It self-healed on the second
  * boot, which is exactly what makes it easy to miss.
+ *
+ * Same ordering constraint for `widget_sandbox_isolation_disabled` and the schedules
+ * workspace_id backfill below: devices.workspace_id / schedules.workspace_id / organizations
+ * only exist after the multitenancy phase.
  */
 try {
   const orgCols = db.prepare('PRAGMA table_info(organizations)').all().map((c) => c.name);
@@ -2393,8 +2388,34 @@ try {
     db.exec('ALTER TABLE organizations ADD COLUMN sso_only INTEGER NOT NULL DEFAULT 0');
     console.log('[migrate] added organizations.sso_only');
   }
+  if (orgCols.length && !orgCols.includes('widget_sandbox_isolation_disabled')) {
+    db.exec('ALTER TABLE organizations ADD COLUMN widget_sandbox_isolation_disabled INTEGER NOT NULL DEFAULT 0');
+    console.log('[migrate] added organizations.widget_sandbox_isolation_disabled');
+  }
 } catch (e) {
-  console.error('[migrate] could not add organizations.sso_only:', e.message);
+  console.error('[migrate] could not add organizations columns:', e.message);
+}
+
+/*
+ * Repair for schedules orphaned by a group deletion before the conversion carried workspace_id.
+ * Such rows are invisible (list/calendar filter on workspace), undeletable (PUT/DELETE 403 on a
+ * null workspace) and still firing (the scheduler has no workspace filter) — so an operator
+ * cannot fix them from the dashboard at all. Recover the workspace from the device the schedule
+ * targets; anything still unresolvable is left alone rather than guessed at.
+ *
+ * Must run after ensureMultitenancyMigration(): both devices.workspace_id and schedules.workspace_id
+ * are created there. Idempotent — safe every boot.
+ */
+try {
+  const deviceCols = db.prepare('PRAGMA table_info(devices)').all().map((c) => c.name);
+  const scheduleCols = db.prepare('PRAGMA table_info(schedules)').all().map((c) => c.name);
+  if (deviceCols.includes('workspace_id') && scheduleCols.includes('workspace_id')) {
+    db.exec(`UPDATE schedules SET workspace_id = (SELECT d.workspace_id FROM devices d WHERE d.id = schedules.device_id)
+       WHERE workspace_id IS NULL AND device_id IS NOT NULL
+         AND (SELECT d.workspace_id FROM devices d WHERE d.id = schedules.device_id) IS NOT NULL`);
+  }
+} catch (e) {
+  console.error('[migrate] could not backfill schedules.workspace_id:', e.message);
 }
 
 // Phase 2.2c migration: backfill content_folders.workspace_id from owner's
