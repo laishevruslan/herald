@@ -2,6 +2,44 @@
 
 ## Unreleased
 
+### Fixed
+
+**The dashboard now notices its own updates.** The "a new version is available, reload?" prompt was
+driven by a hash of a hardcoded list of twenty files — and the playlist view, everything under
+`js/lib/`, and all ten translation files were not on it. A fix shipped to any of those reached no
+open dashboard at all: nothing prompted a reload, so an operator sitting on the page saw no change
+and reasonably concluded it had not been fixed. Every view added since that list was written
+inherited the same hole, silently, because nothing about adding a view tells you to edit an array
+in the server.
+
+There is no list any more — it walks what is actually served, so a new file is covered the day it
+is added. It reads file metadata rather than contents, which keeps the work off the event loop that
+answers every screen's heartbeat.
+
+**`refresh` was implemented on the panel and impossible to send.** `MainActivity` has handled it for a
+long time — it reconnects the socket, so the screen re-fetches its playlist — and nothing anywhere on
+the server could ask for it. It is now in `ALLOWED_COMMANDS`, so "the sign is stale, kick it" works
+from the dashboard, the API and the new LAN door. Found by the test that holds the LAN door's command
+list to the panel's: the door wanted `refresh`, and the subset check failed because the *server* was
+missing it.
+
+**A new secret column would have replicated to every replica.** `lib/mesh/replication.js` copies
+"every column except", which is the right shape for a faithful copy and the wrong shape for a schema
+that grows — it ships a secret added later by default. The local API secret was exactly that column.
+Caught by the guard that exists for it (`test_replication_blocklist_covers_every_secret_column`),
+which walks `PRAGMA table_info` for every replicated table and fails on any column whose name looks
+like a credential and is not listed. The flag replicates and the secret does not: a replica showing
+"the control door is open on this screen" is the truth an operator needs, while a replica holding the
+key multiplies the number of places one compromise is enough.
+
+**A new device column reached no player.** The device SELECT that feeds every playlist payload is an
+explicit column list, and the two new columns were not in it — so the feature was written, tested at
+the route, and dead on the wire. This is the third time that exact list has done it (#325's
+background colour, then `workspace_id`), and the reason it was caught this time is that the test
+asserts on what a real registered device receives over its socket rather than on what the JavaScript
+says it sends.
+
+
 ### Added
 
 **Suika design editor polish — preset chooser, slide backgrounds, Help.** Content Library
@@ -12,23 +50,356 @@ parallel to Studio). Dev Variant B: set `window.__SUIKA_ORIGIN` to a Suika origi
 available alongside Suika (no feature-flag hide). Help documents both editors. See
 [`docs/suika-herald-integration-plan.md`](docs/suika-herald-integration-plan.md).
 
-**Display power schedules, failed-payment handling, and scale-out player termination from upstream.**
-The weekly backlight clock is now on the playlist payload (`power_schedule`), not only in the
-dashboard: Android evaluates it on the panel, other players store it and report it unsupported.
-A declined card starts a seven-day grace (email plus a dashboard banner) and then moves the
-account to Free without blanking screens; Stripe return links go to `/app#/billing` instead of
-the marketing homepage. Replica-attached players forward register, heartbeats and commands
-through the mesh (`player-termination`, content cache, command relay) instead of applying them
-to a mirror that does not own the row.
+**Device-side REST — a screen can now make an HTTP request on its own network.** Signage sits on the
+customer's LAN next to the things worth asking: a PLC, a door sensor, a local Home Assistant. The
+ScreenTinker server is frequently in another country and has no route to that `192.168.x.x`, so the
+request runs on the **panel** and nothing is proxied. Up to 64 KiB of the answer comes back, with a
+`truncated` flag, for the dashboard to show.
+
+⚠️ **The scheme allowlist is the whole security boundary, and it is not the one people expect.** The
+operator sending this already holds a `full` token and can already run `shell` on a device-owner
+panel, so reaching a LAN host is not an escalation — it is the request. What is refused is a change
+of *kind*: `file://` and `content://` would turn "fetch a URL and return 64 KiB" into "read a file
+off this device and return 64 KiB", and on Android `content://` reads through content providers,
+which is precisely how one app's private data is exposed to another. Cloud metadata addresses go
+too — link-local only exists when DHCP has failed, so nothing there is a real signage target — and a
+hostname that *resolves* to one is caught by re-checking every resolved address and then **pinning**
+it into the connection, so the address approved is the address connected to. Redirects are not
+followed, because a 302 is a second target the guard never saw.
+
+⚠️ **It is deliberately not a mesh command.** A hub cannot send it to a peer's screens. The mesh
+consent sentence is "Reboot, reload, change settings on screens", and making someone else's panel
+issue arbitrary requests from inside their LAN is not a setting — it is using their screen as a
+foothold on a network the hub cannot otherwise reach. No wording fixes that; a consent line honest
+enough to cover it is one nobody would tick.
+
+The 64 KiB limit is a **read** limit, not a Content-Length check: a broken or hostile endpoint can
+declare 10 bytes and send gigabytes, and a panel must spend 64 KiB on that rather than an OOM in the
+middle of playback. The request runs on a worker thread, so an unreachable target blocks nothing.
+Every request answers — a refusal, a timeout and a 500 are all results, and silence would be
+indistinguishable from a command that never arrived.
+
+Android only for now; `net.http_request` is in no baseline, so a fielded player is refused the
+command rather than sent something it would drop.
+
+**Saved endpoints — the same request, on the panel's own clock.** A one-shot `http_request` needs
+someone holding the dashboard open. A saved endpoint does not: it is a named definition attached to
+one screen or to a group, synced down with the playlist payload, and **run by the panel** — on an
+interval, or when the screen wakes, sleeps or sends a heartbeat. The panel keeps the definitions
+across a reboot, so a screen that restarts at 03:00 with the WAN still down goes on polling its PLC.
+
+⚠️ **A device's endpoints are the UNION of its own and its group's, not an override** — and that is
+the opposite of how display-power schedules resolve, deliberately. A power window answers one
+question ("is this screen lit"), so exactly one row can win. A list of endpoints is not one answer:
+picking a winner would silently stop work an operator configured. The one thing that does override
+is a **name** — a device-level "PLC state" replaces the group's "PLC state", so a single panel can
+be pointed at a different address without being taken out of its group.
+
+⚠️ **Header values are encrypted at rest and never returned.** `GET` shows header *names* so an
+operator can see what is configured, and a blank value on save **keeps** the stored one — otherwise
+a form that cannot display the API key would erase it every time anyone edited the URL.
+
+The minimum interval is 30 seconds. This runs on a panel whose day job is playing video, against a
+target that is often a small embedded controller, and a one-second poll is how a screen stutters and
+a PLC gets hammered — with neither symptom pointing back here. "Run it now" from the dashboard goes
+through the same `http_request` path as everything else, so testing an endpoint exercises the code
+that will run it on a timer.
+
+**A screen can now answer the LAN as well as call it.** The panel serves `GET /api/status` and
+`POST /api/command` on its own network, so a Crestron or AMX processor in the same rack can turn the
+sign on with the projector, blank it when the room empties, or hand it the room's volume. Until now
+an integrator's only option was to drive the dashboard, which means a browser, a login and a WAN path
+— three things a room control system does not have and will not be given.
+
+⚠️ **Off by default, and its own switch.** It shares the trigger HTTP port because it is the same
+door on the same socket, but it is not the same permission: `accept_http` lets a LAN host put an
+overlay on a screen, this lets a LAN host change what a screen is doing. Enabling one does not enable
+the other, they hold separate secrets, and each path on the socket is refused unless its own flag is
+set. One flag for both would have handed remote control to every site that only wanted an emergency
+overlay, and the two get switched on months apart by different people.
+
+⚠️ **Enabling it opens a listening TCP port on the customer's network**, with no TLS (the gear calling
+it frequently has none — AMX NetLinx has no TLS anywhere in the language) and a secret that crosses
+the segment in cleartext. Turn it on for one screen, on a network you control, on its own VLAN. It is
+not a fleet-wide setting, and `docs/device-rest-design.md` says so at more length.
+
+⚠️ **What a LAN caller may ask for is a much smaller set than what a `full` token can send**:
+`refresh`, `screen_on`, `screen_off`, `set_volume`, `set_brightness`, `set_system_brightness`. Not
+`shell`, `install_apk`, `update`, `set_server_url`, `launch`, `kiosk_unlock` — and not `http_request`,
+which would make every panel a request relay whose audit trail names the screen instead of the caller.
+`reboot` is out for a different reason: everything on the list is undone by sending its opposite and a
+reboot is not, so a stuck automation would be a fleet on the floor. The reasoning is about who holds
+the credential, not what the panel can do — this one gets typed into a Crestron program and left in a
+building for a decade.
+
+The reply is written and the socket closed **before** the command runs, because `screen_off` blanks
+the panel and `refresh` tears down the WebView: answering a control system with a dropped connection
+on a command that worked makes it retry, and one operator action becomes four.
+
+**The playlist content picker now navigates folders as a tree.** A bar above the list shows where
+you are and what is inside it — `All › WESTERN AUSTRALIA › HOSTS` — and slides sideways rather than
+growing the window. Picking a folder shows everything beneath it, not only the files sitting
+directly in it.
+
+⚠️ The first version of this filter was a flat list, and on a real library that is worse than it
+sounds. One customer has 39 folders, 30 of them nested five levels deep: the flat version offered
+all 39 at once, showed a parent and its own child side by side as if they were unrelated, and
+reported "100" for a folder that actually holds 204 files once its children are counted. The same
+library now opens on four choices instead of thirty-nine.
+
+The dropdown stays for jumping straight to a folder you can already name, now indented to show the
+same structure. Both controls read and write one piece of state, so they cannot disagree on screen.
+
+
+## 2.1.6 (2026-09-23)
+
+Contributed by [@awatterott](https://github.com/awatterott), who reported the Raspberry Pi
+cursor-hiding regression on #409 and supplied the labwc configuration that fixes it (#412).
+
+⚠️ **No new player binary ships with this release.** The display power schedules below need one, so
+they will report as unsupported on every screen until an APK matching this version is staged. The
+server refuses to send a schedule to a player that has not declared it can honour one, so nothing
+goes dark unexpectedly in the meantime.
+
+### Added
+
+**Uploads are now resumable, and no longer all-or-nothing.** A large file, or a slow or distant
+connection, could fail at a fixed wall that had nothing to do with the file: a single-request upload
+has to finish inside the shortest timeout between the browser and the server, which behind a CDN is
+about two minutes and does **not** scale with size. Measured on production: one customer failed
+seven times at 125.008–125.012 seconds while his 65 successful uploads in the same session peaked at
+114.2s — he was living inside a ten-second margin and had no way to know.
+
+Selecting several files made failure certain rather than likely, because the dashboard sent them as
+one request: the bytes scaled with the selection and the two minutes did not. The symptom he
+reported was *"it stays on 1%"*, which is exactly what an aggregate progress bar does while it
+measures half a gigabyte that will never arrive.
+
+Files now upload one at a time, in 5 MiB chunks, each with its own budget — so a dropped connection
+costs one chunk instead of a gigabyte, and file size stops being a gamble. **Progress survives a
+reload:** close the tab at 340 MB of 500 MB, come back, and you are offered the rest. The offset is
+always read from the bytes on the server, never from a counter the browser keeps, because the moment
+that matters is after a crash — exactly when a local counter would be wrong.
+
+Two things fall out of it. A workspace near its storage limit is now told **before** uploading
+rather than after, because a session declares its size up front — previously someone at 19.9 GB of a
+20 GB plan could upload 500 MB and simply end up over. And abandoned uploads are collected on a
+daily sweep that works from session rows, never from a file glob, so an upload still in progress can
+never be swept out from under the person making it.
+
+The single-request endpoint remains for API tokens, the agency portal and small files.
+
+**Display power schedules — blank the screen on a weekly clock.** Signage runs in shops that close,
+and a backlight has a finite number of hours in it. You can now set "off 22:00–06:00, Mon–Fri" on a
+screen or a whole group, with a screen's own schedule overriding its group's exactly as playlists
+and content schedules already do.
+
+⚠️ **This blanks the panel; it does not switch the device off**, and that is a deliberate limit
+rather than a missing feature. A device that is off cannot be told to come back on, so a schedule
+that could power one down would be a schedule that strands screens — recovering one means someone
+walking to it. Throughout a scheduled-off window the player keeps running: playlists sync, downloads
+continue, OTA still happens, and `screen on` from the dashboard wakes it instantly.
+
+The windows are evaluated **on the player**, against its own timezone, from a copy it holds on disk.
+A screen therefore sleeps and wakes on time with the network down, and a panel that reboots at 02:00
+comes back dark and stays dark until its window ends. The evaluator is pinned across languages by
+`shared/power-window-vectors.json`, the same discipline the per-item scheduler uses — including the
+DST cases, where an hour is skipped in spring and lived twice in autumn.
+
+⚠️ It **fails to ON**, the opposite of the content scheduler beside it. An unknown timezone, a
+malformed time or a corrupt row leaves the screen lit, because a screen that is dark for a reason
+nobody can find is indistinguishable from dead hardware — the one failure an operator cannot
+diagnose without driving to it. Every heartbeat reports `display_power: on | scheduled_off`, so a
+deliberately dark screen is visibly different from a broken one.
+
+Waking a screen by hand during a window is honoured until that window **ends**, then the schedule
+resumes on its own — neither a permanent override (where the operator silently loses the schedule)
+nor no override at all (where the panel goes dark again while they are standing in front of it).
+
+Set it on a screen from its Controls tab, or on a whole group from the **Screen off** button on the
+group row. The group editor says how many members cannot honour a schedule and how many override it
+with their own — neither is visible from a group row otherwise. A screen that sits in two groups
+that both schedule its power gets a warning naming which one is actually in force, because the
+resolver's tie-break (lowest group id) is stable and documented but invisible, and the only symptom
+would be a screen going dark at the wrong time with both group pages looking correct.
+
+⚠️ On a **device** page an unsupported panel cannot be given a schedule at all, rather than being
+allowed to save one the server will refuse to send. A group still can, because a group is a mixed
+bag by nature and refusing the write because of its weakest member would be worse than naming them.
+
+Android today. Other players accept and store the schedule and report it as unsupported rather than
+swallowing it; they do not declare the new `display.power_schedule` capability, and the server will
+not send a schedule to a panel that has not. That gate is deliberately separate from `display.power`:
+a panel that can be told to sleep is not necessarily one that can be trusted to sleep unattended and
+wake itself again — which is why no fielded player receives one, since the capability is in no
+baseline.
 
 ### Fixed
 
-**Raspberry Pi: the stock labwc `rc.xml` stub is replaced so the pointer actually hides.** Pi OS
-ships an `<openbox_config/>` stub that labwc will not read keybindings from. The installer now
-replaces that stub (keeping a `.screentinker-bak`), merges into a real `<labwc_config>`, and runs
-`labwc --reconfigure`.
+**Three more places showed only the first 100 files.** The same cap behind the playlist-picker bug
+was also truncating the **schedule editor's** content picker, a device's **standby content**
+dropdown and the **zone assignment** modal — each one quietly offering an operator the newest
+hundred files and nothing else. All three now page the whole library, and a guard keeps any future
+view from fetching "everything" through an endpoint that returns a hundred.
+
+**The playlist content picker only ever showed 100 items.** Adding content to a playlist listed the
+first 100 files in the workspace and nothing else — newest first, so the ones missing were the
+oldest, which in a library built up over time are exactly the ones already sorted into folders. A
+customer with 211 files could see a video in his library, open the picker, and not find it. He
+reported it as *"it won't give me the option to choose uploaded content from a different folder"*,
+which is the only conclusion the behaviour supports. It was never about folders: `GET /api/content`
+defaults to `LIMIT 100` and the picker asked for everything without paging.
+
+The picker now pages until the server stops giving more, and **has a folder filter** — with 12
+folders and 211 files a flat list is hard to use even when it is complete, and folders are how that
+operator had organised the library in the first place. The rendered list is capped separately and
+says how many more matched, because the fix for a silently truncated list is not a differently
+silent one.
+
+⚠️ This affected **every workspace over 100 items**, on every playlist, for as long as the limit has
+existed. It surfaced now because one customer uploaded 211 files in six hours.
+
+**Raspberry Pi: the mouse pointer now actually hides on a stock Pi OS image.** The cursor-hiding
+added in 2.1.5 (#409) refused to touch an existing `~/.config/labwc/rc.xml`, on the reasoning that
+it would hold the owner's own keybindings. Pi OS ships one — a stub rooted at `<openbox_config/>`,
+which labwc will not read keybindings from at all ([labwc#3190]) — so on the images this feature
+exists for, the safe-looking branch was the only branch, and it did nothing but print a warning.
+The installer now replaces that stub (keeping a `.screentinker-bak`), merges into a real
+`<labwc_config>` instead of overwriting it the way the wayfire path already did, and runs
+`labwc --reconfigure` so the binding applies without waiting for a reboot. Reported by
+[@awatterott](https://github.com/awatterott) on #409.
+
+[labwc#3190]: https://github.com/labwc/labwc/discussions/3190
+
+## 2.1.5 (2026-09-22)
+
+### Added
+
+**A failed payment is now something the product tells you about, and handles.** Until now a
+declined card wrote a status nobody read: no email, no notice in the dashboard, no change in
+access. The only thing that ever actually happened was the account dropping to Free whenever
+Stripe eventually gave up, with no explanation. Now the first failure sends one email — a card
+usually fails because it expired, and being told is the whole remedy — and puts a banner in the
+dashboard. Nothing changes for seven days, because Stripe is still retrying and taking something
+away from a customer who is not at fault would only have to be undone. After that the account
+moves to the Free plan and a second email says so plainly: nothing has been deleted, the content
+and playlists are untouched, and a working card restores everything at once. Paying again at any
+point clears the whole episode, including the record of which emails were sent, so a lapse next
+year is announced rather than silently swallowed.
+
+⚠️ **No screen is ever blanked by any of this.** Screens beyond the Free limit stop, exactly as
+they already do when a trial ends — a shopfront going dark over a card problem would be a far
+worse outcome than a month of unpaid Pro, and it is the customer's own audience who would see it.
+
+**The billing state is now reconciled against Stripe daily.** Webhook delivery is not a guarantee —
+this instance lost every subscription event for months because the endpoint was never subscribed
+to them, and nothing could notice. The sweep now asks Stripe directly what it believes about every
+subscription on file and corrects the database, so a missed delivery heals within a day instead of
+persisting invisibly.
 
 ### Fixed
+
+**Raspberry Pi: the mouse pointer can now be hidden on the newer Pi OS compositor.** A Pi running
+labwc — what Pi OS Trixie uses — kept its pointer on screen because hiding it is the compositor's
+job there and labwc has no setting for it. It does have an action for it, though, so the installer
+now binds that action to a shortcut and the kiosk launcher presses it once at startup. Found and
+contributed by @awatterott (#409); the installer writes the shortcut without touching an existing
+labwc configuration, and does nothing at all if the compositor is something else.
+
+**A panel that is portrait by nature now runs that way.** A Lenovo ThinkSmart View — a tablet whose
+screen is taller than it is wide — came up flipped, with a black bar and a smeared edge, because
+every screen in the app insisted on being landscape and left the panel's own firmware to turn the
+picture round, which that firmware does badly. The app now takes the panel as it finds it and turns
+the content in software instead. Panels that are landscape by nature are unaffected, byte for byte.
+Testing credit: @PowerSprout, for the panel and the patience (#390).
+
+**Android TV: the setup screen no longer does nothing, or quietly dies.** On a TV box, several rows
+of the setup screen opened settings pages that exist on phones and not on televisions. One killed
+the app outright — the boot relauncher then restarted it, so from the sofa it looked like nothing
+had happened at all. Each row now checks whether the screen it wants exists, and says so plainly
+when it does not, instead of failing into silence (#392).
+
+**A web player left running old code after a deploy now fixes itself.** Reloading the player during
+the few seconds a server is restarting could leave the panel on a cached copy of the old player
+while recording the new version as if it had updated — so it sat there, out of date, with nothing
+left to tell it otherwise. One panel reported 2.1.0 for weeks against a 2.1.4 server. The player now
+compares what it is running against what the server serves and reloads once when they disagree
+(#389).
+
+**After paying, Stripe dropped customers on the marketing homepage.** The return address Stripe was
+given was built from the browser's `Origin`, which carries the host and nothing else — so a
+customer who had just paid was sent to `https://<your-host>/#/billing`, and `/` is the public
+marketing page, which ignores the part after the `#`. They saw the front door and no sign the
+purchase had worked. It now returns them to the dashboard's own address, on whichever domain they
+started from, so a white-label customer comes back to their own. Two further faults sat behind that
+one and would each have kept it broken on their own: the address pointed at Settings, while the
+"payment received" confirmation is shown by the Billing screen; and the dashboard matched that
+screen's address exactly, so the `?payment=success` on the end sent the whole thing to the Displays
+list instead. Both corrected, and the checkout, the cancel path and the billing portal now all
+return to the same place.
+
+**Every "Choose a plan" link we emailed a lapsing trial went to the front page.** The trial
+reminder and trial-ended emails both pointed at the marketing homepage rather than the billing
+screen, so the one thing those messages ask a customer to click threw away the part of the address
+that says where to go. The mesh's deep links into another server's dashboard had the same fault.
+Both corrected — and a guard now fails the build on any server-side link written that way, which is
+how the same mistake reached three unrelated places.
+
+**A paid subscription never recorded when its period ends.** Both live subscribers had no renewal
+date stored, for two reasons that each fail in silence. A subscription that is created and then
+simply runs emits `customer.subscription.created` and nothing more until it renews or changes, so
+listening only for `updated` meant the first statement of the period end — and on an annual plan,
+for a year, the only one — was never heard. And Stripe moved `current_period_end` from the
+subscription onto its item, so the field that was being read had quietly become undefined and was
+stored as "no date" rather than raising anything. Both shapes are now read, `created` is handled
+alongside `updated`, and the stored date is logged so a missing one is visible.
+
+**The platform plan overview counted organisations that were never updated.** `organizations.plan_id`
+is written once when an organisation is created and never touched again — no payment updates it —
+so the per-plan "organisations" figure reported every account on the plan they started with. An
+operator reading it saw every account on Pro while a customer was paying for Home. It now resolves
+the plan through the account owner, the way the device figure beside it already did.
+
+**Signing in no longer fails on a password you typed correctly.** The login form asks for the
+address first and reveals the password box once it knows which account you are signing in to.
+Editing the address after that hid the box again but kept what was in it, so the next press sent
+the *previous* account's password — a rejection nobody could explain from the screen, because the
+box you would check was hidden. A browser password manager made it the common case: it cannot tell
+which account an address-first form is for, so it fills the one password it has saved for the site,
+and typing a different address on top left that password behind. Those rejections also counted
+toward the per-account lockout, whose reply is deliberately identical to a wrong password, so
+enough of them could lock an account that was being typed correctly. Changing the address now
+clears the password with it, and a hidden password box is never submitted.
+
+**A form that arrives already filled now signs in on one press.** Password-manager autofill and
+automated tests fill both boxes before pressing anything, then press once — which only advanced the
+form, sent no request at all, and left nothing on screen to explain why nothing happened. Once the
+address has been identified, a password that is already in the box is submitted on the same press.
+The organization lookup still runs first, so nobody is offered a password box that their identity
+provider is going to refuse.
+
+**Android: the player stopped re-opening its encrypted store twice a minute.** Building a
+`ServerConfig` opens both preference stores to work out which one holds the pairing, and the
+encrypted one is a Keystore round trip. `DeviceInfo.getDeviceInfo()` built two of them on every
+call — and that runs on register, on re-register and on the 60-second heartbeat, all on the thread
+that draws. On boards whose vendor Keystore is unreliable, the crypto library's wait-and-retry on
+each failure turned that into a visible stall roughly twice a minute, for a value that cannot
+change while content is playing. It is now built once per object, as the update checker already
+did; the brightness control, which did the same thing per read and per write, follows the same
+pattern. Diagnosed, traced and reported by @visimpres-glitch in #406.
+
+**A kiosk page assigned from a dashboard on localhost never loaded on the display.** Assigning a
+kiosk page builds a webpage widget pointing at that page's render route, and it took the address
+from the dashboard's own browser bar. Anyone administering from the machine running the server —
+`localhost:3001`, which is what the install instructions hand you — pinned every screen to an
+address that means *itself*, so the panel asked its own hardware for the page and showed nothing.
+New assignments now store the path alone and each player resolves it against the server it already
+contacted; existing assignments carrying a loopback address are repaired as they render, with the
+stored value deliberately left alone. Only that generated kiosk address is touched — a webpage
+widget you deliberately pointed at a loopback service is left exactly as you set it. The kiosk
+page's own tap handler also dropped optional chaining, which older embedded WebViews refuse to
+parse at all, taking the whole page down with it rather than just that line.
+Contributed by @MashaWaleed in #404.
 
 **Tizen: multitasking resumes media, Return offers to exit, and a store-ready package.** Hidden
 behind Smart Hub or another app, the TV pauses every `<video>` and the AVPlay session and nothing
@@ -41,6 +412,80 @@ Seller Office pre-test refused the SSSP manifest outright — and `tizen/STORE-S
 what to enter for the reviewer.
 
 ### Added
+
+**A clock's date is a setting now, and its timezone is a list.** The date under a clock widget was
+fixed: always shown, always the full weekday-and-month form, always three-quarters of the time's
+size in the time's own colour, always underneath. It is now optional, offered in four formats
+(full, long, medium and short), placeable above, below, left or right of the time, and given its own
+size and colour — a date picked deliberately is no longer dimmed to 70% the way the inherited one
+was. The format picker shows each option rendered in the operator's own locale rather than a
+hardcoded American example, so what you choose is what you will see.
+
+The timezone field became the browser's own IANA list with two shortcuts — *use dashboard timezone*
+and *use server timezone* (the latter asks the server, which is the only one that knows). Where the
+browser has no zone list to offer, older embedded WebViews among them, the field stays free text and
+the server still refuses an invalid IANA name on save, so nothing silently becomes UTC. Existing
+clocks are untouched: a widget with no date settings keeps exactly the date it had.
+Contributed by @MashaWaleed in #403.
+
+**NOC: this server's mesh, live.** Servers → Topology → *Open the live NOC* (or `#/noc`, instance
+owner, only where the mesh is on): this server, what it reports to, what reports to it, and the
+servers reached through a child, as an SVG graph with a list fallback. Roles from the pairing,
+screen counts per node, links coloured by state with `lag_s` (never a guessed zero), acked/head
+revision, outbox depth, cache bytes, and a pulse when a link's counters moved. One `GET
+/api/mesh/noc` every 3 s while the page is open and visible — built in O(edges) from what the node
+already holds; opening it starts no snapshot, cache fill or mesh read. Disconnect on a child's card
+is the existing `DELETE /api/mesh/links/:id`. Either side of a link can now end it: the replica's
+Topology and NOC gained *Disconnect* (the parent-side disenroll that had never been mounted), and a
+primary's `/api/status` shows its uplink's live state.
+
+**NOC readability + this server's health.** Chips now carry only the name, `n/m online` and an
+alert ring (link down, copy lag unknown, or this server's `DATA_DIR` filesystem under 10% free);
+roles and ids moved to the hover title, link captions appear on hover and on the selected server's
+links, and a strip under the header shows this process's CPU, memory and free disk on every poll
+(`—` when a probe cannot answer, never `0`). The screen table shows CPU / memory / storage columns
+only when a listed screen has reported them, and hides the playlist column when no title exists.
+Nothing new is scraped from other servers, and the poll is still one O(edges) read that moves
+nothing.
+
+**Scale-out: four things a 12-server estate showed.** A hub now marks a primary *down* the moment
+its socket closes rather than at the next failed pull (a killed primary read "connected · copy lag
+25s" for up to 30 s). A `workspace-replication` grant now carries the read categories it was
+authored to imply (`health`, `identity`, …), so a copied screen's status follows its primary's
+heartbeats instead of going stale on the replica. A replica's change-log cursor parks at the
+examined head on a short page, so a second-tier hub's `acked/head` no longer sticks at the last
+revision it was granted while its own copies keep the log moving (and the log can be pruned
+again). The NOC's "N here" counts screens attached to *this* server, its edge captions sit by the
+child instead of piling up at the midpoint of nine fan-in lines, and the drawer names every role
+of a server that is primary, replica and hub at once.
+
+**Scale-out, phase C3: a replica can keep the media files.** A replica paired with the new
+`caches-content` role (a tick under the copy tick) stores the bytes of copied content rows on its
+own disk as they are used — fetched only from `PRIMARY_URL`, checked against the row's size and
+sha256, stored under the row's own filename so the ordinary readers serve them as local hits, and
+prefetched one at a time as rows land — so a dashboard preview or a screen that has not downloaded
+yet still gets its media while the primary is unreachable. A file the replica has never fetched
+still answers `503 primary_unreachable`: nothing is invented. Bounded by `REPLICA_CACHE_BYTES` per
+primary (10 GiB unless set), least-recently-read files evicted, a file larger than the cap never
+stored; removed when the row is deleted on the primary, or when the link or the role goes. No grant
+changes on the primary: the authority is the copy grant its operator already gave. Stock installs
+gain an empty table and nothing else — no worker exists on a node without the role. Two-process
+test: `server/test/scale-out-c3-e2e.test.js`.
+
+**Scale-out, phase C2: screens on a replica.** A replica that took the new `terminates-players`
+role when it was paired (a tick under the copy tick) may accept player connections for the copied
+workspaces — once the *primary's* operator grants `player-events` on the primary, a write grant
+nothing on the wire can set. The replica verifies each screen by asking the primary once per socket
+(the token never leaves the primary; the replica keeps a hash so a known screen can reconnect while
+the primary is away), serves assignments and media from its mirror, forwards every event as a
+`player-event` write applied on the primary by the same code a directly connected screen runs, and
+keeps a durable, ordered outbox while the primary is unreachable — proof-of-play is never thinned
+or dropped, heartbeats coalesce. New screens pair to the replica and are provisioned on the primary.
+Commands travel from the primary up the edge as `command-relay`; the replica's own dashboard sends
+them through the primary, so there is one command path, and the dashboard socket now checks the
+same `ALLOWED_COMMANDS` list the REST route always did. A replica without the role, or a primary
+without the grant, behaves exactly as C1. Nothing ever redirects a screen to another server.
+Two-process test with a real player socket: `server/test/scale-out-c2-e2e.test.js`.
 
 **Studio 6.3c — brand kit API, Cyrillic OFL pack, approval draft on Studio replace.** Workspace
 authoring palette is no longer only white-label stand-in: `GET/PUT /api/brand-kit` stores four

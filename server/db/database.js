@@ -1426,6 +1426,24 @@ const migrations = [
   'ALTER TABLE devices ADD COLUMN trigger_status TEXT',
   'ALTER TABLE devices ADD COLUMN trigger_status_at INTEGER',
 
+  /*
+   * The INBOUND local REST door (Goal B part 3): a room control system on the customer's LAN asks
+   * the panel to do something, or asks what it is doing.
+   *
+   * ⚠️ ITS OWN FLAG, even though it shares the trigger HTTP socket and port. `triggers_accept_http`
+   * means "a LAN host may put an overlay on this screen"; this means "a LAN host may change what
+   * this screen is doing". One flag for both would have handed remote control to every site that
+   * only ever wanted an emergency overlay, and the two are enabled months apart by different people.
+   *
+   * ⚠️ AND ITS OWN SECRET, not trigger_secret. The trigger secret is designed to be pasted into an
+   * AMX program and travels in a query string in cleartext; it authorises an overlay. This one
+   * authorises reload / screen on-off / volume / brightness. Sharing them would mean every installer
+   * who was ever given the trigger secret could turn the fleet off, and revoking one would revoke
+   * the other.
+   */
+  'ALTER TABLE devices ADD COLUMN local_api_enabled INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE devices ADD COLUMN local_api_secret TEXT',
+
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_triggers_token ON triggers (workspace_id, match_token)`,
   `CREATE INDEX IF NOT EXISTS idx_triggers_ws     ON triggers (workspace_id)`,
   `CREATE INDEX IF NOT EXISTS idx_trigger_assign  ON trigger_assignments (target_type, target_id)`,
@@ -1472,6 +1490,89 @@ const migrations = [
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_dps_device ON display_power_schedules (device_id) WHERE device_id IS NOT NULL`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_dps_group  ON display_power_schedules (group_id)  WHERE group_id IS NOT NULL`,
   `CREATE INDEX IF NOT EXISTS idx_dps_ws ON display_power_schedules (workspace_id)`,
+
+  /* ==============================================================================================
+   * RESUMABLE UPLOADS — one row per in-flight file.
+   *
+   * ⚠️ WHY THIS EXISTS. A single-request upload must finish inside whatever the shortest timeout
+   * between the browser and this process happens to be. On prod that is Cloudflare's, measured at
+   * exactly 125s across seven consecutive failures from one customer in Perth uploading to a
+   * Hetzner box — his successful uploads peaked at 114.2s, i.e. he was living inside a 10-second
+   * margin. Anyone far from the origin, or on ordinary domestic broadband, has the same ceiling;
+   * they just have not hit it yet.
+   *
+   * The fix is not a bigger timeout, it is smaller requests: each chunk gets its OWN budget, so the
+   * ceiling stops scaling with file size.
+   *
+   * ⚠️ THE OFFSET IS NOT STORED HERE. It is the size of the part file on disk, read at request
+   * time. A counter in this table would be a second source of truth that can disagree with the
+   * bytes — and it would disagree exactly when it matters, after a crash mid-append, which is the
+   * case the whole feature exists to survive.
+   * ============================================================================================ */
+  `CREATE TABLE IF NOT EXISTS upload_sessions (
+     id            TEXT PRIMARY KEY,
+     workspace_id  TEXT NOT NULL,
+     user_id       TEXT NOT NULL,
+     filename      TEXT NOT NULL,
+     /* What the CLIENT says it will send. Never trusted as fact — the append path enforces it as a
+      * ceiling and finalize refuses a part file that does not match — but needed up front so the
+      * storage allowance can be checked BEFORE a gigabyte is accepted rather than after. */
+     declared_size INTEGER NOT NULL,
+     folder_id     TEXT,
+     /* Relative to config.uploadsDir + '/incoming'. ⚠️ NOT contentDir: /uploads/content is served
+      * statically, so a partial file there would be web-reachable from the dashboard's own origin
+      * BEFORE upload-sniff has looked at its bytes. */
+     part_name     TEXT NOT NULL,
+     created_at    INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+     /* Touched on every append. The sweeper measures idleness from here, so a slow upload that is
+      * still making progress is never collected out from under the person making it. */
+     updated_at    INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_upload_sessions_ws  ON upload_sessions (workspace_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_upload_sessions_age ON upload_sessions (updated_at)`,
+
+  /* ==============================================================================================
+   * DEVICE ENDPOINTS — saved REST calls a PANEL makes on its own network, on its own clock.
+   *
+   * ⚠️ The polling happens ON THE DEVICE, not here. The whole point of the http_request surface is
+   * that the panel stands on the private side of the customer's firewall, next to the PLC and the
+   * sensor; a server-side poller could not reach any of it. So these rows are a DEFINITION, synced
+   * to the device, and the device runs them — including with the WAN down. Same shape as triggers.
+   *
+   * ⚠️ device_id XOR group_id, but the RESOLUTION IS A UNION, not an override. A power schedule has
+   * one answer ("is this screen lit"), so device beats group. A list of endpoints is not one
+   * answer: a screen should run its group's endpoints AND its own. The only override is by NAME,
+   * so one panel can point "PLC state" somewhere else without leaving the group.
+   * ============================================================================================ */
+  `CREATE TABLE IF NOT EXISTS device_endpoints (
+     id           TEXT PRIMARY KEY,
+     workspace_id TEXT NOT NULL,
+     name         TEXT NOT NULL,
+     device_id    TEXT REFERENCES devices(id) ON DELETE CASCADE,
+     group_id     TEXT REFERENCES device_groups(id) ON DELETE CASCADE,
+     method       TEXT NOT NULL DEFAULT 'GET',
+     url          TEXT NOT NULL,
+     /* JSON object. ⚠️ Header VALUES are encrypted at rest with lib/plugins/secrets, because an
+      * endpoint header is where an API key lives and a workspace member who can read a row should
+      * not thereby read the credential. They are decrypted on the way to the panel, which needs
+      * the plaintext to make the call at all. */
+     headers      TEXT NOT NULL DEFAULT '{}',
+     body         TEXT,
+     timeout_ms   INTEGER,
+     /* How it fires. Exactly one of the two is meaningful:
+      *   interval_sec — every N seconds, on the device's own clock
+      *   run_on       — 'screen_on' | 'screen_off' | 'heartbeat'
+      * Neither set = the endpoint only runs when an operator asks. */
+     interval_sec INTEGER,
+     run_on       TEXT,
+     enabled      INTEGER NOT NULL DEFAULT 1,
+     created_at   INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+     updated_at   INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+     CHECK ((device_id IS NOT NULL AND group_id IS NULL) OR (device_id IS NULL AND group_id IS NOT NULL))
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_device_endpoints_ws     ON device_endpoints (workspace_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_device_endpoints_device ON device_endpoints (device_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_device_endpoints_group  ON device_endpoints (group_id)`,
 
   /*
    * ─── Playlist inheritance ────────────────────────────────────────────────────────────────
@@ -1877,7 +1978,6 @@ const migrations = [
     table_name   TEXT NOT NULL,
     row_id       TEXT NOT NULL,
     op           TEXT NOT NULL CHECK (op IN ('upsert','delete')),
-    payload_json TEXT,
     ts           INTEGER NOT NULL DEFAULT (strftime('%s','now'))
   )`,
   "CREATE INDEX IF NOT EXISTS idx_mesh_change_log_ws ON mesh_change_log(workspace_id, rev)",

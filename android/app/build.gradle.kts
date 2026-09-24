@@ -46,8 +46,8 @@ android {
         targetSdk = 34
         // Env-overridable so device-owner reinstalls (which require an ever-increasing
         // versionCode — downgrades are blocked) don't churn this file each build.
-        versionCode = (System.getenv("VERSION_CODE") ?: findProperty("VERSION_CODE") as String? ?: "161").toInt()
-        versionName = System.getenv("VERSION_NAME") ?: findProperty("VERSION_NAME") as String? ?: "2.1.5"
+        versionCode = (System.getenv("VERSION_CODE") ?: findProperty("VERSION_CODE") as String? ?: "162").toInt()
+        versionName = System.getenv("VERSION_NAME") ?: findProperty("VERSION_NAME") as String? ?: "2.1.6"
     }
 
     signingConfigs {
@@ -193,6 +193,11 @@ tasks.withType<Test> {
     // in the opposite direction from ScheduleEval above (to ON, never to off) — a difference that
     // only the shared vectors can keep honest across two languages. PowerWindowTest holds it.
     systemProperty("powerWindowVectors", File(rootProject.projectDir.parentFile, "shared/power-window-vectors.json").absolutePath)
+    // Device-side REST targets. ⚠️ This one decides whether an operator command can be turned into
+    // a LOCAL FILE READ on the panel (file:// / content://), so the allowlist must mean the same
+    // thing in both languages — the server refuses a bad URL when it is saved, this player refuses
+    // it again when the request is made. HttpTargetGuardTest holds it.
+    systemProperty("httpTargetVectors", File(rootProject.projectDir.parentFile, "shared/http-target-vectors.json").absolutePath)
 }
 
 // #81: AGP ignores enableV1Signing at minSdk>=24, so `assembleRelease` produces a

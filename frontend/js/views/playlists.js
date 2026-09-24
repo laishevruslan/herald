@@ -2,6 +2,10 @@ import { api } from '../api.js';
 import * as gettingStarted from '../components/getting-started.js';
 import { showToast } from '../components/toast.js';
 import { esc, hydrateAuthImages } from '../utils.js';
+import {
+  buildFolderTree, childrenOf, subtreeIds as subtreeIdsTree,
+  countIn as countInTree, pathTo as pathToTree, unfiledCount as unfiledCountOf,
+} from '../lib/folder-tree.js';
 import { t, tn } from '../i18n.js';
 import { frameDeviceOutput, displayAspectRatio } from '../lib/device-frame.js';
 import { renderApprovalBar } from '../components/approval-actions.js';
@@ -1398,6 +1402,11 @@ async function showAddItemModal(playlistId, opts = {}) {
       </div>
       <div style="display:flex;gap:8px;margin-bottom:12px">
         <input type="text" id="addItemSearch" class="input" placeholder="${t('playlist.search_placeholder')}" style="flex:1">
+        <!-- Folder filter. Hidden on the widget/playlist tabs, which have no folders. Populated
+             after the folder list loads; until then it is just "All folders". -->
+        <select id="addItemFolder" class="input" style="width:auto;max-width:180px;background:var(--bg-input)" title="${t('playlist.folder_label')}">
+          <option value="">${t('playlist.folder_all')}</option>
+        </select>
         <select id="addItemSort" class="input" style="width:auto;background:var(--bg-input)" title="${t('playlist.sort_label')}">
           <option value="name_asc">${t('playlist.sort.name_asc')}</option>
           <option value="name_desc">${t('playlist.sort.name_desc')}</option>
@@ -1407,6 +1416,13 @@ async function showAddItemModal(playlistId, opts = {}) {
           <option value="duration_desc">${t('playlist.sort.duration_desc')}</option>
         </select>
       </div>
+      <!--
+        The folder slide bar. Horizontally scrollable, so twelve folders take one line instead of
+        wrapping the modal into a wall of buttons. It is the SAME filter as the dropdown above, not
+        a second one: both write folderFilter and both are redrawn from it, so they can never show
+        different things. A picker with two controls that disagree is worse than one control.
+      -->
+      <div id="addItemFolderBar" style="display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;padding:2px 0 8px;margin-bottom:4px;scrollbar-width:thin"></div>
       <div id="addItemList" style="flex:1;overflow-y:auto;min-height:200px;max-height:400px"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px">
         <div id="addBulkBar" style="display:none;align-items:center;gap:10px;flex:1">
@@ -1428,17 +1444,42 @@ async function showAddItemModal(playlistId, opts = {}) {
   let allContent = [];
   let allWidgets = [];
   let allPlaylists = [];
+  let allFolders = [];
+  // ⚠️ THE single source of truth for the folder filter. The dropdown and the slide bar are two
+  // views of THIS, never of each other — which is what stops them drifting apart on screen.
+  // '' = all folders, '__root__' = filed nowhere, otherwise a folder id.
+  let folderFilter = '';
+  // True when the library is larger than we are willing to hold in a modal. Surfaced rather than
+  // hidden — silently showing a partial list is the bug this whole change exists to fix.
+  let contentTruncated = false;
   // Whether THIS playlist may take a child at all. The server refuses if it is already used as one
   // (that would build two levels from the far end), so the tab explains rather than letting the
   // user pick something and collect a 400.
   let nestingBlockedBy = null;
 
   try {
-    [allContent, allWidgets, allPlaylists] = await Promise.all([
-      api.getContent(),
+    /*
+     * ⚠️ getAllContent, NOT getContent. The endpoint defaults to LIMIT 100, so this picker used to
+     * show the first 100 items of a workspace and nothing else — newest first, which meant the
+     * MISSING ones were the oldest, i.e. exactly the ones an operator had already filed into
+     * folders. A customer with 211 files could see a video in the library and not find it here,
+     * and reported it as "it won't let me choose content from a different folder". It was not a
+     * folder bug; it was an invisible cap.
+     */
+    const [content, widgets, playlists, folders] = await Promise.all([
+      api.getAllContent(),
       api.getWidgets ? api.getWidgets() : Promise.resolve([]),
-      api.getPlaylists().catch(() => [])
+      api.getPlaylists().catch(() => []),
+      api.getFolders ? api.getFolders().catch(() => []) : Promise.resolve([]),
     ]);
+    allContent = content.items;
+    contentTruncated = content.truncated;
+    allWidgets = widgets;
+    allPlaylists = playlists;
+    allFolders = Array.isArray(folders) ? folders : [];
+    buildTree();
+    populateFolderFilter();
+    renderFolderBar();
     const self = allPlaylists.find(p => p.id === playlistId);
     if (self && self.used_by_count > 0) nestingBlockedBy = self.used_by_count;
   } catch (err) {
@@ -1535,18 +1576,166 @@ async function showAddItemModal(playlistId, opts = {}) {
     }
   }
 
+  /*
+   * FOLDERS ARE A TREE, AND FLATTENING ONE IS HOW A PICKER BECOMES UNUSABLE.
+   *
+   * ⚠️ The first version of this listed every folder side by side. On the library that prompted it
+   * — 39 folders, 30 of them nested — that put "WESTERN AUSTRALIA" and "WEST PERTH" next to each
+   * other as if they were peers when one contains the other, and offered a flat list of 39 to scroll
+   * through. A drawer or a chip strip built on the same flat list has the same problem, just
+   * sideways.
+   *
+   * So the bar is a BREADCRUMB: where you are, then what is inside it. It stays one line deep
+   * regardless of how many folders exist, and it shows the structure the operator actually built.
+   */
+  /*
+   * The tree itself lives in lib/folder-tree.js so it can be tested against a real structure
+   * rather than a screenshot. This view only decides what to DRAW.
+   */
+  let folderTree = buildFolderTree([]);
+
+  function buildTree() { folderTree = buildFolderTree(allFolders); }
+  const kidsOf = (parent) => childrenOf(folderTree, parent);
+  const countIn = (id) => countInTree(folderTree, id, allContent);
+  const pathTo = (id) => pathToTree(folderTree, id);
+  const subtreeIds = (id) => subtreeIdsTree(folderTree, id);
+
+  const unfiledCount = () => unfiledCountOf(allContent);
+
+  function chip(value, label, count, { current = false } = {}) {
+    const style = current
+      ? 'background:var(--primary,#3B82F6);color:#fff;border-color:transparent'
+      : 'background:var(--bg-input);color:var(--text-secondary)';
+    return `<button type="button" class="picker-folder-chip" data-folder="${esc(value)}"
+      style="flex:0 0 auto;border:1px solid var(--border);border-radius:999px;padding:4px 12px;font-size:12px;cursor:pointer;white-space:nowrap;${style}"
+      >${esc(label)}${count === null ? '' : ` (${count})`}</button>`;
+  }
+
+  /**
+   * The slide bar: breadcrumb to where you are, then the folders inside it.
+   *
+   * Scrolls horizontally rather than wrapping, so a deep path or a wide folder never grows the
+   * modal. Empty subtrees are omitted — in a PICKER a folder you cannot pick anything from is a
+   * dead end — and the number omitted is stated rather than left as a silent disappearance.
+   */
+  function renderFolderBar() {
+    const bar = document.getElementById('addItemFolderBar');
+    if (!bar) return;
+    if (activeTab !== 'content') { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+
+    const parts = [];
+    const atAll = folderFilter === '' || folderFilter === '__root__';
+    parts.push(chip('', t('playlist.folder_all'), allContent.length, { current: folderFilter === '' }));
+
+    let childParent = '';
+    if (!atAll) {
+      for (const f of pathTo(folderFilter)) {
+        parts.push(`<span style="flex:0 0 auto;align-self:center;color:var(--text-muted);font-size:12px">›</span>`);
+        parts.push(chip(f.id, f.name, countIn(f.id), { current: f.id === folderFilter }));
+      }
+      childParent = folderFilter;
+    }
+
+    const kids = (childrenOf.get(childParent) || []).map((f) => ({ f, n: countIn(f.id) }));
+    const shown = kids.filter((k) => k.n > 0);
+    if (shown.length) {
+      parts.push(`<span style="flex:0 0 auto;align-self:center;color:var(--text-muted);font-size:12px">│</span>`);
+      for (const { f, n } of shown) parts.push(chip(f.id, f.name, n));
+    }
+
+    // "Not in any folder" belongs beside the top level, where an operator looks for a stray file.
+    if (childParent === '' && unfiledCount() > 0) {
+      parts.push(chip('__root__', t('playlist.folder_root'), unfiledCount(), { current: folderFilter === '__root__' }));
+    }
+
+    const hidden = kids.length - shown.length;
+    if (hidden > 0) {
+      parts.push(`<span style="flex:0 0 auto;align-self:center;color:var(--text-muted);font-size:11px;padding-left:4px"
+        >${esc(t('playlist.folders_empty_hidden', { n: hidden }))}</span>`);
+    }
+
+    bar.innerHTML = parts.join('');
+    bar.querySelectorAll('.picker-folder-chip').forEach((b) => b.addEventListener('click', () => {
+      setFolderFilter(b.getAttribute('data-folder'));
+    }));
+  }
+
+  /**
+   * The dropdown, indented to show the same tree.
+   *
+   * Kept alongside the bar deliberately: the bar is for moving through the structure, the dropdown
+   * is for jumping straight to a folder you already know the name of. They are two views of
+   * [folderFilter] and never of each other, which is what stops them showing different things.
+   */
+  function populateFolderFilter() {
+    const sel = document.getElementById('addItemFolder');
+    if (!sel) return;
+    const opts = [`<option value="">${esc(t('playlist.folder_all'))} (${allContent.length})</option>`];
+    if (unfiledCount() > 0) {
+      opts.push(`<option value="__root__">${esc(t('playlist.folder_root'))} (${unfiledCount()})</option>`);
+    }
+    const walk = (parent, depth) => {
+      for (const f of (childrenOf.get(parent) || [])) {
+        const n = countIn(f.id);
+        if (n > 0) {
+          const indent = depth ? '\u00a0\u00a0'.repeat(depth) + '\u21b3 ' : '';
+          opts.push(`<option value="${esc(f.id)}">${indent}${esc(f.name)} (${n})</option>`);
+        }
+        walk(f.id, depth + 1);
+      }
+    };
+    walk('', 0);
+    sel.innerHTML = opts.join('');
+    sel.value = folderFilter;
+  }
+
+  /** The one way the filter changes. Both controls and the list are redrawn from it. */
+  function setFolderFilter(value) {
+    folderFilter = value || '';
+    const sel = document.getElementById('addItemFolder');
+    if (sel) sel.value = folderFilter;
+    renderFolderBar();
+    renderTab();
+  }
+
+  /*
+   * ⚠️ The RENDER is capped, the FETCH is not — and they are different problems.
+   *
+   * The bug being fixed was a truncated fetch that nobody could see. Rendering every match of a
+   * five-thousand-item library into a modal is a different failure (a frozen tab), so the list
+   * shows a bounded number of rows and SAYS how many more matched. Telling the operator to narrow
+   * the search is honest; quietly showing them the first hundred is what caused this.
+   */
+  const MAX_ROWS = 200;
+
   function renderTab() {
     const list = document.getElementById('addItemList');
     const search = (document.getElementById('addItemSearch')?.value || '').toLowerCase();
+    const folderSel = document.getElementById('addItemFolder');
+    // Folders only apply to library content; widgets and playlists have none.
+    if (folderSel) folderSel.style.display = activeTab === 'content' ? '' : 'none';
+    const bar = document.getElementById('addItemFolderBar');
+    if (bar) bar.style.display = activeTab === 'content' ? 'flex' : 'none';
 
     if (activeTab === 'playlists') return renderPlaylistsTab(list, search);
 
     const items = activeTab === 'content' ? allContent : allWidgets;
     const sortMode = document.getElementById('addItemSort')?.value || 'name_asc';
-    const filtered = sortItems(items.filter(item => {
+    const active = activeTab === 'content' ? folderFilter : '';
+    // ⚠️ SUBTREE, not the folder alone. Picking a parent means "everything under here" — anything
+    // else makes a grouping folder look empty, which is how a flat filter loses files.
+    const wanted = active && active !== '__root__' ? subtreeIds(active) : null;
+    const matched = sortItems(items.filter(item => {
       const name = (item.filename || item.name || '').toLowerCase();
-      return name.includes(search);
+      if (!name.includes(search)) return false;
+      if (!active) return true;
+      // '__root__' is "filed nowhere", which is a real place an operator looks for something.
+      if (active === '__root__') return !item.folder_id;
+      return !!item.folder_id && wanted.has(item.folder_id);
     }), sortMode);
+    const filtered = matched.slice(0, MAX_ROWS);
+    const hidden = matched.length - filtered.length;
     // #318: bulk add is content-only (the server route is), and meaningless when replacing one item.
     const selectable = activeTab === 'content' && !replaceItemId;
 
@@ -1555,7 +1744,17 @@ async function showAddItemModal(playlistId, opts = {}) {
       return;
     }
 
-    list.innerHTML = filtered.map(item => {
+    const notices = [];
+    if (hidden > 0) {
+      notices.push(`<div style="padding:8px 10px;font-size:12px;color:var(--text-muted);text-align:center">
+        ${esc(t('playlist.more_matches', { n: hidden }))}</div>`);
+    }
+    if (contentTruncated && activeTab === 'content') {
+      notices.push(`<div style="padding:8px 10px;font-size:12px;color:var(--warning,#d97706);text-align:center">
+        ${esc(t('playlist.library_truncated'))}</div>`);
+    }
+
+    list.innerHTML = notices.join('') + filtered.map(item => {
       const isWidget = activeTab === 'widgets';
       const name = item.filename || item.name || t('common.unknown');
       // #237: the server gives a video item the clip's own length instead of the 10s default.
@@ -1634,16 +1833,23 @@ async function showAddItemModal(playlistId, opts = {}) {
         b.classList.toggle('btn-secondary', b.dataset.tab !== activeTab);
         b.classList.toggle('active', b.dataset.tab === activeTab);
       });
+      // The bar is content-only, and it has to be redrawn rather than merely hidden: coming back
+      // to the Content tab must show the folder you were in, not the one you left two tabs ago.
+      renderFolderBar();
       renderTab();
     });
   });
 
   document.getElementById('addItemSearch').addEventListener('input', renderTab);
   document.getElementById('addItemSort')?.addEventListener('change', renderTab);
+  // Both controls write the SAME state, so neither can get ahead of the other.
+  document.getElementById('addItemFolder')?.addEventListener('change', (e) => setFolderFilter(e.target.value));
 
   document.getElementById('addSelectAll')?.addEventListener('change', (e) => {
-    // "Select all" means all rows CURRENTLY SHOWN — i.e. what the search and sort have narrowed to,
-    // not the whole library. Anything else would be a surprise on a filtered list.
+    // "Select all" means all rows CURRENTLY SHOWN — what the search, the FOLDER filter and the
+    // sort have narrowed to, capped at MAX_ROWS. Not the whole library: ticking a box on a
+    // filtered list and silently selecting things you cannot see is its own small betrayal, and
+    // the count next to the button always matches what is on screen.
     document.querySelectorAll('.add-item-check').forEach((cb) => {
       cb.checked = e.target.checked;
       if (cb.checked) selected.add(cb.dataset.id); else selected.delete(cb.dataset.id);

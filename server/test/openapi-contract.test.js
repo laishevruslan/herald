@@ -53,7 +53,22 @@ test('openapi: every operation x-required-scope matches the method-based enforce
       const isFullScope = p.includes('command') || p === '/pip' || p.startsWith('/pip/')
         || p === '/triggers' || p.startsWith('/triggers/')
         || p.endsWith('/trigger-config') || p.endsWith('/trigger-secret')
-        || p === '/display-power-schedules' || p.startsWith('/display-power-schedules/');
+        /*
+         * ⚠️ /local-api and /local-api-secret enforce full for a reason that is stronger than any of
+         * the above: they OPEN A LISTENING PORT on the customer's LAN through which a screen can be
+         * reloaded, blanked, or have its volume changed, and they mint the credential that does it.
+         * 'write' is content editing; this is handing out a key to the estate.
+         */
+        || p.endsWith('/local-api') || p.endsWith('/local-api-secret')
+        || p === '/display-power-schedules' || p.startsWith('/display-power-schedules/')
+        /*
+         * ⚠️ /device-endpoints enforces full for the same reason as its neighbours above:
+         * routes/device-endpoints.js guards every mutation with requireScope('full') +
+         * requireFleetWrite, because saving one makes a screen issue requests inside the customer's
+         * private network on a timer. Documenting it as 'write' would send an integrator to a
+         * guaranteed 403 while the docs told them they were fine.
+         */
+        || p === '/device-endpoints' || p.startsWith('/device-endpoints/');
       const expected = (m === 'get' || m === 'head') ? 'read' : (isFullScope ? 'full' : 'write');
       if (op['x-required-scope'] !== expected) {
         mismatches.push(`${m.toUpperCase()} ${p}: spec='${op['x-required-scope']}' enforcement='${expected}'`);

@@ -20,7 +20,7 @@ const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..', '..');
 const SCRIPT = path.join(ROOT, 'scripts', 'raspberry-pi-setup.sh');
-const SRC = fs.readFileSync(SCRIPT, 'utf8').replace(/\r\n/g, '\n');
+const SRC = fs.readFileSync(SCRIPT, 'utf8');
 
 // The kiosk launcher as the installer will write it, with the install-time expansions applied.
 function generatedKioskScript() {
@@ -37,12 +37,8 @@ function generatedKioskScript() {
 function bashSyntaxOk(text) {
   const p = path.join(os.tmpdir(), `st-kiosk-${process.pid}-${Math.abs(text.length)}.sh`);
   fs.writeFileSync(p, text);
-  // WSL/Git Bash on Windows: a backslash is an escape, and the drive is /mnt/c not C:.
-  const forBash = process.platform === 'win32'
-    ? path.resolve(p).replace(/\\/g, '/').replace(/^([A-Za-z]):/, (_, d) => `/mnt/${d.toLowerCase()}`)
-    : p;
   try {
-    execFileSync('bash', ['-n', forBash], { stdio: 'pipe' });
+    execFileSync('bash', ['-n', p], { stdio: 'pipe' });
     return true;
   } catch (e) {
     throw new Error(`generated script is not valid bash:\n${e.stderr?.toString() || e.message}`);
@@ -298,15 +294,12 @@ test('#409: a real labwc config is MERGED into, never clobbered', () => {
     'write via a temp file so a failed merge cannot truncate the config');
 });
 
-test('#409: the merge actually puts the keybind inside <keyboard> (runs the real awk)', (t) => {
+test('#409: the merge actually puts the keybind inside <keyboard> (runs the real awk)', () => {
   /*
    * A regex on the source only proves an awk call exists. This runs the awk program lifted OUT of
    * the installer against a real config, so the test fails if the program itself is wrong.
-   * Windows CI images often have no awk; the source assertions above still run there.
    */
-  try { execFileSync('awk', ['--version'], { stdio: 'ignore' }); }
-  catch { t.skip('awk is not on PATH'); return; }
-  const { execFileSync: execAwk } = require('node:child_process');
+  const { execFileSync } = require('node:child_process');
   const block = labwcBlock();
   const prog = block.match(/awk -v kb="\$LABWC_KEYBIND" '([^']+)'\s*\\?\s*\n?\s*"\$LABWC_RC"/);
   assert.ok(prog, 'could not lift the merge awk program out of the installer');
@@ -318,7 +311,7 @@ test('#409: the merge actually puts the keybind inside <keyboard> (runs the real
     '</keyboard>', '</labwc_config>', '',
   ].join('\n');
 
-  const out = execAwk('awk', ['-v', `kb=${KEYBIND}`, prog[1]], { input: existing }).toString();
+  const out = execFileSync('awk', ['-v', `kb=${KEYBIND}`, prog[1]], { input: existing }).toString();
   assert.match(out, /HideCursor/, 'our binding must be added');
   assert.match(out, /lxterminal/, "and the owner's own binding must survive");
   assert.ok(out.indexOf('HideCursor') < out.indexOf('</keyboard>'),

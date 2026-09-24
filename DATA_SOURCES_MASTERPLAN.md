@@ -85,29 +85,27 @@ When an iCal feed is ingested by `server/lib/data-sources/ical-resolver.js`, it 
 {
   "status": "AVAILABLE",
   "status_de": "FREI",
-  "status_en": "AVAILABLE",
-  "status_detail": "Free until 14:00",
+  "status_detail": "Frei bis 14:00",
   "is_busy": false,
-
-  "current_title": "",
-  "current_time": "",
-  "current_organizer": "",
-
-  "next_title": "Sprint Planning",
-  "next_time": "Today, 14:00",
-  "next_organizer": "Max Mustermann",
-
-  "event_count": 3,
-  "events_today_count": 2,
-  "remaining_today_count": 2,
-  "remaining_today_empty": "",
-
-  "agenda_text": "14:00 Sprint Planning\n16:00 Budget Review",
-
+  
+  "current_event_title": null,
+  "current_event_time": null,
+  "current_event_organizer": null,
+  
+  "next_event_title": "Sprint Planning",
+  "next_event_time": "14:00 – 15:30",
+  "next_event_organizer": "Max Mustermann",
+  "next_event_starts_in": "in 45 Min.",
+  
+  "events_today_count": 3,
+  "agenda_today_text": "14:00 Sprint Planning\n16:00 Budget Review",
+  
   "event_0_title": "Sprint Planning",
-  "event_0_time": "14:00 – 15:30",
+  "event_0_date": "Heute, 14:00",
   "event_1_title": "Budget Review",
-  "event_1_time": "16:00 – 17:00"
+  "event_1_date": "Heute, 16:00",
+  "event_2_title": "Papiermüll",
+  "event_2_date": "Morgen, 07:00"
 }
 ```
 
@@ -126,23 +124,16 @@ In ScreenTinker Slides, fields in `config.fields` can reference any data source 
     "headline": "Konferenzraum Berlin",
     "badge": "{{ds:room_berlin.status_de}}",
     "sub": "{{ds:room_berlin.status_detail}}",
-    "next_event": "{{ds:room_berlin.next_title}} ({{ds:room_berlin.next_time}})",
+    "next_event": "{{ds:room_berlin.next_event_title}} ({{ds:room_berlin.next_event_time}})",
     "qr_link": "https://cal.company.com/book/berlin"
   }
 }
 ```
 
 ### Rendering Pipeline:
-1. `slideRender.renderSlideHtml(config)` interpolates `{{ds:SLUG.KEY}}` in `config.fields`.
-2. `getWorkspaceDataMapSync` stamps each source with reserved `__status` from the row's `last_status` (`ok` / `error` / `pending`). That key is not part of the iCal dictionary — `status` stays the room word.
-3. Per-element flags (opt-in, stored on the template, applied at render):
-   - `hide_if_empty` — skip the element if its own slot is empty after interpolation, including leftover chrome around empty tokens (`Next:  ()` must not appear).
-   - `show_when` — `always` | `busy` | `free` | `stale`. Skip when the bound source does not match.
-   - `bind_status` — data-source slug. Reads `is_busy` and `__status`. Missing slug or `__status: error` → **stale** (fail closed: do not paint AVAILABLE).
-   - `color_when` — `{ busy, free, stale }` hex on box/rule fill and stat glyphs.
-4. A payload change changes the HTML (colour, missing row) and must not rewrite `template`. Cached values are retained on a failed fetch; the flags then paint stale rather than inventing a fallback word.
-
-Operator / author contract: [`docs/slide-data-binding.md`](docs/slide-data-binding.md).
+1. `slideRender.renderSlideHtml(config)` checks each field for `{{ds:SLUG.KEY}}`.
+2. Replaces placeholders with current cached values.
+3. If a data source is temporarily unreachable, fallback text is gracefully inserted (or cached value is retained).
 
 ---
 
@@ -193,16 +184,7 @@ Add a dedicated item in the sidebar ([`frontend/index.html`](file:///Users/rene/
 - [x] Header Deck rename, filmstrip inline rename, tab switching fixes.
 - [x] Soft reload hash tracker in `server/server.js`.
 
-### Phase 3: Out-of-the-Box Slide Templates & Presets (Completed ✅)
-
-Implementation plan (competitive analysis, renderer gaps, factory IDs, PR split):
-[`docs/data-sources-templates-plan.md`](docs/data-sources-templates-plan.md).
-
-T1 door signs (including portrait 9:16), T2 waste, T3 daily agenda and a 2×2 corridor board ship from `server/lib/slide-templates.js`. The New Deck wizard is a card gallery (CSS thumbs, filter chips); it binds one or four data sources before create. PAT may `GET /api/slide-templates`.
-
-- [x] **3.0** Renderer: `hide_if_empty`, `show_when`, `bind_status` / `color_when`; pass `__status` so a failed fetch cannot look AVAILABLE. (`remaining_today_empty` / `remaining_today_count` are in the resolver; factory templates are 3.1+.)
-- [x] **3.1** Template 1: **Meeting Room Door Sign** — `room-epaper-5x3` (800×480 Sticky) and `room-lcd-16x9` (green/red bar). Wizard binds a data source.
-- [x] **3.2** Template 2: **Waste / Trash Pickup** — `waste-epaper-5x3` and `waste-lcd-16x9`.
-- [x] **3.3** Template 3: **Daily Office Agenda Board** — `agenda-lcd-16x9` (4K uses the same 16:9 + `cqw`).
-- [x] **3.4** Gallery UX (preview cards), replacing the radio list.
-- [x] **3.5** Stretch: 4-room corridor board, portrait 9:16 door sign, `GET /api/slide-templates`. Getting-started calendar step not added (checklist has no slides item).
+### Phase 3: Out-of-the-Box Slide Templates & Presets (In Progress)
+- [ ] Template 1: **E-Paper Meeting Room Sign** (800×480 for Seeed Studio reTerminal Sticky).
+- [ ] Template 2: **Waste / Trash Pickup Reminder** (800×480 & 1080p).
+- [ ] Template 3: **Daily Office Agenda Board** (1080p / 4K).

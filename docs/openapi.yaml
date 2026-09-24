@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: ScreenTinker Public API
-  version: 2.1.5
+  version: 2.1.6
   description: |
     Public, token-scoped REST API for ScreenTinker digital signage.
 
@@ -1493,11 +1493,15 @@ paths:
                   # asserts the two lists match: this one had already drifted, documenting six of
                   # the commands a 'full' token can actually send.
                   enum: [screen_on, screen_off, launch, update, reboot, shutdown,
+                         refresh,
                          power_menu, lock_now, kiosk_lock, kiosk_unlock,
                          set_time, set_timezone, status_bar, block_uninstall, unblock_uninstall,
                          shell, install_apk,
                          set_volume, set_brightness, set_system_brightness, set_screen_timeout,
-                         set_server_url, set_power_schedule]
+                         set_server_url, set_power_schedule, http_request]
+                  # ⚠️ http_request answers with an `id` alongside status. The result arrives
+                  # separately, tagged with that id — it is how a caller matches an answer to its
+                  # own request when more than one is in flight to the same screen.
                 payload: { type: object }
       responses:
         '200': { description: '{ success, sent, offline, total, results }.' }
@@ -1534,11 +1538,15 @@ paths:
                   type: string
                   # Same list as the group route above; see the note there.
                   enum: [screen_on, screen_off, launch, update, reboot, shutdown,
+                         refresh,
                          power_menu, lock_now, kiosk_lock, kiosk_unlock,
                          set_time, set_timezone, status_bar, block_uninstall, unblock_uninstall,
                          shell, install_apk,
                          set_volume, set_brightness, set_system_brightness, set_screen_timeout,
-                         set_server_url, set_power_schedule]
+                         set_server_url, set_power_schedule, http_request]
+                  # ⚠️ http_request answers with an `id` alongside status. The result arrives
+                  # separately, tagged with that id — it is how a caller matches an answer to its
+                  # own request when more than one is in flight to the same screen.
                 payload: { type: object }
       responses:
         '200':
@@ -1576,79 +1584,9 @@ paths:
               properties:
                 name: { type: string, maxLength: 120 }
                 doc: { $ref: '#/components/schemas/DeckDocument' }
-                factory: { type: string, description: 'Factory id (`room-epaper-5x3`, `room-lcd-16x9`, `room-lcd-9x16`, `rooms-board-16x9`, `waste-epaper-5x3`, `waste-lcd-16x9`, `agenda-lcd-16x9`). When set, the server builds `doc` and ignores a client-supplied document.' }
-                data_source_slug: { type: string, maxLength: 64 }
-                data_source_slugs: { type: array, items: { type: string, maxLength: 64 }, description: 'Four slugs for `rooms-board-16x9`. Falls back to `data_source_slug` then `room_a`…`room_d`.' }
-                title: { type: string, maxLength: 120, description: 'Room name written into fields.room_name (T1), slide name (T2/T3).' }
-                titles: { type: array, items: { type: string, maxLength: 120 }, description: 'Per-tile names for `rooms-board-16x9`.' }
-                chrome: { type: object, properties: { next_prefix: { type: string }, now_prefix: { type: string }, headline: { type: string }, waste_note: { type: string }, then_prefix: { type: string } } }
       responses:
         '201': { description: 'The created deck, with any publish warnings.' }
-        '400': { description: 'A deck needs a name, or the factory id is unknown.' }
-
-  /slide-decks/factories:
-    get:
-      tags: [slides]
-      summary: List factory templates for the New Deck gallery
-      description: |
-        Catalogue for the wizard: id, aspect, filter chip, i18n keys, and a CSS thumbnail
-        (`background`, `aspect`, `parts` of `bar`/`txt`). Geometry lives on the server so a 1-bit
-        e-paper colour cannot drift from the factory that POST creates. Blank is a client-side card,
-        not a factory. Alias: `GET /api/slide-templates`.
-      x-required-scope: read
-      responses:
-        '200':
-          description: |
-            Array of `{ id, version, aspect, chip, title_key, desc_key, thumbnail }`.
-            `chip` is `room`, `facilities`, or `agenda`. Thumbnail hex is `#RGB` / `#RRGGBB` only.
-
-  /slide-decks/factories/{id}/doc:
-    get:
-      tags: [slides]
-      summary: Fetch a factory skeleton (dashboard catalogue)
-      description: |
-        Same builder as `POST /slide-decks { factory }` and `GET /slide-templates/{id}/doc`.
-        Query `slug` / `slugs` (comma-separated) and `title` / `titles` fill the `{{ds:}}` tokens.
-      x-required-scope: read
-      parameters:
-        - { name: id, in: path, required: true, schema: { type: string } }
-        - { name: slug, in: query, schema: { type: string } }
-        - { name: slugs, in: query, schema: { type: string } }
-        - { name: title, in: query, schema: { type: string } }
-        - { name: titles, in: query, schema: { type: string } }
-      responses:
-        '200': { description: '{ id, version, aspect, slide }' }
-        '404': { description: 'Unknown factory.' }
-
-  /slide-templates:
-    get:
-      tags: [slides]
-      summary: List factory templates (PAT catalogue)
-      description: |
-        Same payload as `GET /slide-decks/factories`. Read-only. Slug is not workspace-validated
-        until a deck is published.
-      x-required-scope: read
-      responses:
-        '200':
-          description: Array of `{ id, version, aspect, chip, title_key, desc_key, thumbnail }`.
-
-  /slide-templates/{id}/doc:
-    get:
-      tags: [slides]
-      summary: Fetch a factory skeleton
-      description: |
-        Same CJS builder as `POST /slide-decks { factory }`. Query `slug` / `slugs` (comma-separated)
-        and `title` / `titles` fill the `{{ds:}}` tokens. Unknown id is 404.
-      x-required-scope: read
-      parameters:
-        - { name: id, in: path, required: true, schema: { type: string } }
-        - { name: slug, in: query, schema: { type: string } }
-        - { name: slugs, in: query, schema: { type: string }, description: 'Comma-separated, for rooms-board-16x9' }
-        - { name: title, in: query, schema: { type: string } }
-        - { name: titles, in: query, schema: { type: string } }
-      responses:
-        '200': { description: '{ id, version, aspect, slide }' }
-        '404': { description: 'Unknown factory.' }
+        '400': { description: 'A deck needs a name.' }
 
   /slide-decks/{id}:
     get:
@@ -1893,6 +1831,92 @@ paths:
         - { name: id, in: path, required: true, schema: { type: string } }
       responses:
         '200': { description: 'The secret, and whether the device was reached.' }
+        '404': { description: No such device in this workspace. }
+
+  # ------------------------------------------------------- inbound local REST API
+  /devices/{id}/local-api:
+    post:
+      tags: [devices]
+      summary: Open or close the screen's own inbound REST door
+      description: |
+        Goal B part 3. Lets a control system ON THE SAME LAN as the screen call the screen directly:
+        `GET /api/status` and `POST /api/command` on the panel itself, on the trigger HTTP port
+        (default 8079).
+
+        The point is reach. A Crestron processor or a PLC in the same rack cannot call this server —
+        it is usually in another country, behind an outbound-only firewall, and holds credentials an
+        installer is not allowed to have. It can call the screen next to it.
+
+        ⚠️ **OFF BY DEFAULT, AND SEPARATE FROM `accept_http`.** The two share a socket and a port but
+        not a permission: `accept_http` lets a LAN host put an overlay on the screen, this lets a LAN
+        host change what the screen is doing. Enabling triggers does not enable this, and enabling
+        this does not enable triggers.
+
+        ⚠️ **It opens a listening port on the customer's LAN.** Anything that can route to the panel
+        can reach it, so the secret is the only boundary — treat the port as reachable by every device
+        on that segment and firewall it if the segment is not trusted.
+
+        ⚠️ Enabling is refused until a secret is set, rather than accepted and left to fail on the
+        panel. The panel would answer `503 no_secret_configured` to every request, but an operator who
+        ticked a box and walked away believes the door is open.
+
+        The command set a LAN caller may ask for is much smaller than what a `full` token can send
+        (`refresh`, `screen_on`, `screen_off`, `set_volume`, `set_brightness`,
+        `set_system_brightness`) and is returned in the response. Notably absent: `shell`,
+        `install_apk`, `update`, `set_server_url`, `http_request`, `launch`, `kiosk_unlock`, `reboot`.
+        The panel enforces that list, not this server — nothing here is in the request path.
+
+        Android only for now.
+      x-required-scope: full
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled: { type: boolean }
+      responses:
+        '200': { description: '{ success, delivered, local_api: { enabled, port, commands, secret_set } }.' }
+        '400': { description: 'enabled missing, or enabling with no secret set.' }
+        '404': { description: No such device in this workspace. }
+
+  /devices/{id}/local-api-secret:
+    post:
+      tags: [devices]
+      summary: Rotate or set the local REST API secret
+      description: |
+        The credential a LAN caller presents, as `Authorization: Bearer <secret>` or — for gear that
+        cannot set a header at all — `?secret=`.
+
+        ⚠️ **NOT the trigger secret, and deliberately not shared with it.** The trigger secret buys an
+        overlay on a screen already showing this workspace's content; this one buys "reload that
+        screen, blank it, change its volume". Sharing the value would mean every installer ever given
+        the trigger secret could take the fleet dark, and rotating one would silently rotate the other.
+
+        Rotation generates 24 random bytes as hex. A supplied secret must be 16-128 printable ASCII
+        characters with no spaces; the floor is there because this is guessable offline by anything on
+        the LAN, as fast as the panel's rate limiter allows, with no lockout and no audit trail.
+
+        ⚠️ The value is returned to a dashboard session — a human has to type it into a control system
+        — and NEVER to an API token, which gets `{ secret_set: true }` and a note instead.
+      x-required-scope: full
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rotate: { type: boolean, description: Generate a new secret. Default when no secret is supplied. }
+                secret: { type: string, description: '16-128 printable ASCII, no spaces.' }
+      responses:
+        '200': { description: 'The secret (dashboard session only), and whether the device was reached.' }
+        '400': { description: The supplied secret does not meet the length or charset rule. }
         '404': { description: No such device in this workspace. }
 
   # ---------------------------------------------------------------------- pip
@@ -2474,6 +2498,256 @@ paths:
   # remote control continue throughout. The windows are evaluated ON the player against its own
   # timezone, so a screen sleeps and wakes on time with the network down.
   # ---------------------------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------------------------
+  # RESUMABLE UPLOADS.
+  #
+  # Why they exist: a single-request upload must finish inside the shortest timeout between the
+  # client and the server. Behind a CDN that is typically 100-125s, and it does not scale with file
+  # size, so a large file or a slow/distant link fails at a fixed wall no matter how patient anyone
+  # is. Each chunk here gets its own budget, and a dropped connection costs one chunk.
+  #
+  # The single-shot POST /content still exists and is the right choice for a small file.
+  # ---------------------------------------------------------------------------------------------
+  /content/uploads:
+    post:
+      tags: [content]
+      summary: Open a resumable upload session
+      description: >-
+        Requires scope: write. Declares the filename and byte length up front, which is what lets the
+        storage allowance be enforced BEFORE any bytes are sent rather than after. Answers with the
+        chunk size the server wants, so it can be tuned server-side without a new client.
+      x-required-scope: write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [filename, size]
+              properties:
+                filename: { type: string }
+                size:
+                  type: integer
+                  description: 'Exact byte length. Enforced as a ceiling on every chunk.'
+                folder_id: { type: [string, 'null'] }
+      responses:
+        '201':
+          description: '{ id, offset, chunk_size, declared_size }'
+        '400':
+          description: 'Missing filename or size, or a folder outside this workspace.'
+        '403':
+          description: 'Read-only access, or the upload would exceed the storage allowance (code STORAGE_LIMIT).'
+        '413':
+          description: Larger than the server file-size limit.
+  /content/uploads/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    head:
+      tags: [content]
+      summary: How many bytes has this upload received?
+      description: >-
+        Requires scope: read. Answers in the Upload-Offset and Upload-Length headers. This is the
+        endpoint that makes resume real: a client that reloaded, crashed or lost its connection needs
+        to remember only the session id, and the offset is read from the bytes on disk rather than
+        from anything the client reported.
+      x-required-scope: read
+      responses:
+        '204':
+          description: 'Upload-Offset and Upload-Length headers.'
+        '404':
+          description: No such session in this workspace.
+    get:
+      tags: [content]
+      summary: Describe a resumable upload session
+      description: 'Requires scope: read. The same offset as HEAD, plus the filename, for a resume prompt.'
+      x-required-scope: read
+      responses:
+        '200':
+          description: '{ id, filename, offset, declared_size, chunk_size, folder_id }'
+        '404':
+          description: No such session in this workspace.
+    patch:
+      tags: [content]
+      summary: Append one chunk
+      description: >-
+        Requires scope: write. The body is raw bytes; Upload-Offset states where the client believes
+        it is. Chunks are applied strictly in order, and an offset that does not match returns 409
+        WITH the current offset, so a client that lost a response corrects itself in one round trip
+        instead of starting again.
+      x-required-scope: write
+      parameters:
+        - { name: Upload-Offset, in: header, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        '200':
+          description: '{ offset, complete }'
+        '400':
+          description: Missing or malformed Upload-Offset.
+        '404':
+          description: No such session in this workspace.
+        '409':
+          description: 'Offset mismatch. The body carries the current offset.'
+        '413':
+          description: This chunk would exceed the declared size.
+    delete:
+      tags: [content]
+      summary: Abandon an upload
+      description: 'Requires scope: write. Idempotent, so a client that already forgot gets the same answer.'
+      x-required-scope: write
+      responses:
+        '200':
+          description: '{ ok: true }'
+  /content/uploads/{id}/finalize:
+    post:
+      tags: [content]
+      summary: Assemble the upload into library content
+      description: >-
+        Requires scope: write. Runs the SAME ingest a single-shot upload runs (content sniffing,
+        bundle validation, duration and thumbnail derivation, byte digest) so the resulting row is
+        indistinguishable from a form upload. The bytes are judged here rather than at session
+        create, so an unsupported file is refused at the end and the session is discarded.
+      x-required-scope: write
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '201':
+          description: The created content object.
+        '400':
+          description: The assembled bytes are not a supported media type.
+        '404':
+          description: No such session in this workspace.
+        '409':
+          description: 'Incomplete. The body carries offset and declared_size.'
+  # ---------------------------------------------------------------------------------------------
+  # DEVICE ENDPOINTS — saved REST calls a PANEL makes on its OWN network, on its own clock.
+  #
+  # Nothing here performs a request. The panel stands on the private side of the customer's
+  # firewall, next to the PLC and the sensor, and this server has no route to any of it — so these
+  # rows are a definition, synced to the device, and the device runs them including with the WAN
+  # down. Header values are encrypted at rest and are NEVER returned by any read below.
+  # ---------------------------------------------------------------------------------------------
+  /device-endpoints:
+    get:
+      tags: [device-endpoints]
+      summary: List saved endpoints in this workspace
+      description: 'Requires scope: read. Header values are returned blank; names are visible.'
+      x-required-scope: read
+      responses:
+        '200':
+          description: '{ endpoints: [...] }'
+    post:
+      tags: [device-endpoints]
+      summary: Save an endpoint for a device or a group
+      description: >-
+        Requires scope: full. Targets exactly one of device_id or group_id. The url is checked
+        against the same allowlist the panel enforces, so file:// and content:// are refused here
+        rather than silently ignored on the screen. An endpoint runs on an interval OR on a player
+        event, never both.
+      x-required-scope: full
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, url]
+              properties:
+                name: { type: string, maxLength: 80 }
+                device_id: { type: [string, 'null'] }
+                group_id: { type: [string, 'null'] }
+                method: { type: string, enum: [GET, POST, PUT, PATCH, DELETE, HEAD] }
+                url: { type: string, example: 'http://192.168.1.50/api/state' }
+                headers:
+                  type: object
+                  description: 'Values are encrypted at rest and never read back. Send a blank value to keep the stored one.'
+                body: { type: [string, 'null'] }
+                timeout_ms: { type: integer, minimum: 1, maximum: 120000 }
+                interval_sec:
+                  type: integer
+                  minimum: 30
+                  maximum: 86400
+                  description: 'Minimum 30s. This runs on a panel that is also playing video, against what is often a small controller.'
+                run_on: { type: string, enum: [screen_on, screen_off, heartbeat] }
+                enabled: { type: boolean, default: true }
+      responses:
+        '201':
+          description: '{ endpoint: {...} }'
+        '400':
+          description: 'Refused url, bad method, both interval and event, or a target outside this workspace.'
+  /device-endpoints/effective/{deviceId}:
+    get:
+      tags: [device-endpoints]
+      summary: What a given screen will actually run
+      description: >-
+        Requires scope: read. The union of the group's endpoints and the device's own, with a
+        device endpoint of the same NAME replacing the group's. Header values are blank here too.
+      x-required-scope: read
+      parameters:
+        - { name: deviceId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: '{ endpoints: [...] }'
+        '404':
+          description: No such device in this workspace.
+  /device-endpoints/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [device-endpoints]
+      summary: Get one saved endpoint
+      description: 'Requires scope: read.'
+      x-required-scope: read
+      responses:
+        '200':
+          description: '{ endpoint: {...} }'
+        '404':
+          description: Not found in this workspace.
+    put:
+      tags: [device-endpoints]
+      summary: Update a saved endpoint
+      description: >-
+        Requires scope: full. Partial. A header sent with a BLANK value keeps the stored one, so a
+        form that never saw the credential cannot erase it by round-tripping.
+      x-required-scope: full
+      responses:
+        '200':
+          description: '{ endpoint: {...} }'
+        '400':
+          description: Validation failed.
+        '404':
+          description: Not found in this workspace.
+    delete:
+      tags: [device-endpoints]
+      summary: Delete a saved endpoint
+      description: 'Requires scope: full. Screens following it are re-synced immediately.'
+      x-required-scope: full
+      responses:
+        '200':
+          description: '{ ok: true }'
+        '404':
+          description: Not found in this workspace.
+  /device-endpoints/{id}/run:
+    post:
+      tags: [device-endpoints]
+      summary: Run this endpoint now, on one screen
+      description: >-
+        Requires scope: full. Goes through the same http_request path a scheduled run takes, so a
+        test exercises the code that will run on the timer. Answers with the request id the result
+        will carry. For a group endpoint, device_id says which screen to run it on.
+      x-required-scope: full
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: '{ success, status, device_id, id }'
+        '400':
+          description: 'That screen cannot make requests, or no device_id for a group endpoint.'
+        '404':
+          description: Not found in this workspace.
   /display-power-schedules:
     get:
       tags: [display-power-schedules]

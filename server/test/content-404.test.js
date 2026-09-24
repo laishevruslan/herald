@@ -28,7 +28,7 @@ test('the catch-all refuses content prefixes instead of serving the SPA', () => 
 
   // The guard has to run BEFORE the sendFile, or it never fires.
   const guard = SRC.indexOf('CONTENT_PREFIXES.some');
-  const fallback = SRC.lastIndexOf("res.sendFile(path.join(config.frontendDir, 'index.html'))");
+  const fallback = SRC.indexOf("res.sendFile(path.join(config.frontendDir, 'index.html'))");
   assert.ok(guard > 0 && fallback > guard, 'the 404 guard must precede the SPA fallback');
 });
 
@@ -55,7 +55,8 @@ test('every guide the sitemap advertises actually exists, or we 404 our own list
 });
 
 test('the 404 body is noindex, so a crawler cannot bank it as a page', () => {
-  assert.match(SRC, /const NOT_FOUND_PAGE =/);
-  assert.match(SRC, /noindex/, 'a 404 body that omits noindex can still be indexed on a soft serve');
-  assert.match(SRC, /Page not found/);
+  const m = SRC.match(/const NOT_FOUND_PAGE = ([\s\S]*?);\n\n/);
+  assert.ok(m, 'NOT_FOUND_PAGE must exist');
+  assert.match(m[1], /noindex/, 'a 404 body that omits noindex can still be indexed on a soft serve');
+  assert.match(m[1], /Page not found/);
 });

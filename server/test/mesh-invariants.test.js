@@ -94,6 +94,27 @@ test('test_downward_handlers_are_an_allowlist (I2)', () => {
    *                 parent sent. Anything a playlist here still uses is REFUSED and reported,
    *                 because a file pulled out from under a published playlist is a blank slot on a
    *                 wall decided by a server nobody at that site controls.
+   *
+   *   Scale-out C2 adds NO downward verb, but it adds two things a parent can cause on a child, and
+   *   they are accounted for here because this is the review:
+   *
+   *   mesh:write { type: 'player-event' | 'player-provision' } — "a screen attached to me reported
+   *                 X" / "a screen paired to me; mint it a row". Answered by lib/mesh/node-write.js
+   *                 applyPlayerOp: refused unless the CHILD's operator set the `player-events` write
+   *                 grant on that edge (validateGrant refuses it over the wire; only the operator
+   *                 consent route stores it), the device's workspace resolved from the child's own
+   *                 rows and required to be inside the grant's scope, and the same idempotency
+   *                 record as every other write. Applied by the very function the child's own
+   *                 socket handler calls. The op types are a reviewed list: nodeWrite.PLAYER_OP_TYPES
+   *                 (test/scale-out-c2.test.js).
+   *
+   *   command-relay (UPWARD, child -> parent) — the one upward payload a parent ACTS on rather than
+   *                 stores: "deliver this to a screen attached to you". Permitted because the
+   *                 parent's operator declared `terminates-players` for the edge; the parent
+   *                 (lib/mesh/player-termination.js deliverRelay) delivers only to a socket it
+   *                 holds, only for a device whose workspace it copies from THAT child (or one it
+   *                 provisioned through it), and only player-facing events. Never stored, never
+   *                 relayed further.
    */
   const ALLOWED_DOWNWARD = ['mesh:read', 'mesh:write', 'mesh:hello', 'mesh:content-offer',
                             'mesh:content-purge'];

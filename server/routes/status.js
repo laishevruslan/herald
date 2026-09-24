@@ -752,4 +752,5 @@ router.post('/import', proxyImportIfCopied, importUpload.single('file'), async (
 });
 
 module.exports = router;
+// Scale-out NOC (routes/mesh-enroll.js /noc) reads the same block rather than recomputing it.
 module.exports.scaleOutStatus = scaleOutStatus;

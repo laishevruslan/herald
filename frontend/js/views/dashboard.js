@@ -406,7 +406,9 @@ async function renderStatsPrompt(container) {
     <div style="flex:1;min-width:260px">
       <strong>Help show how widely ScreenTinker is deployed?</strong>
       <p style="color:var(--text-muted);font-size:13px;margin:6px 0 0">
-        ${t('dashboard.stats.body')}
+        Because most installs are private, we can't tell how many screens are out there. Sharing
+        sends a random ID, the version, and how many screens you run — nothing else, ever.
+        You can change this any time in Settings.
       </p>
     </div>
     <div style="display:flex;gap:8px">

@@ -1,4 +1,5 @@
 import { api, assertLocalCallAllowed } from '../api.js';
+import { uploadFilesResumable } from '../lib/chunked-upload.js';
 import * as gettingStarted from '../components/getting-started.js';
 import { showToast } from '../components/toast.js';
 import { esc, hydrateAuthImages } from '../utils.js';
@@ -368,10 +369,35 @@ async function handleFiles(files) {
     if (list.length) {
       const label = list.length === 1 ? list[0].name : t('content.upload_progress_count', { count: list.length });
       progressText.textContent = label;
-      await api.uploadContent(list, (pct) => {
-        progressFill.style.width = pct + '%';
-        progressText.textContent = `${label} — ${pct}%`;
-      }, state.currentFolderId);
+      /*
+       * ⚠️ RESUMABLE, ONE FILE AT A TIME — this replaces #212's single all-or-nothing request.
+       *
+       * That request had to finish inside the shortest timeout between the browser and the server,
+       * which on prod is Cloudflare's 125 seconds. Measured: seven consecutive failures from one
+       * customer at 125.008-125.012s while his successful uploads peaked at 114.2s. Selecting
+       * several files made it certain, because the bytes scaled and the 125 seconds did not — and
+       * the aggregate bar sat near 1% the whole time, which is exactly how he reported it.
+       *
+       * The bar still aggregates across the whole selection; it is now fed by bytes rather than by
+       * one XHR's progress, so it means the same thing without betting everything on one request.
+       */
+      await uploadFilesResumable(list, {
+        folderId: state.currentFolderId,
+        onProgress: (sent, total, file) => {
+          const pct = total ? Math.round((sent / total) * 100) : 0;
+          progressFill.style.width = pct + '%';
+          progressText.textContent = list.length === 1
+            ? `${label} — ${pct}%`
+            : `${label} — ${pct}% (${file ? file.name : ''})`;
+        },
+        // Offered only when a PREVIOUS visit left bytes on the server for this exact file.
+        onResumeOffer: ({ offset, total }) => window.confirm(
+          t('content.upload_resume_prompt', {
+            name: list.length === 1 ? list[0].name : t('content.upload_progress_count', { count: list.length }),
+            done: Math.round((offset / total) * 100),
+          })
+        ),
+      });
       showToast(
         list.length === 1
           ? t('content.toast.uploaded_named', { name: list[0].name })
@@ -1203,88 +1229,4 @@ function folderPath(folder, all) {
   return parts.join(' / ');
 }
 
-const DESIGN_PRESETS = [
-  { id: 'landscape-1080', labelKey: 'studio.preset_landscape', hintKey: 'studio.preset_landscape_hint' },
-  { id: 'portrait-1080', labelKey: 'studio.preset_portrait', hintKey: 'studio.preset_portrait_hint' },
-  { id: 'epaper-5x3', labelKey: 'studio.preset_epaper', hintKey: 'studio.preset_epaper_hint' },
-];
-
-/** Library → New poster: pick canvas size before opening the Studio island (6.1 presets). */
-function openNewPosterPresetModal() {
-  const lang = (localStorage.getItem('rd_lang') || 'en').slice(0, 2);
-  openCanvasPresetModal({
-    titleKey: 'studio.pick_preset',
-    helpKey: 'studio.pick_preset_help',
-    goKey: 'studio.open_editor',
-    inputName: 'studioPreset',
-    titleId: 'studioPresetTitle',
-    onPick: (picked) => {
-      window.location.href = `/studio/?preset=${encodeURIComponent(picked)}&lang=${encodeURIComponent(lang)}`;
-    },
-  });
-}
-
-/** Library → Create design: pick canvas size before opening Suika (Phase 3). */
-function openNewDesignPresetModal() {
-  openCanvasPresetModal({
-    titleKey: 'design.pick_preset',
-    helpKey: 'design.pick_preset_help',
-    goKey: 'design.open_editor',
-    inputName: 'designPreset',
-    titleId: 'designPresetTitle',
-    onPick: (picked) => {
-      openDesignEditorWindow({ preset: picked });
-    },
-  });
-}
-
-function openCanvasPresetModal({ titleKey, helpKey, goKey, inputName, titleId, onPick }) {
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.style.display = 'flex';
-  overlay.innerHTML = `
-    <div class="modal" style="max-width:420px;width:95vw" role="dialog" aria-modal="true" aria-labelledby="${esc(titleId)}">
-      <div class="modal-header">
-        <h3 id="${esc(titleId)}">${esc(t(titleKey))}</h3>
-        <button type="button" class="modal-close" data-preset-close aria-label="${esc(t('common.cancel'))}">&times;</button>
-      </div>
-      <div class="modal-body" style="display:grid;gap:10px">
-        <p style="margin:0;font-size:13px;color:var(--text-muted)">${esc(t(helpKey))}</p>
-        ${DESIGN_PRESETS.map((p, i) => `
-          <label style="display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer">
-            <input type="radio" name="${esc(inputName)}" value="${esc(p.id)}" ${i === 0 ? 'checked' : ''} style="margin-top:3px">
-            <span>
-              <strong style="display:block">${esc(t(p.labelKey))}</strong>
-              <span style="font-size:12px;color:var(--text-muted)">${esc(t(p.hintKey))}</span>
-            </span>
-          </label>
-        `).join('')}
-      </div>
-      <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
-        <button type="button" class="btn btn-secondary btn-sm" data-preset-cancel>${esc(t('common.cancel'))}</button>
-        <button type="button" class="btn btn-primary btn-sm" data-preset-go>${esc(t(goKey))}</button>
-      </div>
-    </div>
-  `;
-  const close = () => overlay.remove();
-  overlay.onclick = (e) => { if (e.target === overlay) close(); };
-  overlay.querySelector('[data-preset-close]').onclick = close;
-  overlay.querySelector('[data-preset-cancel]').onclick = close;
-  overlay.querySelector('[data-preset-go]').onclick = () => {
-    const picked = overlay.querySelector(`input[name="${inputName}"]:checked`)?.value || 'landscape-1080';
-    close();
-    onPick(picked);
-  };
-  document.body.appendChild(overlay);
-}
-
-const onSuikaHeraldMessage = createSuikaHeraldMessageHandler((contentId) => {
-  state.selected.clear();
-  state.selected.add(contentId);
-  showToast(t('design.saved_toast'), 'success');
-  loadContent();
-});
-
-export function cleanup() {
-  window.removeEventListener('message', onSuikaHeraldMessage);
-}
+export function cleanup() {}

@@ -204,6 +204,12 @@ test('⚠️ mesh writes address LOCAL administration only (I2)', () => {
    * up, never down. Nothing above can set it. A hub renaming its customers' servers is precisely
    * the thing this guard exists to keep out, and this is the opposite of it.
    */
+  /*
+   * ⚠️ /mesh/links: THIS hub's own edge to a server below — the parent-side disenroll. Addressed
+   * as the link rather than the node for exactly the reason the filing route was re-addressed: it
+   * ends this node's copy and stops this node pulling; it changes nothing on the other server,
+   * which learns only that a door is shut at its next connection.
+   */
   const LOCAL = ['/mesh/pair/code', '/mesh/uplink', '/mesh/clients', '/mesh/identity', '/mesh/links'];
 
   /*
@@ -512,6 +518,8 @@ test('every readable path names the grant it needs', () => {
   const rules = [...block.matchAll(/\{\s*pattern:\s*'([^']+)'([^}]*)\}/g)];
   assert.ok(rules.length >= 4, 'there must be readable paths');
   for (const [, pat, rest] of rules) {
+    // Scale-out C2: verify-device is keyed to a WRITE grant (player-events) — still a grant, and
+    // still one the answering node's operator chose; authorize() reads it from the edge row.
     assert.match(rest, /grant:|writeGrant:/, `${pat} must declare a grant`);
   }
 });
