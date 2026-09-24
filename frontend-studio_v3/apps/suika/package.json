@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "a graphics editor.",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -34,7 +35,6 @@
     "react-dom": "^18.2.0",
     "react-intl": "^6.3.2",
     "react-rnd": "^10.5.3",
-    "react-scripts": "5.0.1",
     "sass": "^1.57.1",
     "stats.js": "^0.17.0",
     "tailwind-merge": "^3.3.1",

@@ -7,6 +7,7 @@ import { openHistoryModal } from '../components/history-modal.js';
 import { renderApprovalBar } from '../components/approval-actions.js';
 import { isPdf, renderPdfToPages, baseName } from '../components/pdf-pages.js';
 import { studioIslandAvailable } from '../lib/studio-available.js';
+import { suikaIslandAvailable } from '../lib/suika-available.js';
 
 /* The mime lib/html-bundle.js stamps on an uploaded HTML bundle. Kept as a constant rather than
  * spelled out at each site: it is compared in three places here, and a typo in one of them is a
@@ -157,6 +158,7 @@ export function render(container) {
       <span id="contentResultCount" style="font-size:13px;color:var(--text-muted)"></span>
       <button class="btn btn-secondary btn-sm" id="newFolderBtn">${t('content.new_folder_btn')}</button>
       <button class="btn btn-secondary btn-sm" id="newPosterBtn" hidden title="${t('studio.help_blurb')}">${t('studio.new_poster')}</button>
+      <button class="btn btn-secondary btn-sm" id="newDesignBtn" hidden title="${t('design.help_blurb')}">${t('design.new')}</button>
       <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);cursor:pointer;margin-left:auto">
         <input type="checkbox" id="showExpiredToggle" ${state.showExpired ? 'checked' : ''}> ${t('content.show_expired')}
       </label>
@@ -307,6 +309,17 @@ export function render(container) {
     newPosterBtn.hidden = false;
     newPosterBtn.onclick = () => openNewPosterPresetModal();
   }).catch(() => {});
+
+  // I5: show Create design only when /suika/ was built.
+  const newDesignBtn = document.getElementById('newDesignBtn');
+  suikaIslandAvailable().then((ok) => {
+    if (!ok || !newDesignBtn) return;
+    newDesignBtn.hidden = false;
+    newDesignBtn.onclick = () => openDesignEditorWindow();
+  }).catch(() => {});
+
+  // Phase 1: Suika popup → herald:saved refreshes Library and highlights the new item.
+  window.addEventListener('message', onSuikaHeraldMessage);
 
   loadContent();
 }
@@ -1207,4 +1220,44 @@ function openNewPosterPresetModal() {
   document.body.appendChild(overlay);
 }
 
-export function cleanup() {}
+/**
+ * Phase 1: open Suika in herald-mode (same-origin Variant A).
+ * Save posts PNG + wrapped paper to /api/studio/export and postMessages herald:saved.
+ * Prefer window.open without noopener so opener receives the message (plan §6.1).
+ */
+function openDesignEditorWindow(opts = {}) {
+  const lang = (localStorage.getItem('rd_lang') || 'en').slice(0, 2);
+  const preset = opts.preset || 'landscape-1080';
+  const params = new URLSearchParams({
+    mode: 'herald',
+    preset,
+    lang,
+  });
+  if (opts.contentId) params.set('contentId', opts.contentId);
+  const url = `/suika/?${params.toString()}`;
+  const win = window.open(url, 'herald-suika');
+  if (!win) {
+    showToast(t('design.popup_blocked'), 'info');
+    window.location.href = url;
+  }
+}
+
+function onSuikaHeraldMessage(event) {
+  if (event.origin !== window.location.origin) return;
+  const data = event.data;
+  if (!data || data.source !== 'suika') return;
+  if (data.type === 'herald:saved' && data.contentId) {
+    state.selected.clear();
+    state.selected.add(data.contentId);
+    showToast(t('design.saved_toast'), 'success');
+    loadContent();
+    return;
+  }
+  if (data.type === 'herald:error' && data.message) {
+    showToast(data.message, 'error');
+  }
+}
+
+export function cleanup() {
+  window.removeEventListener('message', onSuikaHeraldMessage);
+}

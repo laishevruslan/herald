@@ -24,6 +24,7 @@ test('the catch-all refuses content prefixes instead of serving the SPA', () => 
   assert.ok(m, 'CONTENT_PREFIXES must exist');
   assert.match(m[1], /'\/guides\/'/, 'guides is the prefix the sitemap advertises');
   assert.match(m[1], /'\/studio\/'/, 'studio island misses must 404, not SPA');
+  assert.match(m[1], /'\/suika\/'/, 'suika island misses must 404, not SPA');
 
   // The guard has to run BEFORE the sendFile, or it never fires.
   const guard = SRC.indexOf('CONTENT_PREFIXES.some');
@@ -31,14 +32,16 @@ test('the catch-all refuses content prefixes instead of serving the SPA', () => 
   assert.ok(guard > 0 && fallback > guard, 'the 404 guard must precede the SPA fallback');
 });
 
-test('bare /studio/ is routed to the island index when built, else hard 404', () => {
-  // express.static index:false — without this route, /studio/?preset=… SPA-falls through.
+test('bare /studio/ and /suika/ are routed to island indexes when built, else hard 404', () => {
+  // express.static index:false — without these routes, bare paths SPA-fall through.
   assert.match(SRC, /app\.get\(\['\/studio', '\/studio\/'\]/);
   assert.match(SRC, /'studio', 'index\.html'/);
-  const route = SRC.indexOf("app.get(['/studio', '/studio/']");
+  assert.match(SRC, /app\.get\(\['\/suika', '\/suika\/'\]/);
+  assert.match(SRC, /'suika', 'index\.html'/);
+  const route = SRC.indexOf("app.get(['/suika', '/suika/']");
   // A comment earlier mentions app.get('*') — match the real catch-all handler.
   const catchAll = SRC.indexOf("app.get('*', (req, res)");
-  assert.ok(route > 0 && catchAll > route, 'studio index route must precede the SPA catch-all');
+  assert.ok(route > 0 && catchAll > route, 'suika index route must precede the SPA catch-all');
 });
 
 test('every guide the sitemap advertises actually exists, or we 404 our own listed URLs', () => {

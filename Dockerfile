@@ -14,6 +14,21 @@ RUN npm ci
 COPY frontend-studio/ ./
 RUN npm run build
 
+# --- suika design island (Phase 0+): pnpm monorepo → frontend/suika ---
+FROM node:20-slim AS suika-builder
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+WORKDIR /suika
+ENV HUSKY=0
+ENV SUIKA_BASE=/suika/
+COPY frontend-studio_v3/package.json frontend-studio_v3/pnpm-lock.yaml frontend-studio_v3/pnpm-workspace.yaml frontend-studio_v3/.npmrc ./
+COPY frontend-studio_v3/packages ./packages
+COPY frontend-studio_v3/apps/suika ./apps/suika
+COPY scripts/license-check.js /scripts/license-check.js
+COPY VERSION /VERSION
+RUN pnpm install --no-frozen-lockfile --filter @suika/suika...
+RUN node /scripts/license-check.js --root /suika
+RUN pnpm --filter @suika/suika... run build
+
 # --- builder: install production deps (better-sqlite3 is the only native one left; image
 # decoding is pure JS + WASM since sharp was dropped, and sharp is now a devDependency that
 # --omit=dev leaves out entirely) ---
@@ -45,6 +60,7 @@ COPY server/ /app/server/
 COPY --from=builder /app/server/node_modules /app/server/node_modules
 COPY frontend/ /app/frontend/
 COPY --from=studio-builder /studio/dist/ /app/frontend/studio/
+COPY --from=suika-builder /suika/apps/suika/build/ /app/frontend/suika/
 # shared/Transitions is a RUNTIME dependency: server/lib/transition-config.js + transition-bundle.js
 # require the shader manifest/params/sources from ../../shared at load time (the server won't boot
 # without it). Small, and keeps the .glsl files the single source across server + player + Tizen.

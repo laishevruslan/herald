@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
+import { getHeraldSession } from '../herald/bridge';
 import { type MessageIds } from '../locale';
 
 interface IProps {
@@ -38,7 +39,9 @@ export const ClearCanvasDialog = ({ open, onOpenChange }: IProps) => {
           <Button
             variant="destructive"
             onClick={() => {
-              localStorage.removeItem('suika-paper');
+              const heraldKey = getHeraldSession()?.paperStoreKey;
+              // Herald mode must not wipe the operator's standalone `suika-paper`.
+              localStorage.removeItem(heraldKey || 'suika-paper');
               window.location.reload();
             }}
           >

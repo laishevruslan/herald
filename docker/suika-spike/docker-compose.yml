@@ -1,0 +1,9 @@
+# Isolated Suika Phase 0 spike — not the main CMS compose stack.
+services:
+  suika-spike:
+    build:
+      context: ../..
+      dockerfile: docker/suika-spike/Dockerfile
+    volumes:
+      - ./out:/out
+    # One-shot verify; container exits 0 when PNG is 1920×1080 and licence-check passed.

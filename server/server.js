@@ -139,6 +139,35 @@ const dashboardCsp = helmet.contentSecurityPolicy({
   },
 });
 
+/*
+ * Suika (/suika/) needs a wider script-src than the dashboard. PathKit/Skia and the editor
+ * call eval()/new Function() during canvas/tool init; without that token the ProgressOverlay
+ * sticks at 100% and window.editor never mounts (EvalError under CSP). Keep this scoped to
+ * /suika/ — never widen dashboardCsp (see pdf-upload.test.js).
+ */
+const suikaCsp = helmet.contentSecurityPolicy({
+  useDefaults: true,
+  directives: {
+    defaultSrc: ["'self'"],
+    // PathKit requires classic eval — scoped to this policy only.
+    scriptSrc: ["'self'", "'unsafe-eval'", "'wasm-unsafe-eval'"],
+    scriptSrcAttr: ["'none'"],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+    styleSrcAttr: ["'unsafe-inline'"],
+    imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+    mediaSrc: ["'self'", 'blob:'],
+    connectSrc: ["'self'", 'https:'],
+    fontSrc: ["'self'", 'data:', 'blob:'],
+    workerSrc: ["'self'", 'blob:'],
+    childSrc: ["'self'", 'blob:'],
+    frameSrc: ["'none'"],
+    objectSrc: ["'none'"],
+    baseUri: ["'self'"],
+    formAction: ["'self'"],
+    upgradeInsecureRequests: null,
+  },
+});
+
 app.use(helmet({
   contentSecurityPolicy: false,        // we apply our own below, scoped to non-render paths
   crossOriginEmbedderPolicy: false,    // allow loading external widget content
@@ -171,6 +200,8 @@ app.use((req, res, next) => {
   // the dashboard policy when the loader is actually on — otherwise /plugins/* is just 404
   // and must not look different from any other unknown path.
   if (config.pluginsEnabled && req.path.startsWith('/plugins/')) return next();
+  // Suika design island: PathKit needs eval — dedicated policy, not the dashboard CSP.
+  if (req.path.startsWith('/suika')) return suikaCsp(req, res, next);
   return dashboardCsp(req, res, next);
 });
 // CORS policy.
@@ -2428,8 +2459,10 @@ app.get(['/tizen', '/tizen/'], (req, res) => {
  * /studio/ is the Layerhub poster island (phase 6). When it is not built into frontend/studio/,
  * a miss must 404 — not SPA-fallback to the dashboard. Otherwise I5 HEAD /studio/index.html
  * returns 200 and "New poster" navigates into a CMS refresh with no editor.
+ *
+ * /suika/ is the Suika design island (Phase 0+). Same soft-404 class when unbuilt.
  */
-const CONTENT_PREFIXES = ['/guides/', '/integrations/', '/studio/'];
+const CONTENT_PREFIXES = ['/guides/', '/integrations/', '/studio/', '/suika/'];
 
 const NOT_FOUND_PAGE = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
   + '<meta name="viewport" content="width=device-width,initial-scale=1">'
@@ -2458,6 +2491,21 @@ app.get(['/studio', '/studio/'], (req, res) => {
   if (req.path === '/studio') {
     const q = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
     return res.redirect(301, '/studio/' + q);
+  }
+  return res.sendFile(index);
+});
+
+/*
+ * Suika design island (Phase 0+). Same index:false caveat as /studio/.
+ */
+app.get(['/suika', '/suika/'], (req, res) => {
+  const index = path.join(config.frontendDir, 'suika', 'index.html');
+  if (!fs.existsSync(index)) {
+    return res.status(404).type('html').send(NOT_FOUND_PAGE);
+  }
+  if (req.path === '/suika') {
+    const q = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    return res.redirect(301, '/suika/' + q);
   }
   return res.sendFile(index);
 });

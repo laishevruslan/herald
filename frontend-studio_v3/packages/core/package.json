@@ -1,6 +1,7 @@
 {
   "name": "@suika/core",
   "private": true,
+  "license": "MIT",
   "version": "0.0.1",
   "type": "module",
   "main": "dist/core.es.js",

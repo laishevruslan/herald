@@ -51,6 +51,7 @@ function walkStrings(value, visit) {
 /**
  * Parse + size-gate scene JSON. Rejects data:image and javascript: URLs so the
  * DB does not grow bitmaps and Fabric never loads script URLs on re-edit.
+ * Accepts Layerhub scenes and Suika wrappers ({ v:1, editor:'suika', paper }).
  * @returns {{ ok: true, json: string, parsed: object } | { ok: false, status: number, error: string }}
  */
 function sanitizeSceneJson(raw) {
@@ -67,9 +68,23 @@ function sanitizeSceneJson(raw) {
   } catch {
     return { ok: false, status: 400, error: 'scene_json must be valid JSON' };
   }
-  if (parsed == null || typeof parsed !== 'object') {
+  if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
     return { ok: false, status: 400, error: 'scene_json must be an object' };
   }
+
+  // Suika wrapper (plan §4.2): must carry a paper object; do not accept empty shells.
+  if (parsed.editor === 'suika') {
+    if (parsed.v !== 1) {
+      return { ok: false, status: 400, error: 'suika scene_json.v must be 1' };
+    }
+    if (!parsed.paper || typeof parsed.paper !== 'object' || Array.isArray(parsed.paper)) {
+      return { ok: false, status: 400, error: 'suika scene_json.paper must be an object' };
+    }
+    if (!Array.isArray(parsed.paper.data)) {
+      return { ok: false, status: 400, error: 'suika scene_json.paper.data must be an array' };
+    }
+  }
+
   let bad = null;
   walkStrings(parsed, (s) => {
     const t = s.trim().toLowerCase();
@@ -86,6 +101,12 @@ function sanitizeSceneJson(raw) {
     return { ok: false, status: 413, error: 'scene_json too large after normalize' };
   }
   return { ok: true, json: text, parsed };
+}
+
+/** Detect which island owns a stored scene (for Edit routing — Phase 2). */
+function detectSceneEditor(parsed) {
+  if (parsed && typeof parsed === 'object' && parsed.editor === 'suika') return 'suika';
+  return 'layerhub';
 }
 
 function getByContentId(contentId, workspaceId) {
@@ -313,6 +334,7 @@ module.exports = {
   PRESETS,
   pickPreset,
   sanitizeSceneJson,
+  detectSceneEditor,
   getByContentId,
   listForWorkspace,
   contentIdsWithDesign,

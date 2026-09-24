@@ -69,6 +69,17 @@ export const LocaleSelector: FC = () => {
           <div
             className="locale-selector-popover-item"
             onClick={() => {
+              const ru = 'ru';
+              localStorage.setItem('suika-locale', ru);
+              appEventEmitter.emit('localeChange', ru);
+              setIsOpen(false);
+            }}
+          >
+            Русский
+          </div>
+          <div
+            className="locale-selector-popover-item"
+            onClick={() => {
               const zh = 'zh';
               localStorage.setItem('suika-locale', zh);
               appEventEmitter.emit('localeChange', zh);

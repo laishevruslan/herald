@@ -17,7 +17,6 @@ export const exportService = {
       .filter((item) => item.isVisible());
 
     if (graphicsItems.length === 0) {
-      // TODO: if no graphics items, show error message
       console.error('No graphics items to export');
       return;
     }
@@ -31,20 +30,26 @@ export const exportService = {
     download(blob, `${suffix}.svg`);
   },
 
-  exportCurrentPagePNG: async (editor: SuikaEditor) => {
+  /** PNG blob of the current page (no download). Used by Herald spike / publish. */
+  getCurrentPagePNGBlob: async (editor: SuikaEditor): Promise<Blob | null> => {
     const currentPage = editor.doc.getCurrentCanvas();
     const graphicsItems = currentPage
       .getChildren()
       .filter((item) => item.isVisible());
 
     if (graphicsItems.length === 0) {
-      // TODO: if no graphics items, show error message
       console.error('No graphics items to export');
-      return;
+      return null;
     }
 
+    return toPNGBlob(graphicsItems);
+  },
+
+  exportCurrentPagePNG: async (editor: SuikaEditor) => {
+    const currentPage = editor.doc.getCurrentCanvas();
     try {
-      const blob = await toPNGBlob(graphicsItems);
+      const blob = await exportService.getCurrentPagePNGBlob(editor);
+      if (!blob) return;
       const suffix = currentPage.attrs.objectName;
       download(blob, `${suffix}.png`);
     } catch (error) {

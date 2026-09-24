@@ -8,6 +8,8 @@
  *
  * Default `--root` is `server/`. For the Studio island:
  *   node scripts/license-check.js --root frontend-studio
+ * For the Suika design island (pnpm workspace):
+ *   node scripts/license-check.js --root frontend-studio_v3
  *
  * Run from a PRODUCTION install (`npm ci --omit=dev`). That is the whole point: a developer
  * checkout carries `sharp`, whose `@img/sharp-wasm32` declares LGPL-3.0-or-later. It is a test
@@ -47,7 +49,7 @@ if (rootArg && !fs.existsSync(path.join(ROOT_DIR, 'package.json'))) {
 const ALLOW = [
   /^MIT$/i, /^MIT-0$/i, /^ISC$/i, /^0BSD$/i, /^BSD-2-Clause$/i, /^BSD-3-Clause$/i,
   /^Apache-2\.0$/i, /^BlueOak-1\.0\.0$/i, /^Unlicense$/i, /^CC0-1\.0$/i, /^Python-2\.0$/i,
-  /^WTFPL$/i, /^Zlib$/i, /^CC-BY-4\.0$/i,
+  /^WTFPL$/i, /^Zlib$/i, /^CC-BY-4\.0$/i, /^AFL-2\.1$/i,
 ];
 
 const DENY = [
@@ -71,6 +73,14 @@ const EXCEPTIONS = {
   'exif-parser': { license: 'MIT', evidence: 'LICENSE.md — "The MIT License"' },
   'thirty-two':  { license: 'MIT', evidence: 'LICENSE.txt — MIT, Copyright (c) 2011 Chris Umbel' },
   'screentinker': { license: 'MIT', evidence: 'repository root LICENSE' },
+  // Suika workspace packages (frontend-studio_v3/LICENSE — MIT, Hao Huang 2025).
+  '@suika/suika': { license: 'MIT', evidence: 'frontend-studio_v3/LICENSE' },
+  '@suika/common': { license: 'MIT', evidence: 'frontend-studio_v3/LICENSE' },
+  '@suika/components': { license: 'MIT', evidence: 'frontend-studio_v3/LICENSE' },
+  '@suika/core': { license: 'MIT', evidence: 'frontend-studio_v3/LICENSE' },
+  '@suika/geo': { license: 'MIT', evidence: 'frontend-studio_v3/LICENSE' },
+  '@suika/icons': { license: 'MIT', evidence: 'frontend-studio_v3/LICENSE' },
+  '@suika/pathkit': { license: 'MIT', evidence: 'frontend-studio_v3/LICENSE' },
 };
 
 function classify(id) {
@@ -101,8 +111,22 @@ function readLicense(dir) {
  * output either way; a genuinely empty result is the only thing worth aborting on.
  */
 function listInstalled() {
-  const argv = ['ls', ...(INCLUDE_DEV ? [] : ['--omit=dev']), '--all', '--parseable'];
   const opts = { cwd: ROOT_DIR, maxBuffer: 64 * 1024 * 1024, encoding: 'utf8' };
+  const hasPnpm = fs.existsSync(path.join(ROOT_DIR, 'pnpm-lock.yaml'));
+  if (hasPnpm) {
+    const argv = [
+      'ls', '-r', '--depth', 'Infinity', '--parseable',
+      ...(INCLUDE_DEV ? [] : ['--prod']),
+    ];
+    try {
+      return execFileSync('pnpm', argv, opts);
+    } catch (e) {
+      if (e.stdout && e.stdout.trim()) return e.stdout;
+      console.error('pnpm ls produced no output:\n' + (e.stderr || e.message));
+      process.exit(2);
+    }
+  }
+  const argv = ['ls', ...(INCLUDE_DEV ? [] : ['--omit=dev']), '--all', '--parseable'];
   try {
     return execFileSync('npm', argv, opts);
   } catch (e) {

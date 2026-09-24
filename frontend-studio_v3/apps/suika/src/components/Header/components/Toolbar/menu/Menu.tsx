@@ -18,6 +18,7 @@ import { type FC, useContext, useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 
 import { EditorContext } from '../../../../../context';
+import { getHeraldSession, saveToHerald } from '../../../../../herald/bridge';
 import { type MessageIds } from '../../../../../locale';
 import { NudgeAmountDialog } from './NudgeAmountDialog';
 import { OffsetVectorDialog } from './OffsetVectorDialog';
@@ -82,43 +83,55 @@ export const Menu: FC<IProps> = ({ onClearCanvas }) => {
   }, [editor]);
 
   const t = (params: { id: MessageIds }) => intl.formatMessage(params);
+  const heraldSession = getHeraldSession();
+
+  const fileChildren: IDropdownProps['items'] = [
+    ...(heraldSession
+      ? ([
+          {
+            key: 'saveToHerald',
+            label: t({ id: 'herald.saveToHerald' }),
+          },
+          { type: 'divider' },
+        ] as NonNullable<IDropdownProps['items']>)
+      : []),
+    {
+      key: 'import',
+      label: t({ id: 'import.originFile' }),
+    },
+    {
+      key: 'importSVG',
+      label: t({ id: 'import.svgFile' }),
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'export',
+      label: t({ id: 'export.originFile' }),
+    },
+    {
+      key: 'exportCurrentPageAsSVG',
+      label: t({ id: 'export.currentPageAsSVG' }),
+    },
+    {
+      key: 'exportCurrentPageAsPNG',
+      label: t({ id: 'export.currentPageAsPNG' }),
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'clearCanvasAndRefresh',
+      label: t({ id: 'clearCanvasAndRefresh' }),
+    },
+  ];
 
   const items: IDropdownProps['items'] = [
     {
       key: 'file',
       label: t({ id: 'file' }),
-      children: [
-        {
-          key: 'import',
-          label: t({ id: 'import.originFile' }),
-        },
-        {
-          key: 'importSVG',
-          label: t({ id: 'import.svgFile' }),
-        },
-        {
-          type: 'divider',
-        },
-        {
-          key: 'export',
-          label: t({ id: 'export.originFile' }),
-        },
-        {
-          key: 'exportCurrentPageAsSVG',
-          label: t({ id: 'export.currentPageAsSVG' }),
-        },
-        {
-          key: 'exportCurrentPageAsPNG',
-          label: t({ id: 'export.currentPageAsPNG' }),
-        },
-        {
-          type: 'divider',
-        },
-        {
-          key: 'clearCanvasAndRefresh',
-          label: t({ id: 'clearCanvasAndRefresh' }),
-        },
-      ],
+      children: fileChildren,
     },
     {
       key: 'edit',
@@ -324,6 +337,11 @@ export const Menu: FC<IProps> = ({ onClearCanvas }) => {
         break;
       case 'import':
         importService.importOriginFile(editor);
+        break;
+      case 'saveToHerald':
+        void saveToHerald(editor).catch((err) => {
+          window.alert(err instanceof Error ? err.message : String(err));
+        });
         break;
       case 'export':
         exportService.exportOriginFile(editor);

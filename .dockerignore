@@ -27,6 +27,9 @@ server/test
 # Studio 6.3 docker verify needs these suites inside the image:
 !server/test/studio-export.test.js
 !server/test/studio-spike.test.js
+!server/test/suika-spike.test.js
+!server/test/suika-export.test.js
+!server/test/content-404.test.js
 !server/test/brand-kit.test.js
 !server/test/slide-fonts.test.js
 android
@@ -38,6 +41,16 @@ video
 
 # docs / editor cruft
 *.md
+!.dockerignore
 .vscode
 .idea
 .DS_Store
+
+# Suika monorepo: keep apps/suika + packages only in the build context (Phase 0 island).
+frontend-studio_v3/apps/backend
+frontend-studio_v3/apps/suika-multiplayer
+frontend-studio_v3/apps/workbench
+frontend-studio_v3/apps/docs
+frontend-studio_v3/demo
+frontend-studio_v3/.husky
+frontend-studio_v3/.github

@@ -13,6 +13,9 @@ import { type FC, useEffect, useRef, useState } from 'react';
 import { FONT_FILES } from '@/constant';
 
 import { EditorContext } from '../context';
+import { bootstrapHerald } from '../herald/bootstrap';
+import { parseHeraldQuery } from '../herald/query';
+import { isSpikeExportMode, runSpikeExport } from '../spike/run-spike-export';
 import { AutoSaveGraphics } from '../store/auto-save-graphs';
 import { ClearCanvasDialog } from './ClearCanvasDialog';
 import { ContextMenu } from './ContextMenu';
@@ -48,6 +51,8 @@ const Editor: FC = () => {
 
   const [progress, setProgress] = useState(0);
   const [clearCanvasOpen, setClearCanvasOpen] = useState(false);
+  const heraldQuery = parseHeraldQuery();
+  const heraldMode = heraldQuery.mode === 'herald';
 
   useEffect(() => {
     if (containerRef.current) {
@@ -110,7 +115,16 @@ const Editor: FC = () => {
 
         (window as any).editor = editor;
 
-        new AutoSaveGraphics(editor);
+        const spike = isSpikeExportMode();
+        const herald = parseHeraldQuery();
+        if (spike) {
+          // Spike skips shared localStorage so PNG verify is deterministic.
+          void runSpikeExport(editor);
+        } else if (herald.mode === 'herald') {
+          bootstrapHerald(editor, herald);
+        } else {
+          new AutoSaveGraphics(editor);
+        }
 
         window.addEventListener('resize', changeViewport);
 
@@ -135,7 +149,11 @@ const Editor: FC = () => {
         onClearCanvas={() => setClearCanvasOpen(true)}
       />
       <EditorContext.Provider value={suikaEditor}>
-        <Header title="suika" onClearCanvas={() => setClearCanvasOpen(true)} />
+        <Header
+          title={heraldMode ? 'herald' : 'suika'}
+          heraldMode={heraldMode}
+          onClearCanvas={() => setClearCanvasOpen(true)}
+        />
         {/* body */}
         <div className="body">
           <div className="suika-editor-left-area">

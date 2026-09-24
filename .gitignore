@@ -6,6 +6,10 @@ node_modules/
 # the payload build with "cp: Too many levels of symbolic links".
 node_modules
 
+
+.pnpm-store/
+.pnpm-debug.log*
+
 # Databases: SQLite files, WAL/SHM sidecars, and any .db.<suffix> backups
 # (e.g. .db.devbak), anywhere in the tree - never commit a database.
 *.db
@@ -84,6 +88,7 @@ frontend-studio/dist/
 frontend-studio/node_modules/
 # Spike docker verify output (PNG written by docker/studio-spike)
 docker/studio-spike/out/
+docker/suika-spike/out/
 # Studio 6.1 docker verify output (built island)
 docker/studio-6.1/out/
 # Studio 6.2 docker verify output (built island)

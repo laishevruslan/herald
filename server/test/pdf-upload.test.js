@@ -57,12 +57,15 @@ test('the vendored pdf.js is complete and every piece carries its licence', () =
 
 test('the dashboard CSP admits WebAssembly compilation and nothing more', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
-  // Directives only: the comment above scriptSrc explains that this is NOT 'unsafe-eval', and an
-  // assertion over the raw text would match its own explanation.
-  const csp = server.slice(server.indexOf('const dashboardCsp'), server.indexOf('const dashboardCsp') + 2500)
-    .split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
-  assert.match(csp, /'wasm-unsafe-eval'/, 'the codecs cannot compile without it');
-  assert.doesNotMatch(csp, /'unsafe-eval'/, "'wasm-unsafe-eval' must not have been widened to 'unsafe-eval'");
+  // Assert on the dashboard scriptSrc directive only — comments and suikaCsp may mention eval.
+  const start = server.indexOf('const dashboardCsp');
+  const end = server.indexOf('const suikaCsp');
+  assert.ok(start >= 0 && end > start, 'dashboardCsp must precede suikaCsp');
+  const dash = server.slice(start, end);
+  const scriptSrc = dash.match(/scriptSrc:\s*\[[^\]]+\]/);
+  assert.ok(scriptSrc, 'dashboardCsp must declare scriptSrc');
+  assert.match(scriptSrc[0], /'wasm-unsafe-eval'/, 'the codecs cannot compile without it');
+  assert.doesNotMatch(scriptSrc[0], /'unsafe-eval'/, "'wasm-unsafe-eval' must not have been widened to 'unsafe-eval'");
   // A blob: worker would need worker-src; the module uses a same-origin file so 'self' suffices.
   assert.match(fs.readFileSync(MODULE, 'utf8'), /workerSrc = `\$\{VENDOR\}pdf\.worker\.min\.mjs`/);
 });
@@ -77,7 +80,10 @@ test('pdf.js is loaded lazily, so a session that never uploads a PDF never fetch
 
 test('pages go through api.uploadContent, not a bare fetch or XHR (the house rule)', () => {
   const lib = fs.readFileSync(LIBRARY, 'utf8');
-  const fn = lib.slice(lib.indexOf('async function importPdf'), lib.indexOf('\n}\n', lib.indexOf('async function importPdf')));
+  const start = lib.indexOf('async function importPdf');
+  // CRLF-safe: end at the closing brace of importPdf (next top-level async function).
+  const end = lib.indexOf('\nasync function loadContent', start);
+  const fn = lib.slice(start, end > start ? end : start + 2000);
   assert.match(fn, /api\.uploadContent\(pages/, 'pages are uploaded through the shared helper');
   assert.doesNotMatch(fn, /new XMLHttpRequest|fetch\(/, 'no bespoke transport');
   assert.match(fn, /api\.createPlaylist\(/);
