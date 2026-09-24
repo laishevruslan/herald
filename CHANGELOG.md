@@ -4,6 +4,14 @@
 
 ### Added
 
+**Suika design editor polish — preset chooser, slide backgrounds, Help.** Content Library
+→ Create design opens a size modal (same landscape / portrait / e-paper presets as Studio)
+before the Suika island. Slides can set a photo background from Suika (`suika.slideBgReturn`,
+parallel to Studio). Dev Variant B: set `window.__SUIKA_ORIGIN` to a Suika origin (e.g.
+`http://127.0.0.1:6167`) for cross-origin popup + `herald:init` JWT handshake. Studio stays
+available alongside Suika (no feature-flag hide). Help documents both editors. See
+[`docs/suika-herald-integration-plan.md`](docs/suika-herald-integration-plan.md).
+
 **Display power schedules, failed-payment handling, and scale-out player termination from upstream.**
 The weekly backlight clock is now on the playlist payload (`power_schedule`), not only in the
 dashboard: Android evaluates it on the panel, other players store it and report it unsupported.

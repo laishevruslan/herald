@@ -130,6 +130,29 @@ function contentIdsWithDesign(contentIds) {
   return new Set(rows.map((r) => r.content_id));
 }
 
+/**
+ * Map content_id → 'suika' | 'layerhub' for Library Edit routing (Phase 2).
+ * Parses only the small editor tag from scene_json — never returns the full scene.
+ */
+function editorsForContentIds(contentIds) {
+  const out = new Map();
+  if (!contentIds.length) return out;
+  const placeholders = contentIds.map(() => '?').join(',');
+  const rows = db.prepare(
+    `SELECT content_id, scene_json FROM studio_designs WHERE content_id IN (${placeholders})`,
+  ).all(...contentIds);
+  for (const row of rows) {
+    let parsed = {};
+    try {
+      parsed = JSON.parse(row.scene_json || '{}');
+    } catch {
+      parsed = {};
+    }
+    out.set(row.content_id, detectSceneEditor(parsed));
+  }
+  return out;
+}
+
 function upsertDesign({ contentId, workspaceId, sceneJson, width, height }) {
   const now = Math.floor(Date.now() / 1000);
   db.prepare(`
@@ -338,6 +361,7 @@ module.exports = {
   getByContentId,
   listForWorkspace,
   contentIdsWithDesign,
+  editorsForContentIds,
   upsertDesign,
   publishExport,
   replacePngBytes,

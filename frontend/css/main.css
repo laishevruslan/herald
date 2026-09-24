@@ -1255,8 +1255,37 @@ body {
 .content-item-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   padding: 0 12px 10px;
   gap: 4px;
+}
+
+/* Suika re-edit: pencil on the preview corner (mirrors the selection checkbox). */
+.content-edit-design-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.content-edit-design-btn:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+.content-edit-design-btn:focus-visible {
+  outline: 2px solid var(--primary, #3B82F6);
+  outline-offset: 1px;
 }
 
 /* Upload Area */

@@ -70,6 +70,8 @@
   "herald.saving": "Сохранение…",
   "herald.saved": "Сохранено в библиотеку",
   "herald.savedDraft": "Отправлено на проверку",
+  "herald.loadingDesign": "Загрузка дизайна…",
+  "herald.savedSlideBg": "Сохранено — возврат к Слайдам…",
   "clearCanvasAndRefresh": "Очистить холст и обновить",
   "clearCanvas.confirm.title": "Очистить холст и обновить?",
   "clearCanvas.confirm.description": "Данные холста в этом браузере будут удалены без возможности восстановления.",

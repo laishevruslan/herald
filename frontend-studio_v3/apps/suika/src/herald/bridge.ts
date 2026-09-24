@@ -1,6 +1,7 @@
 /**
- * Herald Phase 1 Save bridge: PNG + wrapped paper → POST /api/studio/export,
+ * Herald Phase 1/3 Save bridge: PNG + wrapped paper → POST /api/studio/export,
  * then postMessage to opener and close (plan §4.4 / §6.1).
+ * Phase 3: slide-bg writes suika.slideBgReturn and returns to /#/slides.
  */
 import {
   exportService,
@@ -8,7 +9,8 @@ import {
   type SuikaEditor,
 } from '@suika/core';
 
-import { publishToLibrary } from './api';
+import { authHeaders, publishToLibrary } from './api';
+import { getParentOrigin } from './init';
 import { PRESET_SIZE } from './presets';
 import { type HeraldPresetId, type HeraldQuery } from './query';
 import { wrapSuikaPaper } from './scene';
@@ -19,6 +21,8 @@ export type HeraldSession = {
   paperStoreKey: string;
   contentId: string | null;
 };
+
+const SUIKA_SLIDE_BG_KEY = 'suika.slideBgReturn';
 
 let session: HeraldSession | null = null;
 
@@ -46,10 +50,14 @@ type SuikaToHerald =
   | { source: 'suika'; type: 'herald:error'; message: string }
   | { source: 'suika'; type: 'herald:cancelled' };
 
+function openerTargetOrigin(): string {
+  return getParentOrigin() || window.location.origin;
+}
+
 export function postToOpener(msg: SuikaToHerald): void {
   if (!window.opener || window.opener.closed) return;
   try {
-    window.opener.postMessage(msg, window.location.origin);
+    window.opener.postMessage(msg, openerTargetOrigin());
   } catch {
     /* opener may be cross-origin or gone */
   }
@@ -63,12 +71,61 @@ export function notifyReady(designId?: string | null): void {
   });
 }
 
-function designFileName(): string {
+function designFileName(forSlideBg: boolean): string {
+  if (forSlideBg) return 'Slide background.png';
   const d = new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `Design ${y}-${m}-${day}.png`;
+}
+
+function markSlideBgDone(contentId: string): void {
+  try {
+    const prev = JSON.parse(sessionStorage.getItem(SUIKA_SLIDE_BG_KEY) || '{}');
+    sessionStorage.setItem(
+      SUIKA_SLIDE_BG_KEY,
+      JSON.stringify({
+        ...prev,
+        contentId,
+        done: true,
+        pending: false,
+      }),
+    );
+  } catch {
+    try {
+      sessionStorage.setItem(
+        SUIKA_SLIDE_BG_KEY,
+        JSON.stringify({ contentId, done: true }),
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+function returnToSlides(): void {
+  const slidesUrl = `${window.location.origin}/#/slides`;
+  try {
+    if (window.opener && !window.opener.closed) {
+      try {
+        window.opener.location.href = '/#/slides';
+      } catch {
+        /* cross-origin opener — postMessage already sent; opener applies locally */
+      }
+      window.setTimeout(() => {
+        try {
+          window.close();
+        } catch {
+          /* ignore */
+        }
+      }, 120);
+      return;
+    }
+  } catch {
+    /* ignore */
+  }
+  window.location.href = slidesUrl;
 }
 
 export type SaveToHeraldResult = {
@@ -91,7 +148,8 @@ export async function saveToHerald(
   }
 
   try {
-    if (!localStorage.getItem('token')) {
+    const auth = authHeaders() as Record<string, string>;
+    if (!auth.Authorization) {
       throw new Error('Not signed in to Herald');
     }
 
@@ -106,6 +164,7 @@ export async function saveToHerald(
       width: 1920,
       height: 1080,
     };
+    const forSlideBg = sess.query.forSlideBg;
 
     const result = await publishToLibrary({
       png,
@@ -114,7 +173,7 @@ export async function saveToHerald(
       preset: sess.query.preset,
       width: dims.width,
       height: dims.height,
-      name: designFileName(),
+      name: designFileName(forSlideBg),
     });
 
     sess.contentId = result.content_id;
@@ -127,6 +186,17 @@ export async function saveToHerald(
       width: result.width ?? dims.width,
       height: result.height ?? dims.height,
     });
+
+    if (forSlideBg) {
+      markSlideBgDone(result.content_id);
+      returnToSlides();
+      return {
+        contentId: result.content_id,
+        width: result.width ?? dims.width,
+        height: result.height ?? dims.height,
+        draft: result.draft,
+      };
+    }
 
     if (opts?.closeWindow !== false) {
       // Allow the opener to process the message before unload.

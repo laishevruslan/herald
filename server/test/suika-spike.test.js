@@ -97,32 +97,73 @@ test('suika island has Russian locale messages', { skip: !HAS_SUIKA_SOURCES }, (
   assert.equal(ru['herald.saveToHerald'], 'Сохранить в Herald');
 });
 
-test('content library Create design opens Suika window (Phase 0)', () => {
+test('content library Create design opens Suika window (Phase 0/3)', () => {
   const src = fs.readFileSync(path.join(ROOT, 'frontend', 'js', 'views', 'content-library.js'), 'utf8');
+  const openLib = fs.readFileSync(path.join(ROOT, 'frontend', 'js', 'lib', 'suika-open.js'), 'utf8');
+  const originLib = fs.readFileSync(path.join(ROOT, 'frontend', 'js', 'lib', 'suika-origin.js'), 'utf8');
   assert.match(src, /openDesignEditorWindow/);
+  assert.match(src, /openNewDesignPresetModal/);
+  assert.match(src, /design\.pick_preset/);
   assert.match(src, /newDesignBtn/);
   assert.match(src, /suikaIslandAvailable/);
-  assert.match(src, /mode:\s*'herald'/);
-  assert.match(src, /herald:saved/);
   assert.match(src, /onSuikaHeraldMessage/);
-  assert.match(src, /herald-suika/);
+  assert.match(src, /data-edit-design/);
+  assert.match(src, /content-edit-design-btn/);
+  assert.match(src, /studio_editor === 'suika'/);
+  assert.match(openLib, /mode:\s*'herald'/);
+  assert.match(openLib, /herald-suika/);
+  assert.match(openLib, /herald:saved/);
+  assert.match(openLib, /herald:init/);
+  assert.match(originLib, /__SUIKA_ORIGIN/);
+  assert.match(originLib, /buildSuikaEditorUrl/);
+});
+
+test('slides Suika slide-bg return key (Phase 3 H6)', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'frontend', 'js', 'views', 'slides.js'), 'utf8');
+  assert.match(src, /suika\.slideBgReturn/);
+  assert.match(src, /openSuikaForSlideBackground/);
+  assert.match(src, /forSlideBg:\s*true/);
+  assert.match(src, /design\.slide_bg_from_design/);
+});
+
+test('dashboard i18n has design.edit and Phase 3 keys in en and ru', () => {
+  const en = fs.readFileSync(path.join(ROOT, 'frontend', 'js', 'i18n', 'en.js'), 'utf8');
+  const ru = fs.readFileSync(path.join(ROOT, 'frontend', 'js', 'i18n', 'ru.js'), 'utf8');
+  assert.match(en, /'design\.edit'/);
+  assert.match(ru, /'design\.edit'/);
+  assert.match(ru, /Редактировать дизайн/);
+  assert.match(en, /'design\.pick_preset'/);
+  assert.match(ru, /'design\.pick_preset'/);
+  assert.match(ru, /Размер дизайна/);
+  assert.match(en, /'design\.slide_bg_from_design'/);
+  assert.match(ru, /'design\.slide_bg_from_design'/);
 });
 
 test('Suika herald bridge modules exist (Phase 1)', () => {
   const heraldDir = path.join(ROOT, 'frontend-studio_v3', 'apps', 'suika', 'src', 'herald');
   if (fs.existsSync(heraldDir)) {
-    for (const name of ['query.ts', 'presets.ts', 'scene.ts', 'api.ts', 'bridge.ts', 'bootstrap.ts']) {
+    for (const name of ['query.ts', 'presets.ts', 'scene.ts', 'api.ts', 'bridge.ts', 'bootstrap.ts', 'init.ts']) {
       assert.ok(fs.existsSync(path.join(heraldDir, name)), name);
     }
     const bridge = fs.readFileSync(path.join(heraldDir, 'bridge.ts'), 'utf8');
-    assert.match(bridge, /saveToHerald/);
-    assert.match(bridge, /postToOpener/);
-    const api = fs.readFileSync(path.join(heraldDir, 'api.ts'), 'utf8');
-    assert.match(api, /\/api\/studio\/export/);
-    const scene = fs.readFileSync(path.join(heraldDir, 'scene.ts'), 'utf8');
-    assert.match(scene, /SUIKA_EDITOR_TAG/);
-    return;
-  }
+  assert.match(bridge, /saveToHerald/);
+  assert.match(bridge, /postToOpener/);
+  assert.match(bridge, /suika\.slideBgReturn/);
+  const api = fs.readFileSync(path.join(heraldDir, 'api.ts'), 'utf8');
+  assert.match(api, /\/api\/studio\/export/);
+  assert.match(api, /loadDesign/);
+  assert.match(api, /setHeraldAuth/);
+  const boot = fs.readFileSync(path.join(heraldDir, 'bootstrap.ts'), 'utf8');
+  assert.match(boot, /loadDesign/);
+  assert.match(boot, /unwrapSuikaPaper/);
+  assert.match(boot, /skipLoad:\s*true/);
+  assert.match(boot, /waitForHeraldInit/);
+  const init = fs.readFileSync(path.join(heraldDir, 'init.ts'), 'utf8');
+  assert.match(init, /herald:init/);
+  const scene = fs.readFileSync(path.join(heraldDir, 'scene.ts'), 'utf8');
+  assert.match(scene, /SUIKA_EDITOR_TAG/);
+  return;
+}
   // Production image has only the built island — assert the bridge survived the Vite build.
   const suikaDir = path.join(ROOT, 'frontend', 'suika');
   assert.ok(fs.existsSync(path.join(suikaDir, 'index.html')), 'frontend/suika/index.html');

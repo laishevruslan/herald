@@ -70,6 +70,8 @@
   "herald.saving": "Saving…",
   "herald.saved": "Saved to library",
   "herald.savedDraft": "Submitted for review",
+  "herald.loadingDesign": "Loading design…",
+  "herald.savedSlideBg": "Saved — returning to Slides…",
   "clearCanvasAndRefresh": "Clear canvas and refresh",
   "clearCanvas.confirm.title": "Clear canvas and refresh?",
   "clearCanvas.confirm.description": "This permanently deletes the canvas data saved in this browser and cannot be undone.",

@@ -121,7 +121,11 @@ const Editor: FC = () => {
           // Spike skips shared localStorage so PNG verify is deterministic.
           void runSpikeExport(editor);
         } else if (herald.mode === 'herald') {
-          bootstrapHerald(editor, herald);
+          await bootstrapHerald(editor, herald);
+          if (isCanceled) {
+            editor.destroy();
+            return;
+          }
         } else {
           new AutoSaveGraphics(editor);
         }

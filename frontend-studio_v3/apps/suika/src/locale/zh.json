@@ -69,6 +69,8 @@
   "herald.saving": "保存中…",
   "herald.saved": "已保存到媒体库",
   "herald.savedDraft": "已提交审核",
+  "herald.loadingDesign": "正在加载设计…",
+  "herald.savedSlideBg": "已保存 — 返回幻灯片…",
   "clearCanvasAndRefresh": "清空画布并刷新",
   "clearCanvas.confirm.title": "清空画布并刷新？",
   "clearCanvas.confirm.description": "这会永久删除当前浏览器中保存的画布数据，且无法恢复。",

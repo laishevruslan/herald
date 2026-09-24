@@ -139,3 +139,47 @@ test('Suika list helpers never expose scene_json', () => {
     assert.equal(Object.prototype.hasOwnProperty.call(row, 'scene_json'), false);
   }
 });
+
+test('Suika replace keeps content_id; GET returns editor=suika', async () => {
+  const fd = new FormData();
+  fd.append('file', new Blob([TINY_PNG], { type: 'image/png' }), 'Design.png');
+  fd.append('scene_json', JSON.stringify(suikaScene()));
+  fd.append('preset', 'landscape-1080');
+  fd.append('name', 'Design replace.png');
+
+  const created = await (await fetch(`${base}/export`, { method: 'POST', body: fd })).json();
+  assert.ok(created.content_id);
+
+  const fd2 = new FormData();
+  fd2.append('file', new Blob([TINY_PNG], { type: 'image/png' }), 'Design2.png');
+  fd2.append(
+    'scene_json',
+    JSON.stringify(suikaScene({ objectName: 'Background-v2' })),
+  );
+  fd2.append('content_id', created.content_id);
+  fd2.append('preset', 'landscape-1080');
+
+  const r2 = await fetch(`${base}/export`, { method: 'POST', body: fd2 });
+  assert.equal(r2.status, 200);
+  const body2 = await r2.json();
+  assert.equal(body2.content_id, created.content_id, 'replace keeps same content id');
+
+  const get = await fetch(`${base}/${created.content_id}`);
+  assert.equal(get.status, 200);
+  const design = await get.json();
+  assert.equal(design.editor, 'suika');
+  assert.equal(design.scene_json.editor, 'suika');
+  assert.match(JSON.stringify(design.scene_json), /Background-v2/);
+
+  const editors = studio.editorsForContentIds([created.content_id]);
+  assert.equal(editors.get(created.content_id), 'suika');
+});
+
+test('Layerhub scene maps to studio_editor layerhub', () => {
+  const ok = studio.sanitizeSceneJson({
+    version: 1,
+    objects: [{ type: 'textbox', text: 'Hi', left: 0, top: 0, width: 10, fontSize: 12 }],
+  });
+  assert.equal(ok.ok, true);
+  assert.equal(studio.detectSceneEditor(ok.parsed), 'layerhub');
+});

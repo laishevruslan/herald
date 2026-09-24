@@ -8,6 +8,10 @@ import { renderApprovalBar } from '../components/approval-actions.js';
 import { isPdf, renderPdfToPages, baseName } from '../components/pdf-pages.js';
 import { studioIslandAvailable } from '../lib/studio-available.js';
 import { suikaIslandAvailable } from '../lib/suika-available.js';
+import {
+  createSuikaHeraldMessageHandler,
+  openDesignEditorWindow,
+} from '../lib/suika-open.js';
 
 /* The mime lib/html-bundle.js stamps on an uploaded HTML bundle. Kept as a constant rather than
  * spelled out at each site: it is compared in three places here, and a typo in one of them is a
@@ -313,9 +317,12 @@ export function render(container) {
   // I5: show Create design only when /suika/ was built.
   const newDesignBtn = document.getElementById('newDesignBtn');
   suikaIslandAvailable().then((ok) => {
+    state.suikaAvailable = !!ok;
     if (!ok || !newDesignBtn) return;
     newDesignBtn.hidden = false;
-    newDesignBtn.onclick = () => openDesignEditorWindow();
+    newDesignBtn.onclick = () => openNewDesignPresetModal();
+    // Re-render so Edit design buttons appear if content already loaded.
+    if (ok) loadContent();
   }).catch(() => {});
 
   // Phase 1: Suika popup → herald:saved refreshes Library and highlights the new item.
@@ -335,6 +342,7 @@ const state = {
   sort: 'date_desc',     // #214: sort order — date_desc | date_asc | name | size
   selected: new Set(),   // #213: ids selected for batch operations (scoped to the current view)
   lastClickedId: null,   // #213: anchor for shift-click range selection
+  suikaAvailable: false, // I5: Edit design only when /suika/ island is built
 };
 
 async function handleFiles(files) {
@@ -576,6 +584,14 @@ async function loadContent() {
         <label class="content-select-wrap" style="position:absolute;top:6px;left:6px;z-index:2;background:rgba(0,0,0,.55);border-radius:4px;padding:3px;display:flex;cursor:pointer">
           <input type="checkbox" class="content-select" data-content-id="${c.id}" ${state.selected.has(c.id) ? 'checked' : ''} style="width:16px;height:16px;margin:0;cursor:pointer">
         </label>
+        ${c.studio_design && c.studio_editor === 'suika' && state.suikaAvailable
+          ? `<button type="button" class="content-edit-design-btn" data-edit-design="${c.id}" title="${t('design.edit')}" aria-label="${t('design.edit')}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>`
+          : ''}
         <div class="content-item-preview">
           ${c.mime_type === 'video/youtube'
             ? `<div style="position:relative;width:100%;height:100%;background:#000;display:flex;align-items:center;justify-content:center">
@@ -629,7 +645,9 @@ async function loadContent() {
         </div>
         <div class="content-item-actions">
           <button class="btn btn-secondary btn-sm" data-history-content="${c.id}" title="${t('history.button')}">${t('history.button')}</button>
-          ${c.studio_design ? `<button class="btn btn-secondary btn-sm" data-edit-poster="${c.id}" title="${t('studio.edit_poster')}">${t('studio.edit_poster')}</button>` : ''}
+          ${c.studio_design && c.studio_editor !== 'suika'
+            ? `<button class="btn btn-secondary btn-sm" data-edit-poster="${c.id}" title="${t('studio.edit_poster')}">${t('studio.edit_poster')}</button>`
+            : ''}
           <button class="btn btn-secondary btn-sm" data-edit-content="${c.id}" title="${t('content.btn_edit')}">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -726,6 +744,17 @@ async function loadContent() {
         const id = editPosterBtn.dataset.editPoster;
         const lang = (localStorage.getItem('rd_lang') || 'en').slice(0, 2);
         window.location.href = `/studio/?contentId=${encodeURIComponent(id)}&lang=${encodeURIComponent(lang)}`;
+        return;
+      }
+
+      const editDesignBtn = e.target.closest('[data-edit-design]');
+      if (editDesignBtn) {
+        const id = editDesignBtn.dataset.editDesign;
+        if (!state.suikaAvailable) {
+          showToast(t('design.unavailable'), 'error');
+          return;
+        }
+        openDesignEditorWindow({ contentId: id });
         return;
       }
 
@@ -1174,28 +1203,56 @@ function folderPath(folder, all) {
   return parts.join(' / ');
 }
 
+const DESIGN_PRESETS = [
+  { id: 'landscape-1080', labelKey: 'studio.preset_landscape', hintKey: 'studio.preset_landscape_hint' },
+  { id: 'portrait-1080', labelKey: 'studio.preset_portrait', hintKey: 'studio.preset_portrait_hint' },
+  { id: 'epaper-5x3', labelKey: 'studio.preset_epaper', hintKey: 'studio.preset_epaper_hint' },
+];
+
 /** Library → New poster: pick canvas size before opening the Studio island (6.1 presets). */
 function openNewPosterPresetModal() {
   const lang = (localStorage.getItem('rd_lang') || 'en').slice(0, 2);
-  const presets = [
-    { id: 'landscape-1080', labelKey: 'studio.preset_landscape', hintKey: 'studio.preset_landscape_hint' },
-    { id: 'portrait-1080', labelKey: 'studio.preset_portrait', hintKey: 'studio.preset_portrait_hint' },
-    { id: 'epaper-5x3', labelKey: 'studio.preset_epaper', hintKey: 'studio.preset_epaper_hint' },
-  ];
+  openCanvasPresetModal({
+    titleKey: 'studio.pick_preset',
+    helpKey: 'studio.pick_preset_help',
+    goKey: 'studio.open_editor',
+    inputName: 'studioPreset',
+    titleId: 'studioPresetTitle',
+    onPick: (picked) => {
+      window.location.href = `/studio/?preset=${encodeURIComponent(picked)}&lang=${encodeURIComponent(lang)}`;
+    },
+  });
+}
+
+/** Library → Create design: pick canvas size before opening Suika (Phase 3). */
+function openNewDesignPresetModal() {
+  openCanvasPresetModal({
+    titleKey: 'design.pick_preset',
+    helpKey: 'design.pick_preset_help',
+    goKey: 'design.open_editor',
+    inputName: 'designPreset',
+    titleId: 'designPresetTitle',
+    onPick: (picked) => {
+      openDesignEditorWindow({ preset: picked });
+    },
+  });
+}
+
+function openCanvasPresetModal({ titleKey, helpKey, goKey, inputName, titleId, onPick }) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.style.display = 'flex';
   overlay.innerHTML = `
-    <div class="modal" style="max-width:420px;width:95vw" role="dialog" aria-modal="true" aria-labelledby="studioPresetTitle">
+    <div class="modal" style="max-width:420px;width:95vw" role="dialog" aria-modal="true" aria-labelledby="${esc(titleId)}">
       <div class="modal-header">
-        <h3 id="studioPresetTitle">${esc(t('studio.pick_preset'))}</h3>
-        <button type="button" class="modal-close" id="studioPresetClose" aria-label="${esc(t('common.cancel'))}">&times;</button>
+        <h3 id="${esc(titleId)}">${esc(t(titleKey))}</h3>
+        <button type="button" class="modal-close" data-preset-close aria-label="${esc(t('common.cancel'))}">&times;</button>
       </div>
       <div class="modal-body" style="display:grid;gap:10px">
-        <p style="margin:0;font-size:13px;color:var(--text-muted)">${esc(t('studio.pick_preset_help'))}</p>
-        ${presets.map((p, i) => `
+        <p style="margin:0;font-size:13px;color:var(--text-muted)">${esc(t(helpKey))}</p>
+        ${DESIGN_PRESETS.map((p, i) => `
           <label style="display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer">
-            <input type="radio" name="studioPreset" value="${esc(p.id)}" ${i === 0 ? 'checked' : ''} style="margin-top:3px">
+            <input type="radio" name="${esc(inputName)}" value="${esc(p.id)}" ${i === 0 ? 'checked' : ''} style="margin-top:3px">
             <span>
               <strong style="display:block">${esc(t(p.labelKey))}</strong>
               <span style="font-size:12px;color:var(--text-muted)">${esc(t(p.hintKey))}</span>
@@ -1204,59 +1261,29 @@ function openNewPosterPresetModal() {
         `).join('')}
       </div>
       <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
-        <button type="button" class="btn btn-secondary btn-sm" id="studioPresetCancel">${esc(t('common.cancel'))}</button>
-        <button type="button" class="btn btn-primary btn-sm" id="studioPresetGo">${esc(t('studio.open_editor'))}</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-preset-cancel>${esc(t('common.cancel'))}</button>
+        <button type="button" class="btn btn-primary btn-sm" data-preset-go>${esc(t(goKey))}</button>
       </div>
     </div>
   `;
   const close = () => overlay.remove();
   overlay.onclick = (e) => { if (e.target === overlay) close(); };
-  overlay.querySelector('#studioPresetClose').onclick = close;
-  overlay.querySelector('#studioPresetCancel').onclick = close;
-  overlay.querySelector('#studioPresetGo').onclick = () => {
-    const picked = overlay.querySelector('input[name="studioPreset"]:checked')?.value || 'landscape-1080';
-    window.location.href = `/studio/?preset=${encodeURIComponent(picked)}&lang=${encodeURIComponent(lang)}`;
+  overlay.querySelector('[data-preset-close]').onclick = close;
+  overlay.querySelector('[data-preset-cancel]').onclick = close;
+  overlay.querySelector('[data-preset-go]').onclick = () => {
+    const picked = overlay.querySelector(`input[name="${inputName}"]:checked`)?.value || 'landscape-1080';
+    close();
+    onPick(picked);
   };
   document.body.appendChild(overlay);
 }
 
-/**
- * Phase 1: open Suika in herald-mode (same-origin Variant A).
- * Save posts PNG + wrapped paper to /api/studio/export and postMessages herald:saved.
- * Prefer window.open without noopener so opener receives the message (plan §6.1).
- */
-function openDesignEditorWindow(opts = {}) {
-  const lang = (localStorage.getItem('rd_lang') || 'en').slice(0, 2);
-  const preset = opts.preset || 'landscape-1080';
-  const params = new URLSearchParams({
-    mode: 'herald',
-    preset,
-    lang,
-  });
-  if (opts.contentId) params.set('contentId', opts.contentId);
-  const url = `/suika/?${params.toString()}`;
-  const win = window.open(url, 'herald-suika');
-  if (!win) {
-    showToast(t('design.popup_blocked'), 'info');
-    window.location.href = url;
-  }
-}
-
-function onSuikaHeraldMessage(event) {
-  if (event.origin !== window.location.origin) return;
-  const data = event.data;
-  if (!data || data.source !== 'suika') return;
-  if (data.type === 'herald:saved' && data.contentId) {
-    state.selected.clear();
-    state.selected.add(data.contentId);
-    showToast(t('design.saved_toast'), 'success');
-    loadContent();
-    return;
-  }
-  if (data.type === 'herald:error' && data.message) {
-    showToast(data.message, 'error');
-  }
-}
+const onSuikaHeraldMessage = createSuikaHeraldMessageHandler((contentId) => {
+  state.selected.clear();
+  state.selected.add(contentId);
+  showToast(t('design.saved_toast'), 'success');
+  loadContent();
+});
 
 export function cleanup() {
   window.removeEventListener('message', onSuikaHeraldMessage);

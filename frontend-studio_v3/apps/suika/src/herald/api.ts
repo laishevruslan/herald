@@ -1,15 +1,40 @@
 /**
  * Same-origin Herald API helpers (mirror frontend-studio/src/api.ts).
- * JWT from dashboard localStorage — no second login.
+ * JWT from dashboard localStorage — or memory token from herald:init (Variant B).
  */
 
+let memoryToken: string | null = null;
+let memoryWorkspaceId: string | null = null;
+/** Herald CMS origin when Suika runs cross-origin (dev port 6167). Empty = same-origin. */
+let apiBase = '';
+
+export function setHeraldAuth(opts: {
+  token?: string | null;
+  workspaceId?: string | null;
+  apiBase?: string | null;
+}): void {
+  if (opts.token !== undefined) memoryToken = opts.token;
+  if (opts.workspaceId !== undefined) memoryWorkspaceId = opts.workspaceId;
+  if (opts.apiBase !== undefined) {
+    apiBase = String(opts.apiBase || '')
+      .trim()
+      .replace(/\/$/, '');
+  }
+}
+
+export function clearHeraldAuth(): void {
+  memoryToken = null;
+  memoryWorkspaceId = null;
+  apiBase = '';
+}
+
 export function authHeaders(): HeadersInit {
-  const token = localStorage.getItem('token');
+  const token = memoryToken || localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 export function workspaceHeaders(): HeadersInit {
-  let ws = localStorage.getItem('workspaceId') || '';
+  let ws = memoryWorkspaceId || localStorage.getItem('workspaceId') || '';
   if (!ws) {
     try {
       ws =
@@ -32,7 +57,8 @@ export async function apiFetch(
   for (const [k, v] of Object.entries({ ...auth, ...ws })) {
     if (!headers.has(k)) headers.set(k, v);
   }
-  return fetch(path, { ...init, headers });
+  const url = path.startsWith('http') ? path : `${apiBase}${path}`;
+  return fetch(url, { ...init, headers });
 }
 
 export type PublishResult = {
@@ -73,6 +99,7 @@ export async function loadDesign(contentId: string): Promise<{
   content_id: string;
   width: number;
   height: number;
+  editor?: 'suika' | 'layerhub';
   scene_json: unknown;
 }> {
   const r = await apiFetch(`/api/studio/${contentId}`);
@@ -86,6 +113,7 @@ export async function loadDesign(contentId: string): Promise<{
     content_id: string;
     width: number;
     height: number;
+    editor?: 'suika' | 'layerhub';
     scene_json: unknown;
   };
 }

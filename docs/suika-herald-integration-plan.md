@@ -1,7 +1,9 @@
 # Интеграция Suika (`frontend-studio_v3`) с Herald / ScreenTinker
 
-**Статус: ПЛАН + Фаза 0 (Spike) + Фаза 1 (Save) выполнены (2026-09-24).**  
-Код: остров `/suika/`, I5-кнопка «Создать дизайн», Save-to-Herald (`POST /api/studio/export` + `postMessage`), spike PNG, MIT `license-check`, локаль `ru`. **Фаза 2 (Re-edit) — ещё нет.**  
+**Статус: ПЛАН + Фаза 0–3 выполнены (2026-09-24).**  
+Код: остров `/suika/`, Save-to-Herald, re-edit, пресет-модалка, slide-bg (`suika.slideBgReturn`),
+popup fallback, Dev B (`__SUIKA_ORIGIN` + `herald:init`), Help/CHANGELOG, локаль `ru`. Studio
+остаётся рядом с Suika (не прячем за feature-flag).  
 **Дата съёмки:** 2026-09-24.  
 **Цель продукта:** кнопка «Создать дизайн» в Herald открывает Suika в **новом окне**; оператор рисует постер; при сохранении PNG (+ редактируемый sidecar) попадает в Content Library Herald.  
 **Не цель v1:** встраивать Suika iframe внутрь дашборда, заменять Studio (Layerhub), тащить multiplayer/Yjs/Nest backend Suika, отдавать `.suika` JSON плееру.
@@ -282,9 +284,9 @@ type HeraldToSuika =
 | S3 | Пункт меню / primary CTA **«Сохранить в Herald»** вместо download `.suika` | **DONE (Фаза 1)** — Menu + Header CTA |
 | S4 | Собрать PNG blob + paper JSON; `fetch('/api/studio/export', FormData)` с Bearer | **DONE (Фаза 1)** — `herald/api.ts` + `bridge.ts` |
 | S5 | `postMessage` success/error; `window.close()` | **DONE (Фаза 1)** |
-| S6 | Load: если `contentId` — `GET /api/studio/:contentId` → `setContents(paper)` | Фаза 2 |
+| S6 | Load: если `contentId` — `GET /api/studio/:contentId` → `setContents(paper)` | **DONE (Фаза 2)** — `bootstrap.ts` |
 | S7 | Preset: задать размер страницы/frame под 1920×1080 и т.д. | **DONE (Фаза 1)** — `herald/presets.ts` blank paper |
-| S8 | Cross-origin: слушать `herald:init`, хранить token в memory | опционально, флаг |
+| S8 | Cross-origin: слушать `herald:init`, хранить token в memory | **DONE (Фаза 3)** — `herald/init.ts` + `api.setHeraldAuth` |
 | S9 | Vite `base`: для острова `/suika/` выставить `base: '/suika/'` в production build (как Studio) | **DONE (Фаза 0)** — `SUIKA_BASE` |
 
 Не трогать `apps/backend`, workbench, multiplayer.
@@ -298,16 +300,16 @@ type HeraldToSuika =
 | H2b | CSP `/suika/`: `suikaCsp` с `'unsafe-eval'` (PathKit); dashboard без eval | **DONE** |
 | H3 | Click → `window.open` с query; сохранить `suikaOpener` listener | **DONE (Фаза 1)** — `mode=herald&preset` + `message` listener |
 | H4 | На `herald:saved` — refresh list / highlight | **DONE (Фаза 1)** |
-| H5 | Edit на карточке с `editor==='suika'` → `/suika/?contentId=` | Фаза 2 |
-| H6 | (Опционально) slide-bg: `for=slide-bg` + sessionStorage ключ `suika.slideBgReturn` | `slides.js` |
-| H7 | Dev: если `window.__SUIKA_ORIGIN` / config — открывать 6167 и делать B-handshake | маленький helper |
+| H5 | Edit на карточке с `editor==='suika'` → `/suika/?contentId=` | **DONE (Фаза 2)** — `data-edit-design` |
+| H6 | (Опционально) slide-bg: `for=slide-bg` + sessionStorage ключ `suika.slideBgReturn` | **DONE (Фаза 3)** — `slides.js` + bridge |
+| H7 | Dev: если `window.__SUIKA_ORIGIN` / config — открывать 6167 и делать B-handshake | **DONE (Фаза 3)** — `suika-origin.js` + `herald/init.ts` |
 
 ### 5.3. Herald server
 
 | # | Задача | Где |
 |---|--------|-----|
 | R1 | Принять Suika-обёртку в sanitize `scene_json` | **DONE (Фаза 1)** — `sanitizeSceneJson` + `detectSceneEditor` |
-| R2 | (Опц.) тег `editor` в list API, чтобы UI знал какую кнопку Edit показать | Фаза 2 |
+| R2 | (Опц.) тег `editor` в list API, чтобы UI знал какую кнопку Edit показать | **DONE (Фаза 2)** — `studio_editor` + `editorsForContentIds` |
 | R3 | Тесты: export PNG + sidecar, IDOR workspace, play payload без scene | **DONE (Фаза 1)** — `suika-export.test.js` |
 | R4 | CORS allowlist для Suika origin **только если** вариант B на hosted | `server.js` |
 
@@ -321,7 +323,7 @@ type HeraldToSuika =
 | D2 | Dockerfile multi-stage: node+pnpm build `apps/suika` → copy в `frontend/suika/` | **DONE (Фаза 0)** |
 | D3 | Release tarball включает `/suika/`; без него кнопка скрыта (I5) | **DONE (Фаза 0)** — Docker image |
 | D4 | `license-check.js` — MIT Suika уже ок; не тянуть GPL | **DONE (Фаза 0)** |
-| D5 | Документация Help: «Создать дизайн» = Suika; «New poster» = Studio (или объединить UI — §8) | частично: i18n + план; Help/CHANGELOG — Фаза 3 |
+| D5 | Документация Help: «Создать дизайн» = Suika; «New poster» = Studio (или объединить UI — §8) | **DONE (Фаза 3)** — Help + CHANGELOG; Studio оставлен |
 
 ---
 
@@ -410,18 +412,25 @@ Opener: `w.closed` poll (раз в 1s) или только ждать message; �
 
 **Критерий выхода:** оператор без DevTools создаёт дизайн и видит его в `#/content` (Save to Herald).
 
-### Фаза 2 — Re-edit (1–2 дн.)
+### Фаза 2 — Re-edit (1–2 дн.) — **DONE 2026-09-24**
 
-- S6, H5, флаг editor в API.
-- Replace сохраняет тот же `content_id` (плейлисты не ломаются).
+- [x] S6: `GET /api/studio/:contentId` → unwrap paper → `setContents` (сервер важнее localStorage).
+- [x] H5: кнопка «Редактировать дизайн» при `studio_editor==='suika'` (I5-gated).
+- [x] R2: list API отдаёт `studio_editor` (`suika`|`layerhub`); GET design — поле `editor`.
+- [x] Replace Save сохраняет тот же `content_id` (тест).
+- [x] i18n en/ru/de `design.edit`.
 
-**Критерий:** Edit → правка текста → Save → тот же id, новый PNG.
+**Критерий выхода:** Edit → правка → Save → тот же id, новый PNG.
 
-### Фаза 3 — Polish (1–3 дн.)
+### Фаза 3 — Polish (1–3 дн.) — DONE (2026-09-24)
 
-- Пресет-модалка, i18n, slide-bg, popup-blocked fallback, Dev cross-origin B.
-- Docs Help + строка в CHANGELOG.
-- Решение: оставить Studio или спрятать за feature-flag.
+- [x] Пресет-модалка Create design (landscape / portrait / e-paper).
+- [x] i18n en/ru/de (`design.pick_preset*`, `design.slide_bg_*`).
+- [x] slide-bg: `for=slide-bg` + `suika.slideBgReturn` + кнопки в Слайдах.
+- [x] Popup-blocked → same-tab fallback (уже было; focus + `__SUIKA_ORIGIN`).
+- [x] Dev cross-origin B: `window.__SUIKA_ORIGIN` + `herald:init` JWT в memory.
+- [x] Help «Posters and Designs» + строка в CHANGELOG Unreleased.
+- [x] Решение: **оставить Studio** рядом с Suika (не feature-flag).
 
 ### Не делать в этих фазах
 
@@ -529,6 +538,7 @@ herald/frontend-studio_v3/
 1. [x] Зафиксировать продуктовый выбор §8 (две кнопки; reuse `studio_designs`; Variant A).
 2. [x] Spike: build pipeline `/suika/` + I5-кнопка без полного bridge — проверка I5/Docker.
 3. [x] PR фазы 1: herald-mode Save + Library open/listener (`S1–S5`, `H1–H4`, export API).
-4. Далее — Фаза 2: re-edit (`S6`, `H5`, флаг editor в list API).
+4. [x] Фаза 2: re-edit (`S6`, `H5`, флаг editor в list API).
+5. [x] Фаза 3: polish (пресет-модалка, slide-bg, Dev B, Help/CHANGELOG).
 
-Код по этому документу пишется по фазам выше; §8 и вариант A зафиксированы.
+Код по этому документу пишется по фазам выше; §8 и вариант A зафиксированы. Studio оставлен.

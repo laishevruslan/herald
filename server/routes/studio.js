@@ -38,7 +38,7 @@ router.get('/', (req, res) => {
   res.json({ designs: studio.listForWorkspace(req.workspaceId) });
 });
 
-/** Load scene for Edit poster. */
+/** Load scene for Edit poster / Edit design. */
 router.get('/:contentId', (req, res) => {
   if (!req.workspaceId) return res.status(403).json({ error: 'No workspace context' });
   const row = studio.getByContentId(req.params.contentId, req.workspaceId);
@@ -50,6 +50,7 @@ router.get('/:contentId', (req, res) => {
     width: row.width,
     height: row.height,
     updated_at: row.updated_at,
+    editor: studio.detectSceneEditor(scene),
     scene_json: scene,
   });
 });

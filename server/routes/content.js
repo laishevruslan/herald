@@ -121,13 +121,21 @@ router.get('/', (req, res) => {
     c.tags = parseTags(c.tags);
     c.meta = parseMeta(c.meta);
   }
-  // Studio badge (phase 6.1): mark rows that have a re-editable scene without joining into SELECT *.
+  // Studio / Suika badge (phase 6.1 + Phase 2): mark re-editable rows and which island owns them.
+  // Never attach scene_json to the list payload (I3/I4).
   try {
     const studio = require('../lib/studio-designs');
-    const withDesign = studio.contentIdsWithDesign(content.map((c) => c.id));
-    for (const c of content) c.studio_design = withDesign.has(c.id) ? 1 : 0;
+    const editors = studio.editorsForContentIds(content.map((c) => c.id));
+    for (const c of content) {
+      const ed = editors.get(c.id) || null;
+      c.studio_design = ed ? 1 : 0;
+      c.studio_editor = ed; // 'suika' | 'layerhub' | null
+    }
   } catch {
-    for (const c of content) c.studio_design = 0;
+    for (const c of content) {
+      c.studio_design = 0;
+      c.studio_editor = null;
+    }
   }
   res.json(content);
 });
