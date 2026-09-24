@@ -1,5 +1,0 @@
-<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pinbot">
-  <circle cx="32" cy="26" r="22" fill="#E60023" />
-  <circle cx="32" cy="26" r="10" fill="#FFFFFF" />
-  <path d="M32 48 L20 30 A22 22 0 0 0 44 30 Z" fill="#E60023" />
-</svg>

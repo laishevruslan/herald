@@ -1,5 +1,0 @@
-dist
-node_modules
-scripts
-
-// Prettier should be called in host project

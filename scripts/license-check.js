@@ -4,7 +4,10 @@
 /*
  * Licence gate for the dependencies that actually SHIP.
  *
- *   node scripts/license-check.js [--sbom <path>] [--include-dev]
+ *   node scripts/license-check.js [--sbom <path>] [--include-dev] [--root <dir>]
+ *
+ * Default `--root` is `server/`. For the Studio island:
+ *   node scripts/license-check.js --root frontend-studio
  *
  * Run from a PRODUCTION install (`npm ci --omit=dev`). That is the whole point: a developer
  * checkout carries `sharp`, whose `@img/sharp-wasm32` declares LGPL-3.0-or-later. It is a test
@@ -25,7 +28,15 @@ const { execFileSync } = require('child_process');
 const args = process.argv.slice(2);
 const INCLUDE_DEV = args.includes('--include-dev');
 const SBOM_OUT = args.includes('--sbom') ? args[args.indexOf('--sbom') + 1] : null;
-const SERVER_DIR = path.join(__dirname, '..', 'server');
+const rootArg = args.includes('--root') ? args[args.indexOf('--root') + 1] : null;
+const ROOT_DIR = rootArg
+  ? path.resolve(rootArg)
+  : path.join(__dirname, '..', 'server');
+
+if (rootArg && !fs.existsSync(path.join(ROOT_DIR, 'package.json'))) {
+  console.error(`--root ${ROOT_DIR}: no package.json found`);
+  process.exit(2);
+}
 
 /* ── policy ───────────────────────────────────────────────────────────────────
  * ALLOW: permissive, no distribution obligation beyond keeping the notice.
@@ -91,7 +102,7 @@ function readLicense(dir) {
  */
 function listInstalled() {
   const argv = ['ls', ...(INCLUDE_DEV ? [] : ['--omit=dev']), '--all', '--parseable'];
-  const opts = { cwd: SERVER_DIR, maxBuffer: 64 * 1024 * 1024, encoding: 'utf8' };
+  const opts = { cwd: ROOT_DIR, maxBuffer: 64 * 1024 * 1024, encoding: 'utf8' };
   try {
     return execFileSync('npm', argv, opts);
   } catch (e) {

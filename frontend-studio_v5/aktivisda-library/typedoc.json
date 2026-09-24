@@ -1,7 +1,0 @@
-{
-  "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["./lib/index.ts"],
-  "plugin": ["typedoc-plugin-markdown"],
-  "out": "../docs/aktivisda-library",
-  "publicPath": "aktivisda-library"
-}

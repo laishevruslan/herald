@@ -1,7 +1,0 @@
-import os
-import sys
-
-DIRNAME = os.path.dirname(os.path.realpath(__file__))
-sys.path.insert(0, os.path.join(DIRNAME, '..'))
-
-from main import create_app

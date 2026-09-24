@@ -1,6 +1,0 @@
-
-project_slug: aktivisda-showcase
-project_home: "/var/www/{{ project_slug }}"
-main_user: "user__aktivisda-showcase"
-use_password: false
-url: aktivisda.earth

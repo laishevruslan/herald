@@ -2424,8 +2424,12 @@ app.get(['/tizen', '/tizen/'], (req, res) => {
  * missing page: sitemap.xml lists six guide URLs, and a crawler that finds a typo'd or retired one
  * answering 200 with unrelated markup learns to distrust the whole directory. Flagged in
  * docs/seo-directory-listings.md and unfixed until now.
+ *
+ * /studio/ is the Layerhub poster island (phase 6). When it is not built into frontend/studio/,
+ * a miss must 404 — not SPA-fallback to the dashboard. Otherwise I5 HEAD /studio/index.html
+ * returns 200 and "New poster" navigates into a CMS refresh with no editor.
  */
-const CONTENT_PREFIXES = ['/guides/', '/integrations/'];
+const CONTENT_PREFIXES = ['/guides/', '/integrations/', '/studio/'];
 
 const NOT_FOUND_PAGE = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
   + '<meta name="viewport" content="width=device-width,initial-scale=1">'
@@ -2440,6 +2444,23 @@ const NOT_FOUND_PAGE = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-
   + '<p>That page does not exist. Try the <a href="/">home page</a>, or the '
   + '<a href="/guides/what-is-digital-signage.html">guides</a>.</p>'
   + '</div></body></html>';
+
+/*
+ * express.static uses index:false, so a bare /studio/ does not auto-serve frontend/studio/index.html
+ * even when the island is built. Mirror /integrations/: serve the island index when present,
+ * otherwise the same 404 body the catch-all uses for content prefixes.
+ */
+app.get(['/studio', '/studio/'], (req, res) => {
+  const index = path.join(config.frontendDir, 'studio', 'index.html');
+  if (!fs.existsSync(index)) {
+    return res.status(404).type('html').send(NOT_FOUND_PAGE);
+  }
+  if (req.path === '/studio') {
+    const q = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    return res.redirect(301, '/studio/' + q);
+  }
+  return res.sendFile(index);
+});
 
 // SPA fallback for app routes. Unmatched /api/ paths return 404 so misrouted
 // clients fail fast instead of hanging until Cloudflare's 15s upstream timeout.

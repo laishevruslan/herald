@@ -1,0 +1,7 @@
+services:
+  suika:
+    build: .
+    image: suika:local
+    container_name: suika
+    ports:
+      - "6167:80"

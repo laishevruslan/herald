@@ -7,6 +7,9 @@
  * and it is worse than a plain miss: a crawler that finds a typo'd or retired guide answering 200
  * with unrelated markup learns to distrust the directory that the real guides live in. Flagged in
  * docs/seo-directory-listings.md, and Bing's report on this site is the reason it got fixed.
+ *
+ * The same soft-404 hit /studio/ when the poster island was not built: I5 HEAD returned 200 and
+ * "New poster" navigated into a CMS refresh with no editor.
  */
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -20,11 +23,22 @@ test('the catch-all refuses content prefixes instead of serving the SPA', () => 
   const m = SRC.match(/const CONTENT_PREFIXES = \[([^\]]*)\]/);
   assert.ok(m, 'CONTENT_PREFIXES must exist');
   assert.match(m[1], /'\/guides\/'/, 'guides is the prefix the sitemap advertises');
+  assert.match(m[1], /'\/studio\/'/, 'studio island misses must 404, not SPA');
 
   // The guard has to run BEFORE the sendFile, or it never fires.
   const guard = SRC.indexOf('CONTENT_PREFIXES.some');
-  const fallback = SRC.indexOf("res.sendFile(path.join(config.frontendDir, 'index.html'))");
+  const fallback = SRC.lastIndexOf("res.sendFile(path.join(config.frontendDir, 'index.html'))");
   assert.ok(guard > 0 && fallback > guard, 'the 404 guard must precede the SPA fallback');
+});
+
+test('bare /studio/ is routed to the island index when built, else hard 404', () => {
+  // express.static index:false — without this route, /studio/?preset=… SPA-falls through.
+  assert.match(SRC, /app\.get\(\['\/studio', '\/studio\/'\]/);
+  assert.match(SRC, /'studio', 'index\.html'/);
+  const route = SRC.indexOf("app.get(['/studio', '/studio/']");
+  // A comment earlier mentions app.get('*') — match the real catch-all handler.
+  const catchAll = SRC.indexOf("app.get('*', (req, res)");
+  assert.ok(route > 0 && catchAll > route, 'studio index route must precede the SPA catch-all');
 });
 
 test('every guide the sitemap advertises actually exists, or we 404 our own listed URLs', () => {
@@ -38,8 +52,7 @@ test('every guide the sitemap advertises actually exists, or we 404 our own list
 });
 
 test('the 404 body is noindex, so a crawler cannot bank it as a page', () => {
-  const m = SRC.match(/const NOT_FOUND_PAGE = ([\s\S]*?);\n\n/);
-  assert.ok(m, 'NOT_FOUND_PAGE must exist');
-  assert.match(m[1], /noindex/, 'a 404 body that omits noindex can still be indexed on a soft serve');
-  assert.match(m[1], /Page not found/);
+  assert.match(SRC, /const NOT_FOUND_PAGE =/);
+  assert.match(SRC, /noindex/, 'a 404 body that omits noindex can still be indexed on a soft serve');
+  assert.match(SRC, /Page not found/);
 });

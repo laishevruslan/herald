@@ -1,0 +1,116 @@
+{
+  "delete": "Delete",
+  "fill": "Fill",
+  "stroke": "Stroke",
+  "mixed": "Mixed",
+  "noSelectedShapes": "No Selected Shapes",
+
+  "uploadFile": "Upload File",
+
+  "tool.select": "Select",
+  "tool.frame": "Frame",
+  "tool.rectangle": "Rectangle",
+  "tool.ellipse": "Ellipse",
+  "tool.image": "Image",
+  "tool.pen": "Pen",
+  "tool.line": "Line",
+  "tool.polygon": "Polygon",
+  "tool.star": "Star",
+  "tool.text": "Text",
+  "tool.hand": "Hand",
+  "tool.pencil": "Pencil",
+  "command.copy": "Copy",
+  "command.copyAsSVG": "Copy as SVG",
+  "command.pasteHere": "Paste here",
+  "command.undo": "Undo",
+  "command.redo": "Redo",
+  "command.selectAll": "Select all",
+  "arrange.forward": "Bring Forward",
+  "arrange.backward": "Send Backward",
+  "arrange.front": "Bring to Front",
+  "arrange.back": "Send to Back",
+
+  "page.delete": "Delete page",
+
+  "zoom.zoomIn": "Zoom in",
+  "zoom.zoomOut": "Zoom out",
+  "zoom.zoomToFit": "Zoom to fit",
+  "zoom.zoomToSelection": "Zoom to selection",
+  "zoom.zoomTo50": "Zoom to 50%",
+  "zoom.zoomTo100": "Zoom to 100%",
+  "zoom.zoomTo200": "Zoom to 200%",
+
+  "setting.grid.pixelGrid": "Pixel grid",
+  "setting.grid.snapToPixelGrid": "Snap to pixel grid",
+  "setting.rulers": "rulers",
+
+  "paintType.solid": "Solid",
+  "paintType.image": "Image",
+
+  "group": "Group selection",
+  "ungroup": "Ungroup",
+
+  "showOrHide": "Show/Hide",
+  "lockOrUnlock": "Lock/Unlock",
+
+  "flip.horizontal": "Flip horizontal",
+  "flip.vertical": "Flip vertical",
+
+  "file": "File",
+  "edit": "Edit",
+  "object": "Object",
+  "import.originFile": "Import local file",
+  "import.svgFile": "Import SVG file",
+
+  "export.originFile": "Save local copy",
+  "export.currentPageAsSVG": "Export current page as SVG",
+  "export.currentPageAsPNG": "Export current page as PNG",
+  "clearCanvasAndRefresh": "Clear canvas and refresh",
+  "clearCanvas.confirm.title": "Clear canvas and refresh?",
+  "clearCanvas.confirm.description": "This permanently deletes the canvas data saved in this browser and cannot be undone.",
+  "clearCanvas.confirm.action": "Clear and refresh",
+  "cancel": "Cancel",
+  "loadingFailedHintPrefix": "If loading keeps failing, try ",
+
+  "preference": "Preference",
+  "keepToolSelectedAfterUse": "Keep tool selected after use",
+  "invertZoomDirection": "Invert zoom direction",
+  "highlightLayersOnHover": "Highlight layers on hover",
+  "flipObjectsWhileResizing": "Flip objects while resizing",
+  "snapToObjects": "Snap to objects",
+  "nudgeAmount": "Nudge amount",
+  "nudgeAmount.description": "Set the distance elements move with the arrow keys",
+  "nudgeAmount.small": "Small nudge",
+  "nudgeAmount.big": "Big nudge",
+
+  "vector": "Vector",
+  "offsetVector": "Offset vector",
+  "offsetVector.offset": "Offset",
+  "offsetVector.join": "Join",
+  "offsetVector.join.miter": "Miter",
+  "offsetVector.join.round": "Round",
+  "offsetVector.join.bevel": "Bevel",
+  "apply": "Apply",
+
+  "done": "Done",
+
+  "layer": "Layer",
+
+  "typography": "Typography",
+
+  "fontSize": "Font size",
+  "letterSpacing": "Letter spacing",
+  "lineHeight": "Line height",
+  "auto": "Auto",
+
+  "textAutoResize.autoWidth": "Auto width",
+  "textAutoResize.autoHeight": "Auto height",
+  "textAutoResize.fixed": "Fixed",
+
+  "align.left": "Align left",
+  "align.horizontalCenter": "Align horizontal centers",
+  "align.right": "Align right",
+  "align.top": "Align top",
+  "align.verticalCenter": "Align vertical centers",
+  "align.bottom": "Align bottom"
+}
