@@ -176,6 +176,13 @@ test('partition: the public token surface is exactly the reviewed set (snapshot 
      */
     '/api/slide-decks',
     /*
+     * Factory slide-template catalogue, added deliberately. Read-only PAT alias of
+     * GET /api/slide-decks/factories so an integrator can mint a door sign without the dashboard
+     * wizard. Geometry is shared with the publish path already on this door; slug is not
+     * workspace-validated until publish (missing feeds render empty/stale on the wall).
+     */
+    '/api/slide-templates',
+    /*
      * Uploaded slide fonts, added deliberately. Reads and deletes are workspace-scoped through
      * accessContext like every sibling.
      *

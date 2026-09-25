@@ -343,6 +343,22 @@ function bumpDependentWidgets(row, nowSec) {
 }
 
 /**
+ * Stamp last_status onto a cached payload as the reserved key `__status`.
+ *
+ * Not part of the iCal dictionary — `status` stays the room word (AVAILABLE/BUSY). The slide
+ * renderer reads `__status` for color_when / bind_status so a failed fetch cannot paint as free.
+ */
+function attachSourceStatus(data, lastStatus) {
+  const out = (data && typeof data === 'object' && !Array.isArray(data)) ? { ...data } : {};
+  if (lastStatus === 'ok' || lastStatus === 'error' || lastStatus === 'pending') {
+    out.__status = lastStatus;
+  } else {
+    out.__status = lastStatus ? 'error' : 'pending';
+  }
+  return out;
+}
+
+/**
  * Get all data sources for a workspace mapped by slug synchronously from cache.
  *
  * @param {string} workspaceId Workspace ID
@@ -351,12 +367,13 @@ function bumpDependentWidgets(row, nowSec) {
 function getWorkspaceDataMapSync(workspaceId) {
   if (!workspaceId) return {};
 
-  const rows = db.prepare('SELECT slug, cached_data FROM data_sources WHERE workspace_id = ?').all(workspaceId);
+  const rows = db.prepare('SELECT slug, cached_data, last_status FROM data_sources WHERE workspace_id = ?').all(workspaceId);
   const map = {};
 
   for (const r of rows) {
     try {
-      const data = r.cached_data ? JSON.parse(r.cached_data) : {};
+      const parsed = r.cached_data ? JSON.parse(r.cached_data) : {};
+      const data = attachSourceStatus(parsed, r.last_status);
       map[r.slug] = data;
       map[r.slug.toLowerCase()] = data;
     } catch (_) {}
@@ -370,6 +387,7 @@ module.exports = {
   bumpDependentWidgets,
   describeSyncError,
   getWorkspaceDataMapSync,
+  attachSourceStatus,
   withFetchSlot,
   pollDueDataSources,
   startDataSourcesPoller,
