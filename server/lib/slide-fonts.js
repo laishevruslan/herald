@@ -31,8 +31,9 @@
  *
  * ⚠️ NOT SUBSETTED BY CHARACTER, only by script. latin AND latin-ext ship, because latin alone drops
  * the accented characters half of Europe writes its own place names in — a slide reading "Zurich"
- * for "Zürich" is worse than 30KB. Anything beyond that (Cyrillic, Greek, Vietnamese) is a language
- * pack decision, not a default, and is deliberately absent.
+ * for "Zürich" is worse than 30KB. Cyrillic and cyrillic-ext ship for the families that declare
+ * them (Inter, Oswald, Bitter, JetBrains Mono). Archivo stays latin-only: Google publishes no
+ * Cyrillic cut of that family. Greek and Vietnamese are still absent.
  */
 
 const path = require('path');
@@ -163,12 +164,14 @@ function fontFaceCss(familyKeys, opts = {}) {
     if (seen.has(k)) continue;
     seen.add(k);
     const f = FAMILIES[k];
-    for (const [suffix, range] of [['', RANGE_LATIN], ['-ext', RANGE_LATIN_EXT]]) {
+    const scripts = f.scripts || SCRIPTS_LATIN;
+    for (const face of SCRIPT_FACES) {
+      if (!scripts.includes(face.script)) continue;
       out.push(
         `@font-face{font-family:'${f.css}';font-style:normal;`
         + `font-weight:${f.weights[0]} ${f.weights[1]};font-display:swap;`
-        + `src:url(${base}/${f.file}${suffix}.woff2) format('woff2');`
-        + `unicode-range:${range}}`);
+        + `src:url(${base}/${f.file}${face.suffix}.woff2) format('woff2');`
+        + `unicode-range:${face.range}}`);
     }
   }
   return out.join('\n  ');
@@ -228,6 +231,7 @@ function catalogue() {
 module.exports = {
   FAMILIES, ALIASES, DEFAULT_FAMILY, FONT_DIR,
   CUSTOM_PREFIX, isCustom, customId, customFace,
-  RANGE_LATIN, RANGE_LATIN_EXT,
+  RANGE_LATIN, RANGE_LATIN_EXT, RANGE_CYRILLIC, RANGE_CYRILLIC_EXT,
+  SCRIPTS_LATIN, SCRIPTS_LATIN_CYR,
   resolveFamily, fontStack, fontFaceCss, catalogue,
 };

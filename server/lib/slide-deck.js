@@ -183,6 +183,10 @@ function sanitizeStored(templateIn, fieldsIn) {
         opacity: e.style.opacity,
       },
       motion: e.motion,
+      ...(e.hide_if_empty ? { hide_if_empty: true } : {}),
+      ...(e.show_when && e.show_when !== 'always' ? { show_when: e.show_when } : {}),
+      ...(e.bind_status ? { bind_status: e.bind_status } : {}),
+      ...(e.color_when ? { color_when: e.color_when } : {}),
       ...storedCfg(e),
     })),
   };

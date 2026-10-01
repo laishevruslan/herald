@@ -85,7 +85,8 @@ test('a font stack always ends in a generic keyword', () => {
 
 test('⚠️ only the families a slide actually uses are emitted', () => {
   const css = F.fontFaceCss(['archivo', 'archivo', 'sans']);
-  assert.equal((css.match(/@font-face/g) || []).length, 4, 'expected two families x two subsets');
+  assert.equal((css.match(/@font-face/g) || []).length, 6,
+    'Archivo is latin + latin-ext; Inter (sans) also emits cyrillic + cyrillic-ext');
   assert.match(css, /'Archivo'/);
   assert.match(css, /'Inter'/);
   assert.ok(!css.includes('Oswald'), 'an unused family was emitted');

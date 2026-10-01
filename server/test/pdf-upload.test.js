@@ -59,7 +59,9 @@ test('the dashboard CSP admits WebAssembly compilation and nothing more', () => 
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   // Directives only: the comment above scriptSrc explains that this is NOT 'unsafe-eval', and an
   // assertion over the raw text would match its own explanation.
-  const csp = server.slice(server.indexOf('const dashboardCsp'), server.indexOf('const dashboardCsp') + 2500)
+  const dashAt = server.indexOf('const dashboardCsp');
+  const suikaAt = server.indexOf('const suikaCsp');
+  const csp = server.slice(dashAt, suikaAt > dashAt ? suikaAt : dashAt + 2500)
     .split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
   assert.match(csp, /'wasm-unsafe-eval'/, 'the codecs cannot compile without it');
   assert.doesNotMatch(csp, /'unsafe-eval'/, "'wasm-unsafe-eval' must not have been widened to 'unsafe-eval'");

@@ -18,12 +18,16 @@ function compiler() {
   }
 }
 
+function read(file) {
+  return fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+}
+
 function transform(source) {
   return compiler().transformSync(source, { loader: 'js', target: 'chrome53' }).code;
 }
 
 function legacyHtml() {
-  const source = fs.readFileSync(path.join(PLAYER, 'index.html'), 'utf8');
+  const source = read(path.join(PLAYER, 'index.html'));
   const start = source.indexOf(START);
   if (start < 0) throw new Error('player script start marker not found');
   const codeStart = start + '<script>'.length;
@@ -37,16 +41,17 @@ function legacyHtml() {
 
 const outputs = [
   [path.join(PLAYER, 'legacy.html'), legacyHtml],
-  [path.join(PLAYER, 'sw-legacy.js'), () => transform(fs.readFileSync(path.join(PLAYER, 'sw.js'), 'utf8'))],
-  [path.join(PLAYER, 'live-publish-legacy.js'), () => transform(fs.readFileSync(path.join(SERVER, 'lib', 'live-publish.js'), 'utf8'))],
-  [path.join(PLAYER, 'talk-legacy.js'), () => transform(fs.readFileSync(path.join(SERVER, 'lib', 'talk-web.js'), 'utf8'))],
+  [path.join(PLAYER, 'sw-legacy.js'), () => transform(read(path.join(PLAYER, 'sw.js')))],
+  [path.join(PLAYER, 'live-publish-legacy.js'), () => transform(read(path.join(SERVER, 'lib', 'live-publish.js')))],
+  [path.join(PLAYER, 'talk-legacy.js'), () => transform(read(path.join(SERVER, 'lib', 'talk-web.js')))],
 ];
 
 const check = process.argv.includes('--check');
 for (const [file, build] of outputs) {
   const output = build();
   if (check) {
-    if (!fs.existsSync(file) || fs.readFileSync(file, 'utf8') !== output) {
+    const onDisk = fs.existsSync(file) ? read(file) : null;
+    if (onDisk !== output) {
       throw new Error(path.relative(SERVER, file) + ' is stale; run npm run build:legacy-player');
     }
   } else {
