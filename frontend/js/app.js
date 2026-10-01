@@ -9,6 +9,7 @@ import * as layoutEditor from './views/layout-editor.js';
 import * as schedule from './views/schedule.js';
 import * as widgets from './views/widgets.js';
 import * as slides from './views/slides.js';
+import * as templates from './views/templates.js';
 import * as dataSources from './views/data-sources.js';
 import * as reviews from './views/reviews.js';
 import * as videoWall from './views/video-wall.js';
@@ -31,6 +32,7 @@ import * as noWorkspace from './views/no-workspace.js';
 import { applyBranding } from './branding.js';
 import { t } from './i18n.js';
 import { isPlatformAdmin } from './utils.js';
+import { initNavGroups } from './components/nav-groups.js';
 import { renderWorkspaceSwitcher, selectedRemoteOrg, clearRemoteOrg } from './components/workspace-switcher.js';
 
 /*
@@ -228,6 +230,7 @@ const NAV_LABEL_KEYS = {
   layouts: 'nav.layouts',
   widgets: 'nav.widgets',
   slides: 'nav.slides',
+  templates: 'nav.templates',
   'data-sources': 'nav.data_sources',
   reviews: 'nav.reviews',
   schedule: 'nav.schedule',
@@ -397,7 +400,13 @@ function route() {
   // Cleanup previous view
   if (currentView && currentView.cleanup) currentView.cleanup();
 
-  const hash = window.location.hash || '#/';
+  let hash = window.location.hash || '#/';
+  // The admin page became the Platform area (#/platform/<section>). Old links, bookmarks and the
+  // SSO-removal notification emails say #/admin: send them to the overview without a history entry.
+  if (hash === '#/admin' || hash === '#/platform' || hash === '#/platform/') {
+    history.replaceState(null, '', window.location.pathname + '#/platform/overview');
+    hash = '#/platform/overview';
+  }
 
   // Slice 2C - direct hits on #/accept-invite/{id}. Handle BEFORE the
   // auth-redirect-to-login because an unauthed visit needs to stash the
@@ -554,6 +563,7 @@ function route() {
     else if (hash === '#/schedule' && link.dataset.view === 'schedule') link.classList.add('active');
     else if (hash === '#/widgets' && link.dataset.view === 'widgets') link.classList.add('active');
     else if (hash === '#/slides' && link.dataset.view === 'slides') link.classList.add('active');
+    else if (hash === '#/templates' && link.dataset.view === 'templates') link.classList.add('active');
     else if ((hash === '#/data-sources' || hash.startsWith('#/data-sources/')) && link.dataset.view === 'data-sources') link.classList.add('active');
     else if ((hash.startsWith('#/wall') || hash === '#/walls') && link.dataset.view === 'walls') link.classList.add('active');
     else if (hash === '#/reports' && link.dataset.view === 'reports') link.classList.add('active');
@@ -562,6 +572,9 @@ function route() {
     else if ((hash === '#/kiosk' || hash.startsWith('#/kiosk/')) && link.dataset.view === 'kiosk') link.classList.add('active');
     else if (hash === '#/help' && link.dataset.view === 'help') link.classList.add('active');
     else if (hash.startsWith('#/device/') && link.dataset.view === 'dashboard') link.classList.add('active');
+    else if (hash.startsWith('#/platform/') && link.dataset.view === 'platform-' + hash.slice(11).split(/[/?]/)[0]) link.classList.add('active');
+    else if (hash.startsWith('#/admin/player-debug') && link.dataset.view === 'platform-system') link.classList.add('active');
+    else if ((hash === '#/members' || (hash.startsWith('#/workspace/') && hash.includes('/members'))) && link.dataset.view === 'members') link.classList.add('active');
   });
 
   // Route to view
@@ -587,6 +600,9 @@ function route() {
   } else if (hash === '#/slides') {
     currentView = slides;
     slides.render(app);
+  } else if (hash === '#/templates') {
+    currentView = templates;
+    templates.render(app);
   } else if (hash === '#/data-sources' || hash.startsWith('#/data-sources/')) {
     currentView = dataSources;
     dataSources.render(app);
@@ -657,9 +673,9 @@ function route() {
     // Match prefix so query params (?page=2&ua=Tizen) route correctly.
     currentView = adminPlayerDebug;
     adminPlayerDebug.render(app);
-  } else if (hash === '#/admin') {
+  } else if (hash.startsWith('#/platform/')) {
     currentView = admin;
-    admin.render(app);
+    admin.render(app, hash.slice(11).split(/[/?]/)[0]);
   } else if (hash === '#/settings') {
     currentView = settings;
     settings.render(app);
@@ -691,9 +707,10 @@ function updateSidebarUser() {
   updateBillingBanner(user);
   updateWidgetSandboxWarningBanner(user);
 
-  // Show admin nav only for platform admins (legacy 'superadmin' or Phase 1 renamed 'platform_admin')
-  const adminNav = document.getElementById('adminNavItem');
-  if (adminNav) adminNav.style.display = isPlatformAdmin(user) ? '' : 'none';
+  // The Platform nav group is for platform admins only (legacy 'superadmin' or 'platform_admin').
+  // nav-groups.js hides a group whose every link is hidden, so hiding the items hides the group.
+  const platformAdmin = isPlatformAdmin(user);
+  document.querySelectorAll('.platform-nav').forEach((li) => { li.style.display = platformAdmin ? '' : 'none'; });
 
   // #116: hide the Subscription nav item when HIDE_BILLING is set (surfaced on /me).
   // Runs at boot from the cached user (no flash on warm loads) and again after /me.
@@ -863,10 +880,10 @@ function updateWidgetSandboxWarningBanner(user) {
   b.style.cssText = 'background:var(--danger,#dc2626);color:#fff;padding:10px 16px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;font-weight:600';
   const text = document.createElement('span');
   text.style.whiteSpace = 'pre-line';
-  text.textContent = t('settings.widget_sandbox_banner');
+  text.textContent = 'Widget sandbox isolation is DISABLED. Widget code in this organization runs\nwith full access to user sessions. Re-enable in Settings > Security.';
   const link = document.createElement('a');
   link.href = '#/settings';
-  link.textContent = t('settings.widget_sandbox_open');
+  link.textContent = 'Open Settings';
   link.style.cssText = 'color:#fff;text-decoration:underline;font-weight:700';
   b.appendChild(text);
   b.appendChild(link);
@@ -891,6 +908,7 @@ setTimeout(refreshReviewsBadge, 1500);
 // Initialize
 renderNavLabels();
 translateStaticDom();
+initNavGroups();
 window.addEventListener('language-changed', () => {
   renderNavLabels();
   translateStaticDom();

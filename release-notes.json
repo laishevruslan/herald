@@ -14,6 +14,72 @@
   ],
   "releases": [
     {
+      "version": "2.3.1",
+      "date": "2026-10-01",
+      "notes": [
+        "Duplicate any widget from the Widgets page: an independent copy opens straight in its editor, so three screens can show three menus without typing the first one in again. Templates also show how many widgets use them.",
+        "The Displays page shows each player's app version, marks Android players that are behind the version this server provides, and can filter by version. Choose which details the cards show under Card details.",
+        "Web and Raspberry Pi players no longer stop on one slide when the connection drops, and they pick up new player code after a server update without a manual reload.",
+        "After a slow first start, the server now waits and checks again for its video tools instead of turning video thumbnails off until the next restart."
+      ]
+    },
+    {
+      "version": "2.3.0",
+      "date": "2026-09-30",
+      "notes": [
+        "Connect live data without code: paste a Google Sheets link, point at any REST API, or use a CSV file, an RSS feed or a table you type in. Put a value on a slide and your screens update whenever the data changes.",
+        "A template library: install ready-made slide and code templates from a signed catalog, or import your own, and fill their fields from live data.",
+        "Native players for Raspberry Pi and Windows, downloaded from your own server. They start with the device, recover on their own and keep themselves up to date.",
+        "The sidebar is grouped by task and each group folds away. The add-content picker shows your folders again, and displays can be reordered by dragging. The dashboard also has a refreshed look.",
+        "Organization owners and admins can see everyone in the organization from Members, across all of its workspaces.",
+        "Server administrators get a Platform section: an overview of the whole server and what needs attention, user and organization search, and a cleanup tool that warns inactive accounts by email before removing them.",
+        "Uploads move in smaller steps, so the progress bar keeps moving and slow connections can finish. Proof-of-play no longer counts failed playback as completed."
+      ]
+    },
+    {
+      "version": "2.2.3",
+      "date": "2026-09-26",
+      "notes": [
+        "Two short guides written for AI assistants are now published by the server: how to inspect and control your screens, and how to choose hardware and get a player onto it. Each is listed with a checksum so a client can verify it got the real thing.",
+        "There is also a machine-readable index of what this server offers an automated client, so an assistant can find the assistant endpoint, the API description and the authentication guide without being told where they are.",
+        "Nothing changed for people using the dashboard, and no screen needs updating."
+      ]
+    },
+    {
+      "version": "2.2.2",
+      "date": "2026-09-26",
+      "notes": [
+        "Upgrading is safer. The database backup taken before an upgrade could never finish on a busy server, because a single write from the running system made it start over. It now completes in under a minute, and the upgrade checks the backup and stops if it is not readable.",
+        "Automated clients can now find their way around on their own. The authentication guide is served where the standard expects it, there is a card describing the AI assistant endpoint, and every page names its plain-text version in the page itself.",
+        "A request refused for want of a token now says where to read about getting one, instead of leaving a client to guess.",
+        "Asking this server for something it does not publish now returns a proper not-found with a list of what it does publish, rather than quietly returning the web app."
+      ]
+    },
+    {
+      "version": "2.2.1",
+      "date": "2026-09-26",
+      "notes": [
+        "Fixes for the new AI assistant support, all found by pointing an assistant at a real server and reading what came back. Nothing else changed, and no screen needs updating.",
+        "Asking an assistant about your media library returned items with no names, and searching it never matched anything. Both looked like an empty library rather than a fault, so the assistant would tell you there was nothing there.",
+        "Renaming a screen through an assistant sent back the screen's whole record, including its settings PIN. Nothing sensitive is sent to an assistant now, on any request.",
+        "Asking about a playlist sent back the playlist twice over, including an older published copy of it. An assistant could describe the last published version while you were asking about your unpublished changes."
+      ]
+    },
+    {
+      "version": "2.2.0",
+      "date": "2026-09-26",
+      "notes": [
+        "You can now manage your screens by asking an AI assistant. Point Claude, or any app that speaks the Model Context Protocol, at your server with an API token and ask things like “which screens are offline?” A read-only token lets it look without changing anything.",
+        "Every platform now has a setup guide, including Windows, ChromeOS, LG webOS, BrightSign, e-paper signs and LED video walls. A new downloads page lists every player your own server can give you, already pointed at it.",
+        "Reports could return nothing for a date range that definitely had plays in it, and say so with a normal-looking response rather than an error. If you were told nothing played, that is why. Fixed — and if your server is not on UTC, every report window was shifted by your time zone too.",
+        "A player showing a widget as the first item in its playlist could fail to start, and rebooting did not help because the playlist was cached. Fixed.",
+        "Setting up a Raspberry Pi no longer shows a camera-permission popup over the pairing code. Two-way intercom asks for the microphone when you press the button instead, and tells you when a screen has not got one.",
+        "Alert emails now carry an unsubscribe link, and turning a customer’s alerts off leaves a record of who did it and when.",
+        "Fire TV Stick 4K Select and Fire TV Stick HD run Amazon’s Vega OS and cannot install the Android app. There is a player for them now, though those sticks are still listed as not supported — read the guide before buying one for a sign.",
+        "Approved community hardware reports never appeared on the Certified Hardware page on Docker installs. Fixed. If you submitted one and it vanished, it is in the database and will show up now."
+      ]
+    },
+    {
       "version": "2.1.6",
       "date": "2026-09-23",
       "notes": [

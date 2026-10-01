@@ -100,8 +100,9 @@ function takeOpenPlay(deviceId, contentId, widgetId) {
 const _insertBackfillPlay = db.prepare(`
   INSERT OR IGNORE INTO play_logs
     (device_id, content_id, widget_id, zone_id, content_name, started_at, ended_at,
-     duration_sec, completed, trigger_type, client_event_id)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'playlist', ?)
+     duration_sec, completed, trigger_type, client_event_id, workspace_id)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'playlist', ?,
+          (SELECT workspace_id FROM devices WHERE id = ?))
 `);
 
 /*
@@ -110,9 +111,19 @@ const _insertBackfillPlay = db.prepare(`
  * through an outage must be recorded at the time it happened, not the time the queue drained —
  * otherwise a day of proof-of-play collapses onto one second. A local socket passes Date.now().
  */
+/*
+ * ⚠️ workspace_id IS SNAPSHOTTED HERE, IN THE SAME STATEMENT, and must never be resolved later by
+ * joining devices. Where a play happened is a fact about the past. A reseller moving a display
+ * from one client's workspace to another's would otherwise rewrite history — the old plays start
+ * appearing in the new tenant's reports and disappear from the previous one's — and once
+ * services/play-rollup has aggregated and the raw rows are pruned, that is unrecoverable.
+ *
+ * A correlated subquery rather than a second round trip: this is the hot path (107k inserts/day
+ * measured on production) and the lookup is a covering hit on the devices primary key.
+ */
 const _insertPlay = db.prepare(`
-  INSERT INTO play_logs (device_id, content_id, widget_id, zone_id, content_name, started_at, trigger_type)
-  VALUES (?, ?, ?, ?, ?, ?, 'playlist')
+  INSERT INTO play_logs (device_id, content_id, widget_id, zone_id, content_name, started_at, trigger_type, workspace_id)
+  VALUES (?, ?, ?, ?, ?, ?, 'playlist', (SELECT workspace_id FROM devices WHERE id = ?))
 `);
 
 /* Close by rowid — the whole point of remembering it. */
@@ -1258,6 +1269,64 @@ const EVENT_APPLIERS = Object.freeze({
       .run(ota_status ?? 'none', ota_target_version ?? null, ota_attempts ?? 0, device_id);
   },
 
+  /*
+   * The screen unpaired ITSELF — an operator pressed Esc at the panel and entered the settings PIN.
+   *
+   * ⚠️ The PIN is checked ON THE PLAYER, not here, and that is a deliberate limit rather than an
+   * oversight: the player has to work with the WAN down, which is when someone is most likely to be
+   * standing in front of a broken screen. So this event is authenticated by the DEVICE TOKEN (it
+   * arrives through dispatch(), which requires it and refuses a mismatched device_id) and nothing
+   * more. What that buys an attacker who already holds a device token is the ability to unpair the
+   * screen they already control — not another one, and not anything they could not do by simply
+   * refusing to play. It is not a privilege escalation; it is the screen resigning.
+   *
+   * ⚠️ THE ROW SURVIVES. Assignments, play history and telemetry hang off it, and a screen that
+   * vanished because somebody pressed a key would be a far worse outcome than one left needing
+   * attention. It goes back to unpaired and keeps its workspace, so it stays visible on the fleet
+   * page for the operator to re-pair or delete instead of disappearing from it.
+   */
+  'self-unpair'(deviceId, data, ctx) {
+    const { device_id } = data || {};
+    if (device_id && device_id !== deviceId) return;                 // forged/mismatched -> no-op
+    if (!deviceExists(deviceId)) return;
+    try {
+      /*
+       * ⚠️ device_token is CLEARED, not kept. The only holder just threw its copy away on purpose,
+       * so anything still presenting it is a stale copy — a backup, a cloned profile, a browser
+       * history entry. validateDeviceToken() already returns false for a NULL stored token, so such
+       * a caller falls through and is provisioned a new display, which is the right answer.
+       *
+       * workspace_id is deliberately NOT cleared: see the header. user_id is what "paired" means.
+       */
+      db.prepare(`UPDATE devices
+                     SET user_id = NULL, device_token = NULL, pairing_code = NULL,
+                         status = 'offline', last_heartbeat = NULL,
+                         offline_reason = 'unpaired', offline_reason_at = strftime('%s','now'),
+                         offline_detail = 'unpaired at the screen',
+                         updated_at = strftime('%s','now')
+                   WHERE id = ?`).run(deviceId);
+      /*
+       * ⚠️ AND THE FINGERPRINT ROWS GO. Without this the mapping still points here, so #150's
+       * settings restore would hand this row's configuration to whatever registers next from the
+       * same browser — a screen the operator believes is new, silently wearing the old one's
+       * settings. (The per-install fingerprint itself changes anyway, because the player deletes
+       * st_install_id; this closes the hardware-hint half and the stale mapping.)
+       */
+      db.prepare('DELETE FROM device_fingerprints WHERE device_id = ?').run(deviceId);
+      console.warn(`[unpair] ${deviceId} unpaired itself at the screen (PIN entered on the player)`);
+      emitToDeviceWorkspace(_dashboardNsRef, deviceId, 'dashboard:device-status', {
+        device_id: deviceId, status: 'offline', offline_reason: 'unpaired',
+      });
+    } catch (e) {
+      console.warn(`[unpair] ${deviceId}: ${e && e.message}`);
+      return;                                                        // no ack: the player says so on screen
+    }
+    // ⚠️ Acked so the player can tell an operator what actually happened. It wipes either way — the
+    // local wipe is what they asked for — but "unpaired" and "unpaired locally, the server never
+    // heard" are different situations and only one of them needs a visit to the dashboard.
+    try { ctx.reply('device:self-unpair-ok', { device_id: deviceId }); } catch (e) { /* best effort */ }
+  },
+
   'exit'(deviceId, data, ctx) {
     const { device_id, reason, detail } = data || {};
     if (device_id && device_id !== deviceId) return;                 // forged/mismatched -> no-op
@@ -1330,7 +1399,10 @@ const EVENT_APPLIERS = Object.freeze({
           const isWidget = (!explicitWidget && !isContent && content_id) ? !!widgetExists.get(content_id) : false;
           const wid = explicitWidget || (isWidget ? content_id : null);
           const cid = isContent ? content_id : null;
-          const info = _insertPlay.run(device_id, cid, wid, zone_id || null, content_name || 'Unknown', Math.floor(nowMs / 1000));
+          // device_id is bound TWICE: once as the column, once for the workspace snapshot subquery.
+          // (better-sqlite3 refuses positional .run() against ?1-style placeholders, so the
+          // parameter cannot simply be reused by number.)
+          const info = _insertPlay.run(device_id, cid, wid, zone_id || null, content_name || 'Unknown', Math.floor(nowMs / 1000), device_id);
           /*
            * ⚠️ #307: REMEMBER THE ROW WE JUST OPENED.
            *
@@ -1429,7 +1501,8 @@ const EVENT_APPLIERS = Object.freeze({
             p.ended_at,
             p.duration_sec,
             p.completed,
-            p.client_event_id
+            p.client_event_id,
+            device_id          // bound again for the workspace-snapshot subquery
           );
           written += info.changes;
         }
@@ -2502,6 +2575,57 @@ module.exports = function setupDeviceSocket(io) {
 
     socket.on('device:info', (data) => dispatch('info', data));
 
+    /*
+     * Esc + settings PIN at the panel. Authenticated exactly like every other player event — through
+     * dispatch(), which requires the device token and no-ops a mismatched device_id.
+     *
+     * ⚠️ NOT FORWARDED FROM A REPLICA, and it is the one player event that is not. Every other kind
+     * here reports something (a heartbeat, a crash, a play) and the primary is free to believe a
+     * peer relaying it. This one CHANGES the pairing state of a screen, and a replica holding a
+     * scoped write grant should not gain "unpair any screen in these workspaces" as a side effect of
+     * gaining "relay what these screens report". It is also excluded from PLAYER_EVENT_KINDS so the
+     * mesh door refuses it outright rather than depending on this guard alone.
+     *
+     * The cost is stated rather than hidden: on a replica-attached screen the local wipe still
+     * happens — that is what the operator asked for and it is what prevents the fingerprint reclaim
+     * — but the primary is never told, no ack comes back, and the player says so on the console. The
+     * old row is then left paired-looking until someone removes it from the dashboard.
+     */
+    socket.on('device:self-unpair', (data) => {
+      if (viaEdge) {
+        console.warn('[unpair] refusing to relay a self-unpair through a replica — unpair from the dashboard');
+        return;
+      }
+      dispatch('self-unpair', data);
+    });
+
+    /*
+     * Talk session state, relayed straight to the dashboards watching this screen.
+     *
+     * ⚠️ NOT a dispatch(): this writes nothing. It is a transient fact about a session in progress —
+     * most usefully `listen_only_no_mic`, which is how an operator learns the screen they just opened
+     * 2-way Talk on has no microphone. Routing it through EVENT_APPLIERS would make it a device-row
+     * mutation and a second writer on a replica, for a value that is meaningless a minute later.
+     *
+     * Workspace-scoped like every other dashboard relay, so a talk state cannot leak to an operator
+     * in another tenant who happens to have a socket open.
+     */
+    socket.on('device:talk-state', (data) => {
+      // Authenticated and identity-checked exactly like every other player event: the socket's own
+      // device id wins, and a forged one in the payload is a no-op rather than a way to speak as
+      // another screen.
+      if (!requireDeviceAuth()) return;
+      const claimed = data && data.device_id;
+      if (claimed && claimed !== currentDeviceId) return;
+      const state = data && typeof data.state === 'string' ? data.state.slice(0, 40) : null;
+      if (!state) return;
+      emitToDeviceWorkspace(_dashboardNsRef, currentDeviceId, 'dashboard:talk-state', {
+        device_id: currentDeviceId,
+        state,
+        reason: data && typeof data.reason === 'string' ? data.reason.slice(0, 120) : null,
+      });
+    });
+
     socket.on('device:trigger-status', (data) => dispatch('trigger-status', data));
 
     socket.on('device:heartbeat', (data) => {
@@ -2535,6 +2659,22 @@ module.exports = function setupDeviceSocket(io) {
     socket.on('device:connectivity-report', (data) => dispatch('connectivity-report', data));
 
     socket.on('device:play-event', (data) => dispatch('play-event', data));
+
+    /*
+     * Interactive terminal output (lib/pty-relay.js). NOT a dispatch(): it writes nothing, is never
+     * forwarded to a primary (a PTY is only ever opened to a screen attached to THIS process), and
+     * must reach exactly one dashboard socket rather than the workspace room every applier emits to.
+     * The relay drops a frame whose session is not on currentDeviceId — the socket's own
+     * authenticated id, never one from the payload.
+     */
+    socket.on('device:pty-data', (data) => {
+      if (!requireDeviceAuth()) return;
+      require('../lib/pty-relay').relay().fromDeviceData(currentDeviceId, data);
+    });
+    socket.on('device:pty-exit', (data) => {
+      if (!requireDeviceAuth()) return;
+      require('../lib/pty-relay').relay().fromDeviceExit(currentDeviceId, data);
+    });
 
 
     // Video wall sync relay. Sender must be a member of the wall it claims —
@@ -2622,6 +2762,14 @@ module.exports = function setupDeviceSocket(io) {
       // timer) uses it as the fallback offline reason when the device sent no explicit
       // exit signal this session. Falls back to 'silent' when absent.
       const socketOfflineReason = incidentClassify.normalizeDisconnectReason(reason);
+      // Interactive terminals end with the socket that carried them — BEFORE the eviction and
+      // stale-socket early returns below, because an evicted socket's sessions are just as dead.
+      // Scoped to THIS socket id inside the relay, so a late disconnect cannot end a session the
+      // screen's newer socket opened. Immediate, not debounced: a terminal that looks alive for the
+      // offline debounce window swallows keystrokes into nothing.
+      if (currentDeviceId) {
+        try { require('../lib/pty-relay').relay().deviceGone(currentDeviceId, socket.id); } catch (_) { /* never block the offline path */ }
+      }
       // #146: this socket was force-evicted by a newer registration for the same
       // device. The new socket owns the device now (or is mid-register), so this
       // disconnect must NOT arm an offline timer — doing so was the self-reset race
@@ -2719,5 +2867,15 @@ module.exports.applyPlayerEvent = (kind, deviceId, data, ctx) => {
   fn(deviceId, data, ctx);
   return { ok: true };
 };
-module.exports.PLAYER_EVENT_KINDS = Object.freeze(Object.keys(EVENT_APPLIERS));
+/*
+ * ⚠️ WHAT A REPLICA MAY RELAY — every applier EXCEPT the ones that change a screen's pairing.
+ *
+ * lib/mesh/node-write.js gates an incoming player-event on this list. A replica's write grant says
+ * it may relay what its screens report; it does not say it may unpair them. Keeping the exclusion
+ * here as well as at the socket means neither door alone is load-bearing.
+ */
+const NOT_RELAYABLE = Object.freeze(['self-unpair']);
+module.exports.PLAYER_EVENT_KINDS = Object.freeze(
+  Object.keys(EVENT_APPLIERS).filter((k) => !NOT_RELAYABLE.includes(k))
+);
 module.exports.provisionViaReplica = provisionViaReplica;

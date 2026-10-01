@@ -186,6 +186,9 @@ app.use((req, res, next) => {
   if (req.path.startsWith('/api/widgets/') && req.path.endsWith('/render')) return next();
   if (req.path.startsWith('/api/widgets/') && req.path.endsWith('/data.json')) return next();
   if (req.path.startsWith('/api/widgets/preview-session/')) return next();
+  // Template previews carry their own sandboxing CSP (lib/templates/render.js).
+  if (req.path.startsWith('/api/templates/preview/')) return next();
+  if (req.path.startsWith('/api/templates/asset/')) return next();   // sets its own `sandbox` CSP
   if (req.path.startsWith('/api/kiosk/') && req.path.endsWith('/render')) return next();
   /*
    * ⚠️ AN HTML BUNDLE IS THE SAME CASE AS A WIDGET RENDER, and it fails the same way without this.
@@ -310,9 +313,207 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json({ limit: '12mb' }));
+/*
+ * The templates import takes a RAW body (a .sttemplate is JSON, but it must reach the route as the
+ * exact bytes that were signed, and a bundle is a zip). The route parses it itself, after auth and
+ * with a size decided per upload kind — so the global JSON parser leaves that one path alone.
+ */
+const jsonBody = express.json({ limit: '12mb' });
+app.use((req, res, next) => (req.path === '/api/templates/import' ? next() : jsonBody(req, res, next)));
 const { sanitizeBody } = require('./middleware/sanitize');
 app.use(sanitizeBody);
+
+/*
+ * ───────────────────────── the machine-readable front door ─────────────────────────
+ *
+ * Discovery documents and a Markdown rendition of our own pages, for automated clients. Everything
+ * here describes what this deployment ACTUALLY serves: a discovery document is a promise an agent
+ * acts on, so advertising a capability we do not have does not read as capable, it produces agents
+ * that fail in ways they cannot diagnose. Where we do not have the thing, there is no file.
+ */
+const mcpProtocol = require('./lib/mcp/protocol');
+const agentSkills = require('./lib/agent-skills');
+const aiSurface = require('./lib/ai-surface');
+const mdRendition = require('./lib/markdown-rendition');
+
+// RFC 9727. One API, described by the OpenAPI document CI already lints — so the catalogue cannot
+// point at a description that has drifted without the build failing first.
+/*
+ * The API's own identity document. The catalogue's linkset ANCHORS on this URL, and an anchor an
+ * agent cannot dereference is a dead end — it will try it. Small on purpose: it says what this is and
+ * points at the two documents that actually describe it.
+ *
+ * Exact path only; every real endpoint lives under /api/<resource> and is unaffected.
+ */
+app.get('/api', (req, res) => {
+  const base = aiSurface.origin(req);
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.setHeader('Link', aiSurface.linkHeader(base));
+  res.json({
+    name: 'ScreenTinker Public API',
+    description: 'Token-scoped REST API for digital signage: displays, content, playlists, layouts, schedules and reports.',
+    openapi: `${base}/openapi.yaml`,
+    documentation: `${base}/docs`,
+    authentication: `${base}/auth.md`,
+    catalog: `${base}/.well-known/api-catalog`,
+    source: 'https://github.com/screentinker/screentinker',
+  });
+});
+
+app.get('/.well-known/api-catalog', (req, res) => {
+  res.type('application/linkset+json');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.json(aiSurface.apiCatalog(aiSurface.origin(req)));
+});
+
+// How an agent authenticates, in the format an agent reads. Scoped bearer tokens, minted by a human:
+// there is no flow by which a bot obtains one, and saying so plainly is more useful than silence.
+//
+// ⚠️ SERVED AT BOTH `/auth.md` AND `/.well-known/auth.md`. The convention puts it at the service
+// root; we published only the well-known copy, so a scanner asking for `/auth.md` got the SPA shell
+// — 200, text/html, 21 KB — and recorded the instance as not supporting the standard. A soft-404 is
+// indistinguishable from a wrong answer to anything that is not a browser.
+const serveAuthMarkdown = (req, res) => {
+  res.type('text/markdown; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.send(aiSurface.authMarkdown(aiSurface.origin(req)));
+};
+/*
+ * The MCP server card (SEP-1649): what this server is, before a client has connected to it.
+ *
+ * ⚠️ BUILT FROM THE SAME `identity()` THE HANDSHAKE USES. A card that disagrees with `initialize`
+ * is worse than no card — a client picks tools and an auth strategy from it, then discovers the
+ * mismatch only after connecting.
+ *
+ * ⚠️ IT DESCRIBES, IT DOES NOT GRANT. The endpoint still refuses everything without a token, and
+ * the card says so and points at /auth.md, because the one thing an agent must learn early here is
+ * that a human has to issue it a credential.
+ */
+/*
+ * OAuth 2.0 Protected Resource Metadata (RFC 9728). We are a protected resource that takes bearer
+ * tokens, so this document is true and useful — even though we delegate to no authorization server
+ * and therefore publish no `authorization_servers`. See ai-surface.protectedResourceMetadata.
+ */
+app.get('/.well-known/oauth-protected-resource', (req, res) => {
+  res.type('application/json');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.json(aiSurface.protectedResourceMetadata(aiSurface.origin(req)));
+});
+
+app.get('/.well-known/mcp/server-card.json', (req, res) => {
+  const base = aiSurface.origin(req);
+  const id = mcpProtocol.identity({ version: config.version || require('./package.json').version });
+  res.type('application/json');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.json({
+    ...id,
+    protocolVersion: mcpProtocol.LATEST,
+    transport: { type: 'streamable-http', endpoint: `${base}/mcp` },
+    endpoint: `${base}/mcp`,
+    authentication: {
+      type: 'bearer',
+      description: 'A scoped ScreenTinker API token, issued by a human in the dashboard. '
+        + 'There is no programmatic registration.',
+      documentation: `${base}/auth.md`,
+    },
+    documentation: `${base}/guides/mcp-digital-signage.html`,
+  });
+});
+
+/*
+ * ARD capability manifest. ⚠️ CORS is part of the spec here, not an afterthought: this is read by
+ * browser-side agents, and without the header the document exists and is unreadable by half the
+ * clients it is published for.
+ */
+app.get('/.well-known/ai-catalog.json', (req, res) => {
+  res.type('application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.json(aiSurface.aiCatalog(aiSurface.origin(req)));
+});
+
+/*
+ * Agent Skills Discovery. The index carries a sha256 of each artifact, computed from the same bytes
+ * the SKILL.md route returns — see lib/agent-skills.js. A digest that does not describe the artifact
+ * reads to a verifying agent as tampering, not as staleness.
+ */
+app.get('/.well-known/agent-skills/index.json', (req, res) => {
+  res.type('application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.json(agentSkills.skillsIndex(aiSurface.origin(req)));
+});
+
+app.get('/.well-known/agent-skills/:name/SKILL.md', (req, res) => {
+  const skill = agentSkills.byName(req.params.name);
+  if (!skill) return res.status(404).type('text/plain; charset=utf-8').send('No such skill.\n');
+  res.type('text/markdown; charset=utf-8');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  return res.send(agentSkills.skillMarkdown(skill, aiSurface.origin(req)));
+});
+
+app.get('/auth.md', serveAuthMarkdown);
+app.get('/.well-known/auth.md', serveAuthMarkdown);
+
+
+/*
+ * A Markdown rendition of any page we publish, two ways: `Accept: text/markdown` on the HTML URL, or
+ * the same path with `.md` appended.
+ *
+ * ⚠️ MOUNTED HERE: ABOVE app.get('/'), the static middleware AND the SPA catch-all. Below the
+ * landing route the homepage could never negotiate, because Express matches in order and that
+ * route answers first — it returned HTML to `Accept: text/markdown` and looked like the feature
+ * simply not working. Below static or the catch-all, `.md` falls through to index.html with a
+ * 200, which is this deployment's documented trap.
+ *
+ * Generated from the HTML on request rather than kept as files beside it: two copies of the same
+ * prose drift, and the copy nobody looks at is the one that goes stale.
+ */
+function sendMarkdown(req, res, file, canonicalPath) {
+  const base = aiSurface.origin(req);
+  try {
+    const html = fs.readFileSync(file, 'utf8');
+    res.type('text/markdown; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=900');
+    // Content negotiation happened, so caches must key on it or a browser gets a markdown copy.
+    res.setHeader('Vary', 'Accept');
+    res.setHeader('Link', aiSurface.linkHeader(base));
+    return res.send(mdRendition.toMarkdown(html, { url: base + canonicalPath, origin: base }));
+  } catch (e) {
+    return res.status(404).type('text/plain').send('not found');
+  }
+}
+
+app.get(/\.md$/, (req, res, next) => {
+  const file = aiSurface.markdownSource(config.frontendDir, req.path);
+  if (!file) return next();
+  return sendMarkdown(req, res, file, req.path.replace(/\.md$/, '') || '/');
+});
+
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  // Only our published pages. /api, /app and /player are not documents an agent should be reading a
+  // prose rendition of, and robots.txt already tells crawlers to stay out of them.
+  if (/^\/(api|app|player|uploads|scripts|vendor|assets|js|css)(\/|$)/.test(req.path)) return next();
+
+  const base = aiSurface.origin(req);
+  const file = aiSurface.markdownSource(config.frontendDir, req.path);
+  if (file) {
+    // Advertise the rendition on the HTML response whether or not this request wanted it: a client
+    // that fetched the page learns the plain-text form exists without having to guess the URL.
+    res.setHeader('Link', aiSurface.linkHeader(base, {
+      markdownOf: (req.path === '/' ? '/index' : req.path.replace(/\.html$/, '')) + '.md',
+    }));
+    res.setHeader('Vary', 'Accept');
+    if (aiSurface.prefersMarkdown(req.headers.accept)) {
+      return sendMarkdown(req, res, file, req.path);
+    }
+  } else {
+    res.setHeader('Link', aiSurface.linkHeader(base));
+  }
+  return next();
+});
 
 // Landing page BEFORE static middleware (so / doesn't serve index.html).
 // When DISABLE_HOMEPAGE is set, redirect to the app instead - for self-hosted
@@ -477,6 +678,12 @@ app.get('/player/schedule-eval.js', (req, res) => {
 app.get('/player/play-order.js', (req, res) => {
   res.type('application/javascript').setHeader('Cache-Control', 'no-cache');
   res.sendFile(path.join(__dirname, 'lib', 'play-order.js'));
+});
+// The Esc-unpair gate, from the same single source the Node tests require — so who may unpair a
+// screen at the panel cannot drift between what is tested and what is served.
+app.get('/player/unpair-gate.js', (req, res) => {
+  res.type('application/javascript').setHeader('Cache-Control', 'no-cache');
+  res.sendFile(path.join(__dirname, 'lib', 'unpair-gate.js'));
 });
 
 // #299: the offline proof-of-play queue, served to the web player from the same single source the
@@ -888,8 +1095,46 @@ app.use('/player', express.static(path.join(__dirname, 'player'), { etag: true, 
   }
 }}));
 
-// Serve setup scripts
-app.use('/scripts', express.static(path.join(__dirname, '..', 'scripts')));
+// Serve setup scripts — an ALLOWLIST, not the directory.
+//
+// This was `express.static(scripts/)`, which published all of it: reset-admin.js,
+// mint-billing-token.js, support-keygen.js, migrate-multitenancy.js, upgrade.sh, backup.sh. None of
+// those holds a secret (the repository is public), so nothing leaked — but they are operational
+// tooling being handed to anonymous callers, and the directory is where a self-hoster's own script
+// naturally lands. The next person to drop `restore-from-prod.sh` with a connection string in it
+// next to these would publish it without ever touching a route, which is the failure worth closing.
+// Only the three that are linked as URLs are served; adding a fourth is a deliberate edit here.
+//
+// ⚠️ THE BRIGHTSIGN ARCHIVES LIVE HERE TOO, and they are not in the repository. A deployment
+// bind-mounts them into this same directory (`./brightsign/autorun.zip` -> `/app/scripts/autorun.zip`
+// and friends), and `brightsign/server/bs-server-boot.js` fetches
+// `<server>/scripts/server-payload.zip` by URL. Leaving them off this list does not fail anywhere
+// visible: the SPA fallback answers 200 with HTML, a provisioning player writes that to its storage
+// root as its autorun, and it fails with nothing anywhere saying why. Public for the same reason
+// /download/apk is: a player fetches them before it has any identity.
+const PUBLIC_SCRIPTS = new Set([
+  // Setup scripts, tracked in the repository and linked as URLs.
+  'raspberry-pi-setup.sh', 'windows-setup.bat', 'debian-13-setup.sh',
+  // BrightSign provisioning payloads, supplied by the deployment rather than the repository.
+  'autorun.zip', 'autorun-server.zip', 'server-payload.zip', 'server-payload.json',
+]);
+//
+// ⚠️ The TYPE comes from the extension, because half this list is binary. Declaring a 93 MB
+// server-payload.zip as `text/plain; charset=utf-8` is what the first version of this route did:
+// the bytes arrive intact, so it boot-tested clean, but it tells every proxy and CDN in front of
+// the instance that a zip is text they may transform — and it was express.static inferring the
+// type correctly that made the old behaviour work.
+const SCRIPT_TYPES = { '.zip': 'application/zip', '.json': 'application/json' };
+app.get('/scripts/:name', (req, res) => {
+  // Membership in the set is the whole check: an exact match against a fixed list of basenames
+  // cannot be traversed out of, so there is no path to sanitise.
+  if (!PUBLIC_SCRIPTS.has(req.params.name)) return res.status(404).type('text/plain').send('not found');
+  const ext = path.extname(req.params.name);
+  // Default to text/plain: a .sh or .bat is meant to be read in a browser before it is run, which
+  // is the whole reason someone clicks one of these links rather than piping it to a shell.
+  res.setHeader('Content-Type', SCRIPT_TYPES[ext] || 'text/plain; charset=utf-8');
+  res.sendFile(path.join(__dirname, '..', 'scripts', req.params.name));
+});
 
 // Serve socket.io client
 app.use('/socket.io-client', express.static(
@@ -914,39 +1159,7 @@ const rateLimits = new Map();
  * exhausted the limit for `/sso-only` — trading a bypass for a denial of service. Known shapes get
  * their own keys; everything else shares one, separate from all of them.
  */
-const LIMIT_PATH_SHAPES = [
-  [/^\/api\/auth\/oidc\/[^/]+\/(start|callback)$/, (m) => `/api/auth/oidc/:slug/${m[1]}`],
-  [/^\/api\/organizations\/sso-only\/removal-requests\/[^/]+\/[^/]+$/, () => '/api/organizations/sso-only/removal-requests/:id/:decision'],
-  [/^\/api\/organizations\/sso-only\/removal-requests$/, () => '/api/organizations/sso-only/removal-requests'],
-  [/^\/api\/organizations\/[^/]+\/sso-only\/removal-request\/[^/]+$/, () => '/api/organizations/:id/sso-only/removal-request/:id'],
-  [/^\/api\/organizations\/[^/]+\/sso-only\/removal-request$/, () => '/api/organizations/:id/sso-only/removal-request'],
-  [/^\/api\/organizations\/[^/]+\/sso-only$/, () => '/api/organizations/:id/sso-only'],
-  // The reset/target routes mint a bucket per TARGET without this, which is the same
-  // caller-chosen-segment defect, at the mount next door.
-  [/^\/api\/auth\/users\/[^/]+\/(.+)$/, (m) => `/api/auth/users/:id/${m[1]}`],
-  [/^\/api\/content\/[^/]+$/, () => '/api/content/:id'],
-  [/^\/api\/organizations\/[^/]+\/sso\/[^/]+\/domains\/[^/]+\/verify$/, () => '/api/organizations/:id/sso/:id/domains/:domain/verify'],
-  [/^\/api\/organizations\/[^/]+\/sso\/[^/]+\/test$/, () => '/api/organizations/:id/sso/:id/test'],
-  [/^\/api\/organizations\/[^/]+\/sso\/[^/]+$/, () => '/api/organizations/:id/sso/:id'],
-  [/^\/api\/organizations\/[^/]+\/sso$/, () => '/api/organizations/:id/sso'],
-  [/^\/api\/data-sources\/[^/]+\/refresh$/, () => '/api/data-sources/:id/refresh'],
-];
-
-function canonicalLimitPath(rawPath) {
-  const p = rawPath
-    .replace(/\/{2,}/g, '/')      // collapse doubled separators
-    .replace(/\/+$/, '')          // a trailing slash is the same endpoint
-    .toLowerCase()
-    || '/';
-  for (const [re, to] of LIMIT_PATH_SHAPES) {
-    const m = p.match(re);
-    if (m) return to(m);
-  }
-  // Unrecognised, but still under a mount whose ids are caller-chosen: one shared bucket, kept
-  // apart from every real endpoint so flooding it cannot starve them.
-  if (p.startsWith('/api/organizations/')) return '/api/organizations/:unmatched';
-  return p;
-}
+const { canonicalLimitPath } = require('./lib/limit-paths');
 
 function rateLimit(windowMs, maxRequests) {
   return (req, res, next) => {
@@ -1035,6 +1248,37 @@ app.use('/api/auth/reset-password', rateLimit(60000, 10));
 // cap the blast radius to 20 resets/min/IP. Express matches the longest
 // path prefix first, so this fires before /api/auth catches the request.
 app.use('/api/auth/users', rateLimit(60000, 20));
+/*
+ * Unsubscribe. Mounted at the ROOT, not under /api, because the URL goes in an email: people read it,
+ * forward it and occasionally retype it, and `/unsubscribe` is legible where `/api/unsubscribe/v1` is
+ * not. It needs no auth by design — the HMAC in the link is the authorisation — and it never acts on
+ * GET, so a mail scanner prefetching the link cannot unsubscribe anyone. See routes/unsubscribe.js.
+ *
+ * Rate-limited even though the token is unguessable: it is an unauthenticated POST that writes, and a
+ * limit costs nothing on a path a human hits once.
+ */
+// ⚠️ urlencoded, not json: both callers post a FORM body. The page's own button is a plain <form>,
+// and an RFC 8058 one-click client posts `List-Unsubscribe=One-Click` urlencoded. That parser is not
+// global (see /api/hardware-submissions above for the same reason), so without it req.body is
+// undefined here and the token silently never arrives. Small limit — the body is two short fields.
+app.use('/unsubscribe',
+  rateLimit(60000, 20),
+  express.urlencoded({ extended: false, limit: '4kb' }),
+  require('./routes/unsubscribe'));
+
+/*
+ * Model Context Protocol. Mounted at the root because the URL is pasted into an AI client's config by
+ * a human, and https://host/mcp is what every one of them expects.
+ *
+ * ⚠️ NOT in config/api-surface.js, deliberately: it is not another API router. It authenticates
+ * nothing itself and reaches the database only to read a token's scope so it can decide which tools
+ * to LIST. Every tool call goes back through this server's own public API over loopback with the
+ * caller's token, so the real gate stays exactly where it already is.
+ *
+ * Rate-limited per IP: a model in a loop is the normal failure mode here, not an attacker.
+ */
+app.use('/mcp', rateLimit(60000, 120), require('./routes/mcp'));
+
 app.use('/api/auth', require('./routes/auth'));
 // Per-organization SSO configuration. Mounted under /api/organizations so the org id is the
 // route's own subject, which is what the org_owner/org_admin check keys on.
@@ -1053,7 +1297,27 @@ app.use('/api/provision', rateLimit(60000, 5));
 // Rate limit expensive operations
 app.use('/api/status/export', rateLimit(60000, 5)); // 5 exports per minute
 app.use('/api/status/import', rateLimit(60000, 3)); // 3 imports per minute
-app.use('/api/content', rateLimit(60000, 30)); // 30 content operations per minute
+/*
+ * ⚠️ A CHUNKED UPLOAD IS MANY REQUESTS BY CONSTRUCTION, so it cannot share the general content
+ * budget. At the 1 MiB chunk size (lib/upload-session) a 500 MB file is ~500 PATCHes, and on a
+ * fast uplink those arrive well inside a minute — 30/min would refuse the upload partway through
+ * and the operator would see a transfer die for no visible reason.
+ *
+ * Raising it is not a hole: the bytes an IP can push are bounded by the session's declared size
+ * (the server refuses anything past it) and by express.raw's per-request cap, not by how many
+ * requests it takes to get there. What must stay tight is SESSION CREATION, which is the thing
+ * that actually allocates disk, and that keeps the 30/min budget below.
+ */
+const contentLimiter = rateLimit(60000, 30);           // 30 content operations per minute
+const uploadSessionLimiter = rateLimit(60000, 1200);   // chunk traffic for an already-open session
+app.use('/api/content', (req, res, next) => {
+  // Operations on an OPEN session (chunk PATCH, offset GET, DELETE, finalize) — never creation,
+  // which has no id segment and stays on the general budget.
+  const p = (req.originalUrl || req.url || '').split('?')[0].replace(/\/+$/, '');
+  return /^\/api\/content\/uploads\/[^/]+(\/finalize)?$/.test(p)
+    ? uploadSessionLimiter(req, res, next)
+    : contentLimiter(req, res, next);
+});
 
 // Subscription routes (mixed auth)
 app.use('/api/subscription', require('./routes/subscription'));
@@ -1484,6 +1748,19 @@ app.post('/api/plugin-submissions', rateLimit(3600000, 10)); // 10 plugin zips p
 app.post('/api/admin/plugins/submissions', rateLimit(3600000, 20));
 app.get('/api/kiosk/:id/render', (req, res, next) => { req._skipAuth = true; next(); });
 
+/*
+ * Templates: the two public reads (a preview token and a thumbnail by package hash) are served by
+ * a tiny router mounted BEFORE the JWT-only /api/templates mount, because requireAuth has no
+ * _skipAuth bypass and an <iframe>/<img> cannot send the dashboard's bearer token.
+ */
+{
+  const tplPublic = require('express').Router();
+  const tplRoutes = require('./routes/templates');
+  tplPublic.get('/preview/:token', (req, res, next) => tplRoutes.handle(req, res, next));
+  tplPublic.get('/thumb/:sha', (req, res, next) => tplRoutes.handle(req, res, next));
+  tplPublic.get(/^\/asset\/[0-9a-f]{64}\/.+$/, (req, res, next) => tplRoutes.handle(req, res, next));
+  app.use('/api/templates', rateLimit(60000, 120), tplPublic);
+}
 for (const r of PUBLIC_ROUTERS) {
   // renderBypass routers let the public /:id/render through (req._skipAuth) before bearerAuth.
   const front = r.renderBypass
@@ -1619,7 +1896,12 @@ app.get('/api/version', async (req, res) => {
   if (!frontendHash) { try { await updateFrontendHash(); } catch { /* fall through to the seed */ } }
   const latest = ghcrCheck.getLatestVersion();
   const updateAvailable = latest ? ghcrCheck.compareVersions(latest, VERSION) > 0 : false;
-  res.json({ hash: frontendHash, version: VERSION, latest_version: latest, update_available: updateAvailable });
+  // #467: the Android player version this server would hand out (the same answer /api/update/check
+  // advertises, without logging an OTA check), so the Displays page can mark screens behind it.
+  // null when no APK is staged here. Public, like /download, which already shows it.
+  let apkVersion = null;
+  try { const apk = apkCache.get(); apkVersion = apk && apk.exists ? (apk.version || VERSION) : null; } catch { /* not resolved yet */ }
+  res.json({ hash: frontendHash, version: VERSION, latest_version: latest, update_available: updateAvailable, apk_version: apkVersion });
 });
 
 /*
@@ -1690,6 +1972,16 @@ const wgtCache = require('./lib/wgt-cache');
 const ipkCache = require('./lib/ipk-cache');
 wgtCache.start();                                    // Tizen SSSP URL-Launcher: resolve .wgt path/size/mtime once + refresh on interval
 ipkCache.start();                                    // LG webOS Signage: same for the .ipk
+const debCache = require('./lib/deb-cache');
+debCache.start();                                    // native Raspberry Pi player: newest screentinker-pi_<ver>_all.deb + its sha256
+// /api/pi/update/check + /download/pi. Same kill switches, breaker and download guard as the APK
+// path below — see the header of routes/pi-update.js for why they are shared rather than copied.
+require('./routes/pi-update')(app);
+const winCache = require('./lib/win-cache');
+winCache.start();                                    // native Windows player: newest ScreenTinker-Setup-<ver>.exe + its sha256
+// /api/win/update/check + /download/win — the same factory as the Pi route (routes/native-update.js),
+// plus the device-less sha256 lookup the SYSTEM helper service makes before running an installer.
+require('./routes/win-update')(app);
 require('./lib/revision-retention').start(require('./db/database').db);   // version history: bounded retention, daily
 const { getBand } = require('./services/loop-lag');  // #146 Item C: critical-band download shed
 app.get('/api/update/check', (req, res) => {
@@ -2021,6 +2313,24 @@ startAlertService(io);
 // Start universal data sources background poller
 const { startDataSourcesPoller } = require('./lib/data-sources/service');
 startDataSourcesPoller(io);
+
+// Templates library: panels re-render a template's widgets when the template is updated or
+// revoked, and the catalog poller runs only once an admin has switched the library on.
+try {
+  require('./lib/templates/store').setWidgetsChangedHook((ids) => {
+    const { buildPlaylistPayload } = require('./ws/deviceSocket');
+    const commandQueue = require('./lib/command-queue');
+    const { devicesPlayingWidget } = require('./lib/devices-playing');
+    const seen = new Set();
+    for (const id of ids) for (const d of devicesPlayingWidget(id)) seen.add(d);
+    for (const d of seen) commandQueue.queueOrEmitPlaylistUpdate(io.of('/device'), d, buildPlaylistPayload);
+  });
+  const tplCatalog = require('./lib/templates/catalog');
+  tplCatalog.ensureOfficial();
+  if (tplCatalog.networkEnabled()) tplCatalog.startPoller();
+} catch (e) {
+  console.warn('[templates] startup failed:', e.message);
+}
 
 /*
  * A2 — threshold alerts. Safe to start unconditionally: with no rules configured the sweep reads an
@@ -2392,6 +2702,45 @@ function apkDownloadName(req) {
   return require('./lib/brand-filename').brandToFilenameStem(brand) + '.apk';
 }
 
+// ---- /download -------------------------------------------------------------------------------
+// The human-facing index of every player THIS instance can hand out. The guides link here instead
+// of at the GitHub releases page: an operator has no reason to have a GitHub account, and the
+// BrightSign archive has the server URL stamped into its bytes, so a release asset would point a
+// freshly imaged player at screentinker.com instead of at the instance the operator runs.
+//
+// Deliberately noindex (lib/download-index.js sets the meta tag): the marketing guides are the
+// pages that should rank, and a self-hosted instance's download index has no business in a search
+// result. The page is public because a player is installed before anyone signs in.
+const downloadIndex = require('./lib/download-index');
+
+app.get(['/download', '/download/'], (req, res) => {
+  const base = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.send(downloadIndex.renderPage({
+    apk: apkCache.get(),
+    ipk: ipkCache.get(),
+    wgt: wgtCache.get(),
+    brightsign: { exists: bsPackage.available(), version: bsPackage.version() },
+    deb: debCache.get(),
+    exe: winCache.get(),
+  }, base));
+});
+
+// A name an operator can read out over the phone, for the archive the BrightSign guide names.
+// Same helper as /api/brightsign/package/download, so the bytes and the checksum cannot diverge
+// between the two URLs — the one mistake that turns a package update into a download loop.
+app.get('/download/autorun.zip', async (req, res) => {
+  const pkg = await bsPackage.getPackage(bsPackage.packageServerUrl(req));
+  if (!pkg) return res.status(404).type('text/plain').send('package unavailable');
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Length', String(pkg.size));
+  res.setHeader('Content-Disposition', 'attachment; filename="autorun.zip"');
+  res.setHeader('X-Package-Sha256', pkg.sha256);
+  res.setHeader('Cache-Control', 'no-cache');
+  res.send(pkg.buffer);
+});
+
 app.get('/download/apk', (req, res) => {
   // Serve the slot the check advertised. If these disagree the client is handed bytes whose
   // size does not match apk_size, which is how an OTA loop starts — so both sides resolve
@@ -2551,9 +2900,20 @@ const NOT_FOUND_PAGE = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-
   + '</div></body></html>';
 
 /*
- * express.static uses index:false, so a bare /studio/ does not auto-serve frontend/studio/index.html
- * even when the island is built. Mirror /integrations/: serve the island index when present,
- * otherwise the same 404 body the catch-all uses for content prefixes.
+ * ⚠️ AN UNKNOWN /.well-known PATH MUST 404, NOT FALL THROUGH TO THE APP SHELL.
+ *
+ * Everything under /.well-known is machine-read, and the SPA catch-all below answers any unmatched
+ * path with index.html and a 200. So `/.well-known/oauth-protected-resource` — which this instance
+ * deliberately does not publish, having no authorization server — replied with 21 KB of HTML and a
+ * success code. A client cannot tell that from a malformed document, and "we do not do OAuth" is a
+ * useful, honest answer that only a 404 conveys.
+ *
+ * ⚠️ MOUNTED HERE, BELOW express.static AND IMMEDIATELY ABOVE THE SPA CATCH-ALL, NOT UP WITH THE
+ * OTHER /.well-known ROUTES. Above the static middleware it would have swallowed
+ * `/.well-known/acme-challenge/...`, which is how certbot's webroot mode proves domain control — so
+ * a self-hoster's TLS renewal would start failing silently and the certificate would expire sixty
+ * days later, a long way from this change. Anything genuinely served by an earlier route or by
+ * static has already answered by the time we get here.
  */
 app.get(['/studio', '/studio/'], (req, res) => {
   const index = path.join(config.frontendDir, 'studio', 'index.html');
@@ -2565,6 +2925,25 @@ app.get(['/studio', '/studio/'], (req, res) => {
     return res.redirect(301, '/studio/' + q);
   }
   return res.sendFile(index);
+});
+
+app.all('/.well-known/*', (req, res) => {
+  /*
+   * ⚠️ THE LIST IS DERIVED FROM THE ROUTES, NOT TYPED OUT. The first version named auth.md and
+   * api-catalog by hand and was already wrong the same day, once the protected-resource metadata and
+   * the MCP server card were added — a 404 that misdescribes what the server publishes is worse than
+   * a bare one, because it is the document a client reads when it is already lost.
+   */
+  const published = app._router.stack
+    .map((l) => l.route && l.route.path)
+    // …excluding this catch-all itself, which is a guard and not a document.
+    .filter((path) => typeof path === 'string' && path.startsWith('/.well-known/') && !path.endsWith('*'))
+    .sort();
+  res.status(404).type('text/plain; charset=utf-8').send(
+    `Not found.\n\nThis instance publishes:\n${published.map((x) => `  ${x}\n`).join('')}`
+    + '\nIt is not an OAuth authorization server and not an A2A agent, so there is no\n'
+    + 'authorization-server metadata and no agent card here. Authentication is documented\n'
+    + 'at /auth.md: a human issues a scoped token, and there is no programmatic registration.\n');
 });
 
 /*
@@ -2679,28 +3058,32 @@ server.listen(listenPort, '0.0.0.0', () => {
   // every video uploads fine and silently gets no thumbnail: exactly the kind of
   // misconfiguration that deserves a loud line, like the email block above.
   // (The probe is async so a hung binary can't block serving on the bound port.)
-  require('./lib/media-tools').mediaToolStatus()
-    .then((mt) => {
-      if (!mt.ffmpeg || !mt.ffprobe) {
-        const missing = [!mt.ffmpeg && 'ffmpeg', !mt.ffprobe && 'ffprobe'].filter(Boolean).join(', ');
-        console.error(`[MEDIA] ${missing} not found on PATH — video thumbnails and durations are DISABLED until installed (e.g. apt-get install ffmpeg). Image thumbnails are unaffected.`);
-      } else {
-        console.log('[MEDIA] ffmpeg/ffprobe found — video thumbnails enabled');
-      }
-    })
-    .catch((e) => console.error(`[MEDIA] tooling check failed: ${e.message}`));
-
+  //
   // Heal rows that missed ingest-time thumbnail generation (uploads from before the
   // feature, or videos uploaded while ffmpeg was missing). Delayed past boot so it
   // never competes with startup work; paced internally so it never competes with
   // serving. Timer unref'd: it must not hold the process open on shutdown.
-  setTimeout(() => {
+  //
+  // ⚠️ #466: a probe that only TIMED OUT on a busy boot is re-checked on a backoff, and when a
+  // re-check finds the tools the backfill runs again — it skipped every video the first time.
+  // One run at a time; a request that arrives mid-run is folded into one more pass after it.
+  let thumbBackfillRunning = false, thumbBackfillAgain = false;
+  const runThumbnailBackfill = () => {
+    if (thumbBackfillRunning) { thumbBackfillAgain = true; return; }
+    thumbBackfillRunning = true;
     require('./lib/thumbnail-backfill').backfillMissingThumbnails()
       .then((s) => {
         if (s.scanned > 0) console.log(`[MEDIA] thumbnail backfill: ${s.generated} generated, ${s.skipped} skipped, ${s.failed} failed (of ${s.scanned} without thumbnails)`);
       })
-      .catch((e) => console.error(`[MEDIA] thumbnail backfill failed: ${e.message}`));
-  }, 15000).unref();
+      .catch((e) => console.error(`[MEDIA] thumbnail backfill failed: ${e.message}`))
+      .finally(() => {
+        thumbBackfillRunning = false;
+        if (thumbBackfillAgain) { thumbBackfillAgain = false; runThumbnailBackfill(); }
+      });
+  };
+  require('./lib/media-tools').startupCheck({ onRecovered: runThumbnailBackfill })
+    .catch((e) => console.error(`[MEDIA] tooling check failed: ${e.message}`));
+  setTimeout(runThumbnailBackfill, 15000).unref();
 });
 
 // If SSL is enabled, also start an HTTP server that redirects to HTTPS

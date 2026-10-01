@@ -76,4 +76,21 @@ export default {
   'onboarding.toast.playlist_assigned': 'प्लेलिस्ट असाइन कर दी गई',
   'onboarding.toast.assign_failed': 'वह प्लेलिस्ट असाइन नहीं की जा सकी',
   'onboarding.toast.publish_failed': 'प्लेलिस्ट प्रकाशित नहीं हो सकी, इसलिए अभी कुछ नहीं चलेगा',
+
+  // Keys present upstream that this file had dropped.
+  'nav.group.platform': 'प्लेटफ़ॉर्म',
+  'nav.group.devices': 'डिवाइस',
+  'nav.group.publish': 'प्रकाशित करें',
+  'nav.group.create': 'बनाएँ',
+  'nav.group.automate': 'स्वचालन',
+  'nav.group.insights': 'विश्लेषण',
+  'nav.group.workspace': 'वर्कस्पेस',
+  'nav.new': 'नया',
+  'content.upload_resume_prompt': '{name} का अपलोड फिर से शुरू करें? पिछली बार {done}% पहले ही भेजा जा चुका है।',
+  'playlist.folders_empty_hidden': '{n} खाली फ़ोल्डर छिपाए गए',
+  'playlist.folder_label': 'फ़ोल्डर से छानें',
+  'playlist.folder_all': 'सभी फ़ोल्डर',
+  'playlist.folder_root': 'कोई फ़ोल्डर नहीं',
+  'playlist.more_matches': '{n} और परिणाम — खोज सीमित करें या फ़ोल्डर चुनें',
+  'playlist.library_truncated': 'यह लाइब्रेरी बहुत बड़ी है, इसलिए यहाँ पूरी सूची नहीं है। खोज या फ़ोल्डर का उपयोग करें।',
 };

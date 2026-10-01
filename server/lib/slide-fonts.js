@@ -31,10 +31,8 @@
  *
  * ⚠️ NOT SUBSETTED BY CHARACTER, only by script. latin AND latin-ext ship, because latin alone drops
  * the accented characters half of Europe writes its own place names in — a slide reading "Zurich"
- * for "Zürich" is worse than 30KB. Cyrillic + cyrillic-ext ship as an OFL language pack for families
- * that Google publishes those subsets for (Inter, Oswald, Bitter, JetBrains Mono). Archivo has no
- * Cyrillic cut from Google — it stays latin-only; the UI says so. These are official Google css2
- * subsets with the same Reserved Font Name — not a custom per-character subset we cut ourselves.
+ * for "Zürich" is worse than 30KB. Anything beyond that (Cyrillic, Greek, Vietnamese) is a language
+ * pack decision, not a default, and is deliberately absent.
  */
 
 const path = require('path');
@@ -87,7 +85,7 @@ const FAMILIES = Object.freeze({
   },
   archivo: {
     css: 'Archivo', label: 'Archivo', role: 'Display',
-    note: 'A grotesque with presence. Made for headlines rather than paragraphs. Latin only — no Cyrillic cut from Google.',
+    note: 'A grotesque with presence. Made for headlines rather than paragraphs.',
     weights: [400, 800], stack: 'sans-serif', file: 'archivo', ofl: 'OFL-archivo.txt',
     scripts: SCRIPTS_LATIN,
   },
@@ -165,14 +163,12 @@ function fontFaceCss(familyKeys, opts = {}) {
     if (seen.has(k)) continue;
     seen.add(k);
     const f = FAMILIES[k];
-    const wanted = new Set(f.scripts || SCRIPTS_LATIN);
-    for (const face of SCRIPT_FACES) {
-      if (!wanted.has(face.script)) continue;
+    for (const [suffix, range] of [['', RANGE_LATIN], ['-ext', RANGE_LATIN_EXT]]) {
       out.push(
         `@font-face{font-family:'${f.css}';font-style:normal;`
         + `font-weight:${f.weights[0]} ${f.weights[1]};font-display:swap;`
-        + `src:url(${base}/${f.file}${face.suffix}.woff2) format('woff2');`
-        + `unicode-range:${face.range}}`);
+        + `src:url(${base}/${f.file}${suffix}.woff2) format('woff2');`
+        + `unicode-range:${range}}`);
     }
   }
   return out.join('\n  ');
@@ -226,22 +222,12 @@ function catalogue() {
   return Object.entries(FAMILIES).map(([id, f]) => ({
     id, label: f.label, role: f.role, note: f.note,
     weights: f.weights, file: f.file, css: f.css, stack: f.stack,
-    scripts: [...(f.scripts || SCRIPTS_LATIN)],
   }));
-}
-
-/** File basenames a family must ship (licence test + docs). */
-function familyFileNames(f) {
-  const wanted = new Set(f.scripts || SCRIPTS_LATIN);
-  return SCRIPT_FACES
-    .filter((face) => wanted.has(face.script))
-    .map((face) => `${f.file}${face.suffix}.woff2`);
 }
 
 module.exports = {
   FAMILIES, ALIASES, DEFAULT_FAMILY, FONT_DIR,
   CUSTOM_PREFIX, isCustom, customId, customFace,
-  RANGE_LATIN, RANGE_LATIN_EXT, RANGE_CYRILLIC, RANGE_CYRILLIC_EXT,
-  SCRIPT_FACES, SCRIPTS_LATIN, SCRIPTS_LATIN_CYR,
-  resolveFamily, fontStack, fontFaceCss, catalogue, familyFileNames,
+  RANGE_LATIN, RANGE_LATIN_EXT,
+  resolveFamily, fontStack, fontFaceCss, catalogue,
 };

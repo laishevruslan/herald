@@ -251,6 +251,27 @@
     }
     #statusOverlay h2 { color: #3b82f6; font-size: 2.8rem; margin-bottom: 0.8rem; }
     #statusOverlay p { font-size: 1.6rem; }
+
+    /* Unpair PIN prompt. Above everything, including the setup screen, because Esc has to be
+       answerable whatever the player is currently showing. */
+    #pinOverlay {
+      position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(2, 6, 23, 0.92);
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      /* Above the cold-boot "Tap anywhere to start" overlay, which is 2000: Esc has to be
+         answerable whatever the player happens to be showing. */
+      color: #f1f5f9; z-index: 3000;
+    }
+    #pinOverlay h2 { font-size: 2.4rem; margin-bottom: 0.8rem; }
+    #pinOverlay .pin-hint { color: #94a3b8; font-size: 1.4rem; margin-bottom: 2.4rem; }
+    /* -webkit-text-security keeps the digits hidden from the room. A shop floor is not a desk. */
+    #pinOverlay input {
+      width: 24rem; max-width: 80vw; padding: 1.2rem; text-align: center; letter-spacing: 0.8rem;
+      background: #0f172a; border: 0.1rem solid #334155; border-radius: 0.8rem; color: #f1f5f9;
+      font-size: 2.4rem; font-family: monospace; outline: none; -webkit-text-security: disc;
+    }
+    #pinOverlay input:focus { border-color: #3b82f6; }
+    #pinOverlay .pin-error { color: #f87171; font-size: 1.4rem; margin-top: 1.6rem; min-height: 2rem; }
+    #pinOverlay .pin-keys { color: #64748b; font-size: 1.2rem; margin-top: 2.4rem; }
   </style>
 </head>
 <body>
@@ -278,6 +299,15 @@
   <!-- #109: PiP overlay layer (above the player; never touched by playlist render) -->
   <div id="pipContainer"></div>
 
+  <!-- Unpair PIN prompt. Esc opens it; nothing happens until the PIN is right. -->
+  <div id="pinOverlay">
+    <h2>Unpair this display</h2>
+    <p class="pin-hint">Enter the settings PIN for this screen</p>
+    <input type="text" id="pinInput" inputmode="numeric" autocomplete="off" maxlength="12" aria-label="Settings PIN">
+    <div class="pin-error" id="pinError"></div>
+    <div class="pin-keys">Enter to confirm &middot; Esc to cancel</div>
+  </div>
+
   <!-- Status Overlay -->
   <div id="statusOverlay" style="display:none">
     <div class="spinner"></div>
@@ -288,6 +318,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/player/schedule-eval.js"></script>
   <script src="/player/play-order.js"></script>
+  <script src="/player/unpair-gate.js"></script>
   <!-- #299: the offline proof-of-play queue, from the same source the Tizen .wgt copies. -->
   <script src="/player/offline-play-queue.js"></script>
   <script src="/player/live-publish-legacy.js"></script>
@@ -487,36 +518,6 @@ const PLAYER_I18N = {
     info_sw: "Service Worker",
     nothing_scheduled: "Nada programado no momento",
     preview_webpage_blocked: "Se esta \xE1rea estiver em branco, o site bloqueia a incorpora\xE7\xE3o e tamb\xE9m n\xE3o ser\xE1 exibido no dispositivo. Tente uma p\xE1gina que a permita."
-  },
-  ru: {
-    web_player: "\u0412\u0435\u0431-\u043F\u043B\u0435\u0435\u0440",
-    server_url: "URL \u0441\u0435\u0440\u0432\u0435\u0440\u0430",
-    server_url_placeholder: "https://sign.yourdomain.com",
-    connect: "\u041F\u043E\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u044C",
-    pairing_code: "\u041A\u043E\u0434 \u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0438",
-    pairing_hint: "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u044D\u0442\u043E\u0442 \u043A\u043E\u0434 \u0432 \u043F\u0430\u043D\u0435\u043B\u0438 \u0443\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F, \u0447\u0442\u043E\u0431\u044B \u043F\u0440\u0438\u0432\u044F\u0437\u0430\u0442\u044C \u044D\u0442\u043E\u0442 \u044D\u043A\u0440\u0430\u043D",
-    connecting: "\u041F\u043E\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u0435...",
-    connecting_muted: "\u041F\u043E\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u0435 (\u0437\u0432\u0443\u043A \u0432\u044B\u043A\u043B\u044E\u0447\u0435\u043D)...",
-    info_title: "\u0412\u0435\u0431-\u043F\u043B\u0435\u0435\u0440 ScreenTinker",
-    info_close_hint: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435 \xAB\u041D\u0430\u0437\u0430\u0434\xBB \u0435\u0449\u0451 \u0440\u0430\u0437 \u0438\u043B\u0438 \u0449\u0451\u043B\u043A\u043D\u0438\u0442\u0435, \u0447\u0442\u043E\u0431\u044B \u0437\u0430\u043A\u0440\u044B\u0442\u044C",
-    info_device_id: "ID \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u0430",
-    info_device_name: "\u0418\u043C\u044F \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u0430",
-    info_server: "\u0421\u0435\u0440\u0432\u0435\u0440",
-    info_status: "\u0421\u0442\u0430\u0442\u0443\u0441",
-    info_now_playing: "\u0421\u0435\u0439\u0447\u0430\u0441 \u0438\u0433\u0440\u0430\u0435\u0442",
-    info_resolution: "\u0420\u0430\u0437\u0440\u0435\u0448\u0435\u043D\u0438\u0435",
-    info_uptime: "\u0412\u0440\u0435\u043C\u044F \u0440\u0430\u0431\u043E\u0442\u044B",
-    info_platform: "\u041F\u043B\u0430\u0442\u0444\u043E\u0440\u043C\u0430",
-    info_cache: "\u041A\u044D\u0448",
-    info_connected: "\u041F\u043E\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u043E",
-    info_disconnected: "\u041E\u0442\u043A\u043B\u044E\u0447\u0435\u043D\u043E",
-    info_active: "\u0410\u043A\u0442\u0438\u0432\u043D\u043E",
-    info_inactive: "\u041D\u0435\u0430\u043A\u0442\u0438\u0432\u043D\u043E",
-    info_nothing: "\u041D\u0438\u0447\u0435\u0433\u043E",
-    info_na: "\u041D/\u0414",
-    info_sw: "Service Worker",
-    nothing_scheduled: "\u0421\u0435\u0439\u0447\u0430\u0441 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u0437\u0430\u043F\u043B\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u043E",
-    preview_webpage_blocked: "\u0415\u0441\u043B\u0438 \u044D\u0442\u0430 \u043E\u0431\u043B\u0430\u0441\u0442\u044C \u043F\u0443\u0441\u0442\u0430, \u0441\u0430\u0439\u0442 \u0437\u0430\u043F\u0440\u0435\u0449\u0430\u0435\u0442 \u0432\u0441\u0442\u0440\u0430\u0438\u0432\u0430\u043D\u0438\u0435 \u0438 \u043D\u0430 \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u0435 \u0442\u043E\u0436\u0435 \u043D\u0435 \u043E\u0442\u043E\u0431\u0440\u0430\u0437\u0438\u0442\u0441\u044F. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u0443, \u043A\u043E\u0442\u043E\u0440\u0430\u044F \u0440\u0430\u0437\u0440\u0435\u0448\u0430\u0435\u0442 \u0432\u0441\u0442\u0440\u0430\u0438\u0432\u0430\u043D\u0438\u0435."
   }
 };
 const PLAYER_LANG = (() => {
@@ -546,17 +547,41 @@ document.addEventListener("DOMContentLoaded", () => {
 const BS = typeof window !== "undefined" && window.ScreenTinkerBS || null;
 const ON_BRIGHTSIGN = !!(BS && BS.isBrightSign());
 const IS_LEGACY_PLAYER = /^\/player\/legacy(?:\/|$)/.test(window.location.pathname);
+function onVega() {
+  try {
+    if (new URLSearchParams(window.location.search).get("host") !== "vega") return false;
+    const b = window.ReactNativeWebView;
+    return !!(b && typeof b.postMessage === "function");
+  } catch (e) {
+    return false;
+  }
+}
 const HOST = (() => {
   let platform = null;
   try {
     platform = new URLSearchParams(window.location.search).get("host");
   } catch (e) {
   }
-  if (!platform || window.parent === window) return null;
-  const h = { platform, ready: false, caps: [], info: {} };
-  h.send = (msg) => {
+  const vegaBridge = () => {
     try {
-      window.parent.postMessage(Object.assign({ source: "screentinker-player" }, msg), "*");
+      const b = window.ReactNativeWebView;
+      return b && typeof b.postMessage === "function" ? b : null;
+    } catch (e) {
+      return null;
+    }
+  };
+  const topLevelVega = platform === "vega" && window.parent === window;
+  if (!platform || window.parent === window && !topLevelVega) return null;
+  const h = { platform, ready: false, caps: [], info: {}, topLevel: topLevelVega };
+  h.send = (msg) => {
+    const body = Object.assign({ source: "screentinker-player" }, msg);
+    try {
+      if (h.topLevel) {
+        const b = vegaBridge();
+        if (b) b.postMessage(JSON.stringify(body));
+        return;
+      }
+      window.parent.postMessage(body, "*");
     } catch (e) {
     }
   };
@@ -566,20 +591,58 @@ const HOST = (() => {
     h.send({ type: "host:command", action, payload: payload || null });
     return true;
   };
-  window.addEventListener("message", (ev) => {
-    if (ev.source !== window.parent) return;
-    const d = ev.data;
+  const onHostMessage = (d) => {
     if (!d || d.source !== "screentinker-host") return;
     if (d.type === "host:ready") {
+      const wasReady = h.ready;
       h.ready = true;
       h.caps = Array.isArray(d.capabilities) ? d.capabilities.filter((c) => typeof c === "string") : [];
       h.info = d.info && typeof d.info === "object" ? d.info : {};
       console.log("[host] ".concat(h.platform, " ready: ").concat(h.caps.join(", ") || "no capabilities"));
+      if (!wasReady) setTimeout(() => {
+        let resumed = false;
+        try {
+          resumed = typeof resumeAfterVegaHost === "function" && resumeAfterVegaHost();
+        } catch (e) {
+        }
+        try {
+          if (!resumed && socket && socket.connected) register();
+        } catch (e) {
+        }
+      }, 0);
     } else if (d.type === "host:result") {
       console.log("[host] ".concat(d.action, ": ").concat(d.ok ? "ok" : "failed: " + (d.error || "unknown")));
     }
+  };
+  window.addEventListener("message", (ev) => {
+    if (h.topLevel) {
+      if (ev.source && ev.source !== window) return;
+      let d = ev.data;
+      if (typeof d === "string") {
+        try {
+          d = JSON.parse(d);
+        } catch (e) {
+          return;
+        }
+      }
+      onHostMessage(d);
+      return;
+    }
+    if (ev.source !== window.parent) return;
+    onHostMessage(ev.data);
   });
-  h.send({ type: "host:hello" });
+  const hello = () => {
+    if (h.topLevel && !vegaBridge()) return false;
+    h.send({ type: "host:hello" });
+    return true;
+  };
+  if (!hello()) {
+    let n = 0;
+    const t = setInterval(() => {
+      n += 1;
+      if (hello() || n > 50) clearInterval(t);
+    }, 100);
+  }
   return h;
 })();
 const SCREEN_SUFFIX = (() => {
@@ -602,6 +665,13 @@ function restartPlayer(reason) {
     }
   } catch (e) {
   }
+  try {
+    if (onVega() && HOST && HOST.command("restart")) {
+      console.log("[vega] restart delegated to shell:", reason);
+      return;
+    }
+  } catch (e) {
+  }
   location.reload();
 }
 function urlEnrolKey() {
@@ -610,6 +680,78 @@ function urlEnrolKey() {
   } catch (e) {
     return null;
   }
+}
+let vegaIdentityCleared = false;
+let vegaConnectDeferred = false;
+let vegaConnectWait = null;
+let vegaConnectGaveUp = false;
+function vegaShellIdentity() {
+  try {
+    if (vegaIdentityCleared) return null;
+    if (typeof onVega !== "function" || !onVega()) return null;
+    if (typeof HOST === "undefined" || !HOST || !HOST.ready || !HOST.info) return null;
+    const deviceId = HOST.info.deviceId ? String(HOST.info.deviceId) : "";
+    const deviceToken = HOST.info.deviceToken ? String(HOST.info.deviceToken) : "";
+    if (!deviceId || !deviceToken) return null;
+    return { deviceId, deviceToken };
+  } catch (e) {
+    return null;
+  }
+}
+function adoptVegaIdentity() {
+  try {
+    if (typeof config === "undefined" || !config || config.deviceId) return false;
+    const known = vegaShellIdentity();
+    if (!known) return false;
+    config.deviceId = known.deviceId;
+    config.deviceToken = known.deviceToken;
+    config.paired = true;
+    console.log("[vega] adopted identity from shell");
+    try {
+      saveConfig(config);
+    } catch (e) {
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+function clearVegaIdentity() {
+  vegaIdentityCleared = true;
+  try {
+    if (typeof onVega !== "function" || !onVega()) return;
+    if (typeof HOST === "undefined" || !HOST || typeof HOST.command !== "function") return;
+    HOST.command("clear-identity");
+  } catch (e) {
+  }
+}
+function resumeAfterVegaHost() {
+  if (vegaConnectWait) {
+    clearTimeout(vegaConnectWait);
+    vegaConnectWait = null;
+  }
+  const deferred = vegaConnectDeferred;
+  vegaConnectDeferred = false;
+  if (vegaIdentityCleared) {
+    try {
+      clearVegaIdentity();
+    } catch (e) {
+    }
+  } else if (adoptVegaIdentity()) {
+    try {
+      cancelAutoContinue();
+    } catch (e) {
+    }
+    if (config && config.serverUrl && !(socket && socket.connected)) {
+      connect(config.serverUrl);
+      return true;
+    }
+  }
+  if (deferred && config && config.serverUrl && !(socket && socket.connected)) {
+    connect(config.serverUrl);
+    return true;
+  }
+  return false;
 }
 function getConfig() {
   let cfg = {};
@@ -631,6 +773,14 @@ function getConfig() {
     }
   }
   if (!cfg.deviceId) {
+    const known = vegaShellIdentity();
+    if (known) {
+      cfg.deviceId = known.deviceId;
+      cfg.deviceToken = known.deviceToken;
+      cfg.paired = true;
+    }
+  }
+  if (!cfg.deviceId) {
     const k = urlEnrolKey();
     if (k) {
       cfg.enrolKey = k;
@@ -646,6 +796,12 @@ function saveConfig(cfg) {
       BS.setIdentity(cfg.deviceId, cfg.serverUrl || null, cfg.deviceToken || null);
     } catch (e) {
     }
+  }
+  try {
+    if (cfg && cfg.deviceId && cfg.deviceToken && typeof onVega === "function" && onVega() && typeof HOST !== "undefined" && HOST && typeof HOST.command === "function") {
+      HOST.command("set-identity", { deviceId: String(cfg.deviceId), deviceToken: String(cfg.deviceToken) });
+    }
+  } catch (e) {
   }
 }
 const PLAYLIST_CACHE_KEY = "rd_playlist_cache" + SCREEN_SUFFIX;
@@ -784,6 +940,10 @@ function loadLayoutCache() {
     localStorage.removeItem("st_group_sync");
     localStorage.setItem("st_reset_applied", token);
     console.warn("[reset] identity cleared by ?reset=" + token + " \u2014 this panel will pair as a new device");
+    try {
+      if (typeof clearVegaIdentity === "function") clearVegaIdentity();
+    } catch (e) {
+    }
   } catch (e) {
   }
 })();
@@ -1117,6 +1277,9 @@ const LIVE_DWELL_RECHECK_MS = 6e4;
 const WIDGET_SWAP_TIMEOUT_MS = 8e3;
 const WIDGET_SOLO_REFRESH_MS = 6e4;
 let pendingWidgetSwap = null;
+let playbackOrder = "sequential";
+let playOrderState = {};
+const zoneOrderState = {};
 let zoneTimers = {};
 let previewBannerParts = {};
 let wallConfig = null;
@@ -1493,6 +1656,70 @@ function generateBrowserFingerprint() {
   }
   return salt ? hw + "-" + salt.slice(0, 16) : hw;
 }
+let offlinePlayOpen = null;
+let offlinePlayFlushing = false;
+const OFFLINE_PLAY_KEY = "st_offline_plays";
+const offlineQueueAvailable = typeof OfflinePlayQueue === "function";
+const offlinePlays = offlineQueueAvailable ? new OfflinePlayQueue() : {
+  restore() {
+  },
+  size() {
+    return 0;
+  },
+  serialize() {
+    return "[]";
+  },
+  add() {
+  },
+  peekBatch() {
+    return [];
+  },
+  ack() {
+  }
+};
+if (!offlineQueueAvailable) console.log("[play] offline-play-queue.js unavailable \u2014 offline proof-of-play disabled, playback unaffected");
+try {
+  offlinePlays.restore(localStorage.getItem(OFFLINE_PLAY_KEY));
+} catch (e) {
+}
+if (offlinePlays.size()) console.log("[play] offline backlog restored:", offlinePlays.size());
+function persistOfflinePlays() {
+  try {
+    localStorage.setItem(OFFLINE_PLAY_KEY, offlinePlays.serialize());
+  } catch (e) {
+  }
+}
+function queueOfflinePlay(open, completed) {
+  if (!offlineQueueAvailable) return;
+  offlinePlays.add(OfflinePlayQueue.makePlay({
+    client_event_id: OfflinePlayQueue.newId(),
+    content_id: open.content_id,
+    widget_id: open.widget_id,
+    content_name: open.content_name,
+    started_at: open.started_at,
+    ended_at: Math.floor(Date.now() / 1e3),
+    completed
+  }));
+  persistOfflinePlays();
+}
+function flushOfflinePlays() {
+  if (offlinePlayFlushing || !offlinePlays.size() || !(socket == null ? void 0 : socket.connected)) return;
+  const batch = offlinePlays.peekBatch();
+  if (!batch.length) return;
+  offlinePlayFlushing = true;
+  socket.emit("device:play-event", {
+    device_id: config.deviceId,
+    event: "play_offline",
+    plays: batch
+  });
+  setTimeout(() => {
+    offlinePlays.ack(batch.map((p) => p.client_event_id));
+    persistOfflinePlays();
+    offlinePlayFlushing = false;
+    if (offlinePlays.size()) flushOfflinePlays();
+  }, 4e3);
+  console.log("[play] flushed", batch.length, "offline plays,", offlinePlays.size(), "queued");
+}
 let autoContinueTimer;
 function cancelAutoContinue() {
   if (!autoContinueTimer) return;
@@ -1545,7 +1772,15 @@ if (_previewQS.get("preview") === "1" && (_previewQS.get("playlist") || _preview
       playlist = cachedPlaylist;
       layout = loadLayoutCache();
       document.getElementById("setupScreen").style.display = "none";
-      startPlaybackAt(0);
+      try {
+        startPlaybackAt(0);
+      } catch (e) {
+        console.error("[boot] cached playlist failed to render \u2014 continuing to connect:", e && (e.stack || e.message || e));
+        try {
+          savePlaylistCache([]);
+        } catch (e2) {
+        }
+      }
       try {
         const cg = localStorage.getItem("st_group_sync");
         if (cg) applyGroupSync(JSON.parse(cg));
@@ -1838,6 +2073,30 @@ function connect(serverUrl) {
     });
     return;
   }
+  try {
+    if (!vegaConnectGaveUp && !vegaIdentityCleared && typeof onVega === "function" && onVega() && typeof HOST !== "undefined" && HOST && !HOST.ready) {
+      vegaConnectDeferred = true;
+      if (!vegaConnectWait) {
+        vegaConnectWait = setTimeout(() => {
+          vegaConnectWait = null;
+          vegaConnectGaveUp = true;
+          vegaConnectDeferred = false;
+          connect(serverUrl);
+        }, 4e3);
+      }
+      return;
+    }
+  } catch (e) {
+  }
+  if (vegaConnectWait) {
+    clearTimeout(vegaConnectWait);
+    vegaConnectWait = null;
+  }
+  vegaConnectDeferred = false;
+  try {
+    adoptVegaIdentity();
+  } catch (e) {
+  }
   if (socket) {
     socket.disconnect();
     socket = null;
@@ -1912,51 +2171,6 @@ function connect(serverUrl) {
     document.getElementById("setupSpinner").style.display = "none";
     document.getElementById("connectBtn").disabled = false;
   });
-  let offlinePlayOpen2 = null;
-  let offlinePlayFlushing = false;
-  const OFFLINE_PLAY_KEY = "st_offline_plays";
-  const offlinePlays = new OfflinePlayQueue();
-  try {
-    offlinePlays.restore(localStorage.getItem(OFFLINE_PLAY_KEY));
-  } catch (e) {
-  }
-  if (offlinePlays.size()) console.log("[play] offline backlog restored:", offlinePlays.size());
-  function persistOfflinePlays() {
-    try {
-      localStorage.setItem(OFFLINE_PLAY_KEY, offlinePlays.serialize());
-    } catch (e) {
-    }
-  }
-  function queueOfflinePlay2(open, completed) {
-    offlinePlays.add(OfflinePlayQueue.makePlay({
-      client_event_id: OfflinePlayQueue.newId(),
-      content_id: open.content_id,
-      widget_id: open.widget_id,
-      content_name: open.content_name,
-      started_at: open.started_at,
-      ended_at: Math.floor(Date.now() / 1e3),
-      completed
-    }));
-    persistOfflinePlays();
-  }
-  function flushOfflinePlays() {
-    if (offlinePlayFlushing || !offlinePlays.size() || !(socket == null ? void 0 : socket.connected)) return;
-    const batch = offlinePlays.peekBatch();
-    if (!batch.length) return;
-    offlinePlayFlushing = true;
-    socket.emit("device:play-event", {
-      device_id: config.deviceId,
-      event: "play_offline",
-      plays: batch
-    });
-    setTimeout(() => {
-      offlinePlays.ack(batch.map((p) => p.client_event_id));
-      persistOfflinePlays();
-      offlinePlayFlushing = false;
-      if (offlinePlays.size()) flushOfflinePlays();
-    }, 4e3);
-    console.log("[play] flushed", batch.length, "offline plays,", offlinePlays.size(), "queued");
-  }
   socket.on("device:play-offline-ack", (d) => {
     console.log("[play] backfill ack:", JSON.stringify(d));
   });
@@ -2003,6 +2217,7 @@ function connect(serverUrl) {
   socket.on("device:paired", (data) => {
     config.paired = true;
     config.deviceName = data.name;
+    if (data && data.settings_pin) config.settingsPin = String(data.settings_pin);
     saveConfig(config);
     console.log("Paired as:", data.name);
     document.getElementById("setupScreen").style.display = "none";
@@ -2014,6 +2229,10 @@ function connect(serverUrl) {
     delete config.deviceId;
     delete config.deviceToken;
     config.paired = false;
+    try {
+      if (typeof clearVegaIdentity === "function") clearVegaIdentity();
+    } catch (e) {
+    }
     saveConfig(config);
     document.getElementById("setupScreen").style.display = "flex";
     document.getElementById("urlForm").style.display = "block";
@@ -2021,6 +2240,13 @@ function connect(serverUrl) {
     document.getElementById("setupStatus").textContent = message;
     startAutoContinue(10);
   }
+  socket.on("device:settings-pin", (data) => {
+    if (data && data.settings_pin) {
+      config.settingsPin = String(data.settings_pin);
+      saveConfig(config);
+      console.log("[settings] PIN updated from the dashboard");
+    }
+  });
   socket.on("device:unpaired", () => {
     console.warn("Device not found on server \u2014 clearing credentials");
     savePlaylistCache([]);
@@ -2350,6 +2576,15 @@ function connect(serverUrl) {
         iceServers: data && data.iceServers || void 0,
         onState: (st, reason) => {
           if (window.__stTalkDebug) console.log("[talk]", st, reason || "");
+          try {
+            socket.emit("device:talk-state", {
+              device_id: config.deviceId,
+              device_token: config.deviceToken,
+              state: st,
+              reason: reason || null
+            });
+          } catch (_) {
+          }
         }
       });
     } catch (_) {
@@ -3137,17 +3372,27 @@ function hostPackageVersion() {
   }
 }
 function buildDeviceInfo() {
-  return {
+  const info = {
     android_version: "Web/" + navigator.userAgent.split(" ").pop(),
     // On a BrightSign, app_version is the ON-DEVICE host package — the artifact OTA replaces
     // and the only one here that can be stale. PLAYER_VERSION describes this page, which the
     // server serves fresh every load, and it already travels as client_version. Reporting the
     // page version in both columns is what made an XT245 read as 1.1.0-web forever, with no
     // way to tell a freshly-provisioned host from a year-old one.
+    // Vega is the same shape: HOST.info.version is the installed .vpkg, not this page.
     app_version: hostPackageVersion() || PLAYER_VERSION,
     screen_width: screen.width,
     screen_height: screen.height
   };
+  try {
+    if (typeof HOST !== "undefined" && HOST && HOST.info) {
+      if (HOST.info.version) info.app_version = String(HOST.info.version);
+      if (HOST.info.model) info.hardware_model = String(HOST.info.model);
+      if (HOST.info.os) info.hardware_os_version = String(HOST.info.os);
+    }
+  } catch (e) {
+  }
+  return info;
 }
 let reportedAppVersion = null;
 let reportedEdid = false;
@@ -3188,7 +3433,6 @@ function detectMic() {
 }
 function register() {
   var _a;
-  detectMic();
   const data = {};
   if (config.deviceId) {
     data.device_id = config.deviceId;
@@ -3206,7 +3450,7 @@ function register() {
   reportedAppVersion = hostPackageVersion();
   data.client_type = "player";
   data.client_version = PLAYER_VERSION;
-  data.platform = ON_BRIGHTSIGN ? "brightsign" : browserPlatform();
+  data.platform = ON_BRIGHTSIGN ? "brightsign" : onVega() ? "vega" : browserPlatform();
   if (ON_BRIGHTSIGN) {
     try {
       data.bs_model = BS.model() || null;
@@ -3292,10 +3536,25 @@ function startPlaylistRefresh() {
 }
 let knownServerHash = null;
 let versionCheckTimer = null;
+const CODE_RELOAD_SPREAD_MS = 3e4;
+let codeReloadTimer = null;
+function observeServerHash(data) {
+  if (!data || typeof data.hash !== "string" || !data.hash) return false;
+  if (knownServerHash && data.hash !== knownServerHash) {
+    if (!codeReloadTimer) {
+      const delay = Math.floor(Math.random() * CODE_RELOAD_SPREAD_MS);
+      console.log("[player] /api/version hash changed", knownServerHash, "->", data.hash, "- reloading in", delay, "ms (a code change on the server, NOT a dashboard action)");
+      codeReloadTimer = setTimeout(() => restartPlayer("server code updated"), delay);
+    }
+    return true;
+  }
+  if (!knownServerHash) knownServerHash = data.hash;
+  return false;
+}
 function startVersionCheck() {
   if (versionCheckTimer) clearInterval(versionCheckTimer);
   fetch(config.serverUrl + "/api/version").then((r) => r.json()).then((data) => {
-    knownServerHash = data.hash;
+    if (observeServerHash(data)) return;
     console.log("Server version:", data.version, "hash:", data.hash);
     try {
       if (data.version && PLAYER_VERSION && PLAYER_VERSION !== "1.1.0-web" && data.version !== PLAYER_VERSION) {
@@ -3321,10 +3580,7 @@ function startVersionCheck() {
   });
   versionCheckTimer = setInterval(() => {
     fetch(config.serverUrl + "/api/version").then((r) => r.json()).then((data) => {
-      if (knownServerHash && data.hash !== knownServerHash) {
-        console.log("[player] /api/version hash changed", knownServerHash, "->", data.hash, "- triggering reload (a code edit/restart on the server, NOT a dashboard action)");
-        restartPlayer("server code updated");
-      }
+      observeServerHash(data);
     }).catch(() => {
     });
   }, 3e4);
@@ -3497,6 +3753,11 @@ function groupScheduleTick() {
 function groupPreloadNext(idx) {
   const item = playlist[idx];
   if (!item) return;
+  if (onVega()) {
+    groupPreloadIdx = idx;
+    groupPreloadEl = null;
+    return;
+  }
   const isVid = item.mime_type && item.mime_type.indexOf("video/") === 0 && item.mime_type !== "video/youtube";
   if (!isVid) {
     groupPreloadIdx = idx;
@@ -3901,9 +4162,6 @@ function itemFit(item, zone) {
 function shouldLogPlay(item) {
   return !item || item.log_play !== 0;
 }
-let playbackOrder = "sequential";
-let playOrderState = {};
-const zoneOrderState = {};
 function nextActiveIndex(from) {
   try {
     if (window.PlayOrder && !(wallConfig && wallConfig.is_leader === false) && !groupSync) {
@@ -4332,7 +4590,15 @@ function renderWidgetBuffered(item) {
     clearTimeout(pendingWidgetSwap.timer);
     pendingWidgetSwap = null;
     iframe.style.visibility = "visible";
+    const ae = document.activeElement;
+    const keepFocus = !!(ae && ae !== iframe && ae.tagName === "IFRAME" && container.contains(ae) && String(ae.src || "").includes("/api/widgets/".concat(item.widget_id, "/render")));
     teardownCurrentMedia(iframe);
+    if (keepFocus) {
+      try {
+        iframe.focus();
+      } catch (e) {
+      }
+    }
     if (PREVIEW_MODE && item.widget_type === "webpage") addWebpageNote(container);
   };
   iframe.addEventListener("load", reveal);
@@ -4433,6 +4699,11 @@ function shaderSource(id) {
 }
 function videoCompositingAvailable(v) {
   if (_videoCompositingOk !== null) return _videoCompositingOk;
+  if (typeof onVega === "function" && onVega()) {
+    _videoCompositingOk = false;
+    console.log("[transition] video frames are not composited on Vega (the compositor traps) \u2014 transitions involving video will hard-cut; image-to-image still wipes");
+    return false;
+  }
   if (!v || v.readyState < 2 || !v.videoWidth) return true;
   _videoCompositingOk = videoFrameIsCapturable(v);
   if (!_videoCompositingOk) {
@@ -4470,15 +4741,32 @@ function stageGeometry() {
     transformOrigin: cs.transformOrigin
   };
 }
+function vegaWipeSize(w, h) {
+  if (!(typeof onVega === "function" && onVega())) return { w, h };
+  const longEdge = 960;
+  const long = Math.max(w, h);
+  if (!(long > longEdge) || !w || !h) return { w, h };
+  const s = longEdge / long;
+  return { w: Math.max(1, Math.round(w * s)), h: Math.max(1, Math.round(h * s)) };
+}
+function releaseWipeBitmap(src) {
+  if (!src || src.nodeName !== "CANVAS") return;
+  try {
+    src.width = 1;
+    src.height = 1;
+  } catch (e) {
+  }
+}
 function fitToCanvas(src, w, h) {
+  const cap = vegaWipeSize(w, h);
   const c = document.createElement("canvas");
-  c.width = w;
-  c.height = h;
+  c.width = cap.w;
+  c.height = cap.h;
   const cx = c.getContext("2d");
   const iw = src.naturalWidth || src.videoWidth || src.width;
   const ih = src.naturalHeight || src.videoHeight || src.height;
-  const s = Math.min(w / iw, h / ih);
-  cx.drawImage(src, (w - iw * s) / 2, (h - ih * s) / 2, iw * s, ih * s);
+  const s = Math.min(cap.w / iw, cap.h / ih);
+  cx.drawImage(src, (cap.w - iw * s) / 2, (cap.h - ih * s) / 2, iw * s, ih * s);
   return c;
 }
 let glTx = null, glTxAbort = null;
@@ -4528,6 +4816,7 @@ function runGlWipe(fromFrame, toTex, t, dwellMs, onStart, mount, hardCut) {
     return;
   }
   const w = geo.w, h = geo.h;
+  const cap = vegaWipeSize(w, h);
   let raf = 0, startTs = 0, done = false, deadline = 0;
   const finish = () => {
     if (done) return;
@@ -4537,7 +4826,20 @@ function runGlWipe(fromFrame, toTex, t, dwellMs, onStart, mount, hardCut) {
     if (glTxAbort === finish) glTxAbort = null;
     mount();
     canvas.style.display = "none";
+    if (typeof onVega === "function" && onVega()) {
+      try {
+        const blank = document.createElement("canvas");
+        blank.width = 1;
+        blank.height = 1;
+        renderer.setFrom(blank);
+        renderer.setTo(blank);
+        canvas.width = 1;
+        canvas.height = 1;
+      } catch (e) {
+      }
+    }
   };
+  let fromTex = null, toCanvas = null;
   try {
     canvas.style.left = geo.left;
     canvas.style.top = geo.top;
@@ -4545,15 +4847,21 @@ function runGlWipe(fromFrame, toTex, t, dwellMs, onStart, mount, hardCut) {
     canvas.style.height = h + "px";
     canvas.style.transform = geo.transform;
     canvas.style.transformOrigin = geo.transformOrigin;
-    renderer.resize(w, h);
-    renderer.setFrom(fitToCanvas(fromFrame, w, h));
-    renderer.setTo(fitToCanvas(toTex, w, h));
+    renderer.resize(cap.w, cap.h);
+    fromTex = fitToCanvas(fromFrame, geo.w, geo.h);
+    toCanvas = fitToCanvas(toTex, geo.w, geo.h);
+    renderer.setFrom(fromTex);
+    renderer.setTo(toCanvas);
     renderer.setShader(src);
     renderer.render(0, effect.params);
   } catch (e) {
     canvas.style.display = "none";
     hardCut();
     return;
+  } finally {
+    releaseWipeBitmap(fromTex);
+    releaseWipeBitmap(toCanvas);
+    releaseWipeBitmap(fromFrame);
   }
   glTxAbort = finish;
   canvas.style.display = "block";
@@ -4838,7 +5146,7 @@ function renderVideoBuffered(item) {
       outgoing.onended = null;
       outgoing.onerror = null;
       outgoing.onloadeddata = null;
-      if (!wantsWipe) outgoing.pause();
+      if (!wantsWipe || typeof onVega === "function" && onVega()) outgoing.pause();
     } catch (e) {
     }
   }
@@ -5273,6 +5581,7 @@ function isMediaReadable(el) {
 }
 function videoFrameIsCapturable(video) {
   if (!video) return false;
+  if (typeof onVega === "function" && onVega()) return false;
   let pctx;
   try {
     const probe = document.createElement("canvas");
@@ -5723,20 +6032,122 @@ if ("serviceWorker" in navigator) {
     }
   });
 }
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    if (confirm("Reset player and return to setup?")) {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(PLAYLIST_CACHE_KEY);
-      localStorage.removeItem(LAYOUT_CACHE_KEY);
-      if (BS) {
-        try {
-          BS.clearIdentity();
-        } catch (e2) {
-        }
-      }
-      restartPlayer("operator reset");
+let pinPromptOpen = false;
+let pinIdleTimer = null;
+function closePinPrompt() {
+  pinPromptOpen = false;
+  if (pinIdleTimer) {
+    clearTimeout(pinIdleTimer);
+    pinIdleTimer = null;
+  }
+  document.getElementById("pinOverlay").style.display = "none";
+  document.getElementById("pinInput").value = "";
+  document.getElementById("pinError").textContent = "";
+}
+function armPinIdleClose() {
+  if (pinIdleTimer) clearTimeout(pinIdleTimer);
+  pinIdleTimer = setTimeout(() => {
+    if (pinPromptOpen) {
+      console.log("[unpair] PIN prompt timed out");
+      closePinPrompt();
     }
+  }, 3e4);
+}
+function openPinPrompt() {
+  const known = config.settingsPin ? String(config.settingsPin) : "";
+  if (!known) {
+    console.warn("[unpair] Esc ignored \u2014 this player has no settings PIN for this screen");
+    return;
+  }
+  pinPromptOpen = true;
+  document.getElementById("pinError").textContent = "";
+  const overlay = document.getElementById("pinOverlay");
+  overlay.style.display = "flex";
+  const input = document.getElementById("pinInput");
+  input.value = "";
+  try {
+    input.focus();
+  } catch (e) {
+  }
+  armPinIdleClose();
+}
+function submitPin() {
+  const given = document.getElementById("pinInput").value;
+  const known = config.settingsPin ? String(config.settingsPin) : "";
+  const verdict = window.UnpairGate && window.UnpairGate.decide ? window.UnpairGate.decide(given, known) : { allow: false, reason: "no_gate" };
+  if (!verdict.allow) {
+    document.getElementById("pinError").textContent = verdict.reason === "empty" ? "Enter the PIN" : verdict.reason === "no_gate" ? "Unavailable \u2014 reload the player" : "Incorrect PIN";
+    const input = document.getElementById("pinInput");
+    input.value = "";
+    try {
+      input.focus();
+    } catch (e) {
+    }
+    armPinIdleClose();
+    return;
+  }
+  closePinPrompt();
+  unpairThisPlayer();
+}
+function unpairThisPlayer() {
+  let acked = false;
+  try {
+    if (socket && socket.connected && config.deviceId && config.deviceToken) {
+      socket.once("device:self-unpair-ok", () => {
+        acked = true;
+      });
+      socket.emit("device:self-unpair", { device_id: config.deviceId });
+    }
+  } catch (e) {
+  }
+  setTimeout(() => {
+    try {
+      UnpairGate.storageKeys(SCREEN_SUFFIX).forEach((k) => {
+        try {
+          localStorage.removeItem(k);
+        } catch (e) {
+        }
+      });
+    } catch (e) {
+    }
+    if (BS) {
+      try {
+        BS.clearIdentity();
+      } catch (e) {
+      }
+    }
+    try {
+      if (typeof clearVegaIdentity === "function") clearVegaIdentity();
+    } catch (e) {
+    }
+    config.enrolKey = null;
+    const next = UnpairGate.urlWithoutEnrolKey(location.href);
+    console.warn("[unpair] identity cleared at the panel" + (acked ? "" : " \u2014 the server did not acknowledge; the old screen may still need removing from the dashboard"));
+    if (next) {
+      try {
+        location.replace(next);
+        return;
+      } catch (e) {
+      }
+    }
+    restartPlayer("operator unpaired at the panel");
+  }, 1200);
+}
+document.addEventListener("keydown", (e) => {
+  if (pinPromptOpen) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closePinPrompt();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      submitPin();
+    } else armPinIdleClose();
+    return;
+  }
+  if (e.key === "Escape") {
+    e.preventDefault();
+    openPinPrompt();
+    return;
   }
   if (e.key === "f" || e.key === "F11") {
     e.preventDefault();

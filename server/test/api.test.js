@@ -176,13 +176,6 @@ test('partition: the public token surface is exactly the reviewed set (snapshot 
      */
     '/api/slide-decks',
     /*
-     * Factory slide-template catalogue, added deliberately. Read-only PAT alias of
-     * GET /api/slide-decks/factories so an integrator can mint a door sign without the dashboard
-     * wizard. Geometry is shared with the publish path already on this door; slug is not
-     * workspace-validated until publish (missing feeds render empty/stale on the wall).
-     */
-    '/api/slide-templates',
-    /*
      * Uploaded slide fonts, added deliberately. Reads and deletes are workspace-scoped through
      * accessContext like every sibling.
      *
@@ -437,6 +430,23 @@ test('gap: device PUT accepts layout_id and returns it on read', async () => {
 test('gap: device PUT REJECTS a cross-tenant layout_id (400)', async () => {
   const res = await jfetch(`/api/devices/${S.deviceId}`, { method: 'PUT', ...auth(S.jwt), body: JSON.stringify({ layout_id: S.layoutB }) });
   assert.equal(res.status, 400, 'a layout from another workspace must be rejected');
+});
+
+test('#467: the device list carries each display\'s platform_family and app_version', async () => {
+  const r = await jfetch('/api/devices', auth(S.jwt));
+  assert.equal(r.status, 200);
+  const d = r.body.find((x) => x.id === S.deviceId);
+  assert.ok(d, 'the paired test device is listed');
+  assert.ok(['android', 'web', 'tizen', 'brightsign', 'vega', 'linux', 'windows'].includes(d.platform_family), String(d.platform_family));
+  assert.ok('app_version' in d);
+});
+
+test('#467: /api/version reports the served APK version (null when none is staged), without auth', async () => {
+  const r = await jfetch('/api/version');
+  assert.equal(r.status, 200);
+  assert.ok('apk_version' in r.body, 'apk_version key present');
+  assert.ok(r.body.apk_version === null || typeof r.body.apk_version === 'string');
+  assert.equal(typeof r.body.hash, 'string');
 });
 
 test('docs: /openapi.yaml serves the spec document', async () => {

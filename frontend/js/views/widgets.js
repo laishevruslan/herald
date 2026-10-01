@@ -80,6 +80,9 @@ const WIDGET_ICONS = {
   'directory-board': '&#127970;',
   'directory-search': '&#128269;',
   transition: '&#127916;',
+  // Built-in, but never offered in the "new widget" grid: a template widget is created from the
+  // Templates library (the server refuses POST /widgets for it) and edited with the same form.
+  template: '&#129513;',
 };
 const widgetTypeName = (id) => t(`widget.type.${id.replace(/-/g, '_')}.name`);
 const widgetTypeDesc = (id) => t(`widget.type.${id.replace(/-/g, '_')}.desc`);
@@ -91,6 +94,14 @@ const pluginTypeById = () => {
   for (const p of pluginTypes) m.set(p.type, p);
   return m;
 };
+
+// "Template · <catalog>/<id>" for a template widget card. The key is from the stored config, so it
+// is escaped by the caller like every other label.
+function templateWidgetLabel(w) {
+  let key = '';
+  try { key = String((JSON.parse(w.config || '{}') || {}).template || ''); } catch { key = ''; }
+  return key ? `${t('templates.widget_type_label')} · ${key}` : t('templates.widget_type_label');
+}
 
 function escAttr(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -281,7 +292,7 @@ function parseDirectoryImport(text) {
  * find them either because it only ever filtered what had already been fetched. Ask the server for
  * images, and ask it for as many as it will give.
  */
-function openContentPicker({ multiple = false, title } = {}) {
+export function openContentPicker({ multiple = false, title, returnItem = false } = {}) {
   return new Promise(async (resolve) => {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:10000;padding:16px';
@@ -309,7 +320,8 @@ function openContentPicker({ multiple = false, title } = {}) {
     let items = [];
     let uploading = false;
     const selected = new Set();
-    const resolveUrl = (item) => item.remote_url || `/api/content/${item.id}/file`;
+    // returnItem: the Templates form stores a content ID (validated against the workspace), not a URL.
+    const resolveUrl = (item) => (returnItem ? item : (item.remote_url || `/api/content/${item.id}/file`));
     const updateCount = () => {
       const el = overlay.querySelector('#cpSelCount');
       if (el && multiple) el.textContent = t('widget.picker.selected_count', { n: selected.size });
@@ -1372,7 +1384,8 @@ export async function render(container) {
       const icon = WIDGET_ICONS[w.widget_type] || (plugin ? esc(plugin.icon || '🔌') : '?');
       const typeLabel = WIDGET_TYPES.includes(w.widget_type)
         ? widgetTypeName(w.widget_type)
-        : (plugin ? (plugin.label || plugin.type) : w.widget_type);
+        : w.widget_type === 'template' ? templateWidgetLabel(w)
+          : (plugin ? (plugin.label || plugin.type) : w.widget_type);
       return `
         <div class="content-item">
           <div class="content-item-preview" style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px">
@@ -1384,6 +1397,7 @@ export async function render(container) {
           </div>
           <div class="content-item-actions">
             <button class="btn btn-secondary btn-sm" data-edit-widget="${escAttr(w.id)}">${t('common.edit')}</button>
+            <button class="btn btn-secondary btn-sm" data-duplicate-widget="${escAttr(w.id)}" title="${escAttr(t('widget.duplicate_hint'))}">${t('widget.duplicate')}</button>
             <button class="btn btn-secondary btn-sm" data-history-widget="${escAttr(w.id)}" title="${t('history.button')}">${t('history.button')}</button>
             <button class="btn btn-danger btn-sm" data-delete-widget="${escAttr(w.id)}">${t('common.delete')}</button>
           </div>
@@ -1403,6 +1417,30 @@ export async function render(container) {
       });
     }
     grid.onclick = async (e) => {
+      /*
+       * Duplicate: an independent copy (same type and settings, same workspace), opened straight in
+       * its editor — one menu per screen without typing the first one in again. The server copies
+       * the LIVE config, never a pending draft, and rebuilds a template widget through its template.
+       */
+      const dupBtn = e.target.closest('[data-duplicate-widget]');
+      if (dupBtn) {
+        const src = widgets.find(x => x.id === dupBtn.dataset.duplicateWidget);
+        dupBtn.disabled = true;
+        try {
+          const copy = await API(`/widgets/${encodeURIComponent(dupBtn.dataset.duplicateWidget)}/duplicate`, {
+            method: 'POST',
+            body: JSON.stringify({ name: src ? t('widget.copy_name', { name: src.name }).slice(0, 120) : undefined }),
+          });
+          showToast(t('widget.toast.duplicated', { name: copy.name }), 'success');
+          await loadWidgets();
+          const edit = document.querySelector(`#widgetGrid [data-edit-widget="${CSS.escape(copy.id)}"]`);
+          if (edit) { edit.scrollIntoView({ block: 'center' }); edit.click(); }
+        } catch (err) {
+          showToast(err.message, 'error');
+          dupBtn.disabled = false;
+        }
+        return;
+      }
       const histBtn = e.target.closest('[data-history-widget]');
       if (histBtn) {
         const w = widgets.find(x => x.id === histBtn.dataset.historyWidget);
@@ -1432,6 +1470,13 @@ export async function render(container) {
             || (w.widget_type === 'text' && typeof config.html === 'string' && /position:absolute;left:/.test(config.html));
           if (designerMade) {
             window.location.hash = '#/designer/' + w.id;
+            return;
+          }
+          // A template widget is its template's form, never the generic editor: the server rebuilds
+          // its config from `values` and refuses anything else.
+          if (w.widget_type === 'template') {
+            const { openUseModal } = await import('./templates.js');
+            openUseModal({ widget: w, values: config.values || {}, name: draft && draft.name ? draft.name : w.name, onSaved: () => loadWidgets() });
             return;
           }
           editingWidget = w;

@@ -594,6 +594,8 @@ export const api = {
   // Widgets
   getWidgets: () => request('/widgets'),
   getWidget: (id) => request('/widgets/' + id),
+  createWidget: (data) => request('/widgets', { method: 'POST', body: JSON.stringify(data) }),
+  getKioskPages: () => request('/kiosk'),
 
   // Device Groups
   getGroups: () => request('/groups'),
@@ -706,6 +708,7 @@ export const api = {
 
   // Workspace members + invites (slice 2A read-only)
   getWorkspaceMembers: (id) => request(`/workspaces/${id}/members`),
+  getOrganizationMembers: (workspaceId) => request(`/workspaces/${workspaceId}/organization-members`),
   getWorkspaceInvites: (id) => request(`/workspaces/${id}/invites`),
 
   // Workspace member/invite mutations (slice 2B). All admin-only server-side
@@ -726,6 +729,15 @@ export const api = {
   adminListOrgs: () => request('/admin/orgs'),
   // Platform-admin view: EVERY plan incl. hidden ones, with subscriber counts.
   adminListPlans: () => request('/admin/plans'),
+  adminListPromotions: () => request('/admin/promotions'),
+  adminCreatePromotion: (body) => request('/admin/promotions', { method: 'POST', body: JSON.stringify(body) }),
+  adminEndPromotion: (id) => request(`/admin/promotions/${encodeURIComponent(id)}/end`, { method: 'POST' }),
+  getPromotion: () => request('/subscription/promotion'),
+  adminOverview: () => request('/admin/overview'),
+  adminAttention: (item) => request(`/admin/overview/attention/${encodeURIComponent(item)}`),
+  adminStaleAccounts: (days) => request(`/admin/cleanup/stale-accounts?days=${encodeURIComponent(days)}`),
+  adminPurgeStale: (body) => request('/admin/cleanup/stale-accounts', { method: 'POST', body: JSON.stringify(body) }),
+  adminWarnStale: (body) => request('/admin/cleanup/stale-accounts/warn', { method: 'POST', body: JSON.stringify(body) }),
   adminDeleteOrg: (id) => request(`/admin/orgs/${id}`, { method: 'DELETE' }),
   // #talk: per-org talk flag + optional per-org ICE (STUN/TURN) override. data = { talk_enabled, ice_servers }.
   adminSetOrgTalk: (id, data) => request(`/admin/orgs/${id}/talk`, { method: 'PUT', body: JSON.stringify(data) }),

@@ -2,44 +2,6 @@
 
 ## Unreleased
 
-### Fixed
-
-**The dashboard now notices its own updates.** The "a new version is available, reload?" prompt was
-driven by a hash of a hardcoded list of twenty files — and the playlist view, everything under
-`js/lib/`, and all ten translation files were not on it. A fix shipped to any of those reached no
-open dashboard at all: nothing prompted a reload, so an operator sitting on the page saw no change
-and reasonably concluded it had not been fixed. Every view added since that list was written
-inherited the same hole, silently, because nothing about adding a view tells you to edit an array
-in the server.
-
-There is no list any more — it walks what is actually served, so a new file is covered the day it
-is added. It reads file metadata rather than contents, which keeps the work off the event loop that
-answers every screen's heartbeat.
-
-**`refresh` was implemented on the panel and impossible to send.** `MainActivity` has handled it for a
-long time — it reconnects the socket, so the screen re-fetches its playlist — and nothing anywhere on
-the server could ask for it. It is now in `ALLOWED_COMMANDS`, so "the sign is stale, kick it" works
-from the dashboard, the API and the new LAN door. Found by the test that holds the LAN door's command
-list to the panel's: the door wanted `refresh`, and the subset check failed because the *server* was
-missing it.
-
-**A new secret column would have replicated to every replica.** `lib/mesh/replication.js` copies
-"every column except", which is the right shape for a faithful copy and the wrong shape for a schema
-that grows — it ships a secret added later by default. The local API secret was exactly that column.
-Caught by the guard that exists for it (`test_replication_blocklist_covers_every_secret_column`),
-which walks `PRAGMA table_info` for every replicated table and fails on any column whose name looks
-like a credential and is not listed. The flag replicates and the secret does not: a replica showing
-"the control door is open on this screen" is the truth an operator needs, while a replica holding the
-key multiplies the number of places one compromise is enough.
-
-**A new device column reached no player.** The device SELECT that feeds every playlist payload is an
-explicit column list, and the two new columns were not in it — so the feature was written, tested at
-the route, and dead on the wire. This is the third time that exact list has done it (#325's
-background colour, then `workspace_id`), and the reason it was caught this time is that the test
-asserts on what a real registered device receives over its socket rather than on what the JavaScript
-says it sends.
-
-
 ### Added
 
 **Suika design editor polish — preset chooser, slide backgrounds, Help.** Content Library
@@ -49,6 +11,465 @@ parallel to Studio). Dev Variant B: set `window.__SUIKA_ORIGIN` to a Suika origi
 `http://127.0.0.1:6167`) for cross-origin popup + `herald:init` JWT handshake. Studio stays
 available alongside Suika (no feature-flag hide). Help documents both editors. See
 [`docs/suika-herald-integration-plan.md`](docs/suika-herald-integration-plan.md).
+
+## 2.3.1
+
+A patch release: duplicating widgets, the player version on every Displays card, two web/Pi player
+fixes from an outside contributor, and an ffmpeg probe that survives a slow first boot.
+
+**@tizmagik** authored 2 of the 7 commits in this release — the offline-playback stall (#460) and the
+missed same-version deploy (#461), both found on a real Raspberry Pi. Thanks also to **Bold Media
+Group** for two thoroughly diagnosed reports (#466, #467), and to **カタカナ** (Discord) for the
+Duplicate suggestion.
+
+### Added
+
+- **Duplicate a widget.** Every widget card has a *Duplicate* button: an independent copy with the same
+  type and settings, opened straight in its editor, so three screens can show three menus without
+  typing the first one in three times (`POST /api/widgets/:id/duplicate`). Suggested by **カタカナ**
+  (Discord).
+  - ⚠️ The copy stays in the original's workspace (its data sources and images belong there), takes
+    the **live** config and never a pending draft (no way around approval), and a template widget is
+    rebuilt through its template, so a revoked or no-longer-allowed template cannot be copied back to life.
+- **Templates → Installed** shows how many widgets each template is behind ("In 2 widgets · use it
+  again for another screen"), and the "created" message says a template can be used again — "Use…"
+  always made a new, independent widget, but nothing said so.
+- **The player app version on every Displays card, and which screens are behind (#467).** Each card
+  shows the version its player reports; an Android player older than the APK this server serves is
+  marked amber (`v1.9.6 ↓`, with the served version in its tooltip). The status filter gains an
+  *App version* section — *Behind v2.3.0 (n)* and every version in use — so a straggler no longer
+  needs opening each display or a database query. Requested by **Bold Media Group**.
+  - Only Android players are marked: the served APK is the only update that applies to them, so a
+    web, Tizen, BrightSign or native player's version is shown but never flagged. The list carries
+    each device's `platform_family`, and `/api/version` reports `apk_version`, for that.
+  - *Card details* chooses what a card shows (app version, battery, Wi-Fi, storage), per browser.
+    A 0% battery that is not charging is treated as no battery and not shown — on a running,
+    mains-powered panel it reads as a fault to staff and customers.
+
+### Fixed
+
+- **Web and Raspberry Pi players froze on a slide while offline (#460).** The offline proof-of-play
+  queue lived inside `connect()`, so any advance with the socket down threw `ReferenceError` and the
+  slide never moved again — even after the connection came back. Present since #299 (2026-08-29).
+  Thanks to **@tizmagik**, who found it on a real Pi and fixed it.
+  - Hardened: the queue is now created as the page loads, so a missing `offline-play-queue.js` only
+    turns off offline reporting instead of stopping the whole player.
+- **Players kept running old code after a same-version deploy (#461).** Each reconnect overwrote the
+  code hash the page had loaded with, so the change was never noticed. Thanks to **@tizmagik**.
+  - Hardened: the reload now waits a random 0–30 s, so a deploy does not reload the whole fleet in the
+    same second as its reconnect burst.
+- **ffmpeg reported "not found" after a slow boot, for the life of the process (#466).** The startup
+  probe gave `ffmpeg -version` 5 s and cached ANY failure — so a NAS whose first boot after upgrading
+  ran a 1.5M-row migration logged a present ffmpeg as "not found on PATH", and video thumbnails
+  (including the backfill) stayed off until a restart. Now a missing binary (`ENOENT`), a broken one
+  and a timeout are told apart; only definite answers are cached; a timeout is logged as one and
+  re-checked on a backoff, and when a re-check finds the tools the thumbnail backfill runs again.
+  The probe allows 15 s. Reported with the diagnosis by **Bold Media Group**.
+- **CI:** the template-sandbox browser test waits up to 120 s for Chrome and retries once, after GitHub
+  runners started timing out at 30 s (#464).
+
+## 2.3.0 (2026-09-30)
+
+A feature release: live data sources, a signed template library, native players for Raspberry Pi
+and Windows, a Platform area for server administrators, limited-time sales, and a refreshed look —
+plus a run of upload, support-session and proof-of-play fixes found in the field.
+
+No outside code contributions in this release. Thanks to **Hadi** (Discord) for the report behind the
+add-content folder fix and display reordering (#454).
+
+### Added
+
+**Live data sources, built in (#457).** REST API, Google Sheets, CSV, RSS/Atom and a manual table join
+Calendar and Weather, on every workspace with no plugin or switch. One table engine turns any
+row-shaped source into slide variables (`{{ds:slug.row1_price}}`), numeric aggregates, and — the one
+to recommend — a **key column**, so `{{ds:menu.latte_price}}` keeps pointing at the right row after
+the sheet is sorted.
+- ⚠️ REST credentials are encrypted at rest, redacted on every read, back-filled into a test only for
+  the origin they were saved with, and a custom API-key header never follows a redirect.
+- ⚠️ An unshared Google Sheet answers **200 with a sign-in page**, not 401: any HTML answer is an
+  explained error, never cached as data.
+- `updated` means "the data last changed", so an unchanged sync no longer bumps every bound widget
+  and defeats the players' render cache.
+- A cross-org test proves the list, every per-id route, secret back-fill and a spoofed
+  `X-Workspace-Id` stay inside the workspace.
+
+**Community template library (#455).** Slide templates (fields bound to live data) and sandboxed code
+templates, installed from a catalog whose index and packages are Ed25519-signed with a dedicated
+catalog key, with a serial number and revocation; unsigned code templates stay off until a platform
+admin allows them. Ships *UPTIME 3036*, an MIT game, as a code-template example.
+
+**Native players for Raspberry Pi and Windows (#453).** One Python/Qt engine (PySide6 — LGPL, never
+PyQt6) with OS backends, held to the Android player's shared test vectors. The Pi player is a `.deb`
+(Pi OS Trixie), the Windows player an installer plus a LocalSystem helper service; both are served
+by the operator's own server and self-update only on a sha256 match announced by that server.
+⚠️ These packages are **not** built by the release workflow: a server offers them once they are
+staged on it, and `/download/` says so when they are absent.
+
+**Platform area for server administrators (#459).** The admin page's ten unrelated sections become a
+Platform sidebar group — Overview, Users, Organizations, Plans & sales, Branding, System, Cleanup,
+Plugins — each loading only its own data; `#/admin` redirects to the Overview.
+- **Overview**: users, organizations, screens online, paying accounts and trials; activity and
+  health (new sign-ups, inactive 30 days, accounts and organizations with no screens, screens
+  offline 24h+, trials ending, unverified emails, storage, stale accounts); and *Needs your
+  attention* items that expand into the specifics with a link to the page that fixes each.
+- **Cleanup**: stale = a customer account, not paying, no trial, no paired screen, sharing nothing,
+  with no activity (sign-in, sign-up, API-token use or dashboard action) for N days. Notice first —
+  an email "deleted on <date> unless you sign in", recorded only if it was sent; signing in or any
+  later activity voids it; delete takes only accounts whose notice ran out, re-checking each at every
+  step. Uploads are removed from disk only when no other row references them. Audited.
+- Users and Organizations search; Player debug finally linked from System; Settings no longer
+  carries a second copy of the all-users table.
+
+**Members → Whole organization (#459).** Org owners/admins and platform staff see everyone in the
+organization across its workspaces (`GET /api/workspaces/:id/organization-members`); workspace
+admins and other organizations are refused.
+
+**Limited-time sales (#458).** Admin → Plans & sales: percent off, plans, monthly/yearly, how long the
+discount lasts, start and end. ⚠️ Every sale is a Stripe coupon that **checkout attaches**, with
+`redeem_by` at the sale's end, so the struck-through price is what is charged. Shown on the homepage
+(banner + countdown on the server clock) and the Billing page (not to existing subscribers, whose
+changes go through the Stripe portal). One rule everywhere: no checkout (self-hosted, or no Stripe)
+means no sale anywhere.
+
+**Hourly proof-of-play rollup (#451).** `play_logs` was 76% of a production database and still
+growing. Plays are aggregated into UTC hourly buckets (45x smaller) so raw rows can later be pruned
+without losing the record; raw retention is unchanged in this release.
+
+### Changed
+
+- **Sidebar grouped by job (#456)**: Devices, Publish, Create, Automate, Insights, Workspace (and
+  Platform), collapsible, remembered per browser, translated into all ten languages; a collapsed
+  group shows the badges of what it hides.
+- **Release palette dashboard-wide (#459)**: gradient primary actions and active navigation, a
+  gradient bar on cards and modals. ⚠️ A customised white-label colour replaces all of it; the
+  server's default colour (`#3B82F6`) is not treated as a brand.
+- **Homepage (#458)**: a release section for live data, templates and native players; comparison
+  tables and the Yodeck/OptiSigns pages gain live-data and template rows (competitor tiers read off
+  their pricing pages on 2026-09-30).
+- **1 MiB upload chunks (#450)** instead of 5 MiB, so the progress bar moves every few seconds and a
+  0.3 Mbps uplink can finish a chunk inside the 125 s proxy ceiling; chunk requests get their own
+  rate-limit budget so fast links are not refused mid-file.
+
+### Fixed
+
+- **Add-content folders (#454)** had not worked since 2.2.0 (`childrenOf.get` on a function, error
+  swallowed). The Displays → Playlist picker is now the same component as the Playlists one, with
+  folders, search and scrolling for hundreds of items; displays can be reordered by dragging.
+- **Proof-of-play (#452)**: the Android player reported `completed = true` on every advance, so a
+  screen failing every item wrote a perfect run of successes. A fault now marks the item incomplete.
+- **Support sessions (#448, #449)** could not upload or pair ("No plan found"), and an upload that
+  transferred every byte then died at the `INSERT` on a foreign key, orphaning the file. Both fixed;
+  support uploads belong to the workspace, not to an account.
+- **Unclaimed devices (#447)** lost every live dashboard event (a null room), and
+  `GET /api/subscription/me` threw for a session with no users row.
+
+### Security
+
+Found while security-testing the template library (#454); each predated it.
+- `POST /api/status/import` skipped the read-only check, so a workspace viewer could create devices
+  and playlists and overwrite branding including `custom_css`.
+- A plugin zip was inflated in full before its size was checked (a 300 KB upload grew the process by
+  ~600 MB). Inflation is now streamed and capped.
+- Rate limiters keyed on the raw path while Express routes on the decoded one, so `%68tml` stepped
+  around every limiter.
+- The native player's playlist web view granted the microphone to any origin.
+
+### Upgrade notes
+
+- Migrations are additive and run on boot: template tables, `promotions`, `users.cleanup_warned_at`
+  / `cleanup_delete_after`, and an index on `activity_log(user_id, created_at)`.
+- Sales need a cloud-mode server with Stripe configured; stale-account notices need email.
+- Stage the native Pi and Windows packages on the server separately if you want to offer them.
+
+## 2.2.3 (2026-09-26)
+
+### Added
+
+**Agent Skills Discovery at `/.well-known/agent-skills/index.json`**, with two skill documents that
+describe what this product actually does: operating a screen estate through the MCP server or the
+REST API, and choosing hardware and getting a player onto it.
+
+⚠️ **Each index entry carries a sha256 computed from the bytes the artifact route returns**, not a
+digest stored beside the prose. A hand-maintained digest is wrong the first time anybody edits a
+sentence — and to a verifying agent a mismatch reads as *tampering*, not as staleness.
+
+⚠️ **A skill is read by something that will then act on it**, so a plausible instruction that does
+not match the API is worse than no skill: the agent follows it, fails, and cannot tell that the
+document was wrong rather than its own request. The test cross-checks every tool and command name a
+skill mentions against the ones the server publishes.
+
+**An ARD capability manifest at `/.well-known/ai-catalog.json`**, listing the MCP server, the OpenAPI
+description, the skills index and the auth guide — each an entry an agent can actually fetch, served
+with `Access-Control-Allow-Origin: *` because browser-side agents read it. `robots.txt` points at it
+with an `Agentmap:` line.
+
+**Still deliberately absent:** OAuth authorization-server metadata, an A2A agent card, WebMCP tools
+and the agent-payment profiles. Each would mean publishing a document that names an endpoint or a
+capability this instance does not have. The `/.well-known` 404 says what is published instead.
+
+## 2.2.2 (2026-09-26)
+
+### Added
+
+**OAuth 2.0 Protected Resource Metadata at `/.well-known/oauth-protected-resource`** (RFC 9728).
+ScreenTinker *is* a protected resource that takes bearer tokens, so this document is true and worth
+publishing: the resource identifier, the scopes that exist, that credentials are presented in the
+`Authorization` header, and where the prose lives.
+
+⚠️ **`authorization_servers` is deliberately absent.** It is OPTIONAL in RFC 9728, and this resource
+delegates to nothing — no `/authorize`, no `/token`, and sessions are signed with a symmetric secret
+so there is no key a `jwks_uri` could publish. Naming an issuer would send a client into a
+discovery-and-redirect dance ending at a 404, which is the wasted-retries failure `/auth.md` exists
+to prevent. A reader that finds no authorization server is pointed at the documentation instead.
+
+⚠️ **The advertised scopes and the mintable scopes are now one list** (`lib/api-scopes.js`).
+Advertising a scope the minting code rejects is worse than advertising nothing: a client asks for it,
+is refused, and cannot tell that the advertisement was wrong rather than its request.
+
+**A `401` now carries `WWW-Authenticate` with `resource_metadata`** (RFC 9728 §5.1), from the API and
+from the MCP endpoint, through one shared builder so the two cannot disagree. Without it, an agent
+arriving with no credential can only probe blindly — the exact behaviour the auth guide is written to
+stop.
+
+
+**An MCP server card at `/.well-known/mcp/server-card.json`** (SEP-1649), so a client can learn what
+this server is before connecting to it: `serverInfo`, `capabilities`, the Streamable HTTP endpoint,
+and how to authenticate.
+
+⚠️ **It is built from the same `identity()` the `initialize` handshake returns.** A card that
+disagrees with the handshake is worse than no card — a client picks its endpoint, transport and auth
+strategy from the card and only discovers the mismatch after connecting. The test asserts the route
+uses the shared definition rather than restating the same fields by hand.
+
+⚠️ **The card describes, it does not grant.** The endpoint still refuses everything without a token,
+so the card says the credential is issued by a human and points at `/auth.md`.
+
+**No OAuth or OIDC discovery metadata is published, deliberately.** ScreenTinker is not an
+authorization server: it has no `/authorize`, no `/token`, and its sessions are signed with a
+symmetric secret, so there is no public key a `jwks_uri` could serve. Publishing metadata naming
+endpoints that do not exist would make a scanner pass and send real agents into a flow that cannot
+complete — the precise failure `/auth.md` exists to prevent. ScreenTinker *consumes* OIDC discovery as
+a relying party for per-organisation SSO; that is the opposite direction and does not make it a
+provider.
+
+
+**Every published page now names its Markdown twin in the document**, as
+`<link rel="alternate" type="text/markdown">`, not only in the `Link` header.
+
+⚠️ **This exists because a CDN defeats content negotiation.** The server has negotiated
+`Accept: text/markdown` since 2.2.0 and sends `Vary: Accept` — but Cloudflare ignores `Vary` for
+caching, for everything except `Accept-Encoding`. So one cached variant is served to every client: on
+a cache HIT, a request asking for Markdown gets 87 KB of HTML with a `200`, while the same request
+with a cache-buster gets the 18 KB Markdown from the origin. The cached body also carries whatever
+`Link` header it was stored with, which can predate the feature entirely.
+
+The in-document link is inside that cached body, so it survives, and it is what an HTML-parsing
+client looks for anyway. It is the only half of the problem the application controls — **the other
+half is a cache rule on the zone**, bypassing cache when `Accept` contains `text/markdown`.
+
+
+**Agent registration discovery: `auth.md` is served from the service root.** The convention puts that
+document at `/auth.md`; we published only `/.well-known/auth.md`, so anything following the standard
+asked for `/auth.md` and got the app shell — 200, `text/html`, 21 KB — and concluded the instance did
+not support it. Its H1 now names the document as well, because scanners identify it by heading as
+well as by path.
+
+This instance has no authorization server, so there is no OAuth protected-resource metadata to point
+at and inventing some would be worse than publishing nothing. `/auth.md` is therefore self-contained:
+who it is for, the single supported method (a bearer token in the `Authorization` header), where a
+human provisions one, the credential format and lifetime, and — stated plainly — that there is **no
+programmatic registration endpoint and none is planned**, so an agent stops and asks rather than
+hunting for one.
+
+**No A2A agent card is published, deliberately.** An agent card's `supportedInterfaces` is a promise
+of a protocol endpoint: a client reads it and then speaks A2A JSON-RPC (`message/send`, `tasks/get`)
+to the URL it names. ScreenTinker does not implement A2A, and pointing the card at `/mcp` would name
+an endpoint that speaks a different protocol, so every call would fail after the client had committed
+to it. A2A is for tasking an autonomous agent; ScreenTinker is a tool provider, which is what MCP is
+for — the two are complementary by design. The 404 below says so.
+
+⚠️ **An unknown `/.well-known/…` path now returns 404 instead of the app shell.** Everything under
+that prefix is machine-read, and a 200 with HTML is indistinguishable from a malformed document;
+"this instance does not do OAuth" is a useful answer that only a 404 conveys. ⚠️ The body lists what
+*is* published, **derived from the registered routes** — the first version hand-listed two documents
+and was wrong within the day, once two more were added, and a 404 that misdescribes the server is
+worse than a bare one because it is what a client reads when it is already lost. ⚠️ The guard sits
+**below** the static middleware on purpose: above it, it would have swallowed
+`/.well-known/acme-challenge/…` and broken certbot's webroot renewal — silently, with the certificate
+expiring sixty days later.
+
+### Fixed
+
+**The pre-upgrade database backup could never finish on a busy instance.** `upgrade.sh` used the
+sqlite3 shell's `.backup`, which copies every page in a single step while holding a read lock — so
+one write from the running server aborts it and it starts again at page one. On a 1.4 GB database
+with 33 displays heartbeating it ran at 94% CPU for over eight minutes with the destination frozen at
+1227 MB, printing nothing. ⚠️ **It fails by load, not by size**, so it passes every quiet-hour
+rehearsal: the nightly backup of that same database at 03:00 finishes in about 80 seconds, while the
+upgrade you run at lunchtime does not finish at all. And because there is no error and no progress,
+the obvious response is to kill it and skip the backup — losing the only way back, at exactly the
+moment you are about to need it.
+
+It uses `VACUUM INTO` now, which writes a fresh database from one read transaction and completes on a
+busy WAL database; the same 1.4 GB production database took under a minute. Older sqlite (before
+3.27) still falls back to `.backup`, chosen by **comparing the version** rather than by catching the
+failure — the first draft fell back on any error and announced "VACUUM INTO unavailable (sqlite3
+3.45.1)" when the real fault was an unreadable source file.
+
+⚠️ **The copy is compacted, so it is smaller than the source** (1405 MB → 1004 MB on that run). That
+is a complete database, not a truncated one. The upgrade now runs `PRAGMA integrity_check` on it and
+refuses to go any further if it does not answer `ok`, because an unverified backup is not a way back.
+
+`backup.sh` still uses `.backup` for the nightlies and has the same exposure.
+
+## 2.2.1 (2026-09-26)
+
+### Fixed
+
+**A playlist answer carried the playlist twice.** `get_playlist` and `publish_playlist` returned the
+raw row: `items` with every storage column, plus `published_snapshot` and `published_structure`, which
+are serialised copies of the same playlist. Measured on a one-item playlist, that is 2,397 bytes to say
+something worth about fifty — and both duplicates grow with the item count, so the bigger the playlist
+the worse it gets. ⚠️ The real cost is not the bytes: a model that reads the snapshot is reading the
+**last published** version while being asked about the draft, which is the one distinction the tool
+instructions go out of their way to explain. Those tools, and the three that create content or add an
+item, now answer with what a screen would play rather than with a database row.
+
+**An MCP tool could hand a model a screen's settings PIN.** `rename_display` had no output shape, so it
+answered with the raw device row — eighty columns, including a live `settings_pin`. That is the number
+2.2.0 made load-bearing: it is what the Esc-unpair gate on the web player now demands. So an agent that
+renamed a screen was handed the PIN that unpairs it, in its context, its transcript, and whatever logs
+either. `claim_secret` and `trigger_clear_all_token` went the same way on a device that has them.
+
+⚠️ **The fix is not a shape for that tool.** `get_display` already strips secrets and has a test saying
+so, and that guard covered one tool out of twenty-one — the next tool added without a shape reopens the
+hole. Redaction now runs on every tool result at the one point where results are serialised, and what
+counts as a credential is the same definition mesh replication uses to decide what never leaves for a
+replica, in `lib/secret-names.js`. The test cross-reads replication's own blocklist and fails if
+anything on it would reach a model, which is how `pairing_code` and `enrol_key` were caught: both are
+credentials, neither has a name that looks like one.
+
+**The MCP media-library tool returned items with no name, and its search never matched anything.**
+`list_content` projected `name`, `type` and `duration`; a content row has `filename`, `mime_type` and
+`duration_sec` and has never had the other three. So every item came back as a bare id, and `search` —
+filtering on the same absent field — returned an empty list for every query. ⚠️ Neither answer is an
+error and both are well-formed, so an agent asked to put something on a screen reports that the media
+library is empty, or that its files have no names, and is believed. Found while recording a demo
+against a seeded instance, which is the only reason anybody looked at the payload rather than the
+status code. The projection is now asserted against the schema, so renaming the column fails the test
+instead of quietly emptying the tool again.
+
+## 2.2.0 (2026-09-26)
+
+Contributed by [@awatterott](https://github.com/awatterott) of
+[Watterott electronic](https://www.watterott.com), who runs ScreenTinker on large LED video walls in
+production and supplied the Colorlight/EDID configuration behind the new LED wall guide, the
+certified-hardware entry and the photograph on it — and who reported the camera-permission prompt on
+the pairing screen that is fixed below.
+
+⚠️ **The APK does not ship with a server upgrade.** As always, staging the Android build is a separate
+step. The Vega `.vpkg` for the 2026 Fire TV sticks is likewise built and installed separately; see
+`docs/vega-player.md`.
+
+⚠️ **Two-way Talk will not appear on any screen until its player is updated.** The capability used to
+be declared from a probe the player ran at startup, and that probe is gone (see below). The dashboard
+now offers 2-way whenever the screen supports Talk at all, and a screen with no microphone reports
+back and says so — but a player from before this release still declares the old capability set.
+
+### Added
+
+**ScreenTinker speaks the Model Context Protocol.** Every instance, hosted or self-hosted, now serves
+an MCP server at `/mcp`. Point Claude — or any MCP client — at it with the same
+`Authorization: Bearer st_...` the REST API takes, and ask for things in plain English: which screens
+are offline, put this video on the lobby TV, did the autumn campaign actually run. No other digital
+signage CMS does this.
+
+⚠️ **It is a client of our own public API, not a second way into the database.** Every tool call is an
+HTTP request back into the same API you could call with `curl`, carrying the caller's token — so
+workspace isolation, the scope gate, the replica proxy and the rate limits apply to an agent exactly
+as they apply to a script. There is no second copy of the permission model to drift out of step with
+the first.
+
+Twenty-one tools, chosen rather than generated: the spec has 133 operations and a model gets
+measurably worse at picking the right one as the list grows. ⚠️ **The list is filtered by the token's
+scope** — a read-only token is never shown that a write tool exists, so an agent holding one does not
+spend its turns discovering what it may not do.
+
+**The site now tells automated visitors what it is.** `robots.txt` carries Content Signals
+(`search=yes, ai-input=yes, ai-train=yes` — this is documentation for an open-source project, and
+being quoted is the point), and every published page has a Markdown rendition: send
+`Accept: text/markdown`, or append `.md` to the path. There is an RFC 9727 API catalogue at
+`/.well-known/api-catalog`, an authentication guide at `/.well-known/auth.md`, and `Link` headers
+pointing at all of it.
+
+⚠️ The auth guide's most useful sentence is the one saying an agent **cannot** obtain a token — a human
+creates one in the dashboard. Without it, a capable agent burns its retries hunting for a registration
+endpoint that does not exist and reads every 401 as "my token is wrong".
+
+**A downloads page, and a guide for every platform.** `/download` lists every player *this instance*
+can hand out, built from the artifacts it actually has — and says plainly when it has none rather than
+offering a link to nothing. Four platforms that had a name on the homepage and nowhere to click now
+have guides: Windows, ChromeOS, LG webOS and BrightSign. E-paper/ESP32 and LED video walls have them
+too, taking the platform count to eleven.
+
+⚠️ **The guides no longer link a GitHub release for a player.** The BrightSign archive has the server
+URL stamped into its bytes when it is built, so a release asset points a freshly imaged player at
+screentinker.com — which presents as a pairing bug rather than a packaging one, and is expensive to
+diagnose because every individual step looks correct. `/download/autorun.zip` is built for the
+instance serving it.
+
+**Alert email carries an unsubscribe link**, with RFC 8058 headers over SMTP so the mail client's own
+button works. ⚠️ A GET never unsubscribes anyone: mail scanners and link-safety services fetch every
+link in a message with no human involved, and wiring the change to GET would silence accounts nobody
+touched. The link opens a page with a button; the button does the work.
+
+There is also a platform-admin endpoint to turn a customer's alert email off, which writes an
+`activity_log` row. That row is the point: a hand-written database UPDATE leaves nothing behind, so
+months later nothing distinguishes "the customer asked us to stop" from "the alert service is broken
+and nobody noticed a display go dark".
+
+**The marketing site says what the product actually does now.** The homepage had drifted behind the
+software: it advertised nine platforms while eleven shipped, and its comparison table quoted our own
+price as the monthly figure times twelve — understating our own annual plan by $199 against
+competitors whose numbers had also moved. Prices are re-checked against each vendor's public page and
+dated. Eight features that shipped and were never mentioned anywhere a customer would look — display
+power schedules, group sync, node mesh, scale-out replicas, SSO, two-factor authentication,
+consent-gated support access and portrait-native panels — now appear on it.
+
+**E-paper and ESP32 signs, documented at last.** The embedded renderer has been in the product for a
+while and was never mentioned anywhere a customer would look. The server resolves the playlist item,
+dithers it to the colours the panel actually has, packs it into the controller's byte layout, and
+tells the board how long to deep sleep — so a battery-powered sign runs with no browser on the device.
+Ten panel presets, and two dithering algorithms that are not interchangeable.
+
+**LED video walls**, contributed from a production install. The LED processor hands the wall's native
+resolution to the player over EDID, so a 2808×648 wall arrives as an ordinary display and needs no
+LED-wall feature at all. ⚠️ Streaming sticks cannot drive one — they only output standard resolutions
+— so use a Raspberry Pi or a small x86 PC.
+
+**Apple TV is documented as not supported**, with the reasoning, because people ask. tvOS ships no web
+view and an app may not carry its own engine, so the player cannot run there; a native port could not
+show widgets, HTML bundles, web pages or YouTube; and unattended operation needs MDM Single App Mode,
+without which an Apple TV sleeps and does not relaunch after a power cut.
+
+**Vega OS player for Fire TV Stick 4K Select and Fire TV Stick HD (2026).** Those sticks are not
+Android. The APK does not install. `vega/` is an installed WebView shell that loads the same
+`/player` page as a browser, so playlists, zones, widgets, YouTube, HLS, schedules and the
+dashboard's volume controls are the web player's, not a second implementation. The shell reports
+platform `vega` and the Amazon model code (`AFTCA002`, `AFTCL001`). A WebView data clear does not
+mint a new display: the shell keeps the pairing in `/data` and the page adopts it, and an unpair
+or `?reset=` clears that copy.
+
+It does not claim Android's powers, because the OS does not have them: no device-owner kiosk, no
+reboot, no display-power API, no RTSP, no package install, no self-update of the `.vpkg`. The shell
+does ask LCM for a permanent lifespan, which is the policy Vega logs as the screensaver being
+disabled. That is not a wake lock: the panel can still be forced off. Group sync does not warm a
+second video decoder: on an AFTCA002 that is a CMA claim (about 236 MB of decoder DMA), not a
+RAM claim. Image→image transitions run. A video boundary hard-cuts: drawing a `<video>` into a
+canvas SIGTRAPs in Vega's compositor, on a stack that has also fired with tens of megabytes of
+CMA still free. The 960px capture cap stays as mitigation for the run that did drain that pool.
+The certified-hardware entries stay **not supported**. See
+[`docs/vega-player.md`](docs/vega-player.md).
 
 **Device-side REST — a screen can now make an HTTP request on its own network.** Signage sits on the
 customer's LAN next to the things worth asking: a PLC, a door sensor, a local Home Assistant. The
@@ -150,6 +571,150 @@ library now opens on four choices instead of thirty-nine.
 The dropdown stays for jumping straight to a folder you can already name, now indented to show the
 same structure. Both controls read and write one piece of state, so they cannot disagree on screen.
 
+**Reports returned an empty result for a valid date range.** All three report endpoints built the end
+of the window as `new Date(end + 'T23:59:59')`, which assumes a bare `YYYY-MM-DD`. Hand them a full ISO
+timestamp — what a client library, a script or an AI agent naturally sends — and the concatenation
+produced an Invalid Date, `NaN`, and a query matching nothing. ⚠️ The endpoint then answered **200 with
+an empty list**. Not an error: "nothing played", which is plausible enough that nobody questions it.
+Found by asking the new MCP server for a week of uptime and being told, convincingly, that every screen
+had been dark.
+
+⚠️ **And the two ends of a range were in different time zones.** A bare date parses as UTC midnight
+while `T23:59:59` without an offset parses as *local*, so the window was skewed by the server's UTC
+offset. Invisible on our own infrastructure, which runs UTC — and five hours wrong on a self-hosted
+instance in Chicago, on every report it has ever produced.
+
+**The player asked for camera permission on top of the pairing code.** `register()` runs before a
+screen is paired and probed for a microphone, so on a fresh Raspberry Pi kiosk the browser's
+permission dialog appeared over the pairing code — the first screen a new customer ever sees, and a
+dialog there reads as "this thing wants my camera". The probe is gone. Two-way Talk now proves the
+microphone by *using* it: the player asks when the operator clicks the button, which is the one moment
+a dialog is expected, and a screen with no microphone falls back to a one-way session and says so
+instead of going quietly one-way.
+
+**Approved community hardware reports never appeared on any container.** `certified-hardware.json` is
+read from the repository root at runtime and was never copied into the Docker image. The route catches
+the resulting error and serves the committed static page, which looks entirely correct — so the
+failure was invisible, and what it silently dropped was every approved submission, which is merged in
+at render time. The approve link worked, the row was marked approved, and the report never showed up.
+⚠️ This was the third file to go missing from the image this way, so it is now a test: every
+repository-root path the server resolves at runtime must appear in the Dockerfile.
+
+**`/scripts` served the whole directory.** It published `reset-admin.js`, `mint-billing-token.js`,
+`support-keygen.js`, `upgrade.sh` and `backup.sh` to anonymous callers. Nothing secret — the repository
+is public — but that directory is where a self-hoster's own script lands, and the next person to drop
+a restore script with a connection string beside them would have published it without touching a
+route. It is an allowlist now. ⚠️ Which immediately needed widening: a deployment bind-mounts four
+BrightSign provisioning payloads into that same directory, and narrowing it without them would have
+404'd every BrightSign install — silently, because a missing archive gets the SPA fallback with a 200
+and a player writes that to its storage root as its autorun.
+
+**A 93 MB zip was served as `text/plain`.** The bytes arrived intact, which is why it passed every
+check; what it did was tell every proxy and CDN in front of the instance that a zip was text they
+could transform. The type comes from the extension now, and `.sh`/`.bat` deliberately stay text so
+they can be read in a browser before being run.
+
+**The pricing page ignored its own database.** The Enterprise/Custom card is a row in the `plans`
+table, and the page displayed a hardcoded title regardless — so the database said "Custom", the page
+said "Enterprise / Custom", and renaming the plan changed nothing. ⚠️ The exclusion that keeps that row
+out of the main grid also needed two conditions rather than one: the schema seeds it *priced*, so a
+shape test alone would have shown two enterprise cards on every fresh self-hosted install.
+
+**"Most Popular" had quietly moved.** The badge was positional — correct when there were four plans —
+and two were added, so it drifted onto Starter and stayed there for months. Nobody decided that. It is
+pinned to a named plan now, and the test asserts which one.
+
+### Fixed
+
+**A widget first in a cached playlist bricked the player at boot.** Second time a temporal dead zone
+has done this. The boot render ran before `playbackOrder` and its two companions were initialised, so
+a playlist whose first item was a widget threw on every start — and because the playlist is cached,
+rebooting could not clear it. The declarations are hoisted above the boot path now, and the boot
+render is wrapped: a cached playlist that cannot render logs why, drops the cache and carries on to
+connect, rather than taking the screen down with it. A test asserts the placement, not just the
+behaviour, because the behaviour is correct right up until someone moves a `const`.
+
+**Esc on the web player was a public unpair button.** It asked `confirm('Reset player and return to
+setup?')` and, on OK, wiped the display's identity and reloaded — so anyone who could reach a
+keyboard on a kiosk could unpair the screen. The operator's first sign of it was a sign showing a
+pairing code. A `confirm()` dialog is not a permission check: it establishes only that somebody meant
+to press the button, which is precisely what was wrong.
+
+Esc now asks for the **settings PIN the dashboard already provisions for that screen** — the same
+number the Android player's hidden menu uses, reused rather than reinvented so an operator has one
+PIN per screen and rotating it in one place rotates it everywhere. A correct PIN unpairs; a wrong,
+empty or cancelled one does nothing at all and leaves the screen playing.
+
+⚠️ **A screen with no PIN cannot be unpaired at the panel, and Esc does nothing visible** — not even
+an explanation, because the status overlay is full-screen and telling the room "unpair from the
+dashboard" would blank a running sign for anyone who leaned on the key. Unpair that screen from the
+dashboard. Any weaker fallback would restore the old behaviour for exactly the screens least likely
+to have anyone watching them.
+
+⚠️ **The PIN prompt closes itself after 30 seconds.** Without that, someone who presses Esc and walks
+away leaves a PIN box covering a running sign until the next reload — which turns "Esc is harmless"
+into "Esc blanks the screen", the same class of problem as the reset it replaces. Playback is never
+paused while it is up.
+
+On a correct PIN the player tells the server it is unpaired **while it still holds the token that
+proves it may**, then clears its identity, the playlist and layout caches, the trigger config and
+cache, `st_install_id`, the BrightSign registry, and `?k=` from the URL. Server-side the screen goes
+back to unpaired and its fingerprint rows are dropped, so the next registration is a genuinely new
+display instead of being reclaimed onto the row that was just released — **the row itself survives**,
+because assignments, play history and telemetry hang off it and a screen that vanished because
+somebody pressed a key would be worse than one left needing attention.
+
+⚠️ `st_install_id` is the load-bearing part of that list: it salts the fingerprint the server matches
+on, and leaving it means the next register is reclaimed onto the old row and the whole unpair was
+theatre. That is why the decision and the key list now live in `lib/unpair-gate.js` with tests, rather
+than inline in a keydown handler reachable only through a real browser and a real PIN.
+
+⚠️ **A replica cannot relay this event.** Every other player event reports something and a primary may
+believe a peer relaying it; this one changes a screen's pairing state, and a replica holding a scoped
+write grant should not gain "unpair any screen in these workspaces" as a side effect of gaining
+"relay what these screens report". On a replica-attached screen the local wipe still happens and the
+player says on its console that the server was never told.
+
+The web player also now stores the settings PIN it is sent and listens for `device:settings-pin`, so a
+rotation from the dashboard reaches the screen the gate depends on. ⚠️ It is only adopted when the
+field is actually present — some register paths omit it, and there is no "remove the PIN" feature, so
+absent means "this sender did not include it" and an unconditional assignment would erase a
+known-good PIN on the next reconnect.
+
+**The dashboard now notices its own updates.** The "a new version is available, reload?" prompt was
+driven by a hash of a hardcoded list of twenty files — and the playlist view, everything under
+`js/lib/`, and all ten translation files were not on it. A fix shipped to any of those reached no
+open dashboard at all: nothing prompted a reload, so an operator sitting on the page saw no change
+and reasonably concluded it had not been fixed. Every view added since that list was written
+inherited the same hole, silently, because nothing about adding a view tells you to edit an array
+in the server.
+
+There is no list any more — it walks what is actually served, so a new file is covered the day it
+is added. It reads file metadata rather than contents, which keeps the work off the event loop that
+answers every screen's heartbeat.
+
+**`refresh` was implemented on the panel and impossible to send.** `MainActivity` has handled it for a
+long time — it reconnects the socket, so the screen re-fetches its playlist — and nothing anywhere on
+the server could ask for it. It is now in `ALLOWED_COMMANDS`, so "the sign is stale, kick it" works
+from the dashboard, the API and the new LAN door. Found by the test that holds the LAN door's command
+list to the panel's: the door wanted `refresh`, and the subset check failed because the *server* was
+missing it.
+
+**A new secret column would have replicated to every replica.** `lib/mesh/replication.js` copies
+"every column except", which is the right shape for a faithful copy and the wrong shape for a schema
+that grows — it ships a secret added later by default. The local API secret was exactly that column.
+Caught by the guard that exists for it (`test_replication_blocklist_covers_every_secret_column`),
+which walks `PRAGMA table_info` for every replicated table and fails on any column whose name looks
+like a credential and is not listed. The flag replicates and the secret does not: a replica showing
+"the control door is open on this screen" is the truth an operator needs, while a replica holding the
+key multiplies the number of places one compromise is enough.
+
+**A new device column reached no player.** The device SELECT that feeds every playlist payload is an
+explicit column list, and the two new columns were not in it — so the feature was written, tested at
+the route, and dead on the wire. This is the third time that exact list has done it (#325's
+background colour, then `workspace_id`), and the reason it was caught this time is that the test
+asserts on what a real registered device receives over its socket rather than on what the JavaScript
+says it sends.
 
 ## 2.1.6 (2026-09-23)
 

@@ -8,10 +8,12 @@
 
 const { db } = require('../../db/database');
 const { resolveIcalData } = require('./ical-resolver');
+const { resolveWeatherData, weatherIntervalMin } = require('./weather-resolver');
 const pluginRegistry = require('../plugins/registry');
 const { makePluginFetch } = require('../plugins/egress');
 const { decryptSecrets, fieldsForDataSource } = require('../plugins/secrets');
 const { LOCAL_ROWS_SQL } = require('../replica-proxy');
+const { getBuiltinType } = require('./builtin-types');
 
 // Bound how many remote calendar feeds may be in flight at once across the whole
 // process. Data source syncs (and `/test`) can fire several fetches near-simultaneously;
@@ -40,6 +42,15 @@ async function withFetchSlot(fn) {
   }
 }
 
+// How often a source may be re-fetched. Weather is floored at 10 minutes: Open-Meteo's current
+// conditions only move every 15 minutes and it is a free, keyless service we must not hammer.
+function syncIntervalMin(type, config) {
+  if (type === 'weather') return weatherIntervalMin(config);
+  const builtin = getBuiltinType(type);
+  if (builtin) return builtin.interval(config);
+  return Math.max(1, parseInt(config && config.interval_min, 10) || 15);
+}
+
 let pollTimer = null;
 let ioInstance = null;
 
@@ -61,7 +72,7 @@ function pollDueDataSources() {
       if (inFlight.has(row.id)) continue;
       let config = {};
       try { config = JSON.parse(row.config || '{}'); } catch (_) {}
-      const intervalMin = Math.max(1, parseInt(config.interval_min, 10) || 15);
+      const intervalMin = syncIntervalMin(row.type, config);
       const isDue = !row.last_fetched_at || (nowSec - row.last_fetched_at >= intervalMin * 60);
       if (isDue) {
         syncDataSource(row.id, true).catch(err => {
@@ -133,7 +144,7 @@ async function syncDataSource(sourceOrId, force = false) {
     config = decryptSecrets(JSON.parse(row.config || '{}'), fieldsForDataSource(row.type));
   } catch (_) {}
 
-  const intervalMin = Math.max(1, parseInt(config.interval_min, 10) || 15);
+  const intervalMin = syncIntervalMin(row.type, config);
   const nowSec = Math.floor(Date.now() / 1000);
 
   // Return existing cache if not expired and not forced
@@ -150,8 +161,14 @@ async function syncDataSource(sourceOrId, force = false) {
   try {
     let resolvedData = null;
 
-    if (row.type === 'ical') {
+    const builtin = getBuiltinType(row.type);
+    if (builtin) {
+      const out = await withFetchSlot(() => builtin.resolve(config, { now: new Date() }));
+      resolvedData = keepUpdatedStamp(out.data, row.cached_data);
+    } else if (row.type === 'ical') {
       resolvedData = await withFetchSlot(() => resolveIcalData(config));
+    } else if (row.type === 'weather') {
+      resolvedData = await withFetchSlot(() => resolveWeatherData(config, { now: new Date() }));
     } else {
       const plugin = pluginRegistry.getDataSource(row.type);
       if (!plugin) throw new Error(`Unsupported data source type: ${row.type}`);
@@ -254,8 +271,25 @@ async function syncDataSource(sourceOrId, force = false) {
  * shown to every workspace member, viewers included, while /test deliberately answers with a
  * fixed string for exactly that reason. One vocabulary, no addresses.
  */
+/*
+ * Built-in types stamp `updated` into their data. Stamped with the fetch time it would differ on
+ * every sync, so every sync would look like a change, bump every bound widget's revision and
+ * defeat the players' immutable render cache. It means "when this data last CHANGED": if nothing
+ * else moved, the previous stamp is kept.
+ */
+function keepUpdatedStamp(data, prevJson) {
+  if (!data || typeof data !== 'object' || !('updated' in data) || !prevJson) return data;
+  let prev;
+  try { prev = JSON.parse(prevJson); } catch (_) { return data; }
+  if (!prev || typeof prev !== 'object' || !('updated' in prev)) return data;
+  const strip = (o) => { const c = { ...o }; delete c.updated; return JSON.stringify(c); };
+  return strip(data) === strip(prev) ? { ...data, updated: prev.updated } : data;
+}
+
 function describeSyncError(err) {
   if (!err) return 'Sync failed';
+  // Written for the operator by the built-in resolvers (lib/data-sources/http.js UserFacingError).
+  if (typeof err.userMessage === 'string' && err.userMessage) return err.userMessage.slice(0, 300);
   const m = String(err.message || '');
   if (err.name === 'SsrfError' || err.code === 'ssrf' || /^blocked:/i.test(m)) {
     return 'The address is not allowed';
@@ -275,6 +309,15 @@ function describeSyncError(err) {
   }
   if (/No valid iCal URL/i.test(m)) {
     return 'No calendar URL or data configured';
+  }
+  if (err.code === 'weather-location' || /^Location not found/i.test(m)) {
+    return 'The location could not be found';
+  }
+  if (err.code === 'weather-config' || /^Invalid weather configuration/i.test(m)) {
+    return 'The weather configuration is invalid';
+  }
+  if (err.code === 'egress-not-allowed') {
+    return 'The address is not allowed';
   }
   if (/could not be parsed|parse/i.test(m)) {
     return 'The data could not be parsed';
@@ -343,22 +386,6 @@ function bumpDependentWidgets(row, nowSec) {
 }
 
 /**
- * Stamp last_status onto a cached payload as the reserved key `__status`.
- *
- * Not part of the iCal dictionary — `status` stays the room word (AVAILABLE/BUSY). The slide
- * renderer reads `__status` for color_when / bind_status so a failed fetch cannot paint as free.
- */
-function attachSourceStatus(data, lastStatus) {
-  const out = (data && typeof data === 'object' && !Array.isArray(data)) ? { ...data } : {};
-  if (lastStatus === 'ok' || lastStatus === 'error' || lastStatus === 'pending') {
-    out.__status = lastStatus;
-  } else {
-    out.__status = lastStatus ? 'error' : 'pending';
-  }
-  return out;
-}
-
-/**
  * Get all data sources for a workspace mapped by slug synchronously from cache.
  *
  * @param {string} workspaceId Workspace ID
@@ -367,13 +394,12 @@ function attachSourceStatus(data, lastStatus) {
 function getWorkspaceDataMapSync(workspaceId) {
   if (!workspaceId) return {};
 
-  const rows = db.prepare('SELECT slug, cached_data, last_status FROM data_sources WHERE workspace_id = ?').all(workspaceId);
+  const rows = db.prepare('SELECT slug, cached_data FROM data_sources WHERE workspace_id = ?').all(workspaceId);
   const map = {};
 
   for (const r of rows) {
     try {
-      const parsed = r.cached_data ? JSON.parse(r.cached_data) : {};
-      const data = attachSourceStatus(parsed, r.last_status);
+      const data = r.cached_data ? JSON.parse(r.cached_data) : {};
       map[r.slug] = data;
       map[r.slug.toLowerCase()] = data;
     } catch (_) {}
@@ -387,8 +413,9 @@ module.exports = {
   bumpDependentWidgets,
   describeSyncError,
   getWorkspaceDataMapSync,
-  attachSourceStatus,
   withFetchSlot,
+  syncIntervalMin,
+  keepUpdatedStamp,
   pollDueDataSources,
   startDataSourcesPoller,
   stopDataSourcesPoller,

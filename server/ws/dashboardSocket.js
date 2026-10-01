@@ -1,8 +1,8 @@
 const heartbeat = require('../services/heartbeat');
-const { resolveSessionUser } = require('../middleware/auth');
+const { resolveSessionUser, isPlatformRole } = require('../middleware/auth');
 const { db } = require('../db/database');
 const { accessContext, accessibleWorkspaceIds } = require('../lib/tenancy');
-const { workspaceRoom } = require('../lib/socket-rooms');
+const { roomsForDashboard } = require('../lib/socket-rooms');
 const { protectSocket } = require('../lib/safe-socket');
 const playerCapabilities = require('../lib/player-capabilities');
 const { ALLOWED_COMMANDS, deliverCommand, validateCommand } = require('../lib/device-command');
@@ -14,6 +14,7 @@ const bsDeviceSocketRef = require('./deviceSocket');
 const go2rtc = require('../lib/go2rtc');
 const orgWebrtc = require('../lib/org-webrtc');   // #talk: per-org talk flag + ICE override
 const appConfig = require('../config');
+const ptyRelay = require('../lib/pty-relay');   // interactive terminal (system.pty) — one socket, never a room
 
 // Phase 2.3: workspace-scoped socket rooms + per-command permission gates.
 // Replaces the previous flat dashboardNs.emit broadcast (which leaked every
@@ -44,6 +45,14 @@ function canActOnDevice(socket, deviceId, tier /* 'read' | 'write' */) {
 module.exports = function setupDashboardSocket(io) {
   const dashboardNs = io.of('/dashboard');
   const deviceNs = io.of('/device');
+  /*
+   * The PTY relay authorises an open with EXACTLY the gate a `shell` command passes through below:
+   * write tier on the device's workspace (canActOnDevice). A PTY is at least as powerful as a
+   * one-shot shell, so it must never be reachable by anyone the shell command would refuse.
+   */
+  ptyRelay.bind(io);
+  ptyRelay.setAuthorizer((socket, deviceId) => canActOnDevice(socket, deviceId, 'write'));
+  const pty = ptyRelay.relay();
 
   dashboardNs.use((socket, next) => {
     const token = socket.handshake.auth?.token;
@@ -77,9 +86,13 @@ module.exports = function setupDashboardSocket(io) {
     // window.location.reload() after switching, which forces a new socket
     // connection with fresh JWT claims. So workspace memberships are
     // re-evaluated at connect time and we don't need to re-evaluate per-emit.
+    // Platform roles additionally join the unclaimed-device room, so live events about a screen
+    // that has registered but not yet been paired reach the one operator allowed to see it,
+    // instead of being dropped for want of a room. See lib/socket-rooms UNCLAIMED_ROOM.
     const wsIds = accessibleWorkspaceIds(socket.userId, socket.userRole);
-    for (const wsId of wsIds) socket.join(workspaceRoom(wsId));
-    console.log(`Dashboard client connected: ${socket.id} (user: ${socket.userId}, rooms: ${wsIds.length})`);
+    const rooms = roomsForDashboard(wsIds, isPlatformRole(socket.userRole));
+    for (const room of rooms) socket.join(room);
+    console.log(`Dashboard client connected: ${socket.id} (user: ${socket.userId}, rooms: ${rooms.length})`);
 
     /*
      * The capability gate for the remote-view handlers.
@@ -212,10 +225,23 @@ module.exports = function setupDashboardSocket(io) {
       const { device_id } = data || {};
       const duplex = !!(data && data.duplex);   // true = 2-way (device also sends its mic)
       if (!canActOnDevice(socket, device_id, 'write')) return;
-      // One-way Talk needs only remote.talk (play). Two-way additionally needs remote.mic (a device
-      // microphone) — the dashboard only shows the 2-way control for a device that has one.
+      /*
+       * ⚠️ TWO-WAY IS NO LONGER GATED ON A DECLARED remote.mic.
+       *
+       * It used to be, and the declaration came from a probe the player ran at startup — which put a
+       * browser media-permission prompt on top of the pairing code on a fresh Raspberry Pi. That probe
+       * is gone, so nothing declares the capability any more and this gate would refuse 2-way on every
+       * screen in the world.
+       *
+       * The capability is now PROVEN BY USE instead of declared in advance: the player asks for the
+       * microphone when the operator clicks 2-way — the one moment a permission dialog is expected,
+       * because a human just asked for it — and falls back to a one-way session if there is none,
+       * reporting `listen_only_no_mic` back so the dashboard can say so. A screen with no microphone
+       * gets a working one-way session rather than a refusal, which is the better failure anyway.
+       *
+       * remote.talk still gates it, as does the per-org WebRTC switch and go2rtc below.
+       */
       if (capabilityRefused(device_id, 'remote.talk', ack)) return;
-      if (duplex && capabilityRefused(device_id, 'remote.mic', ack)) return;
       const on = orgWebrtc.talkEnabledForDevice(device_id);
       if (!on || !go2rtc.enabled()) { if (typeof ack === 'function') ack({ delivered: false, reason: 'talk_unavailable' }); return; }
       const conn = heartbeat.getConnection(device_id);
@@ -382,7 +408,19 @@ module.exports = function setupDashboardSocket(io) {
       }
     });
 
+    /*
+     * Interactive terminal. Every rule — authorisation, the system.pty gate, session ownership in
+     * both directions, the caps, idle timeout, audit — lives in lib/pty-relay.js so the device half
+     * (ws/deviceSocket.js) enforces the same ones. The ack is optional, like the remote handlers.
+     */
+    socket.on('dashboard:pty-open', (data, ack) => { pty.open(socket, data || {}, ack); });
+    socket.on('dashboard:pty-input', (data) => { pty.input(socket, data || {}); });
+    socket.on('dashboard:pty-resize', (data) => { pty.resize(socket, data || {}); });
+    socket.on('dashboard:pty-close', (data) => { pty.close(socket, data || {}); });
+
     socket.on('disconnect', () => {
+      // A closed tab must not leave a shell running on the screen that nobody can see or close.
+      pty.dashboardGone(socket);
       console.log(`Dashboard client disconnected: ${socket.id}`);
       // Stop any remote screenshot streams this socket left running (tab closed / navigated away),
       // so the device isn't left capturing forever.

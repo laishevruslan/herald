@@ -393,6 +393,14 @@ const migrations = [
   // first may be pulled back to stable. Without it, publishing a beta would drag every existing
   // pre-release tester backwards, which is the harm the opt-in exists to prevent.
   "ALTER TABLE devices ADD COLUMN ota_channel_served TEXT",
+  // Repair for schedules orphaned by a group deletion before the conversion carried workspace_id.
+  // Such rows are invisible (list/calendar filter on workspace), undeletable (PUT/DELETE 403 on a
+  // null workspace) and still firing (the scheduler has no workspace filter) — so an operator
+  // cannot fix them from the dashboard at all. Recover the workspace from the device the schedule
+  // targets; anything still unresolvable is left alone rather than guessed at.
+  `UPDATE schedules SET workspace_id = (SELECT d.workspace_id FROM devices d WHERE d.id = schedules.device_id)
+     WHERE workspace_id IS NULL AND device_id IS NOT NULL
+       AND (SELECT d.workspace_id FROM devices d WHERE d.id = schedules.device_id) IS NOT NULL`,
   // #161: privilege tier reported by the player (0 unprivileged / 1 device-admin / 2 owner-or-
   // delegated-install) + whether a foreign device owner (MDM) manages it. Drives dashboard gating
   // of Tier-2 controls (reboot/kiosk/time) — shown only for owned panels.
@@ -676,6 +684,7 @@ const migrations = [
   "ALTER TABLE users ADD COLUMN past_due_since INTEGER",
   "ALTER TABLE users ADD COLUMN payment_failed_email_sent_at INTEGER",
   "ALTER TABLE users ADD COLUMN subscription_lapsed_email_sent_at INTEGER",
+  "ALTER TABLE organizations ADD COLUMN widget_sandbox_isolation_disabled INTEGER NOT NULL DEFAULT 0",
   // AUTH-05: make break-glass recovery revocable, single-use and auditable.
   //
   // scripts/reset-admin.js mints a JWT carrying `recovery: true`, which middleware/auth.js
@@ -1960,6 +1969,73 @@ const migrations = [
     source_ip      TEXT
   )`,
   "CREATE INDEX IF NOT EXISTS idx_support_grants_expires ON support_grants(expires_at)",
+  // Templates library (lib/templates). Installs are instance-wide, like plugins, because the
+  // package bytes are shared; a workspace USES one through a widget of type 'template'.
+  //   templates_installed — one row per `catalog/id`, pinned to one version + sha256.
+  //   template_catalogs   — the official catalog plus any an admin added; caches the last
+  //                         verified index and the highest serial seen (rollback protection).
+  //   template_seen       — per-user "New" badges in the library.
+  `CREATE TABLE IF NOT EXISTS templates_installed (
+    id             TEXT PRIMARY KEY,
+    catalog        TEXT NOT NULL,
+    template_id    TEXT NOT NULL,
+    version        TEXT NOT NULL,
+    sha256         TEXT NOT NULL,
+    kind           TEXT NOT NULL,
+    name           TEXT NOT NULL,
+    manifest_json  TEXT NOT NULL,
+    trust          TEXT NOT NULL,
+    signer         TEXT,
+    status         TEXT NOT NULL DEFAULT 'active',
+    status_reason  TEXT,
+    installed_by   TEXT,
+    installed_at   INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    updated_at     INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+  )`,
+  'ALTER TABLE templates_installed ADD COLUMN signer_key_id TEXT',
+  `CREATE TABLE IF NOT EXISTS template_catalogs (
+    id             TEXT PRIMARY KEY,
+    label          TEXT NOT NULL,
+    url            TEXT,
+    public_key     TEXT NOT NULL,
+    builtin        INTEGER NOT NULL DEFAULT 0,
+    enabled        INTEGER NOT NULL DEFAULT 1,
+    last_serial    INTEGER NOT NULL DEFAULT 0,
+    index_json     TEXT,
+    index_expires  TEXT,
+    last_checked   INTEGER,
+    last_ok        INTEGER,
+    last_error     TEXT,
+    created_at     INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+  )`,
+  // Sales / limited-time discounts (lib/promotions.js). Each row is backed by a Stripe coupon.
+  `CREATE TABLE IF NOT EXISTS promotions (
+    id                 TEXT PRIMARY KEY,
+    name               TEXT NOT NULL,
+    headline           TEXT NOT NULL,
+    percent_off        INTEGER NOT NULL,
+    cycles             TEXT NOT NULL DEFAULT 'both',
+    duration           TEXT NOT NULL DEFAULT 'once',
+    duration_in_months INTEGER,
+    plan_ids           TEXT NOT NULL DEFAULT '[]',
+    starts_at          INTEGER NOT NULL,
+    ends_at            INTEGER,
+    ended_at           INTEGER,
+    stripe_coupon_id   TEXT,
+    created_by         TEXT,
+    created_at         INTEGER NOT NULL
+  )`,
+  // Stale-account cleanup (lib/account-cleanup.js): the deletion notice, and an index so "last
+  // activity" (MAX(activity_log.created_at) per user) is not a table scan on a big log.
+  'ALTER TABLE users ADD COLUMN cleanup_warned_at INTEGER',
+  'ALTER TABLE users ADD COLUMN cleanup_delete_after INTEGER',
+  'CREATE INDEX IF NOT EXISTS idx_activity_log_user_time ON activity_log(user_id, created_at)',
+  `CREATE TABLE IF NOT EXISTS template_seen (
+    user_id      TEXT NOT NULL,
+    template_key TEXT NOT NULL,
+    version      TEXT NOT NULL,
+    PRIMARY KEY (user_id, template_key)
+  )`,
   // Scale-out C1 (docs/scale-out-design.md §11). All additive; a stock install gets three NULL
   // columns and two empty tables and nothing reads them.
   //   workspaces.origin_node_id — NULL means "mine". Set on a copied workspace to the node UUID of
@@ -2052,6 +2128,102 @@ const migrations = [
      logo_content_id  TEXT REFERENCES content(id) ON DELETE SET NULL,
      updated_at       INTEGER NOT NULL DEFAULT (strftime('%s','now'))
    )`,
+
+  /*
+   * ⚠️ WHERE A PLAY HAPPENED IS A FACT ABOUT THE PAST — snapshot it, do not resolve it later.
+   *
+   * play_logs had no workspace_id; tenancy was reached by joining devices, i.e. by asking where
+   * the device is NOW. A reseller moving a display from client A's workspace to client B's would
+   * therefore rewrite history: A's past plays start appearing in B's reports and disappear from
+   * A's, with nothing recording that it happened. Devices are reassigned between client
+   * workspaces routinely, and the rollup below makes it permanent — once raw is pruned the
+   * misattribution can no longer be recomputed away.
+   *
+   * Written at INSERT from the device's workspace at that moment, and never updated afterwards.
+   */
+  'ALTER TABLE play_logs ADD COLUMN workspace_id TEXT REFERENCES workspaces(id) ON DELETE SET NULL',
+
+  /*
+   * Proof-of-play rollup. play_logs is 76% of a production database (1154 MB of 1.47 GB measured
+   * 2026-09-29) and growing 6.8x — 15.8k rows/day at 31-90 days old, 66.6k at 8-30, 107k in the
+   * last week. Raw rows cannot be kept for the years a proof-of-play record is wanted for, and
+   * cutting retention alone throws the record away. So: keep raw briefly, aggregate before pruning.
+   *
+   * ⚠️ THE BUCKET IS AN HOUR, IN UTC, AND BOTH HALVES OF THAT MATTER.
+   *
+   * UTC because the rollup must be idempotent (recompute + upsert, safe to rerun) and a
+   * device-local bucket is not: devices.reported_timezone is mutable and NULL for 46% of the
+   * fleet, so recomputing an old day could place its rows in a DIFFERENT bucket than the one
+   * already written — duplicating some rows and orphaning others. DST would also make some local
+   * days 23 or 25 hours, quietly distorting per-day SUM(duration_sec).
+   *
+   * HOURLY rather than daily because an hour can still be re-bucketed into any timezone at query
+   * time, and a day cannot. Once raw is pruned a daily bucket has permanently chosen a timezone
+   * for data nobody can recompute. Hourly costs ~13x more rows than daily (2,384/day vs 183/day
+   * measured on production) and is still ~108 MB per YEAR against 3.37 GB of raw.
+   *
+   * ⚠️ workspace_id IS PART OF THE KEY, AND IT IS READ FROM play_logs, NOT FROM devices.
+   *
+   * The first draft carried it as a payload column resolved by joining devices at rollup time.
+   * That is cross-tenant leakage: a reseller moving a display from client A's workspace to client
+   * B's would, on the next recompute, re-attribute A's historical plays to B — they appear in B's
+   * reports and vanish from A's, silently, with no way to tell it happened. Devices move between
+   * client workspaces as a matter of course, so this is routine rather than hypothetical.
+   *
+   * So play_logs carries its own workspace_id, snapshotted from the device at INSERT time and
+   * never updated. Where a play happened is a fact about the past; it does not change because the
+   * hardware was reassigned afterwards.
+   *
+   * NOT NULL with a '' sentinel rather than a nullable column: SQLite permits NULLs in a non-
+   * INTEGER PRIMARY KEY, and two NULLs do not compare equal, so a nullable workspace in the key
+   * would let the same (device, content, hour) insert unboundedly many duplicate rows instead of
+   * upserting — defeating the idempotency this table exists to guarantee.
+   */
+  `CREATE TABLE IF NOT EXISTS play_log_hourly (
+    device_id      TEXT NOT NULL,
+    content_id     TEXT NOT NULL DEFAULT '',
+    hour_utc       INTEGER NOT NULL,
+    workspace_id   TEXT NOT NULL DEFAULT '',
+    content_name   TEXT,
+    play_count     INTEGER NOT NULL DEFAULT 0,
+    duration_sec   INTEGER NOT NULL DEFAULT 0,
+    first_play     INTEGER,
+    last_play      INTEGER,
+    PRIMARY KEY (workspace_id, device_id, content_id, hour_utc)
+  )`,
+  // Reports scan a time range and then group; the range is the selective part, exactly as
+  // idx_play_logs_time is for raw.
+  'CREATE INDEX IF NOT EXISTS idx_play_log_hourly_time ON play_log_hourly(hour_utc)',
+
+  /*
+   * How far the rollup has been computed. Raw rows are NEVER pruned past this watermark, which is
+   * what makes "aggregate before you delete" an invariant rather than an ordering convention.
+   *
+   * An hour with no plays produces no rollup row, so presence-of-rows cannot serve as the marker —
+   * a quiet hour would be unprunable for ever. The watermark records the hour itself.
+   */
+  `CREATE TABLE IF NOT EXISTS play_log_rollup_state (
+    id                  INTEGER PRIMARY KEY CHECK (id = 1),
+    rolled_through_hour INTEGER NOT NULL DEFAULT 0,
+    updated_at          INTEGER NOT NULL DEFAULT 0
+  )`,
+  'INSERT OR IGNORE INTO play_log_rollup_state (id, rolled_through_hour, updated_at) VALUES (1, 0, 0)',
+
+  /*
+   * ⚠️ DROP idx_play_logs_content — 263 MB serving nothing.
+   *
+   * Verified on production 2026-09-29 rather than assumed: EXPLAIN QUERY PLAN on every report
+   * (by-content, by-device, by-hour, by-day, the CSV export) and on the prune sweep chooses
+   * idx_play_logs_time. The by-content report GROUPs BY content_id but FILTERS on started_at, so
+   * it never leads on this index. A grep across routes, lib and play-backfill finds no query that
+   * filters play_logs on content_id at all; the backfill joins TO content on content's own key.
+   *
+   * ⚠️ Rebuilding it is not cheap if this is ever reversed: the 2.0.1 note above records an index
+   * build on this table sitting in uninterruptible disk sleep for more than five minutes on a
+   * spinning disk, and the table is 3x larger now. With the rollup in place the per-content report
+   * has an aggregate to read instead, so it should not need to come back.
+   */
+  'DROP INDEX IF EXISTS idx_play_logs_content',
 ];
 // Apply each ALTER idempotently. A "duplicate column name" / "already exists"
 // error means the column is already present (expected on a migrated DB) - benign.
@@ -2477,10 +2649,6 @@ ensureMultitenancyMigration();
  * ssoOnlyForEmail() catching `no such column` and returning "not SSO-only", which is password
  * login proceeding for an organization that had switched it off. It self-healed on the second
  * boot, which is exactly what makes it easy to miss.
- *
- * Same ordering constraint for `widget_sandbox_isolation_disabled` and the schedules
- * workspace_id backfill below: devices.workspace_id / schedules.workspace_id / organizations
- * only exist after the multitenancy phase.
  */
 try {
   const orgCols = db.prepare('PRAGMA table_info(organizations)').all().map((c) => c.name);
@@ -2488,34 +2656,8 @@ try {
     db.exec('ALTER TABLE organizations ADD COLUMN sso_only INTEGER NOT NULL DEFAULT 0');
     console.log('[migrate] added organizations.sso_only');
   }
-  if (orgCols.length && !orgCols.includes('widget_sandbox_isolation_disabled')) {
-    db.exec('ALTER TABLE organizations ADD COLUMN widget_sandbox_isolation_disabled INTEGER NOT NULL DEFAULT 0');
-    console.log('[migrate] added organizations.widget_sandbox_isolation_disabled');
-  }
 } catch (e) {
-  console.error('[migrate] could not add organizations columns:', e.message);
-}
-
-/*
- * Repair for schedules orphaned by a group deletion before the conversion carried workspace_id.
- * Such rows are invisible (list/calendar filter on workspace), undeletable (PUT/DELETE 403 on a
- * null workspace) and still firing (the scheduler has no workspace filter) — so an operator
- * cannot fix them from the dashboard at all. Recover the workspace from the device the schedule
- * targets; anything still unresolvable is left alone rather than guessed at.
- *
- * Must run after ensureMultitenancyMigration(): both devices.workspace_id and schedules.workspace_id
- * are created there. Idempotent — safe every boot.
- */
-try {
-  const deviceCols = db.prepare('PRAGMA table_info(devices)').all().map((c) => c.name);
-  const scheduleCols = db.prepare('PRAGMA table_info(schedules)').all().map((c) => c.name);
-  if (deviceCols.includes('workspace_id') && scheduleCols.includes('workspace_id')) {
-    db.exec(`UPDATE schedules SET workspace_id = (SELECT d.workspace_id FROM devices d WHERE d.id = schedules.device_id)
-       WHERE workspace_id IS NULL AND device_id IS NOT NULL
-         AND (SELECT d.workspace_id FROM devices d WHERE d.id = schedules.device_id) IS NOT NULL`);
-  }
-} catch (e) {
-  console.error('[migrate] could not backfill schedules.workspace_id:', e.message);
+  console.error('[migrate] could not add organizations.sso_only:', e.message);
 }
 
 // Phase 2.2c migration: backfill content_folders.workspace_id from owner's
@@ -3023,6 +3165,77 @@ const PLAYLIST_SOURCE_BACKFILL_ID = 'playlist_source_backfill';
   } catch (e) {
     console.error(`[playlist-source backfill] FAILED: ${e.message}`);
     process.exit(1);
+  }
+})();
+
+/*
+ * One-time backfill of play_logs.workspace_id from each device's CURRENT workspace.
+ *
+ * ⚠️ PRE-MIGRATION ATTRIBUTION IS BEST-EFFORT, AND THAT IS NOT FIXABLE. Rows written before the
+ * column existed carry no record of where the device was at the time, so the only thing available
+ * is where it is NOW. A device already moved between workspaces has its whole history attributed
+ * to its current owner. Going forward the value is snapshotted at insert and is exact; this pass
+ * simply gives the existing rows their most likely tenant instead of none.
+ *
+ * ⚠️ NO PRE-MIGRATION SNAPSHOT, unlike the playlist-source backfill above, and deliberately. That
+ * one rewrote how devices resolve a playlist — state with no other source of truth. This fills a
+ * column that was NULL one statement ago and is undone by `UPDATE play_logs SET workspace_id =
+ * NULL`. Snapshotting is not free here: it copies the whole database, and on production that is
+ * 1.5 GB per run. Eleven such snapshots had accumulated to 3.3 GB before being pruned by hand on
+ * 2026-09-29.
+ *
+ * Chunked by ROWID RANGE rather than `WHERE workspace_id IS NULL LIMIT n`: there is no index on
+ * workspace_id, so the latter rescans from the start of the table on every batch and turns a
+ * linear pass into a quadratic one. A rowid range walks the table once.
+ *
+ * It says what it is doing before it starts. The 2.0.1 note above records an index build on this
+ * same table sitting in uninterruptible disk sleep for over five minutes printing NOTHING, which
+ * is indistinguishable from a hang — and the operator's response to a hang is to kill it, which is
+ * the one thing that must not happen during a migration.
+ */
+const PLAY_LOGS_WORKSPACE_BACKFILL_ID = 'play_logs_workspace_backfill';
+(function backfillPlayLogWorkspaceAtBoot() {
+  try {
+    if (db.prepare('SELECT 1 FROM schema_migrations WHERE id = ?').get(PLAY_LOGS_WORKSPACE_BACKFILL_ID)) return;
+  } catch { return; }   /* schema_migrations absent: a fresh database has nothing to backfill */
+
+  let total = 0;
+  try { total = db.prepare('SELECT COUNT(*) AS n FROM play_logs').get().n; } catch { return; }
+  if (total === 0) {
+    try { db.prepare('INSERT OR IGNORE INTO schema_migrations (id) VALUES (?)').run(PLAY_LOGS_WORKSPACE_BACKFILL_ID); } catch { /* next boot */ }
+    return;
+  }
+
+  console.warn(`[play_logs workspace backfill] ${total.toLocaleString()} row(s) to attribute. `
+    + 'This walks the table once and can take a few minutes on a large install — it is NOT hung.');
+
+  const BATCH = 20000;
+  const pick = db.prepare('SELECT rowid AS r FROM play_logs WHERE rowid > ? ORDER BY rowid LIMIT 1 OFFSET ?');
+  const last = db.prepare('SELECT MAX(rowid) AS r FROM play_logs').get().r || 0;
+  const fill = db.prepare(`UPDATE play_logs
+       SET workspace_id = (SELECT d.workspace_id FROM devices d WHERE d.id = play_logs.device_id)
+     WHERE rowid > ? AND rowid <= ? AND workspace_id IS NULL`);
+
+  const started = Date.now();
+  let cursor = 0, done = 0, attributed = 0;
+  try {
+    while (cursor < last) {
+      const nextRow = pick.get(cursor, BATCH - 1);
+      const upper = nextRow ? nextRow.r : last;
+      attributed += db.transaction(() => fill.run(cursor, upper).changes)();
+      done += BATCH;
+      cursor = upper;
+      if (done % (BATCH * 10) === 0) {
+        console.warn(`[play_logs workspace backfill] ~${Math.min(done, total).toLocaleString()}/${total.toLocaleString()} rows scanned`);
+      }
+    }
+    db.prepare('INSERT OR IGNORE INTO schema_migrations (id) VALUES (?)').run(PLAY_LOGS_WORKSPACE_BACKFILL_ID);
+    console.warn(`[play_logs workspace backfill] done: ${attributed.toLocaleString()} row(s) attributed `
+      + `in ${((Date.now() - started) / 1000).toFixed(1)}s. Rows whose device is gone stay NULL.`);
+  } catch (e) {
+    // NOT fatal, unlike the playlist-source backfill: an unattributed row degrades a report's
+    // tenant filter, it does not break playback. Leaving the marker unset retries next boot.
+    console.error(`[play_logs workspace backfill] FAILED (will retry next boot): ${e.message}`);
   }
 })();
 
