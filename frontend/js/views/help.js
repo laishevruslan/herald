@@ -1,5 +1,9 @@
 import { t } from '../i18n.js';
 
+// Help guides + FAQ are documentation. Page chrome is translated; the body
+// content is intentionally left in English because partial machine
+// translation of multi-paragraph docs reads worse than a single source of
+// truth. A native-language docs site is the right long-term answer.
 export function render(container) {
   const guides = [
     { icon: '&#128250;', title: 'help.guide.setup.title', steps: ['help.guide.setup.s1', 'help.guide.setup.s2', 'help.guide.setup.s3', 'help.guide.setup.s4', 'help.guide.setup.s5'] },

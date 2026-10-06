@@ -3,7 +3,8 @@ import * as whatsNew from '../components/whats-new.js';
 import { showToast } from '../components/toast.js';
 import { getLanguage, setLanguage, getAvailableLanguages, t, tn } from '../i18n.js';
 import { esc, isPlatformAdmin } from '../utils.js';
-import { resetBranding } from '../branding.js';
+import { resetBranding, applyAccent } from '../branding.js';
+import { mountCorporateSettings } from '../components/corporate-settings.js';
 
 export async function render(container) {
   const serverUrl = `${window.location.protocol}//${window.location.host}`;
@@ -84,6 +85,10 @@ export async function render(container) {
          is the most security-relevant setting a tenant has, so it is not shown to members who
          cannot change it. Instance-wide providers are the operator's business and are configured
          by environment, not here. -->
+    <!-- Head office (corporate) playlists and emergency alerts. Org owners and admins only;
+         components/corporate-settings.js fills it, and leaves it hidden for everyone else. -->
+    <div class="settings-section" id="corporateCard" style="display:none"></div>
+
     <div class="settings-section" id="ssoCard" style="display:none">
       <h3>${t('sso.title')}</h3>
       <p style="color:var(--text-muted);font-size:12px;margin-bottom:8px">${t('sso.blurb')}</p>
@@ -148,17 +153,17 @@ export async function render(container) {
 
     ${canManageOrgSecurity ? `
     <div class="settings-section">
-      <h3>${t('settings.security')}</h3>
+      <h3>Security</h3>
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
         <div style="min-width:260px;flex:1">
-          <div style="font-weight:600">${t('settings.widget_sandbox')}</div>
+          <div style="font-weight:600">Widget sandbox isolation</div>
           <div style="font-size:12px;color:var(--text-muted);margin-top:4px">
-            ${t('settings.widget_sandbox_desc')}
+            Keep widget code in a null-origin sandbox. Turning this off allows widget code to run with same-origin access.
           </div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap">
           <input type="checkbox" id="widgetSandboxIsolationToggle" ${widgetIsolationDisabled ? '' : 'checked'}>
-          <span>${widgetIsolationDisabled ? t('settings.widget_sandbox_off') : t('settings.widget_sandbox_on')}</span>
+          <span>${widgetIsolationDisabled ? 'Isolation disabled' : 'Isolation enabled'}</span>
         </label>
       </div>
     </div>
@@ -172,8 +177,8 @@ export async function render(container) {
 
     ${isSuperAdmin ? `
     <div class="settings-section" id="telemetrySection">
-      <h3>${t('settings.telemetry')}</h3>
-      <div id="telemetryBody"><p style="color:var(--text-muted);font-size:13px">${t('settings.telemetry_loading')}</p></div>
+      <h3>Install statistics</h3>
+      <div id="telemetryBody"><p style="color:var(--text-muted);font-size:13px">Loading…</p></div>
     </div>
     ` : ''}
 
@@ -222,11 +227,14 @@ export async function render(container) {
       </div>
     </div>
 
-    ${isSuperAdmin ? `<p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">${t('settings.platform_admin_link')} <a href="#/admin" style="color:var(--accent)">${t('nav.admin')}</a> ${t('settings.platform_admin_page_suffix')}</p>` : ''}
-
+    <!-- Every account on the server used to be listed and edited HERE as well as on the admin page:
+         two copies of the same table (and of its escaping bugs). Instance-wide user management now
+         lives only in the Platform area; Settings is about you and your organization. -->
     <div class="settings-section">
-      <h3>${t('settings.user_management')}</h3>
-      <div id="userManagement"><p style="color:var(--text-muted)">${t('settings.loading_users')}</p></div>
+      <h3>${t('settings.platform_moved_title')}</h3>
+      <p style="font-size:13px;color:var(--text-secondary);margin:0 0 12px">${t('settings.platform_moved_desc')}</p>
+      <a class="btn btn-secondary btn-sm" href="#/platform/users">${t('settings.platform_moved_users')} &rarr;</a>
+      <a class="btn btn-secondary btn-sm" href="#/platform/overview" style="margin-left:6px">${t('settings.platform_moved_overview')} &rarr;</a>
     </div>
 
     <div class="settings-section" id="whiteLabelSection">
@@ -335,7 +343,6 @@ export async function render(container) {
     .catch(() => { /* About must render with or without it */ });
 
   if (isAdmin) {
-    loadUsers();
     loadWhiteLabel();
     loadTelemetry();
 
@@ -680,52 +687,57 @@ export async function render(container) {
     if (!box) return;
     let info;
     try { info = await api.adminGetTelemetry(); }
-    catch { box.innerHTML = `<p style="color:var(--text-muted);font-size:13px">${t('settings.telemetry_unavailable')}</p>`; return; }
+    catch { box.innerHTML = `<p style="color:var(--text-muted);font-size:13px">Unavailable.</p>`; return; }
 
     const on = info.state === 'on';
     const sent = info.last_report
-      ? t('settings.telemetry_last_sent', { when: new Date(info.last_report.at * 1000).toLocaleString() })
-      : t('settings.telemetry_never_sent');
+      ? `Last sent ${new Date(info.last_report.at * 1000).toLocaleString()}.`
+      : 'Nothing has been sent yet.';
 
     // A blocked outbound connection is the normal failure on a self-hosted box, and it is
     // otherwise invisible — the operator just sees nothing arriving. Name the failure and the
     // host, so the fix is "allow this in the firewall" rather than "guess".
     const failed = on && info.last_error;
     const why = failed
-      ? ({ network: t('settings.telemetry_fail_network'),
-           timeout: t('settings.telemetry_fail_timeout') }[info.last_error.reason]
-         || t('settings.telemetry_fail_other', { reason: info.last_error.reason }))
+      ? ({ network: 'the connection was refused or the address did not resolve',
+           timeout: 'the connection timed out' }[info.last_error.reason]
+         || `the server replied ${esc(info.last_error.reason)}`)
       : '';
 
     box.innerHTML = `
       <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px">
-        ${t('settings.telemetry_desc')}
+        ScreenTinker can't see how widely it's deployed, because most installs are private by
+        design. Sharing lets us say how many screens are running — nothing more.
       </p>
       <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
         <input type="checkbox" id="telemetryToggle" ${on ? 'checked' : ''}>
-        ${t('settings.telemetry_share')}
+        Share install statistics
       </label>
       <p style="color:var(--text-muted);font-size:12px;margin-bottom:6px">
-        ${t('settings.telemetry_payload')}
+        Everything that would be sent, in full:
       </p>
       <pre style="background:var(--bg-input,rgba(0,0,0,.2));padding:10px;border-radius:var(--radius);font-size:12px;overflow-x:auto;margin-bottom:8px">${esc(JSON.stringify(info.payload, null, 2))}</pre>
       <p style="color:var(--text-muted);font-size:12px;margin-bottom:${info.extra_endpoint ? '4' : '8'}px">
-        ${on ? t('settings.telemetry_when_on') : t('settings.telemetry_when_off')}
-        <code style="font-size:11px">${esc(info.endpoint || '')}</code>. ${t('settings.telemetry_firewall')}
+        ${on ? 'Sent once a day to' : 'When enabled, sent once a day to'}
+        <code style="font-size:11px">${esc(info.endpoint || '')}</code>. If this server's outbound
+        traffic is filtered, that address has to be allowed or the reports never arrive.
       </p>
       ${info.extra_endpoint ? `
       <p style="color:var(--text-muted);font-size:12px;margin-bottom:8px">
-        ${t('settings.telemetry_extra', { endpoint: esc(info.extra_endpoint) })}
+        A second copy also goes to your own collector at
+        <code style="font-size:11px">${esc(info.extra_endpoint)}</code>, configured on this server
+        with <code style="font-size:11px">TELEMETRY_EXTRA_ENDPOINT</code>. That is in addition to
+        the above, not instead of it — turn the switch off if you want your own statistics without
+        sharing.
       </p>` : ''}
       ${failed ? `
       <p style="font-size:12px;color:var(--danger);margin-bottom:8px">
-        ${t('settings.telemetry_failed', {
-          when: new Date(info.last_error.at * 1000).toLocaleString(),
-          why,
-        })}
+        The last attempt (${esc(new Date(info.last_error.at * 1000).toLocaleString())}) did not get
+        through — ${why}. Check that outbound HTTPS to that address is permitted.
       </p>` : ''}
       <p style="color:var(--text-muted);font-size:12px">
-        ${t('settings.telemetry_privacy', { sent })}
+        No names, addresses, content, or user details. The ID is random and identifies the install
+        only so repeat reports aren't counted twice. ${esc(sent)}
       </p>
     `;
 
@@ -735,13 +747,13 @@ export async function render(container) {
         // Turning it on sends immediately, so a blocked firewall is reported here and now rather
         // than failing quietly tonight — say so plainly instead of a cheerful success toast.
         const r = await api.adminSetTelemetry(enabled);
-        if (!enabled) showToast(t('settings.telemetry_off'), 'success');
-        else if (r.first_report && r.first_report.sent) showToast(t('settings.telemetry_shared'), 'success');
-        else showToast(t('settings.telemetry_saved_fail'), 'error');
+        if (!enabled) showToast('Install statistics off', 'success');
+        else if (r.first_report && r.first_report.sent) showToast('Shared — thank you', 'success');
+        else showToast('Saved, but the first report did not get through — see below', 'error');
         loadTelemetry();
       } catch {
         e.target.checked = !enabled;
-        showToast(t('settings.telemetry_save_err'), 'error');
+        showToast('Could not save that setting', 'error');
       }
     });
   }
@@ -1388,6 +1400,7 @@ export async function render(container) {
   });
 
   loadSso();
+  mountCorporateSettings(document.getElementById('corporateCard'));
 
 
   document.getElementById('createTokenBtn')?.addEventListener('click', async () => {
@@ -1517,7 +1530,7 @@ export async function render(container) {
         });
         const nextUser = { ...user, current_organization: { ...(user.current_organization || {}), widget_sandbox_isolation_disabled: 1 } };
         localStorage.setItem('user', JSON.stringify(nextUser));
-        showToast(t('settings.widget_sandbox_toast_off'), 'success');
+        showToast('Widget sandbox isolation disabled', 'success');
       } catch (err) {
         checkbox.checked = true;
         showToast(err.message, 'error');
@@ -1529,7 +1542,7 @@ export async function render(container) {
       await api.updateWorkspaceSecuritySettings(workspaceId, { widgetSandboxIsolationDisabled: false });
       const nextUser = { ...user, current_organization: { ...(user.current_organization || {}), widget_sandbox_isolation_disabled: 0 } };
       localStorage.setItem('user', JSON.stringify(nextUser));
-      showToast(t('settings.widget_sandbox_toast_on'), 'success');
+      showToast('Widget sandbox isolation enabled', 'success');
     } catch (err) {
       checkbox.checked = false;
       showToast(err.message, 'error');
@@ -1665,132 +1678,10 @@ async function loadWhiteLabel() {
   document.getElementById('previewWhiteLabelBtn')?.addEventListener('click', () => {
     const primary = document.getElementById('wlPrimaryColor').value;
     const bg = document.getElementById('wlBgColor').value;
-    document.documentElement.style.setProperty('--accent', primary);
+    applyAccent(document.documentElement, primary);
     document.documentElement.style.setProperty('--bg-primary', bg);
     showToast(t('settings.toast.preview_applied'), 'info');
   });
-}
-
-async function loadUsers() {
-  const el = document.getElementById('userManagement');
-  if (!el) return;
-
-  try {
-    const [users, plans] = await Promise.all([
-      api.getUsers(),
-      fetch('/api/subscription/plans').then(r => r.json())
-    ]);
-
-    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-
-    el.innerHTML = `
-      <div class="table-wrap">
-      <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:520px">
-        <thead>
-          <tr style="border-bottom:1px solid var(--border);text-align:left">
-            <th style="padding:8px 12px;color:var(--text-muted);font-weight:500">${t('settings.user.col_user')}</th>
-            <th style="padding:8px 12px;color:var(--text-muted);font-weight:500">${t('settings.user.col_auth')}</th>
-            <th style="padding:8px 12px;color:var(--text-muted);font-weight:500">${t('settings.user.col_role')}</th>
-            <th style="padding:8px 12px;color:var(--text-muted);font-weight:500">${t('settings.user.col_plan')}</th>
-            <th style="padding:8px 12px;color:var(--text-muted);font-weight:500">${t('settings.user.col_actions')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${users.map(u => `
-            <!-- ESCAPED. A SECOND copy of the platform users table lives here, rendered from the
-                 same endpoint as the one in views/admin.js. Escaping only that one left this whole
-                 table wide open, including a raw text node for the email - and an org or workspace
-                 admin can choose an email, so this executed in the platform admin's session. When
-                 you touch one of these tables, touch both. -->
-            <tr style="border-bottom:1px solid var(--border)" data-user-id="${esc(u.id)}">
-              <td style="padding:10px 12px">
-                <div style="font-weight:500">${esc(u.name || u.email)}</div>
-                <div style="font-size:11px;color:var(--text-muted)">${esc(u.email)}</div>
-              </td>
-              <td style="padding:10px 12px">
-                <span style="background:var(--bg-primary);padding:2px 8px;border-radius:10px;font-size:11px">${esc(u.auth_provider)}</span>
-              </td>
-              <td style="padding:10px 12px">
-                <span style="color:${isPlatformAdmin(u) ? 'var(--accent)' : 'var(--text-secondary)'}">${esc(u.role)}</span>
-              </td>
-              <td style="padding:10px 12px">
-                <select class="input plan-select" data-user-id="${esc(u.id)}" style="padding:4px 8px;font-size:12px;width:auto">
-                  ${plans.map(p => `<option value="${esc(p.id)}" ${u.plan_id === p.id ? 'selected' : ''}>${esc(p.display_name)}</option>`).join('')}
-                </select>
-              </td>
-              <td style="padding:10px 12px;white-space:nowrap">
-                ${u.auth_provider === 'local' && u.id !== currentUser.id ? `<button class="btn btn-secondary btn-sm reset-user-pw-btn" data-user-id="${esc(u.id)}" data-user-email="${esc(u.email)}" style="margin-right:4px">${t('settings.user.reset_password')}</button>` : ''}
-                ${u.id !== currentUser.id ? `<button class="btn btn-danger btn-sm delete-user-btn" data-user-id="${esc(u.id)}">${t('settings.user.remove')}</button>` : `<span style="color:var(--text-muted);font-size:11px">${t('settings.user.you')}</span>`}
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-      </div>
-      <p style="color:var(--text-muted);font-size:11px;margin-top:12px">${tn('settings.user.count', users.length)}</p>
-    `;
-
-    // Plan change handlers
-    el.querySelectorAll('.plan-select').forEach(select => {
-      select.addEventListener('change', async () => {
-        const userId = select.dataset.userId;
-        const planId = select.value;
-        try {
-          await api.assignPlan(userId, planId);
-          showToast(t('settings.toast.plan_updated'), 'success');
-        } catch (err) {
-          showToast(err.message, 'error');
-          loadUsers(); // Revert
-        }
-      });
-    });
-
-    // Reset password handlers
-    el.querySelectorAll('.reset-user-pw-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const email = btn.dataset.userEmail;
-        const pw = prompt(t('settings.user.prompt_reset_password', { email }));
-        if (pw === null) return;
-        if (pw.length < 8) { showToast(t('settings.toast.new_password_min_8'), 'error'); return; }
-        try {
-          await api.resetUserPassword(btn.dataset.userId, pw);
-          showToast(t('settings.toast.password_reset_for_user'), 'success');
-        } catch (err) {
-          showToast(err.message, 'error');
-        }
-      });
-    });
-
-    // Delete user handlers
-    el.querySelectorAll('.delete-user-btn').forEach(btn => {
-      let confirming = false;
-      btn.addEventListener('click', async () => {
-        if (confirming) {
-          try {
-            await api.deleteUser(btn.dataset.userId);
-            showToast(t('settings.toast.user_removed'), 'success');
-            loadUsers();
-          } catch (err) {
-            showToast(err.message, 'error');
-          }
-          return;
-        }
-        confirming = true;
-        btn.textContent = t('settings.user.confirm');
-        btn.style.background = 'var(--danger)';
-        btn.style.color = 'white';
-        setTimeout(() => {
-          confirming = false;
-          btn.textContent = t('settings.user.remove');
-          btn.style.background = '';
-          btn.style.color = '';
-        }, 3000);
-      });
-    });
-
-  } catch (err) {
-    el.innerHTML = `<p style="color:var(--danger)">${esc(err.message)}</p>`;
-  }
 }
 
 export function cleanup() {}

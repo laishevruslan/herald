@@ -26,6 +26,15 @@ db.pragma('foreign_keys = ON');
 const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
 db.exec(schema);
 
+/*
+ * ⚠️ The resolver views are DROPPED before any migration runs and recreated as the LAST step
+ * (applyResolverViews, below). SQLite refuses to drop or rename a table a view references, and the
+ * views now name eight tables — so a table-rebuilding migration (the tenant-cascade rebuild of
+ * playlists today, any rebuild tomorrow) must never run with them present. The SQL they had is
+ * kept so the per-boot verifier can prove the new definition changes no screen.
+ */
+const _previousResolverSql = require('../lib/playlist-resolver-sql').dropResolverViews(db);
+
 // Auto-apply Phase 1 multi-tenancy migration if not yet applied. Without this
 // a self-hoster who pulls latest and restarts hits a crash in
 // migrateFolderWorkspaceIds (queries workspaces table that doesn't exist).
@@ -2224,6 +2233,28 @@ const migrations = [
    * has an aggregate to read instead, so it should not need to come back.
    */
   'DROP INDEX IF EXISTS idx_play_logs_content',
+  /*
+   * #473 v2: one row per visitor session on an interactive web page (Reports > Interactive
+   * sessions). client_id is the player's own record id, UNIQUE per device, so a batch the player
+   * resends after a lost ack is ignored rather than counted twice. workspace_id is snapshotted at
+   * insert, like play_logs, so moving a screen later does not move its history. Pruned on
+   * config.playLogRetentionDays (services/heartbeat).
+   */
+  `CREATE TABLE IF NOT EXISTS kiosk_sessions (
+     id           INTEGER PRIMARY KEY AUTOINCREMENT,
+     device_id    TEXT NOT NULL,
+     workspace_id TEXT,
+     widget_id    TEXT,
+     client_id    TEXT NOT NULL,
+     started_at   INTEGER NOT NULL,
+     duration_sec INTEGER NOT NULL,
+     end_reason   TEXT,
+     pages        INTEGER,
+     received_at  INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+     UNIQUE (device_id, client_id)
+   )`,
+  'CREATE INDEX IF NOT EXISTS idx_kiosk_sessions_ws_time ON kiosk_sessions(workspace_id, started_at)',
+  'CREATE INDEX IF NOT EXISTS idx_kiosk_sessions_time ON kiosk_sessions(started_at)',
 ];
 // Apply each ALTER idempotently. A "duplicate column name" / "already exists"
 // error means the column is already present (expected on a migrated DB) - benign.
@@ -3059,6 +3090,11 @@ try {
   // #talk/#go2rtc: optional per-org ICE (STUN/TURN) override as a JSON array [{urls,username?,credential?}].
   // NULL -> use the global go2rtc ice_servers. Lets an org bring its own TURN.
   try { db.prepare('ALTER TABLE organizations ADD COLUMN ice_servers TEXT').run(); console.log('[migrate] organizations.ice_servers added'); } catch (_) { /* present */ }
+  // Smart playlists (lib/smart-playlist.js): JSON rule set; NULL = an ordinary hand-built playlist.
+  try { db.prepare('ALTER TABLE playlists ADD COLUMN smart_rules TEXT').run(); console.log('[migrate] playlists.smart_rules added'); } catch (_) { /* present */ }
+  try { db.prepare('ALTER TABLE playlists ADD COLUMN published_smart_rules TEXT').run(); } catch (_) { /* present */ }
+  // "Play every N seconds" (lib/repeat-every.js): NULL = plays once per loop, as before.
+  try { db.prepare('ALTER TABLE playlist_items ADD COLUMN repeat_every_sec INTEGER').run(); console.log('[migrate] playlist_items.repeat_every_sec added'); } catch (_) { /* present */ }
 
   const BASELINE_ID = 'revisions_baseline_v1';
   if (!db.prepare('SELECT 1 FROM schema_migrations WHERE id = ?').get(BASELINE_ID)) {
@@ -3096,6 +3132,15 @@ try {
   }
 } catch (e) { console.error('[migrate] template-zone dedupe failed:', e.message); }
 
+/*
+ * Corporate (head office) playlists: every table and column of the feature, applied here because
+ * organizations only exists once the multi-tenancy phase above has run. Idempotent; see
+ * lib/corporate/schema-sql.js.
+ */
+try {
+  require('../lib/corporate/schema-sql').applyCorporateSchema(db);
+} catch (e) { console.error('[migrate] corporate schema failed:', e.message); }
+
 // #37: fail fast (loud) if migrations left the DB missing schema the code needs.
 const { verifyAndRepairSchema } = require('../lib/schema-check');
 verifyAndRepairSchema(db);
@@ -3114,7 +3159,20 @@ verifyAndRepairSchema(db);
  * schema applies the SAME definition rather than a copy of it.
  */
 const { applyResolverViews } = require('../lib/playlist-resolver-sql');
-applyResolverViews(db);
+/*
+ * verify: when the definition changed since the last boot, prove no device changes what it plays
+ * (only devices a head office mandate now covers may differ) before keeping it; otherwise keep the
+ * previous views and switch corporate playlists off (lib/corporate/runtime.js). Never exits.
+ */
+applyResolverViews(db, { verify: true, previousSql: _previousResolverSql });
+/*
+ * The corporate backstop: per-connection TEMP triggers that make a write to head office's content
+ * by anyone who may not author it fail closed, whichever writer forgot the JS guard. TEMP, so it
+ * exists only on this process's connection and never in the file. See lib/corporate/backstop.js.
+ */
+try {
+  require('../lib/corporate/backstop').applyCorporateGuards(db);
+} catch (e) { console.error('[corporate] backstop not installed:', e.message); }
 
 /*
  * Playlist inheritance: classify every existing devices.playlist_id as chosen or copied.

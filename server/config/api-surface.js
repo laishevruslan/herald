@@ -37,9 +37,6 @@ const PUBLIC_ROUTERS = [
   // Slide decks: the authoring document. Publishes to a playlist of slide widgets — see
   // lib/slide-deck.js for why that is the whole design rather than a new content type.
   { path: '/api/slide-decks', mod: './routes/slide-decks' },
-  // Factory catalogue for PAT integrators. Same CJS module as POST /api/slide-decks { factory }.
-  // Read-only; slug is not workspace-validated until publish (same as GET .../factories/:id/doc).
-  { path: '/api/slide-templates', mod: './routes/slide-templates' },
   // Uploaded fonts for slides. Workspace-scoped; see routes/fonts.js for why redistribution is
   // the thing to understand about this one.
   { path: '/api/fonts',       mod: './routes/fonts' },
@@ -86,11 +83,6 @@ const JWT_ONLY_ROUTERS = [
   { path: '/api/provision',   mod: './routes/provisioning', tenancy: true },
   { path: '/api/teams',       mod: './routes/teams',        tenancy: true },
   { path: '/api/white-label', mod: './routes/white-label',  tenancy: true },
-  /*
-   * Workspace brand kit (authoring colours / fonts / logo). Distinct from white-label
-   * (login chrome). JWT-only like Studio — not a PAT write surface.
-   */
-  { path: '/api/brand-kit',   mod: './routes/brand-kit',    tenancy: true },
   { path: '/api/workspaces',  mod: './routes/workspaces' },
   { path: '/api/admin',       mod: './routes/admin' },
   /*
@@ -108,11 +100,11 @@ const JWT_ONLY_ROUTERS = [
   { path: '/api/admin/diagnostics', mod: './routes/diagnostics' },
   { path: '/api/tokens',      mod: './routes/tokens',       tenancy: true },
   /*
-   * Poster Studio (phase 6). JWT-only: scene_json is authoring state for the operator island,
-   * not something an API token should write. PNG still goes through the same ingest/replace
-   * path as Content Library uploads.
+   * Corporate (head office) playlists, mandates and their settings. JWT-only (decision D12): a
+   * token acts as its owner with role 'user', and an org admin's token would otherwise be able to
+   * repoint every store's screens. Authoring is a signed-in human action.
    */
-  { path: '/api/studio',      mod: './routes/studio',       tenancy: true },
+  { path: '/api/corporate',   mod: './routes/corporate',    tenancy: true },
 ];
 
 // #73: AGENCY_ROUTERS - capability-restricted ('agency' scope) surface. Mounted with

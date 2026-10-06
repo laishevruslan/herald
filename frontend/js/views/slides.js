@@ -328,350 +328,201 @@ function newSlide(name = 'Untitled slide') {
   };
 }
 
-function wastePreferredSlug(list) {
-  const hit = list.find((x) => /waste|abfall|müll|muell|trash|recycling/i.test(`${x.slug || ''} ${x.name || ''}`));
-  return (hit && hit.slug) || (list[0] && list[0].slug) || 'abfall';
+function buildRoomSignSlide(slug = 'room') {
+  const head = {
+    id: uid('el'), kind: 'head', slot: 'room_name',
+    box: { x: 5, y: 8, w: 60, h: null },
+    style: { color: '#FFFFFF', font: 'sans', size_cqw: 5, weight: 700, align: 'left', opacity: 1, radius_cqw: 0 },
+    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
+  };
+  const clock = {
+    id: uid('el'), kind: 'clock', slot: 'clock', clock_format: '24', tz: '', locale: '',
+    box: { x: 70, y: 8, w: 25, h: null },
+    style: { color: '#94A3B8', font: 'sans', size_cqw: 4.5, weight: 600, align: 'right', opacity: 1, radius_cqw: 0 },
+    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
+  };
+  const rule = {
+    id: uid('el'), kind: 'rule', slot: 'rule_top',
+    box: { x: 5, y: 22, w: 90, h: 0.5 },
+    style: { color: '#334155', font: 'sans', size_cqw: 0, weight: 400, align: 'left', opacity: 1, radius_cqw: 0 },
+    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
+  };
+  const stat = {
+    id: uid('el'), kind: 'stat', slot: 'status_badge',
+    box: { x: 5, y: 28, w: 90, h: null },
+    style: { color: '#38BDF8', font: 'sans', size_cqw: 9, weight: 700, align: 'left', opacity: 1, radius_cqw: 0 },
+    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
+  };
+  const detail = {
+    id: uid('el'), kind: 'body', slot: 'status_detail',
+    box: { x: 5, y: 48, w: 90, h: null },
+    style: { color: '#F8FAFC', font: 'sans', size_cqw: 3.5, weight: 500, align: 'left', opacity: 1, radius_cqw: 0 },
+    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
+  };
+  const nextMeet = {
+    id: uid('el'), kind: 'body', slot: 'next_meeting',
+    box: { x: 5, y: 68, w: 90, h: null },
+    style: { color: '#94A3B8', font: 'sans', size_cqw: 3, weight: 400, align: 'left', opacity: 1, radius_cqw: 0 },
+    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
+  };
+
+  return {
+    id: uid('s'), name: 'Room Status', dwell_sec: 30, widget_id: null,
+    template: {
+      background: '#0F172A',
+      aspect: '5:3', // 800:480 for e-paper / Sticky
+      elements: [head, clock, rule, stat, detail, nextMeet],
+    },
+    fields: {
+      room_name: 'Konferenzraum Berlin',
+      status_badge: `{{ds:${slug}.status}}`,
+      status_detail: `{{ds:${slug}.status_detail}}`,
+      next_meeting: `Nächstes Meeting: {{ds:${slug}.next_title}} ({{ds:${slug}.next_time}})`,
+    }
+  };
+}
+
+function buildWasteCalendarSlide(slug = 'abfall') {
+  const head = {
+    id: uid('el'), kind: 'head', slot: 'headline',
+    box: { x: 6, y: 10, w: 88, h: null },
+    style: { color: '#FFFFFF', font: 'sans', size_cqw: 4.5, weight: 700, align: 'left', opacity: 1, radius_cqw: 0 },
+    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
+  };
+  const stat = {
+    id: uid('el'), kind: 'stat', slot: 'waste_type',
+    box: { x: 6, y: 28, w: 88, h: null },
+    style: { color: '#FACC15', font: 'sans', size_cqw: 8, weight: 700, align: 'left', opacity: 1, radius_cqw: 0 },
+    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
+  };
+  const date = {
+    id: uid('el'), kind: 'body', slot: 'waste_date',
+    box: { x: 6, y: 50, w: 88, h: null },
+    style: { color: '#F8FAFC', font: 'sans', size_cqw: 4, weight: 600, align: 'left', opacity: 1, radius_cqw: 0 },
+    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
+  };
+  const sub = {
+    id: uid('el'), kind: 'body', slot: 'waste_note',
+    box: { x: 6, y: 72, w: 88, h: null },
+    style: { color: '#94A3B8', font: 'sans', size_cqw: 2.8, weight: 400, align: 'left', opacity: 1, radius_cqw: 0 },
+    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
+  };
+
+  return {
+    id: uid('s'), name: 'Waste Pickup', dwell_sec: 30, widget_id: null,
+    template: {
+      background: '#0F172A',
+      aspect: '5:3',
+      elements: [head, stat, date, sub],
+    },
+    fields: {
+      headline: '🗑️ Nächste Müllabfuhr',
+      waste_type: `{{ds:${slug}.next_title}}`,
+      waste_date: `Termin: {{ds:${slug}.next_time}}`,
+      waste_note: 'Bitte die Tonne bis spätestens 06:00 Uhr am Straßenrand bereitstellen.',
+    }
+  };
 }
 
 async function openNewDeckModal(container) {
-  try { DATA_SOURCES_LIST = await api.getDataSources(); } catch (_) { DATA_SOURCES_LIST = DATA_SOURCES_LIST || []; }
-  const sources = Array.isArray(DATA_SOURCES_LIST) ? DATA_SOURCES_LIST : [];
-  let factories = [];
-  try { factories = await api.get('/slide-decks/factories'); } catch (_) { factories = []; }
-  if (!Array.isArray(factories)) factories = [];
-  const catalog = galleryItems(factories);
+  if (!DATA_SOURCES_LIST || !DATA_SOURCES_LIST.length) {
+    try { DATA_SOURCES_LIST = await api.getDataSources(); } catch (_) { DATA_SOURCES_LIST = []; }
+  }
+
+  const defaultRoomSlug = DATA_SOURCES_LIST[0]?.slug || 'testraum';
+  const defaultWasteSlug = DATA_SOURCES_LIST.find(x => x.slug.includes('abfall') || x.slug.includes('waste'))?.slug || DATA_SOURCES_LIST[0]?.slug || 'abfall';
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px';
 
-  let step = 1;
-  let chosenTpl = 'blank';
-  let galleryChip = 'all';
-
-  const modal = document.createElement('div');
-  modal.className = 'modal';
-  modal.style.cssText = 'background:var(--bg-card,#1e293b);border-radius:12px;border:1px solid var(--border,#334155);width:100%;max-width:720px;max-height:min(90vh,840px);overflow:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)';
-  overlay.appendChild(modal);
-
-  const close = () => {
-    document.removeEventListener('keydown', onKey);
-    overlay.remove();
-  };
-
-  const isRoomFactory = (tpl) => tpl === 'room-epaper-5x3' || tpl === 'room-lcd-16x9' || tpl === 'room-lcd-9x16';
-  const isWasteFactory = (tpl) => tpl === 'waste-epaper-5x3' || tpl === 'waste-lcd-16x9';
-  const isAgendaFactory = (tpl) => tpl === 'agenda-lcd-16x9';
-  const isBoardFactory = (tpl) => tpl === 'rooms-board-16x9';
-  const isPortraitFactory = (tpl) => tpl === 'room-lcd-9x16';
-  const isEpaperFactory = (tpl) => tpl === 'room-epaper-5x3' || tpl === 'waste-epaper-5x3';
-  const isLcdFactory = (tpl) => tpl === 'room-lcd-16x9' || tpl === 'waste-lcd-16x9' || tpl === 'agenda-lcd-16x9' || tpl === 'rooms-board-16x9';
-  const needsSource = (tpl) => isRoomFactory(tpl) || isWasteFactory(tpl) || isAgendaFactory(tpl) || isBoardFactory(tpl);
-
-  const visibleCards = () => filterGallery(catalog, galleryChip);
-
-  function goStep2() {
-    const visible = visibleCards();
-    if (!visible.some((c) => c.id === chosenTpl)) {
-      chosenTpl = (visible[0] && visible[0].id) || 'blank';
-    }
-    step = 2;
-    paint();
-  }
-
-  function onKey(ev) {
-    if (ev.key === 'Escape') {
-      ev.preventDefault();
-      close();
-      return;
-    }
-    const tag = ev.target && ev.target.tagName;
-    const typing = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
-    if (step === 1) {
-      if (ev.key === 'Enter') {
-        const cardId = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-gallery-id');
-        if (cardId) {
-          ev.preventDefault();
-          chosenTpl = cardId;
-          goStep2();
-          return;
-        }
-        if (tag !== 'BUTTON') {
-          ev.preventDefault();
-          goStep2();
-        }
-        return;
-      }
-      if (!typing && (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight' || ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) {
-        ev.preventDefault();
-        const visible = visibleCards();
-        const ids = visible.map((c) => c.id);
-        const cur = Math.max(0, ids.indexOf(chosenTpl));
-        const next = moveGalleryIndex(ids.length, cur, ev.key);
-        chosenTpl = ids[next] || chosenTpl;
-        paint();
-      }
-      return;
-    }
-    if (ev.key === 'Enter' && ev.target && ev.target.id === 'deckNameInput') {
-      ev.preventDefault();
-      createDeck(false);
-    }
-  }
-
-  function paint() {
-    const header = `<div class="modal-header" style="padding:18px 24px;border-bottom:1px solid var(--border,#334155);display:flex;justify-content:space-between;align-items:center">
-      <h2 style="margin:0;font-size:18px;font-weight:600;color:var(--text-primary,#f8fafc)">${esc(t('slides.template_modal_title'))}</h2>
-      <button id="closeNewDeckModal" style="background:none;border:none;color:var(--text-muted,#94a3b8);font-size:20px;cursor:pointer">&times;</button>
-    </div>`;
-
-    let body;
-    let footer;
-    if (step === 1) {
-      const visible = visibleCards();
-      if (!visible.some((c) => c.id === chosenTpl)) {
-        chosenTpl = (visible[0] && visible[0].id) || 'blank';
-      }
-      const chips = GALLERY_CHIPS.map((chip) => {
-        const on = galleryChip === chip;
-        const label = chip === 'room' ? t('slides.factory.chip.room')
-          : chip === 'facilities' ? t('slides.factory.chip.facilities')
-            : chip === 'agenda' ? t('slides.factory.chip.agenda')
-              : chip === 'blank' ? t('slides.factory.chip.blank')
-                : t('slides.factory.chip.all');
-        return `<button type="button" data-gallery-chip="${esc(chip)}" aria-pressed="${on ? 'true' : 'false'}" class="btn ${on ? 'btn-primary' : 'btn-secondary'}" style="padding:4px 10px;font-size:12px">${esc(label)}</button>`;
-      }).join('');
-      const cards = visible.map((card) => {
-        const selected = card.id === chosenTpl;
-        const title = t(card.title_key);
-        const desc = t(card.desc_key);
-        return `<button type="button" data-gallery-id="${esc(card.id)}" aria-pressed="${selected ? 'true' : 'false'}"
-          style="display:flex;flex-direction:column;gap:8px;text-align:left;padding:10px;border-radius:8px;border:2px solid ${selected ? 'var(--accent,#38bdf8)' : 'var(--border,#334155)'};background:var(--bg-input);cursor:pointer;color:inherit">
-          ${thumbHtml(card.thumbnail, esc)}
-          <strong style="display:block;font-size:13px;line-height:1.3">${esc(title)}</strong>
-          <span style="font-size:11px;color:var(--text-muted);line-height:1.35">${esc(desc)}</span>
-        </button>`;
-      }).join('');
-      body = `<div class="modal-body" style="padding:24px;display:flex;flex-direction:column;gap:14px">
-        <div>
-          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:8px">${esc(t('slides.choose_template'))}</label>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${chips}</div>
-          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${cards}</div>
-        </div>
-      </div>`;
-      footer = `<div class="modal-footer" style="padding:16px 24px;border-top:1px solid var(--border,#334155);display:flex;justify-content:flex-end;gap:10px">
-        <button type="button" id="cancelNewDeckBtn" class="btn btn-secondary">${esc(t('common.cancel'))}</button>
-        <button type="button" id="continueNewDeckBtn" class="btn btn-primary">${esc(t('slides.factory.continue'))}</button>
-      </div>`;
-    } else {
-      const aspectHint = isEpaperFactory(chosenTpl)
-        ? t('slides.factory.aspect_hint_epaper')
-        : isPortraitFactory(chosenTpl)
-          ? t('slides.factory.aspect_hint_portrait')
-          : isLcdFactory(chosenTpl)
-            ? t('slides.factory.aspect_hint_lcd')
-            : '';
-      const defaultSlug = isWasteFactory(chosenTpl)
-        ? wastePreferredSlug(sources)
-        : (sources[0] && sources[0].slug) || 'room';
-      const defaultName = needsSource(chosenTpl)
-        ? ((sources.find((s) => s.slug === defaultSlug) || sources[0] || {}).name || t('slides.deck_name_placeholder'))
-        : 'New Slide Deck';
-      const optionList = (selectedSlug) => sources.map((s) =>
-        `<option value="${esc(s.slug)}"${s.slug === selectedSlug ? ' selected' : ''}>${esc(s.name || s.slug)} (${esc(s.slug)})</option>`).join('');
-      const sourceSelect = !sources.length
-        ? `<p style="margin:0;font-size:13px;color:var(--text-muted)">${esc(t('slides.factory.no_source'))}</p>`
-        : isBoardFactory(chosenTpl)
-          ? `<div style="display:flex;flex-direction:column;gap:10px">
-              <p style="margin:0;font-size:12px;color:var(--text-muted)">${esc(t('slides.factory.board_hint'))}</p>
-              ${[1, 2, 3, 4].map((n) => {
-                const label = n === 1 ? t('slides.factory.board_slot_1')
-                  : n === 2 ? t('slides.factory.board_slot_2')
-                    : n === 3 ? t('slides.factory.board_slot_3')
-                      : t('slides.factory.board_slot_4');
-                const pick = (sources[n - 1] && sources[n - 1].slug) || defaultSlug;
-                return `<div>
-                  <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(label)}</label>
-                  <select id="deckSourceSelect${n - 1}" class="input" style="width:100%">${optionList(pick)}</select>
-                </div>`;
-              }).join('')}
-            </div>`
-          : `<div>
-            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(t('slides.factory.pick_source'))}</label>
-            <select id="deckSourceSelect" class="input" style="width:100%">
-              ${optionList(defaultSlug)}
-            </select>
-          </div>`;
-
-      const roomTitle = isRoomFactory(chosenTpl)
-        ? `<div>
-            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(t('slides.factory.room_title_label'))}</label>
-            <input type="text" id="deckRoomTitle" class="input" style="width:100%" value="${esc(defaultName)}">
-          </div>`
-        : isAgendaFactory(chosenTpl)
-          ? `<div>
-            <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(t('slides.factory.board_title_label'))}</label>
-            <input type="text" id="deckRoomTitle" class="input" style="width:100%" value="${esc(t('slides.factory.agenda_headline'))}">
-          </div>`
-        : '';
-
-      body = `<div class="modal-body" style="padding:24px;display:flex;flex-direction:column;gap:16px">
+  overlay.innerHTML = `
+    <div class="modal" style="background:var(--bg-card,#1e293b);border-radius:12px;border:1px solid var(--border,#334155);width:100%;max-width:540px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)">
+      <div class="modal-header" style="padding:18px 24px;border-bottom:1px solid var(--border,#334155);display:flex;justify-content:space-between;align-items:center">
+        <h2 style="margin:0;font-size:18px;font-weight:600;color:var(--text-primary,#f8fafc)">${esc(t('slides.template_modal_title'))}</h2>
+        <button id="closeNewDeckModal" style="background:none;border:none;color:var(--text-muted,#94a3b8);font-size:20px;cursor:pointer">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:24px;display:flex;flex-direction:column;gap:16px">
         <div>
           <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(t('slides.deck_name_label'))}</label>
-          <input type="text" id="deckNameInput" class="input" style="width:100%" placeholder="${esc(t('slides.deck_name_placeholder'))}" value="${esc(defaultName)}">
+          <input type="text" id="deckNameInput" class="input" style="width:100%" placeholder="${esc(t('slides.deck_name_placeholder'))}" value="New Slide Deck">
         </div>
-        ${needsSource(chosenTpl) ? sourceSelect : ''}
-        ${roomTitle}
-        ${isWasteFactory(chosenTpl) ? `<p style="margin:0;font-size:12px;color:var(--text-muted)">${esc(t('slides.factory.include_hint'))}</p>` : ''}
-        ${aspectHint ? `<p style="margin:0;font-size:12px;color:var(--text-muted)">${esc(aspectHint)}</p>` : ''}
-      </div>`;
-
-      const placeholderSlug = isWasteFactory(chosenTpl)
-        ? 'abfall'
-        : (isAgendaFactory(chosenTpl) ? 'lobby' : (isBoardFactory(chosenTpl) ? 'room_a' : 'room'));
-      const bindActions = needsSource(chosenTpl) && !sources.length
-        ? `<button type="button" id="placeholderNewDeckBtn" class="btn btn-secondary">${esc(t('slides.factory.create_placeholder', { slug: placeholderSlug }))}</button>
-           <button type="button" id="connectSourceBtn" class="btn btn-primary">${esc(t('slides.factory.connect_first'))}</button>`
-        : `<button type="button" id="submitNewDeckBtn" class="btn btn-primary">${esc(t('slides.create_deck_btn'))}</button>`;
-
-      footer = `<div class="modal-footer" style="padding:16px 24px;border-top:1px solid var(--border,#334155);display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px">
-        <button type="button" id="backNewDeckBtn" class="btn btn-secondary">${esc(t('slides.factory.back'))}</button>
+        <div>
+          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(t('slides.choose_template'))}</label>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;background:var(--bg-input)">
+              <input type="radio" name="deckTpl" value="blank" checked style="margin-top:3px">
+              <div>
+                <strong style="display:block;font-size:13px">${esc(t('slides.tpl_blank_title'))}</strong>
+                <span style="font-size:11px;color:var(--text-muted)">${esc(t('slides.tpl_blank_desc'))}</span>
+              </div>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;background:var(--bg-input)">
+              <input type="radio" name="deckTpl" value="room" style="margin-top:3px">
+              <div>
+                <strong style="display:block;font-size:13px">${esc(t('slides.tpl_room_title'))}</strong>
+                <span style="font-size:11px;color:var(--text-muted)">${esc(t('slides.tpl_room_desc'))}</span>
+              </div>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;background:var(--bg-input)">
+              <input type="radio" name="deckTpl" value="waste" style="margin-top:3px">
+              <div>
+                <strong style="display:block;font-size:13px">${esc(t('slides.tpl_waste_title'))}</strong>
+                <span style="font-size:11px;color:var(--text-muted)">${esc(t('slides.tpl_waste_desc'))}</span>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding:16px 24px;border-top:1px solid var(--border,#334155);display:flex;justify-content:flex-end;gap:10px">
         <button type="button" id="cancelNewDeckBtn" class="btn btn-secondary">${esc(t('common.cancel'))}</button>
-        ${bindActions}
-      </div>`;
-    }
+        <button type="button" id="submitNewDeckBtn" class="btn btn-primary">${esc(t('slides.create_deck_btn'))}</button>
+      </div>
+    </div>
+  `;
 
-    modal.innerHTML = header + body + footer;
-    modal.querySelector('#closeNewDeckModal').onclick = close;
-    const cancel = modal.querySelector('#cancelNewDeckBtn');
-    if (cancel) cancel.onclick = close;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('#closeNewDeckModal').onclick = close;
+  overlay.querySelector('#cancelNewDeckBtn').onclick = close;
 
-    modal.querySelectorAll('[data-gallery-chip]').forEach((btn) => {
-      btn.onclick = () => {
-        galleryChip = btn.getAttribute('data-gallery-chip') || 'all';
-        const visible = filterGallery(catalog, galleryChip);
-        if (!visible.some((c) => c.id === chosenTpl)) {
-          chosenTpl = (visible[0] && visible[0].id) || 'blank';
-        }
-        paint();
-      };
-    });
-    modal.querySelectorAll('[data-gallery-id]').forEach((btn) => {
-      btn.onclick = () => {
-        chosenTpl = btn.getAttribute('data-gallery-id') || 'blank';
-        paint();
-      };
-      btn.ondblclick = () => {
-        chosenTpl = btn.getAttribute('data-gallery-id') || 'blank';
-        goStep2();
-      };
-    });
+  overlay.querySelector('#submitNewDeckBtn').onclick = async () => {
+    const name = overlay.querySelector('#deckNameInput').value.trim() || 'New Slide Deck';
+    const tpl = overlay.querySelector('input[name="deckTpl"]:checked').value;
 
-    const cont = modal.querySelector('#continueNewDeckBtn');
-    if (cont) cont.onclick = () => goStep2();
-    const back = modal.querySelector('#backNewDeckBtn');
-    if (back) {
-      back.onclick = () => { step = 1; paint(); };
-    }
-    const connect = modal.querySelector('#connectSourceBtn');
-    if (connect) {
-      connect.onclick = () => { close(); window.location.hash = '#/data-sources'; };
-    }
-    const submit = modal.querySelector('#submitNewDeckBtn');
-    if (submit) submit.onclick = () => createDeck(false);
-    const placeholder = modal.querySelector('#placeholderNewDeckBtn');
-    if (placeholder) placeholder.onclick = () => createDeck(true);
-
-    if (step === 1) {
-      const selected = modal.querySelector(`[data-gallery-id="${chosenTpl}"]`);
-      if (selected) selected.focus();
-    }
-  }
-
-  async function createDeck(usePlaceholder) {
-    const nameInput = modal.querySelector('#deckNameInput');
-    const name = (nameInput && nameInput.value.trim()) || 'New Slide Deck';
-    const selected = modal.querySelector('#deckSourceSelect');
-    const boardFallback = ['room_a', 'room_b', 'room_c', 'room_d'];
-    const slug = usePlaceholder
-      ? (isWasteFactory(chosenTpl) ? 'abfall' : (isAgendaFactory(chosenTpl) ? 'lobby' : (isBoardFactory(chosenTpl) ? 'room_a' : 'room')))
-      : ((selected && selected.value) || (sources[0] && sources[0].slug) || (isWasteFactory(chosenTpl) ? 'abfall' : (isAgendaFactory(chosenTpl) ? 'lobby' : 'room')));
-    const titleInput = modal.querySelector('#deckRoomTitle');
-    const roomTitle = (titleInput && titleInput.value.trim())
-      || (sources.find((s) => s.slug === slug) || {}).name
-      || name;
-
-    if (needsSource(chosenTpl) && !usePlaceholder && !sources.length) {
-      showToast(t('slides.factory.need_source'), 'error');
-      return;
+    let initialSlide;
+    let initialAspect = '16:9';
+    if (tpl === 'room') {
+      initialSlide = buildRoomSignSlide(defaultRoomSlug);
+      initialAspect = '5:3';
+    } else if (tpl === 'waste') {
+      initialSlide = buildWasteCalendarSlide(defaultWasteSlug);
+      initialAspect = '5:3';
+    } else {
+      initialSlide = newSlide('Slide 1');
     }
 
     try {
-      let d;
-      if (isBoardFactory(chosenTpl)) {
-        const slugs = [0, 1, 2, 3].map((i) => {
-          if (usePlaceholder) return boardFallback[i];
-          const sel = modal.querySelector(`#deckSourceSelect${i}`);
-          return (sel && sel.value) || (sources[i] && sources[i].slug) || (sources[0] && sources[0].slug) || boardFallback[i];
-        });
-        const titles = slugs.map((s) => (sources.find((src) => src.slug === s) || {}).name || s);
-        d = await api.post('/slide-decks', {
-          name,
-          factory: chosenTpl,
-          data_source_slug: slugs[0],
-          data_source_slugs: slugs,
-          titles,
-          chrome: {
-            next_prefix: t('slides.factory.next_prefix'),
-            now_prefix: t('slides.factory.now_prefix'),
-          },
-        });
-      } else if (isRoomFactory(chosenTpl) || isWasteFactory(chosenTpl) || isAgendaFactory(chosenTpl)) {
-        const chrome = isWasteFactory(chosenTpl)
-          ? {
-              headline: t('slides.factory.waste_headline'),
-              waste_note: t('slides.factory.waste_note'),
-              then_prefix: t('slides.factory.then_prefix'),
-            }
-          : isAgendaFactory(chosenTpl)
-            ? { headline: roomTitle || t('slides.factory.agenda_headline') }
-            : {
-                next_prefix: t('slides.factory.next_prefix'),
-                now_prefix: t('slides.factory.now_prefix'),
-              };
-        d = await api.post('/slide-decks', {
-          name,
-          factory: chosenTpl,
-          data_source_slug: slug,
-          title: isRoomFactory(chosenTpl) ? roomTitle : name,
-          chrome,
-        });
-      } else {
-        d = await api.post('/slide-decks', {
-          name,
-          doc: { aspect: '16:9', slides: [newSlide('Slide 1')] },
-        });
-      }
+      const d = await api.post('/slide-decks', {
+        name,
+        doc: { aspect: initialAspect, slides: [initialSlide] }
+      });
       state.decks.unshift({ id: d.id, name: d.name, slide_count: d.doc.slides.length });
       close();
       await openDeck(container, d.id);
     } catch (e) {
       showToast(e.message || 'Could not create the deck', 'error');
     }
-  }
-
-  document.body.appendChild(overlay);
-  document.addEventListener('keydown', onKey);
-  paint();
+  };
 }
 
 /* ============================================================ render */
 
 export async function render(container) {
-  container.innerHTML = `<div class="page-header"><div><h1>${t('nav.slides')}</h1>
-    <div class="subtitle">${t('slides.page_subtitle')}</div></div>
-    <button class="btn btn-primary" id="newDeck">${t('slides.new_deck')}</button></div>
-    <div id="deckArea"><p style="color:var(--text-muted)">${t('slides.loading')}</p></div>`;
+  container.innerHTML = `<div class="page-header"><div><h1>Slides</h1>
+    <div class="subtitle">Build a deck of slides and publish it as a playlist.</div></div>
+    <button class="btn btn-primary" id="newDeck">+ New deck</button></div>
+    <div id="deckArea"><p style="color:var(--text-muted)">Loading…</p></div>`;
 
   container.querySelector('#newDeck').addEventListener('click', () => openNewDeckModal(container));
 
@@ -684,7 +535,7 @@ export async function render(container) {
     state.decks = await api.get('/slide-decks');
   } catch (e) {
     container.querySelector('#deckArea').innerHTML =
-      `<p style="color:var(--danger)">${t('slides.load_failed', { error: esc(e.message || '') })}</p>`;
+      `<p style="color:var(--danger)">Could not load decks: ${esc(e.message || '')}</p>`;
     return;
   }
 
@@ -788,8 +639,9 @@ function renderList(container) {
   const host = container.querySelector('#deckArea');
   if (!state.decks.length) {
     host.innerHTML = `<div class="settings-section" style="text-align:center;padding:38px 20px">
-      <p style="margin:0 0 6px;font-weight:600">${t('slides.empty_title')}</p>
-      <p style="margin:0;color:var(--text-muted);font-size:13px">${t('slides.empty_desc')}</p></div>`;
+      <p style="margin:0 0 6px;font-weight:600">No decks yet</p>
+      <p style="margin:0;color:var(--text-muted);font-size:13px">A deck is a set of slides that
+        publishes as a playlist — headline, photo, big number, each with its own entrance.</p></div>`;
     return;
   }
   host.innerHTML = `<div class="settings-section" style="padding:0">
@@ -798,9 +650,7 @@ function renderList(container) {
         <div style="flex:1;min-width:0">
           <div style="font-weight:600">${esc(d.name)}</div>
           <div style="font-size:12px;color:var(--text-muted)">
-            ${d.slide_count === 1
-              ? t('slides.slide_count_one', { n: d.slide_count, sec: d.total_sec || 0 })
-              : t('slides.slide_count_other', { n: d.slide_count, sec: d.total_sec || 0 })}
+            ${d.slide_count} slide${d.slide_count === 1 ? '' : 's'} · ${(d.total_sec || 0)}s total
             ${d.playlist_id ? '· published' : '· not published yet'}</div>
         </div>
         <button class="btn btn-secondary btn-sm" data-open="${esc(d.id)}">Edit</button>

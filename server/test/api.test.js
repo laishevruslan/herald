@@ -176,16 +176,6 @@ test('partition: the public token surface is exactly the reviewed set (snapshot 
      */
     '/api/slide-decks',
     /*
-     * Factory catalogue (room / waste / agenda geometry), added deliberately. GET only: an
-     * integrator mints a door sign from their own tooling without the dashboard wizard, then
-     * writes the resulting deck through /api/slide-decks, which is already on this door.
-     *
-     * ⚠️ What review should weigh: the slug is not checked against a workspace feed here. A
-     * missing feed renders empty or stale on the wall; it does not 404 this GET, and the
-     * catalogue itself carries no credentials and no workspace documents.
-     */
-    '/api/slide-templates',
-    /*
      * Uploaded slide fonts, added deliberately. Reads and deletes are workspace-scoped through
      * accessContext like every sibling.
      *

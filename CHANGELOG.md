@@ -2,8 +2,6 @@
 
 ## Unreleased
 
-### Added
-
 **Suika design editor polish — preset chooser, slide backgrounds, Help.** Content Library
 → Create design opens a size modal (same landscape / portrait / e-paper presets as Studio)
 before the Suika island. Slides can set a photo background from Suika (`suika.slideBgReturn`,
@@ -11,6 +9,145 @@ parallel to Studio). Dev Variant B: set `window.__SUIKA_ORIGIN` to a Suika origi
 `http://127.0.0.1:6167`) for cross-origin popup + `herald:init` JWT handshake. Studio stays
 available alongside Suika (no feature-flag hide). Help documents both editors. See
 [`docs/suika-herald-integration-plan.md`](docs/suika-herald-integration-plan.md).
+
+### Added
+
+- **Public template gallery at `/templates` (#490)**, linked from the homepage nav and from the
+  reworked "Turnkey App & Template Library" feature card.
+  - Built from the official template catalog this server last accepted (signature-verified), not a
+    list in the page. Templates are published to the catalog independently of releases, so a new
+    one appears on the next catalog poll with no upgrade.
+  - Filters: Corporate, Retail & Hospitality, Data & Dashboards, Utilities, Interactive.
+  - **Interactive web preview** (`GET /api/templates/demo/<sha256>`, public): renders an installed,
+    active, official template with its own defaults plus demo weather. It never reads a workspace's
+    data, images or fonts, gets the same `sandbox allow-scripts` CSP as a widget on a screen, and is
+    limited like the other public template routes. It previews screen shapes at their real sizes:
+    1920×1080, 1080×1920 and 1920×200.
+  - Never fails. With no accepted catalog (library off, or never fetched) the page serves its
+    committed fallback. Also in the sitemap and `llms.txt`, with a live `/templates.md` rendition.
+  - `DISABLE_HOMEPAGE=true` turns the gallery and its previews off with the homepage.
+    See `docs/templates.md`.
+- **Interactive web pages: "Wipe the site's cookies and storage after each visitor" (#491)**, per
+  item, default on as before. Off is for information pages with nothing to protect (menus, price
+  lists, maps): the cookie banner and the chosen language then stay. Each visitor still gets a
+  fresh page, and history, form data, HTTP auth and the cache are still cleared.
+  - Android skips the cookie and WebStorage wipe, including the wipe after a power cut.
+  - The native Pi/Windows player carries every cookie of the allowed sites to the next visitor.
+    Its site storage still cannot survive.
+  - Tizen skips its cookie wipe.
+  - BrightSign's opt-in top-level mode always wipes.
+  - Storage is shared by every web page on a screen, so another item's wipe clears it too.
+- **Interactive web pages: a "Still there?" choice in the widget editor (#491)**: Off, 5, 10 or 20
+  seconds. Any other value set through the API is kept and shown.
+
+### Fixed
+
+- **Saving a webpage widget in the dashboard dropped settings the form has no field for (#491)**,
+  for example `min_webview`, or an `idle_warning_sec` set through the API. The form now starts from
+  the widget's existing config.
+- **Interactive pages using orestbida/cookieconsent kept showing the consent banner (#491).** Its
+  `cc_cookie` is now in the built-in list of consent cookies that "Keep the site's cookie-consent
+  choice" preserves.
+
+## 2.4.0
+
+Head office playlists, smart playlists, interactive walk-up web pages on every player, moving a screen
+to another workspace, and a batch of Android, login and Raspberry Pi fixes.
+
+**@visimpres-glitch** authored 1 of the 11 commits in this release, the Android SoC temperature report
+(#475). They also filed seven of the issues it closes (#471–#477), most with the diagnosis already done,
+and field-tested interactive pages on RK3566 panels. Thanks also to **bwcgn** (#487), and to **r00ks**
+and **JackyL** (Discord), whose native Pi reports led to the installer fix (#489).
+
+### Added
+
+- **Head office playlists (#488).** Org owners and admins can mandate a playlist on the whole org, a
+  workspace, a group, a video wall or a single screen. Store managers fill the **local slots** head
+  office leaves them, within its limits (items or seconds per slot, with an optional fallback), and
+  cannot remove, skip, reorder, disable, re-daypart or mute head office's items.
+  - Every screen gets its own composed flat playlist, so **no player update is needed**.
+  - The server checks every write, and per-connection SQLite triggers back it up. Refusals are a 403
+    with a `CORPORATE_*` code and a plain sentence.
+  - **Emergency alerts** are a trigger kind only org admins can create. One plays only where the org's
+    emergency switch is on **and** the screen has triggers enabled, and normal triggers are clamped
+    below it. "Activate now" on the server has a hard time cap.
+  - Store triggers on mandated screens default to **off**. Creating, re-targeting or re-enabling a
+    mandate lists the triggers it would hide and needs "I've checked these"
+    (409 `CORPORATE_STORE_TRIGGERS_IMPACT` otherwise).
+  - ⚠️ Upgrade safety: at boot the server compares the old and new resolver views, and if any existing
+    screen's playlist, source or layout would change it keeps the old views and turns the feature off
+    (503 on corporate writes) rather than change a screen.
+  - ⚠️ **Downgrading:** remove mandates and slots first. The procedure is in
+    `docs/corporate-playlists.md`.
+  - English strings only for now.
+- **Move a screen to another workspace** (`POST /api/devices/move-workspace`, part of #488), from the
+  device page or the dashboard selection bar. A **platform admin** can move a screen to another org
+  (a separate confirmation, 409 `MOVE_OTHER_ORG_CONFIRM` without it), and **"Bring its playlist"**
+  copies the playlist along; media files are shared, credentials cleared. Moving screens into a
+  mandate (workspace move, joining a group, seating on a wall) warns when store triggers would be
+  hidden, and a workspace move lists the triggers the screen loses (`DEVICE_MOVE_TRIGGERS_IMPACT`).
+- **Smart playlists (#483).** A playlist that fills itself from rules over the content library: tag
+  is / is not, key=value details, type, folder (with subfolders) and file name, match all or any, with
+  a sort order, a maximum count and an image duration. A published smart playlist republishes itself
+  when content changes, debounced so tagging 20 files restarts screens once. In approval-required
+  workspaces an automatic refresh may only remove items; new matches go through review. Requested on
+  Discord.
+- **"Play every N" (#483).** An item can be set to come round every N seconds or minutes (10 s to
+  24 h), spread evenly through the loop, per zone. "In order" playback only. Requested on Discord.
+  - Fixed along the way: a nested playlist's items collided with the parent's `sort_order`, so the
+    Tizen, web, Android and Pi/Windows players re-sorted them out of place.
+- **Interactive walk-up web pages (#473: #484, #485, #486).** Turn on **Interactive** on a webpage
+  widget and visitors can use the site (menus, catalogues, forms). The first touch holds the
+  playlist; after the idle timeout a "Still there?" countdown appears, then the session is wiped
+  (cookies, storage, cache, history) and the playlist moves on.
+  - Cookie-consent choices can survive the wipe (kept by cookie name, never whole domains), a Home
+    button, the widget's Zoom %, load errors in Recent incidents, and per-session usage on Reports.
+  - **Full mode** on Android and the native Pi/Windows player. **Limited (framed)** on the web
+    player, webOS and Tizen: a site that refuses framing stays blank, and the allowlist and storage
+    wipe cannot be enforced. BrightSign full mode is opt-in (`"kiosk_toplevel": true`) and off by
+    default. The dashboard shows which mode each screen has.
+  - Screen capture, live view and remote input are blocked during a session, so an operator cannot
+    watch or type into a visitor's form.
+- **Android reports its SoC temperature** (`telemetry.temperature_c`) for the Temperature card (#475,
+  @visimpres-glitch).
+- **Sales (Platform → Billing):** any sale can be edited, and one that is not running can be deleted
+  (#480). A change to what is charged creates a new Stripe coupon before the old one goes.
+
+### Fixed
+
+- **Android (#478):** three quick BACK presses opened the exit dialog without the PIN (#471);
+  `cpu_usage` reported JVM heap use, not CPU load (#474); stills were decoded below the size they are
+  shown at, and portrait mounts decoded against the landscape screen box, so portrait images were very
+  soft (#476, #477).
+- **A login-locked account looked exactly like a wrong password**, even with the correct one (#472).
+  The server console now says the account is locked (#479).
+- **Cloudflare cache poisoning (#482).** A request asking for markdown could get the markdown
+  rendition cached at the page's URL. Each URL now has one answer.
+- **Native Pi installer (#489).** Installing the native player after the browser kiosk left the screen
+  to the kiosk: no player after reboot, and `Could not set DRM mode … Permission denied`. The installer
+  now picks Lite or Desktop by whether a desktop boots (not by which packages are installed), removes
+  the kiosk's launchers, and takes `--native-mode lite|desktop`. In desktop mode the player writes
+  `~/.local/state/screentinker-pi/player.log`. The Raspberry Pi guide now covers Lite with the native
+  player.
+
+### Known issues
+
+- **Native Pi player on Lite:** a playlist can stop rotating on a website or HTML widget item (#487).
+
+## 2.3.2
+
+A hotfix for 2.3.1. No outside code contributions in this release.
+
+### Fixed
+
+- **The Edit button vanished from every widget card (#469).** #463's *Duplicate* made the card's action
+  row Edit · Duplicate · History · Delete (~280 px), right-aligned inside a card that clips
+  (`overflow: hidden`) and auto-fills down to 200 px. A right-aligned row that does not fit spills out
+  of its LEFT edge, so the first button — Edit — was cut off; a 1500 px window put it at −23 px.
+  Every widget type was affected. The row now wraps. A test pins it.
+- **The native Raspberry Pi card said "Bookworm" (#470).** The `.deb` needs PySide6, packaged only
+  from Debian 13 "trixie" on, so apt refuses it on Bookworm. The card now says Trixie or newer and
+  points older Pi OS at the kiosk install.
 
 ## 2.3.1
 

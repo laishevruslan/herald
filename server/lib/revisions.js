@@ -66,18 +66,46 @@ function scheduleBlocksFor(db, itemId) {
   } catch (_) { return []; }
 }
 
+// Smart snapshot items in the same shape capturePlaylist gives hand-built items, so the existing
+// item diff (added / removed / reordered) reads them unchanged.
+function smartItemsState(db, row) {
+  try {
+    return require('./smart-playlist').snapshotItems(db, row).map((it, i) => ({
+      content_id: it.content_id || null, widget_id: null, child_playlist_id: null,
+      zone_id: null, sort_order: i, duration_sec: it.duration_sec, muted: 0,
+      play_from: null, play_until: null, enabled: 1, log_play: 1, fit_mode: null, play_when: null, weight: 1,
+      schedules: [],
+    }));
+  } catch (_) { return []; }
+}
+
 function capturePlaylist(db, row) {
-  const items = db.prepare(`SELECT id, content_id, widget_id, child_playlist_id, zone_id, sort_order, duration_sec, muted, play_from, play_until, enabled, log_play, fit_mode, play_when, weight
-                              FROM playlist_items WHERE playlist_id = ? ORDER BY sort_order ASC, id ASC`).all(row.id)
+  // slot_id (a corporate local slot placement) only when set — with its name, so a restore can say
+  // which slot it could not bring back — and only where the column exists (hand-built fixtures).
+  const hasSlots = require('./corporate/schema-probe').hasColumn(db, 'playlist_items', 'slot_id');
+  const items = db.prepare(`SELECT pi.id, pi.content_id, pi.widget_id, pi.child_playlist_id, pi.zone_id, pi.sort_order, pi.duration_sec, pi.muted, pi.play_from, pi.play_until, pi.enabled, pi.log_play, pi.fit_mode, pi.play_when, pi.weight, pi.repeat_every_sec
+                                   ${hasSlots ? ', pi.slot_id, (SELECT s.name FROM corporate_slots s WHERE s.id = pi.slot_id) AS slot_name' : ''}
+                              FROM playlist_items pi WHERE pi.playlist_id = ? ORDER BY pi.sort_order ASC, pi.id ASC`).all(row.id)
     .map((it) => ({
       content_id: it.content_id || null, widget_id: it.widget_id || null, child_playlist_id: it.child_playlist_id || null,
       zone_id: it.zone_id || null, sort_order: it.sort_order, duration_sec: it.duration_sec, muted: it.muted ? 1 : 0,
       play_from: it.play_from || null, play_until: it.play_until || null,
       enabled: it.enabled === 0 ? 0 : 1, log_play: it.log_play === 0 ? 0 : 1,
       fit_mode: it.fit_mode || null, play_when: it.play_when || null, weight: it.weight || 1,
+      // Only when set, so capturing an unchanged pre-feature playlist yields the same state as before.
+      ...(it.repeat_every_sec ? { repeat_every_sec: it.repeat_every_sec } : {}),
+      ...(it.slot_id ? { slot_id: it.slot_id, slot_name: it.slot_name || null } : {}),
       schedules: scheduleBlocksFor(db, it.id),
     }));
-  return { name: row.name, description: row.description || '', playback_order: row.playback_order || 'sequential', items };
+  const state = { name: row.name, description: row.description || '', playback_order: row.playback_order || 'sequential', items };
+  if (row.smart_rules) {
+    state.smart_rules = row.smart_rules;
+    // ⚠️ A smart playlist's items are what its rules match NOW, not playlist_items (it has none).
+    // Capturing them is what lets a reviewer see, and approve, the actual content going on screens;
+    // capturing only the rules would approve "whatever happens to match at release time".
+    state.items = smartItemsState(db, row);
+  }
+  return state;
 }
 
 function captureLayout(db, row) {
@@ -145,7 +173,9 @@ function captureLiveState(db, type, id) {
   if (!row) return null;
   const live = { ...row, draft_zones: null, draft_config: null, draft_json: null };
   if (type === 'playlist') {
-    const snap = parseJson(row.published_structure, null) || parseJson(row.published_snapshot, null);
+    const snap = row.smart_rules
+      ? parseJson(row.published_snapshot, null)
+      : (parseJson(row.published_structure, null) || parseJson(row.published_snapshot, null));
     if (!snap) return null;
     return { name: row.name, description: row.description || '', items: snap.map((it, i) => ({
       content_id: it.content_id || null, widget_id: it.widget_id || null, child_playlist_id: it.child_playlist_id || null,
@@ -393,6 +423,7 @@ function restoreToDraft(db, { type, id, revisionId, actor }) {
   const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
   if (!row) { const e = new Error('Resource not found'); e.status = 404; throw e; }
   const now = nowSec();
+  const dropped = [];   // local slots a playlist revision could not bring back
 
   if (type === 'content') {
     // The bytes must still exist, or this is a rename pretending to be a restore.
@@ -423,12 +454,27 @@ function restoreToDraft(db, { type, id, revisionId, actor }) {
     };
     db.prepare('UPDATE content SET draft_json = ? WHERE id = ?').run(JSON.stringify(draft), id);
   } else if (type === 'playlist') {
+    const hasSlots = require('./corporate/schema-probe').hasColumn(db, 'playlist_items', 'slot_id');
     const txn = db.transaction(() => {
       db.prepare('DELETE FROM playlist_items WHERE playlist_id = ?').run(id);
-      const ins = db.prepare('INSERT INTO playlist_items (playlist_id, content_id, widget_id, child_playlist_id, zone_id, sort_order, duration_sec, muted, play_from, play_until, enabled, log_play, fit_mode, play_when, weight) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-      for (const it of state.items || []) {
+      // ⚠️ slot_id is restored too, or a corporate revision brings its local slots back as all-NULL
+      // ghost items (spec §6.1-6).
+      const ins = db.prepare(`INSERT INTO playlist_items (playlist_id, content_id, widget_id, child_playlist_id, zone_id, sort_order, duration_sec, muted, play_from, play_until, enabled, log_play, fit_mode, play_when, weight, repeat_every_sec${hasSlots ? ', slot_id' : ''}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${hasSlots ? ', ?' : ''})`);
+      // A smart revision's items are its matches at the time, not rows to recreate.
+      for (const it of (state.smart_rules ? [] : (state.items || []))) {
+        /*
+         * A slot placement comes back only while its slot still exists in THIS playlist: a slot that
+         * was removed and then hard-deleted by the sweep (or one belonging elsewhere) is reported in
+         * `dropped` instead of being silently skipped by the FK catch below. A retired one is
+         * un-retired — with its stores' content still attached.
+         */
+        if (it.slot_id) {
+          const slot = hasSlots ? db.prepare('SELECT id, playlist_id FROM corporate_slots WHERE id = ?').get(it.slot_id) : null;
+          if (!slot || slot.playlist_id !== id) { dropped.push({ slot_id: it.slot_id, slot_name: it.slot_name || null }); continue; }
+          db.prepare('UPDATE corporate_slots SET retired_at = NULL WHERE id = ?').run(it.slot_id);
+        }
         try {
-          const r = ins.run(id, it.content_id || null, it.widget_id || null, it.child_playlist_id || null, it.zone_id || null, it.sort_order, it.duration_sec, it.muted ? 1 : 0, it.play_from || null, it.play_until || null, it.enabled === 0 ? 0 : 1, it.log_play === 0 ? 0 : 1, it.fit_mode || null, it.play_when || null, it.weight || 1);
+          const r = ins.run(id, it.content_id || null, it.widget_id || null, it.child_playlist_id || null, it.zone_id || null, it.sort_order, it.duration_sec, it.muted ? 1 : 0, it.play_from || null, it.play_until || null, it.enabled === 0 ? 0 : 1, it.log_play === 0 ? 0 : 1, it.fit_mode || null, it.play_when || null, it.weight || 1, it.repeat_every_sec || null, ...(hasSlots ? [it.slot_id || null] : []));
           for (const b of it.schedules || []) {
             const cols = Object.keys(b);
             if (!cols.length) continue;
@@ -441,8 +487,8 @@ function restoreToDraft(db, { type, id, revisionId, actor }) {
           if (!/FOREIGN KEY/i.test(e.message)) throw e;   // a referenced asset was deleted: skip the item
         }
       }
-      db.prepare("UPDATE playlists SET name = ?, description = ?, playback_order = ?, status = 'draft', updated_at = ? WHERE id = ?")
-        .run(state.name || row.name, state.description || '', state.playback_order || row.playback_order || 'sequential', now, id);
+      db.prepare("UPDATE playlists SET name = ?, description = ?, playback_order = ?, smart_rules = ?, status = 'draft', updated_at = ? WHERE id = ?")
+        .run(state.name || row.name, state.description || '', state.playback_order || row.playback_order || 'sequential', state.smart_rules || null, now, id);
     });
     txn();
   } else if (type === 'layout') {
@@ -454,7 +500,7 @@ function restoreToDraft(db, { type, id, revisionId, actor }) {
   }
 
   const created = recordCurrent(db, type, id, { actor: { ...actor, kind: actor && actor.kind || 'restore' }, summary: `Restored from revision #${rev.rev_no}`, force: true });
-  return { revision: created, restoredFrom: rev };
+  return { revision: created, restoredFrom: rev, dropped };
 }
 
 /** Does this resource have a draft that is not what players see? */
@@ -462,7 +508,18 @@ function hasDraft(db, type, id) {
   const table = TABLE[type];
   const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
   if (!row) return false;
-  if (type === 'playlist') return row.status === 'draft';
+  if (type === 'playlist') {
+    if (row.status === 'draft') return true;
+    // A published smart playlist whose rules now match something other than what is live has
+    // unpublished changes too: that is how newly matching content in an approval-gated workspace
+    // (which the auto-refresh will not put live) reaches review at all.
+    if (row.smart_rules && row.published_snapshot) {
+      const live = (parseJson(row.published_snapshot, []) || []).map((i) => i && i.content_id).join(',');
+      const now = smartItemsState(db, row).map((i) => i.content_id).join(',');
+      return live !== now;
+    }
+    return false;
+  }
   if (type === 'slide_deck') return true;   // the doc is always the draft; its release is the playlist
   if (type === 'widget') return !!row.draft_config;
   if (type === 'layout') return !!row.draft_zones;

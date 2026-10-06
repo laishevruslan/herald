@@ -189,6 +189,7 @@ app.use((req, res, next) => {
   // Template previews carry their own sandboxing CSP (lib/templates/render.js).
   if (req.path.startsWith('/api/templates/preview/')) return next();
   if (req.path.startsWith('/api/templates/asset/')) return next();   // sets its own `sandbox` CSP
+  if (req.path.startsWith('/api/templates/demo/')) return next();    // the gallery preview: same CSP as a render
   if (req.path.startsWith('/api/kiosk/') && req.path.endsWith('/render')) return next();
   /*
    * ⚠️ AN HTML BUNDLE IS THE SAME CASE AS A WIDGET RENDER, and it fails the same way without this.
@@ -458,14 +459,21 @@ app.get('/.well-known/auth.md', serveAuthMarkdown);
 
 
 /*
- * A Markdown rendition of any page we publish, two ways: `Accept: text/markdown` on the HTML URL, or
- * the same path with `.md` appended.
+ * A Markdown rendition of any page we publish, at the same path with `.md` appended.
  *
- * ⚠️ MOUNTED HERE: ABOVE app.get('/'), the static middleware AND the SPA catch-all. Below the
- * landing route the homepage could never negotiate, because Express matches in order and that
- * route answers first — it returned HTML to `Accept: text/markdown` and looked like the feature
- * simply not working. Below static or the catch-all, `.md` falls through to index.html with a
- * 200, which is this deployment's documented trap.
+ * ⚠️ ONLY AT ITS OWN URL. NEVER NEGOTIATED ON THE HTML URL. This used to answer `Accept:
+ * text/markdown` on the page URL itself, with `Vary: Accept`. Cloudflare ignores Vary (it honours it
+ * only for images, on paid plans) and keys on the URL alone, so one agent's fetch of a guide or of
+ * the homepage stored the markdown under the page URL and every browser after it got raw markdown
+ * as a cache HIT. Reproduced on screentinker.com and alpha 2026-10-04. Marking that reply
+ * `private, no-store` did NOT help: the zone's cache rule for the marketing pages overrides origin
+ * headers, and the edge cached the no-store reply all the same. Any answer that varies by request
+ * header on a URL that edge caches is poisonable, so there is only one answer per URL. Agents find
+ * the `.md` URL from the Link header on every page, and from llms.txt and robots.txt.
+ *
+ * ⚠️ MOUNTED HERE: ABOVE app.get('/'), the static middleware AND the SPA catch-all. Below static or
+ * the catch-all, `.md` falls through to index.html with a 200, which is this deployment's documented
+ * trap.
  *
  * Generated from the HTML on request rather than kept as files beside it: two copies of the same
  * prose drift, and the copy nobody looks at is the one that goes stale.
@@ -475,15 +483,26 @@ function sendMarkdown(req, res, file, canonicalPath) {
   try {
     const html = fs.readFileSync(file, 'utf8');
     res.type('text/markdown; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=900');
-    // Content negotiation happened, so caches must key on it or a browser gets a markdown copy.
-    res.setHeader('Vary', 'Accept');
+    // Never cached, by the edge or anyone else: agents always read the current page. Safe only because
+    // `.md` is its own URL; the HTML page URL keeps its edge caching.
+    res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Link', aiSurface.linkHeader(base));
     return res.send(mdRendition.toMarkdown(html, { url: base + canonicalPath, origin: base }));
   } catch (e) {
     return res.status(404).type('text/plain').send('not found');
   }
 }
+
+// /templates is rendered from the live catalog, so its rendition is too (the file on disk is only
+// the shell and its fallback copy).
+app.get('/templates.md', (req, res) => {
+  if (config.disableHomepage) return res.status(404).type('text/plain').send('not found');
+  const base = aiSurface.origin(req);
+  res.type('text/markdown; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Link', aiSurface.linkHeader(base));
+  res.send(mdRendition.toMarkdown(require('./routes/templates-gallery').build(), { url: `${base}/templates`, origin: base }));
+});
 
 app.get(/\.md$/, (req, res, next) => {
   const file = aiSurface.markdownSource(config.frontendDir, req.path);
@@ -500,15 +519,11 @@ app.use((req, res, next) => {
   const base = aiSurface.origin(req);
   const file = aiSurface.markdownSource(config.frontendDir, req.path);
   if (file) {
-    // Advertise the rendition on the HTML response whether or not this request wanted it: a client
-    // that fetched the page learns the plain-text form exists without having to guess the URL.
+    // Advertise the rendition on the HTML response: a client that fetched the page learns the
+    // plain-text form exists, and where, without having to guess the URL.
     res.setHeader('Link', aiSurface.linkHeader(base, {
       markdownOf: (req.path === '/' ? '/index' : req.path.replace(/\.html$/, '')) + '.md',
     }));
-    res.setHeader('Vary', 'Accept');
-    if (aiSurface.prefersMarkdown(req.headers.accept)) {
-      return sendMarkdown(req, res, file, req.path);
-    }
   } else {
     res.setHeader('Link', aiSurface.linkHeader(base));
   }
@@ -581,6 +596,10 @@ app.get('/docs', (req, res) => {
 // The router falls back to the committed static page if that merge fails, because a URL named in a
 // contract should degrade to "our entries only" rather than to an error.
 app.use('/certified-hardware', require('./routes/certified-hardware'));
+// The public template gallery: the committed shell plus cards from the live official catalog.
+// Exact paths only, so nothing under /templates/ is claimed from the static files.
+app.get('/templates.html', (req, res) => res.redirect(301, '/templates'));
+app.get('/templates', require('./routes/templates-gallery').page);
 app.get('/certified-hardware/submit', (req, res) => {
   res.sendFile(path.join(config.frontendDir, 'certified-hardware-submit.html'));
 });
@@ -678,6 +697,11 @@ app.get('/player/schedule-eval.js', (req, res) => {
 app.get('/player/play-order.js', (req, res) => {
   res.type('application/javascript').setHeader('Cache-Control', 'no-cache');
   res.sendFile(path.join(__dirname, 'lib', 'play-order.js'));
+});
+// #473: the interactive-page rules (window.KioskLogic), from the single source the vectors test.
+app.get('/player/kiosk-logic.js', (req, res) => {
+  res.type('application/javascript').setHeader('Cache-Control', 'no-cache');
+  res.sendFile(path.join(__dirname, 'lib', 'kiosk-logic.js'));
 });
 // The Esc-unpair gate, from the same single source the Node tests require — so who may unpair a
 // screen at the panel cannot drift between what is tested and what is served.
@@ -1758,6 +1782,7 @@ app.get('/api/kiosk/:id/render', (req, res, next) => { req._skipAuth = true; nex
   const tplRoutes = require('./routes/templates');
   tplPublic.get('/preview/:token', (req, res, next) => tplRoutes.handle(req, res, next));
   tplPublic.get('/thumb/:sha', (req, res, next) => tplRoutes.handle(req, res, next));
+  tplPublic.get('/demo/:sha', (req, res, next) => tplRoutes.handle(req, res, next));
   tplPublic.get(/^\/asset\/[0-9a-f]{64}\/.+$/, (req, res, next) => tplRoutes.handle(req, res, next));
   app.use('/api/templates', rateLimit(60000, 120), tplPublic);
 }
@@ -1780,6 +1805,14 @@ for (const r of AGENCY_ROUTERS) {
   // reach ONLY here; agencyGate enforces the playlist allowlist + bound workspace.
   app.use(r.path, bearerAuth, resolveTenancy, agencyGate, require(r.mod));
 }
+
+/*
+ * Corporate refusals that escaped a route as an exception — a CorporateError from the guard, or the
+ * backstop's RAISE(ABORT, 'CORPORATE_LOCKED') surfacing as a SqliteError — answered as the JSON a
+ * client can act on (403/409 + code) instead of Express's default 500 page with a stack trace.
+ * Anything else is passed on untouched, so every other error behaves exactly as before.
+ */
+app.use(require('./lib/corporate/guard').errorHandler);
 
 /*
  * Plugins (P1). Off unless PLUGINS_ENABLED is set: boot() returns without scanning or
@@ -2305,6 +2338,15 @@ startScheduler(io);
 // #157: auto-deactivate expired content + republish affected playlists
 const { startContentExpiry } = require('./services/content-expiry');
 startContentExpiry(io);
+// Corporate local slots: hourly tidy of unused compositions and unreachable retired slots.
+require('./services/corporate-sweep').startCorporateSweep();
+// Corporate state an older server version may have changed (a rollback, then this upgrade): drop the
+// composition cache, republish head office playlists that version published, report empty alerts.
+try { require('./lib/corporate/reconcile').reconcileAtBoot(require('./db/database').db, io); } catch (e) { console.error('[corporate] boot reconcile:', e && e.message); }
+// Head office emergency alerts: restore any live "Activate now" from the table, arm its expiry
+// timers and the 30-second belt sweep (lib/corporate/emergency-live.js).
+require('./lib/corporate/emergency-live').init(io);
+require('./lib/smart-playlist').start(io);
 
 // Start alert service
 const { startAlertService } = require('./services/alerts');
@@ -2885,6 +2927,18 @@ app.get(['/tizen', '/tizen/'], (req, res) => {
  */
 const CONTENT_PREFIXES = ['/guides/', '/integrations/', '/studio/', '/suika/'];
 
+/*
+ * ⚠️ A MISSING ASSET IS A 404, NEVER THE APP SHELL. Every app route is `/#/…`, so a path ending in a
+ * file extension that reached the catch-all names a file we do not have. Answering it with
+ * index.html and a 200 is how a deploy poisons the CDN: a browser holding the new index.html asks
+ * for /js/views/new.js a moment before the new tree is in place, gets 21 KB of HTML with a success
+ * code, and Cloudflare (which caches by extension, not by content type) can keep that under the .js
+ * URL. The module then fails to load as "text/html is not a valid JavaScript MIME type" for every
+ * visitor until the entry expires. `no-store` so the miss itself is never cached either: the file may
+ * exist a second later.
+ */
+const ASSET_EXTENSION = /\.(m?js|css|map|json|wasm|png|jpe?g|gif|svg|ico|webp|avif|woff2?|ttf|otf|eot|mp4|webm|mp3|wav|apk|zip|ipk|wgt|deb|exe|msi|md|txt|xml|ya?ml|pdf)$/i;
+
 const NOT_FOUND_PAGE = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
   + '<meta name="viewport" content="width=device-width,initial-scale=1">'
   + '<meta name="robots" content="noindex">'
@@ -2899,6 +2953,8 @@ const NOT_FOUND_PAGE = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-
   + '<a href="/guides/what-is-digital-signage.html">guides</a>.</p>'
   + '</div></body></html>';
 
+// SPA fallback for app routes. Unmatched /api/ paths return 404 so misrouted
+// clients fail fast instead of hanging until Cloudflare's 15s upstream timeout.
 /*
  * ⚠️ AN UNKNOWN /.well-known PATH MUST 404, NOT FALL THROUGH TO THE APP SHELL.
  *
@@ -2969,6 +3025,9 @@ app.get('*', (req, res) => {
   }
   if (CONTENT_PREFIXES.some((prefix) => req.path.startsWith(prefix))) {
     return res.status(404).type('html').send(NOT_FOUND_PAGE);
+  }
+  if (ASSET_EXTENSION.test(req.path)) {
+    return res.status(404).set('Cache-Control', 'no-store').type('text/plain; charset=utf-8').send('Not found');
   }
   res.sendFile(path.join(config.frontendDir, 'index.html'));
 });

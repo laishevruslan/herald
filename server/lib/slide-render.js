@@ -239,50 +239,6 @@ function instant(v) {
  * becomes absent, an unparseable target becomes null. Nothing here can fail to produce a value the
  * renderer may interpolate.
  */
-const SHOW_WHEN = new Set(['busy', 'free', 'stale']);
-const BIND_SLUG = /^[a-zA-Z0-9_-]{1,64}$/;
-
-/*
- * Factory slides paint a bar and hide chrome from a data-source feed. The three colours and the
- * slug are allowlisted here so the renderer can interpolate them without re-checking, the same
- * pairing kindConfig already gives a clock. Absent means the element has no feed binding.
- */
-function colorWhen(raw) {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-  const busy = color(raw.busy, '');
-  const free = color(raw.free, '');
-  const stale = color(raw.stale, '');
-  if (!busy || !free || !stale) return null;
-  return { busy, free, stale };
-}
-
-function feedState(resolveData, slug) {
-  if (!slug || typeof resolveData !== 'function') return null;
-  const status = resolveData(slug, '__status');
-  if (status === 'error' || status === 'stale') return 'stale';
-  const busy = resolveData(slug, 'is_busy');
-  if (busy === true || busy === 1 || busy === '1' || busy === 'true') return 'busy';
-  return 'free';
-}
-
-/*
- * hide_if_empty drops a line whose data-source tokens all resolved empty, including a chrome
- * prefix wrapped around them ("Next:  ()"). A field with no tokens is hidden only when it is
- * blank. Without a resolver the raw tokens stay, so a preview still shows the binding.
- */
-function fieldIsEmpty(template, resolveData) {
-  if (typeof template !== 'string' || !template.trim()) return true;
-  const tokens = [...template.matchAll(/\{\{ds:([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_]+)\}\}/g)];
-  if (!tokens.length) return false;
-  if (typeof resolveData !== 'function') return false;
-  return tokens.every((m) => {
-    const val = resolveData(m[1], m[2]);
-    if (val == null) return true;
-    if (typeof val === 'object') return false;
-    return String(val).trim() === '';
-  });
-}
-
 function kindConfig(kind, src) {
   switch (kind) {
     case 'clock':
@@ -408,11 +364,6 @@ function normalizeSlide(raw) {
        * header describes. Null for every kind that needs none, so its absence is not ambiguous.
        */
       cfg: kindConfig(kind, src),
-      hide_if_empty: src.hide_if_empty === true,
-      show_when: SHOW_WHEN.has(src.show_when) ? src.show_when : 'always',
-      bind_status: (typeof src.bind_status === 'string' && BIND_SLUG.test(src.bind_status))
-        ? src.bind_status : null,
-      color_when: colorWhen(src.color_when),
       motion: (m && Object.prototype.hasOwnProperty.call(ANIMATIONS, m.animation)) ? {
         animation: m.animation,
         // Bounded well below anything sane: a 40-second delay on a 10-second slide is not a slow
@@ -849,10 +800,6 @@ function renderSlideHtml(rawConfig, opts = {}) {
   };
 
   const body = slide.elements.map((e) => {
-    const state = feedState(resolveData, e.bind_status);
-    if (e.show_when !== 'always' && state !== e.show_when) return '';
-    if (e.hide_if_empty && fieldIsEmpty(slide.fields[e.slot], resolveData)) return '';
-
     const s = e.style;
     const css = [
       `left:${e.x}%`, `top:${e.y}%`, `width:${e.w}%`,
@@ -880,8 +827,7 @@ function renderSlideHtml(rawConfig, opts = {}) {
     }
 
     if (e.kind === 'rule' || e.kind === 'box') {
-      const paint = (e.color_when && state && e.color_when[state]) ? e.color_when[state] : s.color;
-      css.push(`background:${paint}`);
+      css.push(`background:${s.color}`);
       return `<div class="e" style="${css.filter(Boolean).join(';')}"></div>`;
     }
 

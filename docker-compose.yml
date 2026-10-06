@@ -4,11 +4,11 @@
 # reverse proxy or Cloudflare in production.
 services:
   screentinker:
-    # image: ghcr.io/laishevruslan/herald:latest
+    image: ghcr.io/laishevruslan/herald:latest
     # ...or build from source instead of pulling:
     # build: .
-    build: .
-    image: herald:local
+    # build: .
+    # image: herald:local
     restart: unless-stopped
     ports:
       - "3001:3001"
