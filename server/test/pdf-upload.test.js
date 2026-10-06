@@ -58,8 +58,8 @@ test('the vendored pdf.js is complete and every piece carries its licence', () =
 test('the dashboard CSP admits WebAssembly compilation and nothing more', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   // Directives only: the comment above scriptSrc explains that this is NOT 'unsafe-eval', and an
-  // assertion over the raw text would match its own explanation.
-  const csp = server.slice(server.indexOf('const dashboardCsp'), server.indexOf('const dashboardCsp') + 2500)
+  // assertion over the raw text would match its own explanation. Stop before suikaCsp, which
+  // deliberately widens script-src for PathKit and must not be read as the dashboard policy.
   const dashAt = server.indexOf('const dashboardCsp');
   const suikaAt = server.indexOf('const suikaCsp');
   const csp = server.slice(dashAt, suikaAt > dashAt ? suikaAt : dashAt + 2500)
@@ -80,7 +80,9 @@ test('pdf.js is loaded lazily, so a session that never uploads a PDF never fetch
 
 test('pages go through api.uploadContent, not a bare fetch or XHR (the house rule)', () => {
   const lib = fs.readFileSync(LIBRARY, 'utf8');
-  const fn = lib.slice(lib.indexOf('async function importPdf'), lib.indexOf('\n}\n', lib.indexOf('async function importPdf')));
+  const start = lib.indexOf('async function importPdf');
+  const end = lib.indexOf('async function loadContent', start);
+  const fn = lib.slice(start, end > start ? end : undefined);
   assert.match(fn, /api\.uploadContent\(pages/, 'pages are uploaded through the shared helper');
   assert.doesNotMatch(fn, /new XMLHttpRequest|fetch\(/, 'no bespoke transport');
   assert.match(fn, /api\.createPlaylist\(/);

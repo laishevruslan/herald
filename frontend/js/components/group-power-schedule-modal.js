@@ -1,4 +1,4 @@
-import { t } from '../i18n.js';
+import { t, tn } from '../i18n.js';
 import { api } from '../api.js';
 import { showToast } from '../components/toast.js';
 import { esc } from '../utils.js';

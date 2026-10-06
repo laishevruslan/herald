@@ -5,6 +5,7 @@ const { db } = require('../db/database');
 const { accessContext } = require('../lib/tenancy');
 const deckLib = require('../lib/slide-deck');
 const slideRender = require('../lib/slide-render');
+const slideTemplates = require('../lib/slide-templates');
 
 /*
  * Slide decks — the authoring surface for PowerPoint-style slides.
@@ -147,13 +148,30 @@ router.post('/', (req, res) => {
   const name = String((req.body && req.body.name) || '').trim().slice(0, 120);
   if (!name) return res.status(400).json({ error: 'A deck needs a name.' });
 
+  let docInput = req.body && req.body.doc;
+  if (req.body && typeof req.body.factory === 'string' && req.body.factory && docInput == null) {
+    const built = slideTemplates.buildDeck(req.body.factory, {
+      slug: req.body.slug,
+      slugs: req.body.slugs,
+      title: req.body.title,
+      titles: req.body.titles,
+      chrome: req.body.chrome,
+    });
+    if (!built) return res.status(400).json({ error: 'Unknown factory.' });
+    docInput = built;
+  }
+
   const id = uuidv4();
-  const doc = deckLib.normalizeDeck(req.body && req.body.doc);
+  const doc = deckLib.normalizeDeck(docInput);
   const ts = nowSec();
   db.prepare(`INSERT INTO slide_decks (id, workspace_id, user_id, name, doc, created_at, updated_at)
               VALUES (?,?,?,?,?,?,?)`)
     .run(id, req.workspaceId, req.user.id, name, JSON.stringify(doc), ts, ts);
   res.status(201).json(present(db.prepare('SELECT * FROM slide_decks WHERE id = ?').get(id)));
+});
+
+router.get('/factories', (req, res) => {
+  res.json(slideTemplates.listFactories());
 });
 
 router.get('/:id', (req, res) => {

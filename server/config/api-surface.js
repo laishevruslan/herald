@@ -105,6 +105,13 @@ const JWT_ONLY_ROUTERS = [
    * repoint every store's screens. Authoring is a signed-in human action.
    */
   { path: '/api/corporate',   mod: './routes/corporate',    tenancy: true },
+  /*
+   * Workspace brand kit and Studio poster export. JWT + tenancy: colours, fonts and scene_json
+   * are operator authoring data for the active workspace, not a PAT target. A token that could
+   * rewrite the kit or publish a poster would be a second writer on a copied workspace.
+   */
+  { path: '/api/brand-kit',   mod: './routes/brand-kit',    tenancy: true },
+  { path: '/api/studio',      mod: './routes/studio',       tenancy: true },
 ];
 
 // #73: AGENCY_ROUTERS - capability-restricted ('agency' scope) surface. Mounted with

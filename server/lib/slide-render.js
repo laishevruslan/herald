@@ -143,6 +143,47 @@ function color(v, dflt) {
     ? v.trim() : dflt;
 }
 
+const BIND_STATUS_RE = /^[a-zA-Z0-9_-]{1,64}$/;
+const SHOW_WHEN = new Set(['always', 'busy', 'free', 'stale']);
+
+function normalizeColorWhen(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const busy = color(raw.busy, '');
+  const free = color(raw.free, '');
+  const stale = color(raw.stale, '');
+  if (!busy || !free || !stale) return null;
+  return { busy, free, stale };
+}
+
+function normalizeBindStatus(raw) {
+  return (typeof raw === 'string' && BIND_STATUS_RE.test(raw)) ? raw : null;
+}
+
+function normalizeShowWhen(raw) {
+  return SHOW_WHEN.has(raw) ? raw : 'always';
+}
+
+/*
+ * Stale wins over busy/free. A failed fetch must paint the grey (or the 1-bit rule), never the
+ * last AVAILABLE colour — that is how a dead calendar reads as an empty room.
+ */
+function feedState(bindStatus, resolveData) {
+  if (!bindStatus || typeof resolveData !== 'function') return null;
+  const flag = resolveData(bindStatus, '__status');
+  if (flag === 'error' || flag === 'stale') return 'stale';
+  const busy = resolveData(bindStatus, 'is_busy');
+  if (busy === true || busy === 1 || busy === '1' || busy === 'true') return 'busy';
+  if (flag === 'ok' || busy === false || busy === 0 || busy === '0' || busy === 'false') return 'free';
+  return 'stale';
+}
+
+/* "Next:  ()" and "Then: " are chrome around empty tokens. A real title does not match. */
+function chromeOnly(text) {
+  const t = String(text == null ? '' : text).trim();
+  if (!t) return true;
+  return /^[^:\n]{1,80}:\s*(?:\(\s*\))?\s*$/.test(t);
+}
+
 /*
  * A URL, made safe to sit inside a CSS `url(...)`.
  *
@@ -372,6 +413,14 @@ function normalizeSlide(raw) {
         duration: clamp(m.duration, 0.05, 10, 0.5),
         easing: Object.prototype.hasOwnProperty.call(EASINGS, m.easing) ? m.easing : 'ease-out',
       } : null,
+      /*
+       * Factory door signs. Absent on a hand-built slide, and then the defaults are what the
+       * renderer already did: always show, never recolour, never hide an empty line.
+       */
+      hide_if_empty: src.hide_if_empty === true,
+      show_when: normalizeShowWhen(src.show_when),
+      bind_status: normalizeBindStatus(src.bind_status),
+      color_when: normalizeColorWhen(src.color_when),
     };
   });
 
@@ -800,6 +849,14 @@ function renderSlideHtml(rawConfig, opts = {}) {
   };
 
   const body = slide.elements.map((e) => {
+    if (e.show_when !== 'always' && feedState(e.bind_status, resolveData) !== e.show_when) return '';
+    const live = KINDS[e.kind] && KINDS[e.kind].live;
+    if (e.hide_if_empty && !live && e.kind !== 'rule' && e.kind !== 'box') {
+      if ((e.kind === 'image' || e.kind === 'lettering') ? !e.contentId : chromeOnly(fields[e.slot] || '')) {
+        return '';
+      }
+    }
+
     const s = e.style;
     const css = [
       `left:${e.x}%`, `top:${e.y}%`, `width:${e.w}%`,
@@ -827,7 +884,12 @@ function renderSlideHtml(rawConfig, opts = {}) {
     }
 
     if (e.kind === 'rule' || e.kind === 'box') {
-      css.push(`background:${s.color}`);
+      let fill = s.color;
+      if (e.color_when) {
+        const st = feedState(e.bind_status, resolveData);
+        if (st && e.color_when[st]) fill = e.color_when[st];
+      }
+      css.push(`background:${fill}`);
       return `<div class="e" style="${css.filter(Boolean).join(';')}"></div>`;
     }
 
@@ -876,7 +938,6 @@ function renderSlideHtml(rawConfig, opts = {}) {
       `font-weight:${s.weight}`,
       `text-align:${s.align}`,
     );
-    const live = KINDS[e.kind].live;
     if (live) {
       /*
        * ⚠️ EVERY ONE OF THESE VALUES IS ESCAPED ON THE WAY INTO THE ATTRIBUTE, even though

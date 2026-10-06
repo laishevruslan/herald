@@ -424,96 +424,223 @@ function buildWasteCalendarSlide(slug = 'abfall') {
   };
 }
 
+function sourceOptionsHtml(selected) {
+  const list = Array.isArray(DATA_SOURCES_LIST) ? DATA_SOURCES_LIST : [];
+  if (!list.length) {
+    return `<option value="">${esc(t('slides.factory.no_source'))}</option>`;
+  }
+  return list.map((ds) => (
+    `<option value="${esc(ds.slug)}"${ds.slug === selected ? ' selected' : ''}>${esc(ds.name || ds.slug)}</option>`
+  )).join('');
+}
+
 async function openNewDeckModal(container) {
+  let factories = [];
+  try {
+    const listed = await api.get('/slide-decks/factories');
+    if (Array.isArray(listed)) factories = listed;
+  } catch (_) { factories = []; }
   if (!DATA_SOURCES_LIST || !DATA_SOURCES_LIST.length) {
     try { DATA_SOURCES_LIST = await api.getDataSources(); } catch (_) { DATA_SOURCES_LIST = []; }
   }
 
-  const defaultRoomSlug = DATA_SOURCES_LIST[0]?.slug || 'testraum';
-  const defaultWasteSlug = DATA_SOURCES_LIST.find(x => x.slug.includes('abfall') || x.slug.includes('waste'))?.slug || DATA_SOURCES_LIST[0]?.slug || 'abfall';
+  const items = galleryItems(factories);
+  let chip = 'all';
+  let index = 0;
+  let step = 1;
+  let nameDraft = 'New Slide Deck';
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px';
-
   overlay.innerHTML = `
-    <div class="modal" style="background:var(--bg-card,#1e293b);border-radius:12px;border:1px solid var(--border,#334155);width:100%;max-width:540px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)">
+    <div class="modal" style="background:var(--bg-card,#1e293b);border-radius:12px;border:1px solid var(--border,#334155);width:100%;max-width:760px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)">
       <div class="modal-header" style="padding:18px 24px;border-bottom:1px solid var(--border,#334155);display:flex;justify-content:space-between;align-items:center">
         <h2 style="margin:0;font-size:18px;font-weight:600;color:var(--text-primary,#f8fafc)">${esc(t('slides.template_modal_title'))}</h2>
-        <button id="closeNewDeckModal" style="background:none;border:none;color:var(--text-muted,#94a3b8);font-size:20px;cursor:pointer">&times;</button>
+        <button id="closeNewDeckModal" type="button" style="background:none;border:none;color:var(--text-muted,#94a3b8);font-size:20px;cursor:pointer">&times;</button>
       </div>
-      <div class="modal-body" style="padding:24px;display:flex;flex-direction:column;gap:16px">
-        <div>
-          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(t('slides.deck_name_label'))}</label>
-          <input type="text" id="deckNameInput" class="input" style="width:100%" placeholder="${esc(t('slides.deck_name_placeholder'))}" value="New Slide Deck">
-        </div>
-        <div>
-          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(t('slides.choose_template'))}</label>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;background:var(--bg-input)">
-              <input type="radio" name="deckTpl" value="blank" checked style="margin-top:3px">
-              <div>
-                <strong style="display:block;font-size:13px">${esc(t('slides.tpl_blank_title'))}</strong>
-                <span style="font-size:11px;color:var(--text-muted)">${esc(t('slides.tpl_blank_desc'))}</span>
-              </div>
-            </label>
-            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;background:var(--bg-input)">
-              <input type="radio" name="deckTpl" value="room" style="margin-top:3px">
-              <div>
-                <strong style="display:block;font-size:13px">${esc(t('slides.tpl_room_title'))}</strong>
-                <span style="font-size:11px;color:var(--text-muted)">${esc(t('slides.tpl_room_desc'))}</span>
-              </div>
-            </label>
-            <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;border:1px solid var(--border);cursor:pointer;background:var(--bg-input)">
-              <input type="radio" name="deckTpl" value="waste" style="margin-top:3px">
-              <div>
-                <strong style="display:block;font-size:13px">${esc(t('slides.tpl_waste_title'))}</strong>
-                <span style="font-size:11px;color:var(--text-muted)">${esc(t('slides.tpl_waste_desc'))}</span>
-              </div>
-            </label>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer" style="padding:16px 24px;border-top:1px solid var(--border,#334155);display:flex;justify-content:flex-end;gap:10px">
-        <button type="button" id="cancelNewDeckBtn" class="btn btn-secondary">${esc(t('common.cancel'))}</button>
-        <button type="button" id="submitNewDeckBtn" class="btn btn-primary">${esc(t('slides.create_deck_btn'))}</button>
-      </div>
+      <div class="modal-body" id="deckWizardBody" style="padding:24px;display:flex;flex-direction:column;gap:16px;max-height:70vh;overflow:auto"></div>
+      <div class="modal-footer" id="deckWizardFoot" style="padding:16px 24px;border-top:1px solid var(--border,#334155);display:flex;justify-content:flex-end;gap:10px"></div>
     </div>
   `;
-
   document.body.appendChild(overlay);
   const close = () => overlay.remove();
   overlay.querySelector('#closeNewDeckModal').onclick = close;
-  overlay.querySelector('#cancelNewDeckBtn').onclick = close;
+  overlay.addEventListener('keydown', (ev) => {
+    if (step !== 1) return;
+    const tag = ev.target && ev.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(ev.key)) return;
+    ev.preventDefault();
+    const list = filterGallery(items, chip);
+    index = moveGalleryIndex(list.length, index, ev.key);
+    paintStep1();
+  });
 
-  overlay.querySelector('#submitNewDeckBtn').onclick = async () => {
-    const name = overlay.querySelector('#deckNameInput').value.trim() || 'New Slide Deck';
-    const tpl = overlay.querySelector('input[name="deckTpl"]:checked').value;
+  const body = () => overlay.querySelector('#deckWizardBody');
+  const foot = () => overlay.querySelector('#deckWizardFoot');
+  const deckName = () => {
+    const el = overlay.querySelector('#deckNameInput');
+    if (el) nameDraft = el.value.trim() || 'New Slide Deck';
+    return nameDraft;
+  };
+  const selectedCard = () => filterGallery(items, chip)[index] || null;
 
-    let initialSlide;
-    let initialAspect = '16:9';
-    if (tpl === 'room') {
-      initialSlide = buildRoomSignSlide(defaultRoomSlug);
-      initialAspect = '5:3';
-    } else if (tpl === 'waste') {
-      initialSlide = buildWasteCalendarSlide(defaultWasteSlug);
-      initialAspect = '5:3';
-    } else {
-      initialSlide = newSlide('Slide 1');
+  function paintStep1() {
+    step = 1;
+    const list = filterGallery(items, chip);
+    if (index >= list.length) index = 0;
+    const chips = GALLERY_CHIPS.map((c) => (
+      `<button type="button" data-gallery-chip="${esc(c)}" class="btn btn-secondary" style="font-size:12px;${c === chip ? 'outline:2px solid var(--primary)' : ''}">${esc(t('slides.factory.chip.' + c))}</button>`
+    )).join('');
+    const cards = list.map((card, i) => `
+      <button type="button" data-gallery-id="${esc(card.id)}" style="text-align:left;padding:10px;border-radius:8px;border:1px solid ${i === index ? 'var(--primary)' : 'var(--border)'};background:var(--bg-input);cursor:pointer;color:inherit">
+        ${thumbHtml(card.thumbnail, esc)}
+        <strong style="display:block;font-size:13px;margin-top:8px">${esc(t(card.title_key))}</strong>
+        <span style="font-size:11px;color:var(--text-muted)">${esc(t(card.desc_key))}</span>
+      </button>`).join('');
+    body().innerHTML = `
+      <div>
+        <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">${esc(t('slides.deck_name_label'))}</label>
+        <input type="text" id="deckNameInput" class="input" style="width:100%" placeholder="${esc(t('slides.deck_name_placeholder'))}" value="${esc(deckName() === 'New Slide Deck' ? 'New Slide Deck' : deckName())}">
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">${chips}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${cards}</div>
+    `;
+    foot().innerHTML = `
+      <button type="button" id="cancelNewDeckBtn" class="btn btn-secondary">${esc(t('common.cancel'))}</button>
+      <button type="button" id="deckWizardNext" class="btn btn-primary">${esc(t('slides.factory.continue'))}</button>
+    `;
+    foot().querySelector('#cancelNewDeckBtn').onclick = close;
+    body().querySelectorAll('[data-gallery-chip]').forEach((btn) => {
+      btn.onclick = () => { chip = btn.getAttribute('data-gallery-chip') || 'all'; index = 0; paintStep1(); };
+    });
+    body().querySelectorAll('[data-gallery-id]').forEach((btn, i) => {
+      btn.onclick = () => { index = i; paintStep1(); };
+      btn.ondblclick = () => { index = i; goStep2(); };
+    });
+    foot().querySelector('#deckWizardNext').onclick = () => goStep2();
+  }
+
+  function goStep2() {
+    const card = selectedCard();
+    if (!card) return;
+    if (card.id === 'blank') {
+      createDeck({ name: deckName(), doc: { aspect: '16:9', slides: [newSlide('Slide 1')] } });
+      return;
     }
+    step = 2;
+    const isBoard = card.id === 'rooms-board-16x9';
+    const isWaste = String(card.id).startsWith('waste-');
+    const isAgenda = String(card.id).startsWith('agenda-');
+    const isRoom = !isWaste && !isAgenda;
+    const slotKeys = [
+      'slides.factory.board_slot_1',
+      'slides.factory.board_slot_2',
+      'slides.factory.board_slot_3',
+      'slides.factory.board_slot_4',
+    ];
+    let binds = '';
+    if (isBoard) {
+      binds += `<p style="font-size:12px;color:var(--text-muted);margin:0">${esc(t('slides.factory.board_hint'))}</p>`;
+      for (let n = 1; n <= 4; n++) {
+        binds += `
+          <label style="display:block;font-size:12px;font-weight:600">${esc(t(slotKeys[n - 1]))}</label>
+          <select class="input" id="deckSourceSelect${n - 1}" style="width:100%;margin-bottom:6px">${sourceOptionsHtml('')}</select>
+          <input class="input" id="deckTitleInput${n - 1}" style="width:100%;margin-bottom:8px" placeholder="${esc(t('slides.factory.board_title_label'))}">
+        `;
+      }
+    } else {
+      binds += `
+        <label style="display:block;font-size:12px;font-weight:600">${esc(t('slides.factory.pick_source'))}</label>
+        <select class="input" id="deckSourceSelect0" style="width:100%">${sourceOptionsHtml('')}</select>
+      `;
+      if (!DATA_SOURCES_LIST.length) {
+        binds += `<p style="font-size:12px;color:var(--text-muted)">${esc(t('slides.factory.connect_first'))}</p>`;
+      }
+    }
+    let chrome = '';
+    if (isRoom) {
+      chrome = `
+        <label style="display:block;font-size:12px;font-weight:600">${esc(t('slides.factory.room_title_label'))}</label>
+        <input class="input" id="deckRoomTitle" style="width:100%" value="">
+        <label style="display:block;font-size:12px;font-weight:600;margin-top:8px">${esc(t('slides.factory.now_prefix'))}</label>
+        <input class="input" id="chromeNow" style="width:100%" value="${esc(t('slides.factory.now_prefix'))}">
+        <label style="display:block;font-size:12px;font-weight:600;margin-top:8px">${esc(t('slides.factory.next_prefix'))}</label>
+        <input class="input" id="chromeNext" style="width:100%" value="${esc(t('slides.factory.next_prefix'))}">
+      `;
+    } else if (isWaste) {
+      chrome = `
+        <label style="display:block;font-size:12px;font-weight:600">${esc(t('slides.factory.waste_headline'))}</label>
+        <input class="input" id="chromeHeadline" style="width:100%" value="${esc(t('slides.factory.waste_headline'))}">
+        <label style="display:block;font-size:12px;font-weight:600;margin-top:8px">${esc(t('slides.factory.waste_note'))}</label>
+        <input class="input" id="chromeNote" style="width:100%" value="${esc(t('slides.factory.waste_note'))}">
+        <label style="display:block;font-size:12px;font-weight:600;margin-top:8px">${esc(t('slides.factory.then_prefix'))}</label>
+        <input class="input" id="chromeThen" style="width:100%" value="${esc(t('slides.factory.then_prefix'))}">
+        <p style="font-size:12px;color:var(--text-muted)">${esc(t('slides.factory.include_hint'))}</p>
+      `;
+    } else if (isAgenda) {
+      chrome = `
+        <label style="display:block;font-size:12px;font-weight:600">${esc(t('slides.factory.agenda_headline'))}</label>
+        <input class="input" id="chromeHeadline" style="width:100%" value="${esc(t('slides.factory.agenda_headline'))}">
+      `;
+    }
+    body().innerHTML = `
+      <p style="margin:0;font-size:14px;font-weight:600">${esc(t(card.title_key))}</p>
+      ${binds}
+      ${chrome}
+    `;
+    foot().innerHTML = `
+      <button type="button" id="deckWizardBack" class="btn btn-secondary">${esc(t('slides.factory.back'))}</button>
+      <button type="button" id="submitNewDeckBtn" class="btn btn-primary">${esc(t('slides.create_deck_btn'))}</button>
+    `;
+    foot().querySelector('#deckWizardBack').onclick = () => paintStep1();
+    foot().querySelector('#submitNewDeckBtn').onclick = () => submitFactory(card);
+  }
 
+  function val(sel) {
+    return (overlay.querySelector(sel)?.value || '').trim();
+  }
+
+  async function submitFactory(card) {
+    const payload = {
+      name: deckName(),
+      factory: card.id,
+      chrome: {},
+    };
+    if (card.id === 'rooms-board-16x9') {
+      payload.slugs = [];
+      payload.titles = [];
+      for (let n = 1; n <= 4; n++) {
+        payload.slugs.push(val(`#deckSourceSelect${n - 1}`));
+        payload.titles.push(val(`#deckTitleInput${n - 1}`));
+      }
+      payload.chrome.next_prefix = val('#chromeNext');
+      payload.chrome.now_prefix = val('#chromeNow');
+    } else {
+      payload.slug = val('#deckSourceSelect0');
+      payload.title = val('#deckRoomTitle');
+      if (val('#chromeNext')) payload.chrome.next_prefix = val('#chromeNext');
+      if (val('#chromeNow')) payload.chrome.now_prefix = val('#chromeNow');
+      if (val('#chromeHeadline')) payload.chrome.headline = val('#chromeHeadline');
+      if (val('#chromeNote')) payload.chrome.waste_note = val('#chromeNote');
+      if (val('#chromeThen')) payload.chrome.then_prefix = val('#chromeThen');
+    }
+    await createDeck(payload);
+  }
+
+  async function createDeck(payload) {
     try {
-      const d = await api.post('/slide-decks', {
-        name,
-        doc: { aspect: initialAspect, slides: [initialSlide] }
-      });
+      const d = await api.post('/slide-decks', payload);
       state.decks.unshift({ id: d.id, name: d.name, slide_count: d.doc.slides.length });
       close();
       await openDeck(container, d.id);
     } catch (e) {
-      showToast(e.message || 'Could not create the deck', 'error');
+      showToast(e.message || t('slides.factory.need_source'), 'error');
     }
-  };
+  }
+
+  paintStep1();
 }
 
 /* ============================================================ render */

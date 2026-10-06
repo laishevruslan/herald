@@ -4,7 +4,11 @@
 /*
  * Licence gate for the dependencies that actually SHIP.
  *
- *   node scripts/license-check.js [--sbom <path>] [--include-dev]
+ *   node scripts/license-check.js [--sbom <path>] [--include-dev] [--root <dir>]
+ *
+ * --root audits a package tree other than server/. frontend-studio is an npm island; the Suika
+ * editor at frontend-studio_v3 is a pnpm workspace whose lockfile is pnpm-lock.yaml. When that
+ * file is in the chosen root, the listing comes from `pnpm ls` instead of `npm ls`.
  *
  * Run from a PRODUCTION install (`npm ci --omit=dev`). That is the whole point: a developer
  * checkout carries `sharp`, whose `@img/sharp-wasm32` declares LGPL-3.0-or-later. It is a test
@@ -25,7 +29,10 @@ const { execFileSync } = require('child_process');
 const args = process.argv.slice(2);
 const INCLUDE_DEV = args.includes('--include-dev');
 const SBOM_OUT = args.includes('--sbom') ? args[args.indexOf('--sbom') + 1] : null;
-const SERVER_DIR = path.join(__dirname, '..', 'server');
+const rootIdx = args.indexOf('--root');
+const SCAN_ROOT = (rootIdx >= 0 && args[rootIdx + 1])
+  ? path.resolve(args[rootIdx + 1])
+  : path.join(__dirname, '..', 'server');
 
 /* ── policy ───────────────────────────────────────────────────────────────────
  * ALLOW: permissive, no distribution obligation beyond keeping the notice.
@@ -98,10 +105,14 @@ function readLicense(dir) {
  * output either way; a genuinely empty result is the only thing worth aborting on.
  */
 function listInstalled() {
-  const argv = ['ls', ...(INCLUDE_DEV ? [] : ['--omit=dev']), '--all', '--parseable'];
-  const opts = { cwd: SERVER_DIR, maxBuffer: 64 * 1024 * 1024, encoding: 'utf8' };
+  // frontend-studio_v3 ships a pnpm-lock.yaml; every other island (server, frontend-studio) is npm.
+  const usePnpm = fs.existsSync(path.join(SCAN_ROOT, 'pnpm-lock.yaml'));
+  const argv = usePnpm
+    ? ['ls', '-r', '--depth', 'Infinity', '--parseable', ...(INCLUDE_DEV ? [] : ['--prod'])]
+    : ['ls', ...(INCLUDE_DEV ? [] : ['--omit=dev']), '--all', '--parseable'];
+  const opts = { cwd: SCAN_ROOT, maxBuffer: 64 * 1024 * 1024, encoding: 'utf8' };
   try {
-    return execFileSync('npm', argv, opts);
+    return execFileSync(usePnpm ? 'pnpm' : 'npm', argv, opts);
   } catch (e) {
     if (e.stdout && e.stdout.trim()) return e.stdout;
     console.error('npm ls produced no output:\n' + (e.stderr || e.message));

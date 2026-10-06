@@ -184,6 +184,12 @@ function sanitizeStored(templateIn, fieldsIn) {
       },
       motion: e.motion,
       ...storedCfg(e),
+      // Factory flags. Omitted when they are the hand-built defaults, so a saved deck that never
+      // had them stays byte-for-byte the shape the editor already writes.
+      ...(e.hide_if_empty ? { hide_if_empty: true } : {}),
+      ...(e.show_when && e.show_when !== 'always' ? { show_when: e.show_when } : {}),
+      ...(e.bind_status ? { bind_status: e.bind_status } : {}),
+      ...(e.color_when ? { color_when: e.color_when } : {}),
     })),
   };
 
