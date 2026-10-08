@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('../db/database');
-const { accessContext } = require('../lib/tenancy');
+const { resourceAccess } = require('../lib/tenancy');
 const deckLib = require('../lib/slide-deck');
 const slideRender = require('../lib/slide-render');
 const slideTemplates = require('../lib/slide-templates');
@@ -27,7 +27,7 @@ function checkDeckAccess(req, res, requireWrite) {
   const deck = db.prepare('SELECT * FROM slide_decks WHERE id = ?').get(req.params.id);
   if (!deck) { res.status(404).json({ error: 'Deck not found' }); return null; }
   const ws = deck.workspace_id ? db.prepare('SELECT * FROM workspaces WHERE id = ?').get(deck.workspace_id) : null;
-  const ctx = ws && accessContext(req.user.id, req.user.role, ws);
+  const ctx = ws && resourceAccess(req, ws);
   if (!ctx) { res.status(403).json({ error: 'Access denied' }); return null; }
   // A read-only member may VIEW a deck but not author, publish, or delete it — the same rule
   // playlists (loadPlaylistAccess) and schedules already enforce, and which was missing here. Publish
@@ -148,30 +148,13 @@ router.post('/', (req, res) => {
   const name = String((req.body && req.body.name) || '').trim().slice(0, 120);
   if (!name) return res.status(400).json({ error: 'A deck needs a name.' });
 
-  let docInput = req.body && req.body.doc;
-  if (req.body && typeof req.body.factory === 'string' && req.body.factory && docInput == null) {
-    const built = slideTemplates.buildDeck(req.body.factory, {
-      slug: req.body.slug,
-      slugs: req.body.slugs,
-      title: req.body.title,
-      titles: req.body.titles,
-      chrome: req.body.chrome,
-    });
-    if (!built) return res.status(400).json({ error: 'Unknown factory.' });
-    docInput = built;
-  }
-
   const id = uuidv4();
-  const doc = deckLib.normalizeDeck(docInput);
+  const doc = deckLib.normalizeDeck(req.body && req.body.doc);
   const ts = nowSec();
   db.prepare(`INSERT INTO slide_decks (id, workspace_id, user_id, name, doc, created_at, updated_at)
               VALUES (?,?,?,?,?,?,?)`)
     .run(id, req.workspaceId, req.user.id, name, JSON.stringify(doc), ts, ts);
   res.status(201).json(present(db.prepare('SELECT * FROM slide_decks WHERE id = ?').get(id)));
-});
-
-router.get('/factories', (req, res) => {
-  res.json(slideTemplates.listFactories());
 });
 
 router.get('/:id', (req, res) => {

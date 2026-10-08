@@ -109,8 +109,6 @@ When an iCal feed is ingested by `server/lib/data-sources/ical-resolver.js`, it 
 }
 ```
 
-Canonical bind keys (do not rename): `status`, `status_detail`, `is_busy`, `current_title`, `current_time`, `current_organizer`, `next_title`, `next_time`, `agenda_text`, `event_{n}_title`, `event_{n}_time`, `event_count`, `events_today_count`, `remaining_today_count`, `remaining_today_empty`. Aliases such as `next_event_summary` remain for older decks. There is no `next_event_title`.
-
 ---
 
 ## 5. Slide Integration & Variable Syntax

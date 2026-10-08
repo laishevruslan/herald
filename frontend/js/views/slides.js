@@ -3,6 +3,7 @@ import { esc } from '../utils.js';
 import { showToast } from '../components/toast.js';
 import { t } from '../i18n.js';
 import { renderApprovalBar } from '../components/approval-actions.js';
+import { mountHostedPicker } from '../components/ai-hosted-picker.js';
 import {
   GALLERY_CHIPS, galleryItems, filterGallery, moveGalleryIndex, thumbHtml,
 } from '../lib/slide-gallery.js';
@@ -325,102 +326,6 @@ function newSlide(name = 'Untitled slide') {
     id: uid('s'), name, dwell_sec: 10, widget_id: null,
     template: { background: '#1B2029', elements: [e] },
     fields: { [e.slot]: 'New slide' },
-  };
-}
-
-function buildRoomSignSlide(slug = 'room') {
-  const head = {
-    id: uid('el'), kind: 'head', slot: 'room_name',
-    box: { x: 5, y: 8, w: 60, h: null },
-    style: { color: '#FFFFFF', font: 'sans', size_cqw: 5, weight: 700, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-  const clock = {
-    id: uid('el'), kind: 'clock', slot: 'clock', clock_format: '24', tz: '', locale: '',
-    box: { x: 70, y: 8, w: 25, h: null },
-    style: { color: '#94A3B8', font: 'sans', size_cqw: 4.5, weight: 600, align: 'right', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-  const rule = {
-    id: uid('el'), kind: 'rule', slot: 'rule_top',
-    box: { x: 5, y: 22, w: 90, h: 0.5 },
-    style: { color: '#334155', font: 'sans', size_cqw: 0, weight: 400, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-  const stat = {
-    id: uid('el'), kind: 'stat', slot: 'status_badge',
-    box: { x: 5, y: 28, w: 90, h: null },
-    style: { color: '#38BDF8', font: 'sans', size_cqw: 9, weight: 700, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-  const detail = {
-    id: uid('el'), kind: 'body', slot: 'status_detail',
-    box: { x: 5, y: 48, w: 90, h: null },
-    style: { color: '#F8FAFC', font: 'sans', size_cqw: 3.5, weight: 500, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-  const nextMeet = {
-    id: uid('el'), kind: 'body', slot: 'next_meeting',
-    box: { x: 5, y: 68, w: 90, h: null },
-    style: { color: '#94A3B8', font: 'sans', size_cqw: 3, weight: 400, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-
-  return {
-    id: uid('s'), name: 'Room Status', dwell_sec: 30, widget_id: null,
-    template: {
-      background: '#0F172A',
-      aspect: '5:3', // 800:480 for e-paper / Sticky
-      elements: [head, clock, rule, stat, detail, nextMeet],
-    },
-    fields: {
-      room_name: 'Konferenzraum Berlin',
-      status_badge: `{{ds:${slug}.status}}`,
-      status_detail: `{{ds:${slug}.status_detail}}`,
-      next_meeting: `Nächstes Meeting: {{ds:${slug}.next_title}} ({{ds:${slug}.next_time}})`,
-    }
-  };
-}
-
-function buildWasteCalendarSlide(slug = 'abfall') {
-  const head = {
-    id: uid('el'), kind: 'head', slot: 'headline',
-    box: { x: 6, y: 10, w: 88, h: null },
-    style: { color: '#FFFFFF', font: 'sans', size_cqw: 4.5, weight: 700, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-  const stat = {
-    id: uid('el'), kind: 'stat', slot: 'waste_type',
-    box: { x: 6, y: 28, w: 88, h: null },
-    style: { color: '#FACC15', font: 'sans', size_cqw: 8, weight: 700, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-  const date = {
-    id: uid('el'), kind: 'body', slot: 'waste_date',
-    box: { x: 6, y: 50, w: 88, h: null },
-    style: { color: '#F8FAFC', font: 'sans', size_cqw: 4, weight: 600, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-  const sub = {
-    id: uid('el'), kind: 'body', slot: 'waste_note',
-    box: { x: 6, y: 72, w: 88, h: null },
-    style: { color: '#94A3B8', font: 'sans', size_cqw: 2.8, weight: 400, align: 'left', opacity: 1, radius_cqw: 0 },
-    motion: { animation: 'none', delay: 0, duration: 0, easing: 'linear' },
-  };
-
-  return {
-    id: uid('s'), name: 'Waste Pickup', dwell_sec: 30, widget_id: null,
-    template: {
-      background: '#0F172A',
-      aspect: '5:3',
-      elements: [head, stat, date, sub],
-    },
-    fields: {
-      headline: '🗑️ Nächste Müllabfuhr',
-      waste_type: `{{ds:${slug}.next_title}}`,
-      waste_date: `Termin: {{ds:${slug}.next_time}}`,
-      waste_note: 'Bitte die Tonne bis spätestens 06:00 Uhr am Straßenrand bereitstellen.',
-    }
   };
 }
 
@@ -872,6 +777,9 @@ function renderEditor(container) {
         </button>
         <span id="aiStatus" style="font-size:12px;color:var(--text-muted);margin-left:4px"></span>
       </div>
+      <!-- Hosted AI (ScreenTinker credits). Stays hidden unless the server has a platform image
+           provider configured; then "Generate background" follows whichever path is picked here. -->
+      <div id="aiHostedRow" style="display:none;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"></div>
     </div>
     <div style="display:grid;grid-template-columns:42px minmax(0,1fr) 290px;gap:12px;align-items:start">
       <div class="settings-section" id="tools" style="padding:7px;display:flex;flex-direction:column;gap:5px"></div>
@@ -989,6 +897,8 @@ function renderEditor(container) {
   container.querySelector('#aiPrompt').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); aiGenerate(container); }
   });
+  hostedCtl = null;
+  mountHostedPicker(container.querySelector('#aiHostedRow')).then((ctl) => { hostedCtl = ctl; }).catch(() => {});
   container.querySelector('#aiCfgBtn').addEventListener('click', async () => {
     const { openAiSettingsModal } = await import('../components/ai-settings-modal.js');
     openAiSettingsModal();
@@ -2125,6 +2035,12 @@ async function publish(container) {
 let aiBusy = false;
 let aiBgBusy = false;   // an image generation costs money per click; never let two run
 let aiLayerBusy = false; // and this one is up to FIVE generations per click
+/*
+ * The hosted-images picker for the open editor, or null (hosted AI off / not loaded yet). Only the
+ * single-image background uses it: layered generation is several images plus a text-model plan,
+ * and stays on the workspace's own endpoints in this version.
+ */
+let hostedCtl = null;
 
 /*
  * Generate a background PICTURE for the slide you are on.
@@ -2166,7 +2082,14 @@ async function aiGenerateBackground(container) {
      * crops to a centre band, which is exactly the complaint that made xAI's aspect_ratio matter
      * in the first place — repeating it locally would be worse, because here we know the answer.
      */
-    const out = await api.aiGenerateBackground(prompt, aspectPixels());
+    let out;
+    if (hostedCtl && hostedCtl.isHosted()) {
+      // Confirms the exact cost first; null = the user declined or was sent to buy credits.
+      out = await hostedCtl.generate(prompt, aspectPixels());
+      if (!out) { say(''); return; }
+    } else {
+      out = await api.aiGenerateBackground(prompt, aspectPixels());
+    }
     if (!out || !out.content_id) throw new Error('no image came back');
     const idx = state.deck.doc.slides.indexOf(target);
     if (idx < 0) { say('That slide is gone — nothing changed.', true); return; }
@@ -2197,7 +2120,7 @@ async function aiGenerateBackground(container) {
      * two symptoms, and the half-committed state made it look like two separate bugs.
      */
     paintAll(container);
-    say('Background applied.');
+    say(out.credits_spent ? `Background applied — ${out.credits_spent} credits spent, ${out.balance} left.` : 'Background applied.');
   } catch (e) {
     say(String((e && e.message) || e).slice(0, 200), true);
   } finally {

@@ -14,6 +14,7 @@ services:
       - "3001:3001"
     environment:
       SELF_HOSTED: "true"            # first registered user becomes admin, no billing
+      PLUGINS_ENABLED: "true"
       # JWT_SECRET: "set-a-long-random-string"   # else one is generated under /data/certs
       # DISABLE_HOMEPAGE: "true"     # redirect / to the app instead of the landing page
       # ---- Live video + Talk (go2rtc sidecar below; see docs/live-video.md) ----

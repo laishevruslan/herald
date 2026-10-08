@@ -115,7 +115,7 @@ function listInstalled() {
     return execFileSync(usePnpm ? 'pnpm' : 'npm', argv, opts);
   } catch (e) {
     if (e.stdout && e.stdout.trim()) return e.stdout;
-    console.error('npm ls produced no output:\n' + (e.stderr || e.message));
+    console.error((usePnpm ? 'pnpm' : 'npm') + ' ls produced no output:\n' + (e.stderr || e.message));
     process.exit(2);
   }
 }

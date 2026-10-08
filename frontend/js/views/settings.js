@@ -5,6 +5,7 @@ import { getLanguage, setLanguage, getAvailableLanguages, t, tn } from '../i18n.
 import { esc, isPlatformAdmin } from '../utils.js';
 import { resetBranding, applyAccent } from '../branding.js';
 import { mountCorporateSettings } from '../components/corporate-settings.js';
+import { formatRow, buyPack, usd } from '../components/ai-hosted-picker.js';
 
 export async function render(container) {
   const serverUrl = `${window.location.protocol}//${window.location.host}`;
@@ -310,6 +311,13 @@ export async function render(container) {
       <div id="importStatus" style="display:none;margin-top:12px;padding:12px;border-radius:var(--radius);font-size:13px"></div>
     </div>
 
+    <!-- Hosted AI credits (org-scoped). Hidden entirely when the server has no platform image
+         provider configured, so a self-hosted install sees nothing new. -->
+    <div class="settings-section" id="aiCreditsSection" style="display:none">
+      <h3>AI credits</h3>
+      <div id="aiCreditsBody"><p style="color:var(--text-muted);font-size:13px">Loading…</p></div>
+    </div>
+
     <div class="settings-section">
       <h3>${t('settings.language')}</h3>
       <select id="langSelect" class="input" style="width:200px;background:var(--bg-input)">
@@ -342,11 +350,47 @@ export async function render(container) {
     .then((notes) => { if (notes) whatsNew.renderHistory(document.getElementById('whatsNewHistory'), notes); })
     .catch(() => { /* About must render with or without it */ });
 
+  loadAiCredits();
+
   if (isAdmin) {
     loadWhiteLabel();
     loadTelemetry();
 
     loadSupportAccess();
+  }
+
+  // Hosted AI credits: balance, what is included this month, usage by model, and pack purchase.
+  async function loadAiCredits() {
+    const section = document.getElementById('aiCreditsSection');
+    const body = document.getElementById('aiCreditsBody');
+    if (!section || !body) return;
+    let st, use;
+    try { [st, use] = await Promise.all([api.aiHostedStatus(), api.aiHostedUsage()]); } catch { return; }
+    if (!st || !st.enabled) return;   // hosted AI off: the BYO path is unchanged and nothing shows
+    section.style.display = '';
+    const q = new URLSearchParams((location.hash.split('?')[1]) || '');
+    const banner = q.get('credits') === 'success'
+      ? '<p style="color:var(--success, #22c55e);font-size:13px">Payment received — credits appear as soon as Stripe confirms it (usually seconds). Refresh if they have not.</p>'
+      : q.get('credits') === 'cancelled' ? '<p style="color:var(--text-muted);font-size:13px">Purchase cancelled — nothing was charged.</p>' : '';
+    const rows = (use.usage || []).map((u) => `<tr><td>${esc(formatRow({ ...u, credits: u.credits, charge_usd: u.credits / 100 }).split(' · ').slice(0, 2).join(' · '))}</td><td>${esc(String(u.images))}</td><td>${esc(String(u.credits))}</td><td>${esc(usd(u.credits / 100))}</td></tr>`).join('');
+    const buy = st.can_buy
+      ? (st.checkout_available
+        ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${st.packs.map((p) => `<button class="btn btn-secondary btn-sm" data-pack="${esc(p.id)}">Buy ${esc(p.credits.toLocaleString())} credits · ${esc(usd(p.usd))}</button>`).join('')}</div>`
+        : '<p style="font-size:12px;color:var(--text-muted);margin-top:12px">Online purchase is not set up on this server — contact your administrator to add credits.</p>')
+      : '<p style="font-size:12px;color:var(--text-muted);margin-top:12px">An organization admin can buy more credits.</p>';
+    body.innerHTML = `${banner}
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px">ScreenTinker-hosted image generation. You choose the model for every image and pay 2× that model's provider cost (1 credit = $0.01). Each month includes credits worth 10% of your screen bill; included credits expire at month end, purchased credits never do. Your own AI endpoint never uses credits.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:12px">
+        <div><div style="font-size:11px;color:var(--text-muted)">Balance</div><div style="font-size:20px;font-weight:600">${esc(String(st.balance))}</div></div>
+        <div><div style="font-size:11px;color:var(--text-muted)">Included remaining (${esc(st.period)})</div><div style="font-size:20px;font-weight:600">${esc(String(st.included_remaining))} <span style="font-size:12px;font-weight:400;color:var(--text-muted)">of ${esc(String(st.included_this_month))}</span></div></div>
+        <div><div style="font-size:11px;color:var(--text-muted)">Purchased remaining</div><div style="font-size:20px;font-weight:600">${esc(String(st.purchased_remaining))}</div></div>
+      </div>
+      <p style="font-weight:500;margin:12px 0 6px">This month's usage</p>
+      ${rows ? `<table class="table" style="width:100%"><thead><tr><th>Model</th><th>Images</th><th>Credits</th><th>Cost</th></tr></thead><tbody>${rows}</tbody></table>`
+        : '<p style="color:var(--text-muted);font-size:13px">No hosted images generated yet this month.</p>'}
+      ${buy}
+      ${st.rate_card ? `<p style="font-size:11px;margin-top:12px;color:${st.rate_card.stale ? 'var(--danger, #e05252)' : 'var(--text-muted)'}">Platform admin: rate card last verified ${esc(st.rate_card.verified_at)} (${esc(String(st.rate_card.age_days))} days ago)${st.rate_card.stale ? ' — re-check provider prices and update config/ai-rate-card.js' : ''}.</p>` : ''}`;
+    body.querySelectorAll('[data-pack]').forEach((b) => b.addEventListener('click', () => buyPack(b.dataset.pack)));
   }
 
   // Support access (server/lib/support-access). The customer half — request code, open requests,
@@ -1652,22 +1696,46 @@ async function loadWhiteLabel() {
     if (wl.hide_branding) document.getElementById('wlHideBranding').checked = true;
   } catch {}
 
+  /*
+   * ⚠️ custom_domain and custom_css are PLATFORM-ADMIN-ONLY on the server (routes/white-label.js
+   * 403s any non-empty value from anyone else, before writing anything). They used to be sent on
+   * every save, pre-filled from GET — so once the platform team had set either one, every later
+   * save by the workspace admin was refused outright and the brand name never changed. For
+   * everyone else they are shown read-only and LEFT OUT of the body (undefined = "don't touch").
+   */
+  const canSetDomainAndCss = isPlatformAdmin(user);
+  if (!canSetDomainAndCss) {
+    for (const id of ['wlDomain', 'wlCustomCss']) {
+      const f = document.getElementById(id);
+      if (f) { f.readOnly = true; f.title = t('settings.platform_admin_only'); }
+    }
+  }
+
   document.getElementById('saveWhiteLabelBtn')?.addEventListener('click', async () => {
     try {
-      await fetch('/api/white-label', {
+      const body = {
+        brand_name: document.getElementById('wlBrandName').value,
+        logo_url: document.getElementById('wlLogoUrl').value,
+        primary_color: document.getElementById('wlPrimaryColor').value,
+        bg_color: document.getElementById('wlBgColor').value,
+        favicon_url: document.getElementById('wlFavicon').value,
+        hide_branding: document.getElementById('wlHideBranding').checked ? 1 : 0,
+      };
+      if (canSetDomainAndCss) {
+        body.custom_domain = document.getElementById('wlDomain').value;
+        body.custom_css = document.getElementById('wlCustomCss').value;
+      }
+      const res = await fetch('/api/white-label', {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          brand_name: document.getElementById('wlBrandName').value,
-          logo_url: document.getElementById('wlLogoUrl').value,
-          primary_color: document.getElementById('wlPrimaryColor').value,
-          bg_color: document.getElementById('wlBgColor').value,
-          custom_domain: document.getElementById('wlDomain').value,
-          favicon_url: document.getElementById('wlFavicon').value,
-          custom_css: document.getElementById('wlCustomCss').value,
-          hide_branding: document.getElementById('wlHideBranding').checked ? 1 : 0,
-        })
+        body: JSON.stringify(body),
       });
+      // ⚠️ fetch resolves on a 403 too. Without this a refused save (an editor, or the fields above)
+      // still said "Branding saved" while nothing at all had been written.
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || t('settings.toast.branding_save_failed'));
+      }
       await resetBranding();
       showToast(t('settings.toast.branding_saved'), 'success');
     } catch (err) {

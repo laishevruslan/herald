@@ -2038,6 +2038,17 @@ const migrations = [
   // activity" (MAX(activity_log.created_at) per user) is not a table scan on a big log.
   'ALTER TABLE users ADD COLUMN cleanup_warned_at INTEGER',
   'ALTER TABLE users ADD COLUMN cleanup_delete_after INTEGER',
+  /*
+   * A plan a platform admin granted by hand (POST /api/subscription/assign). While set, nothing
+   * automatic changes plan_id — not the Stripe webhooks, the nightly reconcile or the dunning
+   * lapse — because a comp is an agreement Stripe knows nothing about. Cleared by the customer's
+   * own completed checkout, or by an admin assigning Free.
+   */
+  'ALTER TABLE users ADD COLUMN plan_comped INTEGER NOT NULL DEFAULT 0',
+  // Comps made before the flag existed: a paid plan with no Stripe subscription and no trial can only
+  // have come from an admin. Re-running is stable (a checkout adds a subscription; assigning Free
+  // drops the plan), so it needs no one-shot marker.
+  "UPDATE users SET plan_comped = 1 WHERE plan_comped = 0 AND plan_id != 'free' AND stripe_subscription_id IS NULL AND trial_started IS NULL",
   'CREATE INDEX IF NOT EXISTS idx_activity_log_user_time ON activity_log(user_id, created_at)',
   `CREATE TABLE IF NOT EXISTS template_seen (
     user_id      TEXT NOT NULL,
@@ -2255,6 +2266,53 @@ const migrations = [
    )`,
   'CREATE INDEX IF NOT EXISTS idx_kiosk_sessions_ws_time ON kiosk_sessions(workspace_id, started_at)',
   'CREATE INDEX IF NOT EXISTS idx_kiosk_sessions_time ON kiosk_sessions(started_at)',
+  /*
+   * Hosted AI image credits (lib/ai-credits.js, docs/ai-credits.md). ORG-scoped: organizations are
+   * the billing container. Entirely separate from device_usage_daily / lib/billing.js, which it
+   * only ever READS to size the included allotment.
+   *
+   * ai_credit_ledger is APPEND-ONLY: balance = SUM(delta_credits) per bucket. `bucket` keeps
+   * included credits (expire at the end of `period`, a UTC YYYY-MM) apart from purchased ones
+   * (never expire). The unique index makes a month's included top-up and a Stripe fulfilment
+   * idempotent by `ref`; debits/refunds carry the reservation id and may repeat it (one row per
+   * bucket touched). No prompt text is stored here — prompts can carry customer content.
+   */
+  `CREATE TABLE IF NOT EXISTS ai_credit_ledger (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     org_id TEXT NOT NULL,
+     delta_credits INTEGER NOT NULL,
+     reason TEXT NOT NULL CHECK (reason IN ('grant_included','purchase','admin_adjust','image_debit','image_refund')),
+     bucket TEXT NOT NULL CHECK (bucket IN ('included','purchased')),
+     period TEXT,
+     provider TEXT, model TEXT, resolution TEXT, quality TEXT,
+     provider_cost_usd_micros INTEGER, charge_usd_micros INTEGER,
+     ref TEXT, user_id TEXT, workspace_id TEXT,
+     created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')))`,
+  'CREATE INDEX IF NOT EXISTS idx_ai_credit_ledger_org ON ai_credit_ledger(org_id, bucket, period)',
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_credit_ledger_once ON ai_credit_ledger(org_id, reason, ref) WHERE reason IN ('grant_included','purchase') AND ref IS NOT NULL",
+  // Append-only in fact, not just in intent: a ledger row is never edited. (DELETE stays possible
+  // so an organization's deletion can still remove its own rows.)
+  `CREATE TRIGGER IF NOT EXISTS trg_ai_credit_ledger_no_update BEFORE UPDATE ON ai_credit_ledger
+     BEGIN SELECT RAISE(ABORT, 'ai_credit_ledger is append-only'); END`,
+  /*
+   * One row per hosted generation ATTEMPT, written in the same transaction as its debit, BEFORE the
+   * provider is called. So a crash can never leave a charge without an attempt record: a row stuck
+   * in 'pending' is a crashed attempt and the sweep refunds it. UNIQUE(org_id, idempotency_key) is
+   * what makes a retried request charge once.
+   */
+  `CREATE TABLE IF NOT EXISTS ai_credit_reservations (
+     id TEXT PRIMARY KEY,
+     org_id TEXT NOT NULL, workspace_id TEXT, user_id TEXT,
+     idempotency_key TEXT NOT NULL,
+     provider TEXT NOT NULL, model TEXT NOT NULL, resolution TEXT NOT NULL, quality TEXT NOT NULL,
+     credits INTEGER NOT NULL, from_included INTEGER NOT NULL, from_purchased INTEGER NOT NULL,
+     included_period TEXT,
+     provider_cost_usd_micros INTEGER NOT NULL, charge_usd_micros INTEGER NOT NULL,
+     status TEXT NOT NULL CHECK (status IN ('pending','committed','released')),
+     content_id TEXT, error TEXT, error_status INTEGER,
+     created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')), updated_at INTEGER,
+     UNIQUE (org_id, idempotency_key))`,
+  "CREATE INDEX IF NOT EXISTS idx_ai_credit_reservations_pending ON ai_credit_reservations(status, created_at)",
 ];
 // Apply each ALTER idempotently. A "duplicate column name" / "already exists"
 // error means the column is already present (expected on a migrated DB) - benign.
