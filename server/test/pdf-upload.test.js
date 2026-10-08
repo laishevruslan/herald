@@ -63,7 +63,6 @@ test('the dashboard CSP admits WebAssembly compilation and nothing more', () => 
   const dashAt = server.indexOf('const dashboardCsp');
   const suikaAt = server.indexOf('const suikaCsp');
   const csp = server.slice(dashAt, suikaAt > dashAt ? suikaAt : dashAt + 2500)
-  const csp = server.slice(server.indexOf('const dashboardCsp'), server.indexOf('const dashboardCsp') + 2500)
     .split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
   assert.match(csp, /'wasm-unsafe-eval'/, 'the codecs cannot compile without it');
   assert.doesNotMatch(csp, /'unsafe-eval'/, "'wasm-unsafe-eval' must not have been widened to 'unsafe-eval'");
@@ -80,8 +79,9 @@ test('pdf.js is loaded lazily, so a session that never uploads a PDF never fetch
 });
 
 test('pages go through api.uploadContent, not a bare fetch or XHR (the house rule)', () => {
-  const lib = fs.readFileSync(LIBRARY, 'utf8');
-  const fn = lib.slice(lib.indexOf('async function importPdf'), lib.indexOf('\n}\n', lib.indexOf('async function importPdf')));
+  const lib = fs.readFileSync(LIBRARY, 'utf8').replace(/\r\n/g, '\n');
+  const start = lib.indexOf('async function importPdf');
+  const fn = lib.slice(start, lib.indexOf('\n}\n', start));
   assert.match(fn, /api\.uploadContent\(pages/, 'pages are uploaded through the shared helper');
   assert.doesNotMatch(fn, /new XMLHttpRequest|fetch\(/, 'no bespoke transport');
   assert.match(fn, /api\.createPlaylist\(/);
