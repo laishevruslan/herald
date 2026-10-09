@@ -4,6 +4,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('../db/database');
 const config = require('../config');
+const storage = require('../lib/storage');
 // Phase 2.2k: workspace-aware access. requirePlaylistOwnership is replaced
 // by read/write helpers gated on the playlist's workspace_id.
 const { resourceAccess } = require('../lib/tenancy');
@@ -111,7 +112,7 @@ async function probeAndUpdateDuration(content) {
   if (!content.filepath) return null;
   try {
     const { execFile } = require('child_process');
-    const fullPath = path.join(config.contentDir, content.filepath);
+    const fullPath = storage.file(content.filepath);
     const probe = await new Promise((resolve, reject) => {
       execFile('ffprobe', [
         '-v', 'quiet', '-print_format', 'json', '-show_format', fullPath

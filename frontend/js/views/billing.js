@@ -33,6 +33,10 @@ export async function render(container) {
     const cut = (n) => Math.round(Number(n) * (100 - (promo ? promo.percent_off : 0))) / 100;
 
 
+    const storageLimit = (subData.usage && typeof subData.usage.storage_limit_mb === 'number')
+      ? subData.usage.storage_limit_mb
+      : subData.plan.max_storage_mb;
+
     const content = document.getElementById('billingContent');
 
     content.innerHTML = `
@@ -73,12 +77,13 @@ export async function render(container) {
           </div>
           <div class="info-card">
             <div class="info-card-label">${t('billing.storage')}</div>
-            <div class="info-card-value small">${subData.usage.storage_mb} MB <span style="color:var(--text-secondary)">/ ${subData.plan.max_storage_mb === -1 ? t('billing.unlimited') : subData.plan.max_storage_mb + ' MB'}</span></div>
-            ${subData.plan.max_storage_mb > 0 ? `
+            <div class="info-card-value small">${subData.usage.storage_mb} MB <span style="color:var(--text-secondary)">/ ${storageLimit === -1 ? t('billing.unlimited') : storageLimit + ' MB'}</span></div>
+            ${storageLimit > 0 ? `
             <div class="progress-bar">
-              <div class="progress-bar-fill ${subData.usage.storage_mb / subData.plan.max_storage_mb > 0.8 ? 'warning' : 'success'}"
-                   style="width:${Math.min(100, (subData.usage.storage_mb / subData.plan.max_storage_mb) * 100)}%"></div>
+              <div class="progress-bar-fill ${subData.usage.storage_mb / storageLimit > 0.8 ? 'warning' : 'success'}"
+                   style="width:${Math.min(100, (subData.usage.storage_mb / storageLimit) * 100)}%"></div>
             </div>` : ''}
+            ${subData.usage.storage_scope === 'organization' ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">${t('billing.storage_org_hint')}</div>` : ''}
           </div>
           <div class="info-card">
             <div class="info-card-label">${t('billing.features')}</div>

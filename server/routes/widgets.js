@@ -7,6 +7,7 @@ const { db } = require('../db/database');
 const { devicesPlayingWidget } = require('../lib/devices-playing');
 const slideRender = require('../lib/slide-render');
 const appConfig = require('../config');
+const contentStorage = require('../lib/storage');
 const { PLATFORM_ROLES, ELEVATED_ROLES } = require('../middleware/auth');
 const { denyReadOnly, resourceAccess } = require('../lib/tenancy');
 const { isRealTimezone } = require('../lib/device-timezone');
@@ -66,8 +67,8 @@ function inlineUserContent(html, workspaceId) {
     if (/^https?:\/\//i.test(filename)) return match;
     const mime = kind === 'thumbnail' ? 'image/jpeg' : c.mime_type;
     if (!mime || !MIME_RE.test(mime)) return match;
-    const safe = path.resolve(appConfig.contentDir, path.basename(filename));
-    if (!safe.startsWith(path.resolve(appConfig.contentDir))) return match;
+    const safe = contentStorage.file(filename);
+    if (!safe) return match;
     try {
       const st = fs.statSync(safe);
       if (!st.isFile() || st.size > MAX_INLINE_BYTES) return match;

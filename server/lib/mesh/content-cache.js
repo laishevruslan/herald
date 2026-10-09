@@ -28,6 +28,7 @@ const path = require('node:path');
 const store = require('./store');
 const { downloadResumable } = require('./pull-download');
 const { digestFileSync } = require('../content-digest');
+const contentStorage = require('../storage');
 
 const asList = (v) => (Array.isArray(v) ? v : store.safeParseArray(v));
 const nowSec = () => Math.floor(Date.now() / 1000);
@@ -79,9 +80,7 @@ function usedBytes(db, edgeId) {
 
 function unlinkQuiet(contentDir, name) {
   if (!name) return;
-  const p = path.resolve(contentDir, path.basename(name));
-  if (!p.startsWith(path.resolve(contentDir))) return;
-  try { fs.unlinkSync(p); } catch (e) { /* already gone */ }
+  try { contentStorage.open(contentDir).remove(name); } catch (e) { /* already gone */ }
 }
 
 function dropEntry(db, contentDir, row) {
@@ -137,8 +136,9 @@ function pinnedBytes(db, edgeId) {
 async function fetchFile({ config, name, expectedBytes, digest, fetchImpl }) {
   const base = config.primaryUrl;
   if (!base) return { ok: false, reason: 'PRIMARY_URL is not set' };
-  const dest = path.resolve(config.contentDir, path.basename(name));
-  if (!dest.startsWith(path.resolve(config.contentDir))) return { ok: false, reason: 'bad name' };
+  const files = contentStorage.open(config.contentDir);
+  const dest = files.file(name);
+  if (!dest) return { ok: false, reason: 'bad name' };
   const staged = dest + '.part';
   const url = `${base}/uploads/content/${encodeURIComponent(path.basename(name))}`;
   let r;
@@ -153,7 +153,7 @@ async function fetchFile({ config, name, expectedBytes, digest, fetchImpl }) {
     try { got = digestFileSync(staged); } catch (e) { got = null; }
     if (got !== digest) { try { fs.unlinkSync(staged); } catch (e) { /* */ } return { ok: false, reason: 'the bytes did not match the row\'s digest' }; }
   }
-  try { fs.renameSync(staged, dest); } catch (e) { try { fs.unlinkSync(staged); } catch (e2) { /* */ } return { ok: false, reason: e && e.message }; }
+  try { files.put(staged, path.basename(dest)); } catch (e) { try { fs.unlinkSync(staged); } catch (e2) { /* */ } return { ok: false, reason: e && e.message }; }
   let bytes = 0;
   try { bytes = fs.statSync(dest).size; } catch (e) { bytes = 0; }
   return { ok: true, bytes };
@@ -187,9 +187,12 @@ async function ensure(db, config, content, { fetchImpl, edge: edgeIn } = {}) {
   if (!content.filepath) return { ok: false, reason: 'no file' };
   const name = path.basename(content.filepath);
   const thumb = content.thumbnail_path ? path.basename(content.thumbnail_path) : null;
-  const dest = path.resolve(config.contentDir, name);
+  const files = contentStorage.open(config.contentDir);
+  const dest = files.file(name);
+  const thumbPath = thumb && thumb !== name ? files.file(thumb) : null;
+  if (!dest) return { ok: false, reason: 'bad name' };
   const have = db.prepare('SELECT * FROM mesh_content_cache WHERE content_id = ?').get(content.id);
-  if (have && fs.existsSync(dest) && (!thumb || thumb === name || fs.existsSync(path.resolve(config.contentDir, thumb)))) {
+  if (have && fs.existsSync(dest) && (!thumb || thumb === name || (thumbPath && fs.existsSync(thumbPath)))) {
     return { ok: true, hit: true };
   }
   const need = Number(content.file_size) || 0;
@@ -215,7 +218,7 @@ async function ensure(db, config, content, { fetchImpl, edge: edgeIn } = {}) {
   } else {
     try { bytes = fs.statSync(dest).size; } catch (e) { bytes = 0; }
   }
-  if (thumb && thumb !== name && !fs.existsSync(path.resolve(config.contentDir, thumb))) {
+  if (thumb && thumb !== name && !(thumbPath && fs.existsSync(thumbPath))) {
     // A missing thumbnail is not a missing asset: the dashboard shows a placeholder.
     const t = await fetchFile({ config, name: thumb, expectedBytes: null, digest: null, fetchImpl });
     if (t.ok) bytes += t.bytes;

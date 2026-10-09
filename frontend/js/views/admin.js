@@ -785,7 +785,87 @@ async function loadPlans() {
   } catch (err) { el.innerHTML = `<p style="color:var(--danger)">${esc(err.message)}</p>`; }
 }
 
+let storagePoll = null;
+function stopStoragePoll() {
+  if (storagePoll) { clearInterval(storagePoll); storagePoll = null; }
+}
+
+function storageErrorText(err) {
+  if (!err) return '';
+  const key = `admin.storage_err.${err.code}`;
+  const translated = t(key);
+  return translated !== key ? translated : (err.message || '');
+}
+
+async function renderContentStorage() {
+  const host = document.getElementById('contentStorage');
+  if (!host) { stopStoragePoll(); return; }
+  let data;
+  try { data = await API('/admin/content-storage'); } catch { host.innerHTML = ''; stopStoragePoll(); return; }
+  if (!data || data.backend !== 's3') { host.innerHTML = ''; stopStoragePoll(); return; }
+  const errText = storageErrorText(data.last_error);
+  host.innerHTML = `
+    <div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px;background:var(--bg-secondary)">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:8px">
+        <strong style="font-size:13px">${t('admin.storage_title')}</strong>
+        <span style="font-size:12px;color:${data.running ? 'var(--warning)' : 'var(--text-muted)'}">${data.running ? t('admin.storage_running') : t('admin.storage_idle')}</span>
+      </div>
+      <div style="display:flex;gap:16px;font-size:13px;margin-bottom:8px">
+        <span>${t('admin.storage_on_disk', { n: data.rows_on_disk })}</span>
+        <span>${t('admin.storage_in_bucket', { n: data.rows_in_bucket })}</span>
+      </div>
+      ${errText ? `<p style="font-size:12px;color:var(--danger);margin:0 0 8px">${esc(t('admin.storage_last_error', { message: errText }))}</p>` : ''}
+      ${data.quota_degraded ? `<p style="font-size:12px;color:var(--danger);margin:0 0 8px">${esc(t('admin.storage_quota_degraded'))}</p>` : ''}
+      ${(data.drift || []).map((row) => {
+        const name = row.organization_id ? row.organization_id : t('admin.storage_platform');
+        return `<p style="font-size:12px;color:var(--danger);margin:0 0 8px">${[
+          row.excess_bytes ? esc(t('admin.storage_drift', { name, bytes: row.excess_bytes })) : '',
+          row.missing_objects ? esc(t('admin.storage_missing', { name, n: row.missing_objects })) : '',
+        ].filter(Boolean).join(' ')}</p>`;
+      }).join('')}
+      ${data.orphans_removed ? `<p style="font-size:12px;color:var(--text-muted);margin:0 0 8px">${esc(t('admin.storage_orphans', { n: data.orphans_removed }))}</p>` : ''}
+      <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px">${esc(t('admin.storage_note'))}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${data.running
+          ? `<button class="btn btn-secondary btn-sm" type="button" id="storageStopBtn">${t('admin.storage_stop')}</button>`
+          : `<button class="btn btn-secondary btn-sm" type="button" id="storageStartBtn">${t('admin.storage_start')}</button>`}
+        <button class="btn btn-danger btn-sm" type="button" id="storageDropBtn"${data.running ? ' disabled' : ''}>${t('admin.storage_drop')}</button>
+      </div>
+    </div>`;
+  document.getElementById('storageStartBtn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('storageStartBtn');
+    if (btn) btn.disabled = true;
+    try { await API('/admin/content-storage/start', { method: 'POST', body: '{}' }); }
+    catch (err) { showToast(err.message, 'error'); }
+    renderContentStorage();
+  });
+  document.getElementById('storageStopBtn')?.addEventListener('click', async () => {
+    try { await API('/admin/content-storage/stop', { method: 'POST', body: '{}' }); }
+    catch (err) { showToast(err.message, 'error'); }
+    renderContentStorage();
+  });
+  document.getElementById('storageDropBtn')?.addEventListener('click', () => {
+    openTypeToConfirmModal({
+      title: t('admin.storage_drop_title'),
+      body: `<p>${esc(t('admin.storage_drop_body'))}</p>`,
+      expected: t('admin.storage_drop_phrase'),
+      confirmLabel: t('admin.storage_drop'),
+      onConfirm: async () => {
+        const out = await API('/admin/content-storage/drop-local', {
+          method: 'POST',
+          body: JSON.stringify({ confirm: 'drop-local-copies' }),
+        });
+        showToast(t('admin.storage_drop_result', { removed: out.removed, kept: out.kept }));
+        renderContentStorage();
+      },
+    });
+  });
+  if (data.running && !storagePoll) storagePoll = setInterval(() => { renderContentStorage(); }, 2000);
+  else if (!data.running) stopStoragePoll();
+}
+
 async function loadSystem() {
+  stopStoragePoll();
   const el = document.getElementById('systemInfo');
   try {
     const version = await fetch('/api/version').then(r => r.json());
@@ -830,6 +910,7 @@ async function loadSystem() {
         <a href="/api/status" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">${t('admin.server_status')}</a>
       </div>
       <div id="updateResult" style="margin-top:12px"></div>
+      <div id="contentStorage" style="margin-top:16px"></div>
     `;
 
     // Check Now button
@@ -901,6 +982,7 @@ async function loadSystem() {
                && Date.now() / 1000 - updateStatus.job.updated_at < 86400) {
       renderUpdateJob(document.getElementById('updateResult'), updateStatus);
     }
+    renderContentStorage();
   } catch (err) { el.innerHTML = `<p style="color:var(--danger)">${esc(err.message)}</p>`; }
 }
 

@@ -30,6 +30,7 @@ const { digestFileSync } = require('../lib/content-digest');
 const path = require('path');
 const fs = require('fs');
 const config = require('../config');
+const contentStorage = require('../lib/storage');
 
 /*
  * Has this exact file (same path, size and mtime) already been shown to match this digest?
@@ -1139,8 +1140,8 @@ module.exports = function meshRoutes(db, { requireAuth }) {
     // from the difference, and there is nothing useful it could do with it.
     if (!redeemed.ok) return res.status(404).json({ error: redeemed.reason });
 
-    const abs = path.join(config.contentDir, path.basename(redeemed.ticket.filepath));
-    if (!fs.existsSync(abs)) return res.status(404).json({ error: 'That file is no longer here.' });
+    const abs = contentStorage.file(redeemed.ticket.filepath);
+    if (!abs || !fs.existsSync(abs)) return res.status(404).json({ error: 'That file is no longer here.' });
 
     /*
      * ⚠️ CHECKED BEFORE IT IS SERVED — but the size on every request and the digest only when the

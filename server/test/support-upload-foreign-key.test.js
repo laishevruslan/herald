@@ -71,12 +71,14 @@ test('a real account is still recorded as the owner', () => {
   assert.ok(db.prepare('SELECT 1 FROM content WHERE user_id = ?').get(OWNER));
 });
 
-test('support bytes do not count against the customer storage allowance', () => {
-  // getUserStorageMB sums by user_id, so a NULL owner is excluded by construction.
-  const mine = db.prepare('SELECT COALESCE(SUM(file_size),0) AS t FROM content WHERE user_id = ?').get(OWNER).t;
-  const orphan = db.prepare('SELECT COALESCE(SUM(file_size),0) AS t FROM content WHERE user_id IS NULL').get().t;
-  assert.ok(orphan > 0, 'the support row exists');
-  assert.equal(mine, 1234, 'and is not in the account total');
+test('support bytes count in the workspace organization and in no other', () => {
+  const { organizationStorageBytes } = require('../middleware/subscription');
+  const rows = db.prepare('SELECT COALESCE(SUM(file_size),0) AS t FROM content WHERE workspace_id = ?').get(WS).t;
+  assert.ok(rows >= 1234 + 1234, 'the owner row and the support row are both stored');
+  assert.equal(organizationStorageBytes(ORG), rows, 'NULL user_id still belongs to this organization');
+  const other = 'org-supfk-other';
+  db.prepare('INSERT INTO organizations (id, name, owner_user_id) VALUES (?, ?, ?)').run(other, 'Other', OWNER);
+  assert.equal(organizationStorageBytes(other), 0, 'another organization does not inherit them');
 });
 
 /*

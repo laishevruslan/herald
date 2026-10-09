@@ -29,7 +29,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const config = require('../config');
+const storage = require('./storage');
 
 const RESOURCE_TYPES = ['content', 'playlist', 'layout', 'slide_deck', 'widget'];
 const TABLE = { content: 'content', playlist: 'playlists', layout: 'layouts', slide_deck: 'slide_decks', widget: 'widgets' };
@@ -292,7 +292,7 @@ function recordMissingIn(db, workspaceId, actor, summary) {
 
 // ─── media retention ─────────────────────────────────────────────────────────────────────────
 
-function historyDir() { return path.join(config.contentDir, HISTORY_DIR); }
+function historyDir() { return storage.resolveRef(HISTORY_DIR); }
 
 /**
  * Keep the bytes a content row is about to stop pointing at. Returns the retained path
@@ -301,15 +301,16 @@ function historyDir() { return path.join(config.contentDir, HISTORY_DIR); }
  */
 function retainContentFile(db, contentId, relPath, tag) {
   if (!relPath) return null;
-  const src = path.join(config.contentDir, path.basename(String(relPath)));
-  if (!fs.existsSync(src)) return null;
-  const dir = path.join(historyDir(), contentId);
-  fs.mkdirSync(dir, { recursive: true });
-  const dest = path.join(dir, `${tag}__${path.basename(src)}`);
-  const rel = path.join(HISTORY_DIR, contentId, path.basename(dest));
+  const src = storage.file(relPath);
+  if (!src || !fs.existsSync(src)) return null;
+  const leaf = `${tag}__${path.basename(src)}`;
+  // Forward slashes: the stored ref is compared and resolved that way on every platform.
+  const rel = `${HISTORY_DIR}/${contentId}/${leaf}`;
+  const dest = storage.resolveRef(rel);
+  if (!dest) return null;
   if (fs.existsSync(dest)) return rel;
   const others = db.prepare('SELECT COUNT(*) AS n FROM content WHERE (filepath = ? OR thumbnail_path = ?) AND id != ?').get(relPath, relPath, contentId).n;
-  if (others > 0) fs.copyFileSync(src, dest); else fs.renameSync(src, dest);
+  storage.place(src, dest, { move: !(others > 0) });
   return rel;
 }
 
@@ -333,7 +334,7 @@ function disposeDraftFiles(db, contentId, draft, live) {
       const rel = retainContentFile(db, contentId, p, 'draft');
       if (rel) db.prepare(`UPDATE revisions SET ${refCol} = ? WHERE ${refCol} = ?`).run(rel, p);
     } else {
-      try { fs.unlinkSync(path.join(config.contentDir, path.basename(String(p)))); } catch (_) { /* already gone */ }
+      try { storage.remove(path.basename(String(p))); } catch (_) { /* already gone */ }
     }
   }
 }
@@ -361,8 +362,7 @@ const RETAINED_DIR_ID_RE = /^[A-Za-z0-9_-]+$/;
 function removeRetainedFiles(contentId) {
   const id = String(contentId || '');
   if (!RETAINED_DIR_ID_RE.test(id)) return false;
-  fs.rmSync(path.join(historyDir(), id), { recursive: true, force: true });
-  return true;
+  return storage.removeTree(`${HISTORY_DIR}/${id}`);
 }
 
 /** Absolute path for a revision's retained file, or the live file when the ref IS the live one. */
@@ -370,10 +370,9 @@ function resolveFileRef(ref) {
   if (!ref) return null;
   const clean = String(ref).replace(/\\/g, '/');
   const abs = clean.startsWith(HISTORY_DIR + '/')
-    ? path.join(historyDir(), clean.slice(HISTORY_DIR.length + 1).split('/').map((s) => path.basename(s)).join(path.sep))
-    : path.join(config.contentDir, path.basename(clean));
-  const base = path.resolve(config.contentDir);
-  if (!path.resolve(abs).startsWith(base + path.sep)) return null;
+    ? storage.resolveRef(clean)
+    : storage.file(clean);
+  if (!abs) return null;
   return fs.existsSync(abs) ? abs : null;
 }
 
@@ -460,13 +459,13 @@ function restoreToDraft(db, { type, id, revisionId, actor }) {
     if (abs) {
       const ext = path.extname(abs);
       pendingPath = `restore-${rev.rev_no}-${crypto.randomBytes(6).toString('hex')}${ext}`;
-      fs.copyFileSync(abs, path.join(config.contentDir, pendingPath));
+      storage.copy(abs, pendingPath);
     }
     let thumbPath = null;
     const thumbAbs = rev.thumb_ref ? resolveFileRef(rev.thumb_ref) : null;
     if (thumbAbs) {
       thumbPath = `thumb_restore-${rev.rev_no}-${crypto.randomBytes(6).toString('hex')}${path.extname(thumbAbs)}`;
-      fs.copyFileSync(thumbAbs, path.join(config.contentDir, thumbPath));
+      storage.copy(thumbAbs, thumbPath);
     }
     // A draft that was already pending (an earlier restore, a replaced file) is superseded: its
     // bytes are retained if any revision still describes them, otherwise removed.

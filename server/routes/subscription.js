@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../db/database');
 const { requireAuth, requireAdmin, requireSuperAdmin } = require('../middleware/auth');
-const { getUserPlan, getUserDeviceCount, getUserStorageMB } = require('../middleware/subscription');
+const { getUserPlan, getUserDeviceCount, storageSnapshot } = require('../middleware/subscription');
 const config = require('../config');
 
 // Get all plans
@@ -23,7 +23,7 @@ router.get('/promotion', (req, res) => {
 router.get('/me', requireAuth, (req, res) => {
   const plan = getUserPlan(req.user.id);
   const deviceCount = getUserDeviceCount(req.user.id);
-  const storageMB = getUserStorageMB(req.user.id);
+  const storage = storageSnapshot(req);
 
   /*
    * ⚠️ getUserPlan RETURNS NULL FOR A CALLER WITH NO `users` ROW, and this route used to
@@ -53,7 +53,13 @@ router.get('/me', requireAuth, (req, res) => {
         remote_control: true, remote_url: true, priority_support: false,
         price_monthly: 0, price_yearly: 0,
       },
-      usage: { devices: deviceCount, devices_limit: -1, storage_mb: storageMB, storage_limit_mb: -1 },
+      usage: {
+        devices: deviceCount,
+        devices_limit: -1,
+        storage_mb: storage.storage_mb,
+        storage_limit_mb: storage.storage_scope === 'organization' ? storage.storage_limit_mb : -1,
+        storage_scope: storage.storage_scope,
+      },
       subscription: { status: null, ends: null, stripe_customer_id: null, stripe_subscription_id: null },
       trial: { active: false, days_left: 0, end: null, plan: null, expired_at: null },
       self_hosted: config.selfHosted,
@@ -77,8 +83,9 @@ router.get('/me', requireAuth, (req, res) => {
     usage: {
       devices: deviceCount,
       devices_limit: plan.max_devices,
-      storage_mb: storageMB,
-      storage_limit_mb: plan.max_storage_mb,
+      storage_mb: storage.storage_mb,
+      storage_limit_mb: storage.storage_scope === 'organization' ? storage.storage_limit_mb : plan.max_storage_mb,
+      storage_scope: storage.storage_scope,
     },
     subscription: {
       status: plan.subscription_status,

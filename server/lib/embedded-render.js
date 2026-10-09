@@ -50,7 +50,7 @@ function safeHexColor(c, fallback = '#000000') {
  * the directory matched.
  */
 function contentDir() {
-  return config.contentDir;
+  return require('./storage').root();
 }
 
 // Coerce an untrusted dimension (from a screen_profile row) to a positive integer.
@@ -176,9 +176,8 @@ process.on('SIGINT', () => { closeBrowser(); });
 
 function safeLocalImagePath(filepath) {
   if (!filepath) return null;
-  const base = path.resolve(contentDir());
-  const safe = path.resolve(base, path.basename(String(filepath)));
-  if (!safe.startsWith(base + path.sep) && safe !== base) {
+  const safe = require('./storage').file(filepath);
+  if (!safe || !safe.startsWith(path.resolve(contentDir()) + path.sep)) {
     throw Object.assign(new Error('Invalid content file path'), { code: 'INVALID_PATH' });
   }
   if (!fs.existsSync(safe)) {

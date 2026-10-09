@@ -1,10 +1,10 @@
 'use strict';
 
 const fs = require('fs');
-const path = require('path');
 const crypto = require('crypto');
 
 const contentSync = require('./content-sync');
+const contentStorage = require('../storage');
 const meshAudit = require('./audit');
 const { downloadResumable } = require('./pull-download');
 
@@ -105,7 +105,7 @@ async function receiveContentOfferInner(db, edge, req, deps = {}) {
     const entry = findEntry(manifest, item.oid);
     if (!entry) { failed.push({ oid: item.oid, reason: 'That entry vanished from the manifest.' }); continue; }
 
-    const stagedPath = path.join(contentDir, `mesh-${crypto.randomUUID()}.part`);
+    const stagedPath = contentStorage.open(contentDir).file(`mesh-${crypto.randomUUID()}.part`);
     let result;
     try {
       result = await downloadResumable({
@@ -180,13 +180,15 @@ function safeList(v) {
  */
 function sweepStagedParts(contentDir, { olderThanMs = 24 * 60 * 60 * 1000, now = Date.now } = {}) {
   let removed = 0;
+  const files = contentStorage.open(contentDir);
   let names = [];
-  try { names = fs.readdirSync(contentDir); } catch (e) { return { removed: 0 }; }
+  try { names = fs.readdirSync(files.root()); } catch (e) { return { removed: 0 }; }
   for (const name of names) {
     if (!name.startsWith('mesh-') || !name.endsWith('.part')) continue;
-    const p = path.join(contentDir, name);
+    const info = files.head(name);
+    if (!info) continue;
     try {
-      if (now() - fs.statSync(p).mtimeMs > olderThanMs) { fs.unlinkSync(p); removed += 1; }
+      if (now() - info.mtimeMs > olderThanMs) { files.remove(name); removed += 1; }
     } catch (e) { /* best effort */ }
   }
   return { removed };

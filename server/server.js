@@ -17,6 +17,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const config = require('./config');
+const contentStorage = require('./lib/storage');
 const replicaProxy = require('./lib/replica-proxy');
 const VERSION = require('./version');
 const ghcrCheck = require('./lib/ghcr-check');
@@ -42,10 +43,10 @@ function logFatalAndExit(kind, err) {
 process.on('uncaughtException', (err) => logFatalAndExit('uncaughtException', err));
 process.on('unhandledRejection', (reason) => logFatalAndExit('unhandledRejection', reason));
 
-// Ensure upload directories exist
-[config.contentDir, config.screenshotsDir].forEach(dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
+// Ensure upload directories exist. Content bytes are created through the storage port
+// so the static mount and every writer share one root.
+contentStorage.ensureRoot();
+if (!fs.existsSync(config.screenshotsDir)) fs.mkdirSync(config.screenshotsDir, { recursive: true });
 
 const app = express();
 const { trustedProxies } = require('./config/cloudflareIps');
@@ -1464,8 +1465,13 @@ app.get('/api/content/:id/file', (req, res) => {
   // (<100 widgets); revisit with a content_widget_refs join table if this grows.
   const inWidget = inPlaylist ? null : db.prepare('SELECT id FROM widgets WHERE workspace_id = ? AND config LIKE ? LIMIT 1').get(content.workspace_id, `%/api/content/${req.params.id}/%`);
   if (!inPlaylist && !inWidget && !requesterCanAccessContent(req, content)) return res.status(403).json({ error: 'Content not assigned to any playlist or widget' });
-  const safePath = path.resolve(config.contentDir, path.basename(content.filepath));
-  if (!safePath.startsWith(path.resolve(config.contentDir))) return res.status(403).json({ error: 'Invalid path' });
+  const safePath = contentStorage.file(content.filepath);
+  if (!safePath) return res.status(403).json({ error: 'Invalid path' });
+  if (contentStorage.backend === 's3' && !config.primaryUrl) {
+    return require('./lib/storage/public').sendPublishedOrLocal(req, res, {
+      row: content, filename: content.filepath, harden: hardenUploadResponse,
+    }).then((sent) => { if (!sent) res.status(404).json({ error: 'Not found' }); });
+  }
   // Scale-out (docs/scale-out.md): the row was copied, the bytes were not — fetch through, or (C3,
   // under a caches-content edge) store them here first and then serve the local file.
   if (config.primaryUrl && content.workspace_id && !fs.existsSync(safePath) &&
@@ -1560,8 +1566,8 @@ app.get('/api/content/:id/bundle', async (req, res) => {
     return res.status(403).json({ error: 'Content not assigned to any playlist or widget' });
   }
 
-  const safePath = path.resolve(config.contentDir, path.basename(content.filepath));
-  if (!safePath.startsWith(path.resolve(config.contentDir))) return res.status(403).json({ error: 'Invalid path' });
+  const safePath = contentStorage.file(content.filepath);
+  if (!safePath) return res.status(403).json({ error: 'Invalid path' });
 
   try {
     const { inlineBundle } = require('./lib/bundle-inline');
@@ -1629,8 +1635,13 @@ app.get('/api/content/:id/thumbnail', (req, res) => {
   // doesn't exist (contentDir/hqdefault.jpg -> ENOENT spam). Local thumbnails are
   // unchanged. Access gating above already ran identically for both branches.
   if (/^https?:\/\//i.test(content.thumbnail_path)) return proxyRemoteThumbnail(content.thumbnail_path, res);
-  const safePath = path.resolve(config.contentDir, path.basename(content.thumbnail_path));
-  if (!safePath.startsWith(path.resolve(config.contentDir))) return res.status(403).json({ error: 'Invalid path' });
+  const safePath = contentStorage.file(content.thumbnail_path);
+  if (!safePath) return res.status(403).json({ error: 'Invalid path' });
+  if (contentStorage.backend === 's3' && !config.primaryUrl) {
+    return require('./lib/storage/public').sendPublishedOrLocal(req, res, {
+      row: content, filename: content.thumbnail_path, harden: hardenUploadResponse,
+    }).then((sent) => { if (!sent) res.status(404).json({ error: 'Thumbnail not found' }); });
+  }
   // See /file — cross-origin so sandboxed widget iframes can load it.
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
@@ -2285,6 +2296,62 @@ app.use('/fonts', (req, res, next) => {
   res.status(404).type('text/plain').send('Not found');
 });
 
+function serveCopiedUpload(req, res, name) {
+  if (!(config.primaryUrl && replicaProxy.isCopiedUploadName(require('./db/database').db, name))) return false;
+  const db = require('./db/database').db;
+  const contentCache = require('./lib/mesh/content-cache');
+  const content = contentCache.contentForName(db, name);
+  if (content && contentCache.edgeForContent(db, content)) {
+    contentCache.ensure(db, config, content).then((r) => {
+      const local = contentStorage.file(name);
+      if (r.ok && local && fs.existsSync(local)) {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+        hardenUploadResponse(res, local);
+        res.setHeader('x-st-replica-cache', 'stored');
+        return res.sendFile(local);
+      }
+      return replicaProxy.proxyToPrimary(req, res, config);
+    });
+    return true;
+  }
+  replicaProxy.proxyToPrimary(req, res, config);
+  return true;
+}
+
+if (contentStorage.backend === 's3') {
+  app.use('/uploads/content', async (req, res) => {
+    try {
+    const name = path.basename(req.path);
+    if (config.primaryUrl) {
+      try { require('./lib/mesh/content-cache').touch(require('./db/database').db, name); } catch (e) { /* */ }
+      const local = contentStorage.file(name);
+      if (local && fs.existsSync(local)) {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+        hardenUploadResponse(res, name);
+        return res.sendFile(local);
+      }
+      if (serveCopiedUpload(req, res, name)) return;
+    }
+    const db = require('./db/database').db;
+    const published = require('./lib/storage/public');
+    const row = published.lookupRow(db, name);
+    if (!row) return published.jsonMiss(res);
+    if (await published.sendPublishedOrLocal(req, res, { row, filename: name, harden: hardenUploadResponse })) return;
+    return published.jsonMiss(res);
+    } catch (e) {
+      console.error(`[storage] public read failed: ${e && e.message}`);
+      if (!res.headersSent) {
+        res.removeHeader('Cache-Control');
+        res.status(502).type('application/json').json({ error: 'Storage read failed' });
+      }
+    }
+  });
+}
+
 app.use('/uploads/content', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
@@ -2293,7 +2360,7 @@ app.use('/uploads/content', (req, res, next) => {
   // Scale-out C3: a cached copy read counts as recently used (LRU); a no-op on a stock install.
   if (config.primaryUrl) { try { require('./lib/mesh/content-cache').touch(require('./db/database').db, path.basename(req.path)); } catch (e) { /* */ } }
   next();
-}, express.static(config.contentDir, {
+}, express.static(contentStorage.root(), {
   setHeaders: (res, filePath) => {
     // express.static sets Content-Type from the extension AFTER our middleware, so
     // re-assert the override here for anything not inline-safe.
@@ -2323,26 +2390,7 @@ app.use('/uploads/content', (req, res, next) => {
   // belongs to a copied content row is fetched through; anything else stays the miss above.
   // C3: under a caches-content edge the fetch-through STORES the file first, then serves it
   // locally; if the fetch fails (primary down, disk full) it serves through exactly as before.
-  if (config.primaryUrl && replicaProxy.isCopiedUploadName(require('./db/database').db, path.basename(req.path))) {
-    const db = require('./db/database').db;
-    const contentCache = require('./lib/mesh/content-cache');
-    const content = contentCache.contentForName(db, path.basename(req.path));
-    if (content && contentCache.edgeForContent(db, content)) {
-      return contentCache.ensure(db, config, content).then((r) => {
-        const local = path.resolve(config.contentDir, path.basename(req.path));
-        if (r.ok && fs.existsSync(local)) {
-          res.setHeader('Access-Control-Allow-Origin', '*');
-          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-          res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
-          hardenUploadResponse(res, local);
-          res.setHeader('x-st-replica-cache', 'stored');
-          return res.sendFile(local);
-        }
-        return replicaProxy.proxyToPrimary(req, res, config);
-      });
-    }
-    return replicaProxy.proxyToPrimary(req, res, config);
-  }
+  if (serveCopiedUpload(req, res, path.basename(req.path))) return;
   res.type('application/json').status(404).json({ error: 'Not found' });
 });
 
@@ -2376,6 +2424,11 @@ startScheduler(io);
 // #157: auto-deactivate expired content + republish affected playlists
 const { startContentExpiry } = require('./services/content-expiry');
 startContentExpiry(io);
+// A transfer the operator already started continues after a restart. Enabling s3 does not
+// start one, and a replica does not write the primary's bucket.
+try { require('./lib/storage/migrate').resumeIfRequested(); } catch (e) { console.error('[storage] transfer resume:', e && e.message); }
+// Orphan sweep and the bucket-versus-library check. Filesystem mode and a replica do not start it.
+try { require('./lib/storage/sweep').start(); } catch (e) { console.error('[storage] sweep:', e && e.message); }
 // Corporate local slots: hourly tidy of unused compositions and unreachable retired slots.
 require('./services/corporate-sweep').startCorporateSweep();
 // Corporate state an older server version may have changed (a rollback, then this upgrade): drop the

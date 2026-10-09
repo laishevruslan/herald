@@ -160,7 +160,7 @@ test('the digest is the primary\'s own function (sha256 hex from lib/content-dig
   const { digestFile } = require('../lib/content-digest');
   const src = read('lib/mesh/content-cache.js');
   assert.match(src, /require\('\.\.\/content-digest'\)/, 'same module the primary stores byte_digest with');
-  assert.match(read('lib/content-ingest.js'), /digestFile\(path\.join\(config\.contentDir, filepath\)\)/, 'the primary computes byte_digest with it');
+  assert.match(read('lib/content-ingest.js'), /digestFile\(storage\.file\(filepath\)\)/, 'the primary computes byte_digest with it');
   const buf = Buffer.from('digest-check');
   assert.equal(await digestFile(path.join(TMP, (fs.writeFileSync(path.join(TMP, 'd.bin'), buf), 'd.bin'))), crypto.createHash('sha256').update(buf).digest('hex'));
   setEdge(['serves-dashboard', 'caches-content']);

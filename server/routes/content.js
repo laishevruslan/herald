@@ -34,6 +34,7 @@ const subscriptionLimits = require('../middleware/subscription');
 const htmlBundle = require('../lib/html-bundle');
 const { finalizeUpload, INLINE_SAFE_EXTS, sniffMime, readHead: readUploadHead, MIME_TO_EXT: UPLOAD_MIME_TO_EXT } = require('../lib/upload-sniff');
 const { digestFile } = require('../lib/content-digest');
+const storage = require('../lib/storage');
 const { normalizeTags, normalizeMeta, parseTags, parseMeta } = require('../lib/content-tags');
 const { unlinkIfUnreferenced, releaseMeshProvenance } = require('../lib/content-files');
 const revisionsLib = require('../lib/revisions');
@@ -173,8 +174,8 @@ router.post('/:id/bundle-preview', async (req, res) => {
   if (content.mime_type !== htmlBundle.BUNDLE_MIME || !content.filepath) {
     return res.status(400).json({ error: 'Not an HTML bundle' });
   }
-  const safePath = path.resolve(config.contentDir, path.basename(content.filepath));
-  if (!safePath.startsWith(path.resolve(config.contentDir))) return res.status(403).json({ error: 'Invalid path' });
+  const safePath = storage.file(content.filepath);
+  if (!safePath) return res.status(403).json({ error: 'Invalid path' });
   try {
     const { inlineBundle } = require('../lib/bundle-inline');
     const out = await inlineBundle(safePath, content.bundle_entry || 'index.html');
@@ -317,6 +318,12 @@ router.post('/', checkStorageLimit, uploadPreflight, uploadContentFilesGuarded, 
     // files[next] was being ingested (ingest removes what it refuses); the rest were never reached.
     discardUploads(req, files.slice(next + 1));
     if (err && err.name === 'UnsupportedUploadError') return res.status(400).json({ error: err.message });
+    if (err && err.code === 'STORAGE_LIMIT') {
+      return res.status(403).json({
+        error: 'This upload would exceed this organization\'s storage allowance.',
+        code: 'STORAGE_LIMIT',
+      });
+    }
     console.error('Upload error:', err);
     res.status(500).json({ error: 'Upload failed' });
   }
@@ -369,19 +376,22 @@ router.post('/uploads', checkStorageLimit, (req, res) => {
    * the one advantage a session has over a stream, and this is what it buys.
    */
   /*
-   * ⚠️ ...and against what this user's OTHER open sessions have already declared. Room counts only
-   * finished rows, so without the reservation N parallel sessions each saw the same room and all
-   * passed (see uploadSession.reservedBytes). The check and the INSERT below run in one synchronous
-   * stretch with no await between them, so two concurrent creates cannot both see the same room.
+   * ⚠️ ...and against what this organization's OTHER open sessions have already declared. Room counts
+   * only finished rows, so without the reservation N parallel sessions each saw the same room and
+   * all passed (see uploadSession.reservedBytesForWorkspace). The check and the INSERT below run
+   * in one synchronous stretch with no await between them, so two concurrent creates cannot both
+   * see the same room.
    */
-  const rawRoom = subscriptionLimits.storageRoomBytes(req.user.id);
-  const reserved = rawRoom === null ? 0 : uploadSession.reservedBytes(req.user.id);
+  const allowance = subscriptionLimits.storageRoomForUpload(req.workspaceId);
+  if (allowance.blocked) return res.status(403).json({ error: 'No plan found' });
+  const rawRoom = allowance.room;
+  const reserved = rawRoom === null ? 0 : uploadSession.reservedBytesForWorkspace(req.workspaceId);
   const room = rawRoom === null ? null : rawRoom - reserved;
   if (room !== null && declared > room) {
     return res.status(403).json({
       error: reserved > 0
-        ? 'This upload would exceed your storage allowance, counting uploads you already have in progress.'
-        : 'This upload would exceed your storage allowance.',
+        ? 'This upload would exceed this organization\'s storage allowance, counting uploads already in progress.'
+        : 'This upload would exceed this organization\'s storage allowance.',
       code: 'STORAGE_LIMIT',
       needed_bytes: declared,
       available_bytes: Math.max(0, room),
@@ -501,11 +511,16 @@ router.post('/uploads/:id/finalize', async (req, res) => {
    * session is discarded on refusal: the client forgets a completed session and starts a new one
    * on retry, so keeping it would only pin a reservation until the sweeper.
    */
-  const room = subscriptionLimits.storageRoomBytes(session.user_id);
+  const allowance = subscriptionLimits.storageRoomForUpload(session.workspace_id);
+  if (allowance.blocked) {
+    uploadSession.discard(session);
+    return res.status(403).json({ error: 'No plan found' });
+  }
+  const room = allowance.room;
   if (room !== null && offset > room) {
     uploadSession.discard(session);
     return res.status(403).json({
-      error: 'This upload would exceed your storage allowance.',
+      error: 'This upload would exceed this organization\'s storage allowance.',
       code: 'STORAGE_LIMIT',
       needed_bytes: offset,
       available_bytes: Math.max(0, room),
@@ -534,6 +549,12 @@ router.post('/uploads/:id/finalize', async (req, res) => {
      */
     uploadSession.discard(session);
     if (err && err.name === 'UnsupportedUploadError') return res.status(400).json({ error: err.message });
+    if (err && err.code === 'STORAGE_LIMIT') {
+      return res.status(403).json({
+        error: 'This upload would exceed this organization\'s storage allowance.',
+        code: 'STORAGE_LIMIT',
+      });
+    }
     console.error('Resumable finalize error:', err);
     res.status(500).json({ error: 'Upload failed' });
   }
@@ -788,6 +809,7 @@ function purgeContentRow(content) {
   unlinkIfUnreferenced(content.filepath, id, 'filepath');
   unlinkIfUnreferenced(content.thumbnail_path, id, 'thumbnail_path');
   unlinkIfUnreferenced(content.subtitle_url, id, 'subtitle_url'); // #216 sidecar (no-op pre-#216)
+  if (storage.backend === 's3' && storage.objects) storage.objects.forgetContent(content);
 
   /*
    * ⚠️ And the provenance row goes with it, because nothing else will take it. The table declares
@@ -1098,7 +1120,7 @@ router.put('/:id/replace', replacePreflight, upload.single('file'), async (req, 
   const wasBundle = content.mime_type === htmlBundle.BUNDLE_MIME;
   const isBundle = mime === 'application/zip' || mime === htmlBundle.BUNDLE_MIME;
   if (wasBundle !== isBundle) {
-    try { fs.unlinkSync(path.join(config.contentDir, filepath)); } catch (e) { /* best effort */ }
+    try { storage.remove(filepath); } catch (e) { /* best effort */ }
     return res.status(400).json({
       error: wasBundle
         ? 'This item is an HTML bundle — replace it with another bundle, or delete it and add the new file.'
@@ -1112,11 +1134,11 @@ router.put('/:id/replace', replacePreflight, upload.single('file'), async (req, 
   let bundleEntry = null;
   if (isBundle) {
     try {
-      const info = await htmlBundle.validateBundle(path.join(config.contentDir, filepath));
+      const info = await htmlBundle.validateBundle(storage.file(filepath));
       bundleEntry = info.entryPoint;
       mime = htmlBundle.BUNDLE_MIME;
     } catch (e) {
-      try { fs.unlinkSync(path.join(config.contentDir, filepath)); } catch (e2) { /* best effort */ }
+      try { storage.remove(filepath); } catch (e2) { /* best effort */ }
       return res.status(e.status || 400).json({ error: e.message });
     }
   }
@@ -1153,7 +1175,7 @@ router.put('/:id/replace', replacePreflight, upload.single('file'), async (req, 
    * while the screen played the operator's local replacement instead.
    */
   let newDigest = null;
-  try { newDigest = await digestFile(path.join(config.contentDir, filepath)); } catch (e) { newDigest = null; }
+  try { newDigest = await digestFile(storage.file(filepath)); } catch (e) { newDigest = null; }
 
   if (approvalOn) {
     const prevDraft = revisions.parseJson(content.draft_json, null) || {};
@@ -1201,6 +1223,19 @@ router.put('/:id/replace', replacePreflight, upload.single('file'), async (req, 
     revisions.recordCurrent(db, 'content', req.params.id, { actor, summary: 'Replaced file' });
   })();
 
+  try {
+    await require('../lib/storage/publish').publishContentBytes({
+      workspaceId: content.workspace_id,
+      contentId: content.id,
+      mime,
+      digest: newDigest,
+      original: { path: storage.file(filepath) },
+      thumb: thumbnailPath ? { path: storage.file(thumbnailPath) } : null,
+    });
+  } catch (e) {
+    console.error(`[storage] publish ${content.id} failed: ${e && e.message}`);
+  }
+
   const affected = devicesPlayingContent(req.params.id);
   pushContentUpdates(req, affected);
   // CORPORATE: a replaced video can be LONGER than a store slot allows. Re-judge every slot fill that
@@ -1227,6 +1262,15 @@ router.post('/:id/subtitle', upload.subtitleUpload.single('subtitle'), async (re
   const lang = req.body.subtitle_lang ? String(req.body.subtitle_lang).slice(0, 10) : (content.subtitle_lang || null);
   db.prepare('UPDATE content SET subtitle_url = ?, subtitle_lang = ? WHERE id = ?')
     .run(req.file.filename, lang, req.params.id);
+  try {
+    await require('../lib/storage/publish').publishContentBytes({
+      workspaceId: content.workspace_id,
+      contentId: content.id,
+      subs: { path: storage.file(req.file.filename) },
+    });
+  } catch (e) {
+    console.error(`[storage] publish ${content.id} failed: ${e && e.message}`);
+  }
   res.json(db.prepare('SELECT * FROM content WHERE id = ?').get(req.params.id));
 });
 
@@ -1269,9 +1313,14 @@ router.get('/:id/file', (req, res) => {
   if (!content) return;
   if (!content.filepath) return res.status(404).json({ error: 'No file (remote URL content)' });
   // Prevent path traversal
-  const safePath = path.resolve(config.contentDir, path.basename(content.filepath));
-  if (!safePath.startsWith(path.resolve(config.contentDir))) return res.status(403).json({ error: 'Invalid path' });
+  const safePath = storage.file(content.filepath);
+  if (!safePath) return res.status(403).json({ error: 'Invalid path' });
   if (fetchThroughIfCopied(req, res, content, safePath)) return;
+  if (storage.backend === 's3' && !config.primaryUrl) {
+    return require('../lib/storage/public').sendPublishedOrLocal(req, res, {
+      row: content, filename: content.filepath, harden: hardenUploadResponse,
+    }).then((sent) => { if (!sent) res.status(404).json({ error: 'No file (remote URL content)' }); });
+  }
   hardenUploadResponse(res, content.filepath);
   res.sendFile(safePath);
 });
@@ -1281,9 +1330,14 @@ router.get('/:id/thumbnail', (req, res) => {
   const content = checkContentRead(req, res);
   if (!content) return;
   if (!content.thumbnail_path) return res.status(404).json({ error: 'Thumbnail not found' });
-  const safePath = path.resolve(config.contentDir, path.basename(content.thumbnail_path));
-  if (!safePath.startsWith(path.resolve(config.contentDir))) return res.status(403).json({ error: 'Invalid path' });
+  const safePath = storage.file(content.thumbnail_path);
+  if (!safePath) return res.status(403).json({ error: 'Invalid path' });
   if (fetchThroughIfCopied(req, res, content, safePath)) return;
+  if (storage.backend === 's3' && !config.primaryUrl) {
+    return require('../lib/storage/public').sendPublishedOrLocal(req, res, {
+      row: content, filename: content.thumbnail_path, harden: hardenUploadResponse,
+    }).then((sent) => { if (!sent) res.status(404).json({ error: 'Thumbnail not found' }); });
+  }
   hardenUploadResponse(res, content.thumbnail_path);
   res.sendFile(safePath);
 });

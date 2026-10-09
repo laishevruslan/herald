@@ -18,6 +18,7 @@ const fs = require('fs');
 const { execFileSync } = require('child_process');
 const { db } = require('../db/database');
 const config = require('../config');
+const storage = require('../lib/storage');
 const { videoDisplayDims, imageDisplayDims } = require('../lib/media-orientation');
 
 const APPLY = process.argv.includes('--apply');
@@ -38,7 +39,7 @@ async function probeImageDims(filePath) {
 async function regenImageThumb(filePath, thumbName) {
   const imageOps = require('../lib/image-ops');
   // Rotation is implicit: the decoder auto-orients per EXIF, which is what .rotate() bought here.
-  await imageOps.writeThumbnail(filePath, path.join(config.contentDir, thumbName), config.thumbnailWidth, 70);
+  await imageOps.writeThumbnail(filePath, storage.file(thumbName), config.thumbnailWidth, 70);
 }
 
 (async () => {
@@ -52,8 +53,8 @@ async function regenImageThumb(filePath, thumbName) {
   const changes = [];
 
   for (const row of rows) {
-    const filePath = path.join(config.contentDir, row.filepath);
-    if (!fs.existsSync(filePath)) { missing++; continue; }
+    const filePath = storage.file(row.filepath);
+    if (!filePath || !fs.existsSync(filePath)) { missing++; continue; }
     checked++;
     let dims;
     try {

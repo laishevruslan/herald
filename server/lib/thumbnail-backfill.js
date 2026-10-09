@@ -27,7 +27,7 @@
 const path = require('path');
 const fs = require('fs');
 const { db } = require('../db/database');
-const config = require('../config');
+const storage = require('./storage');
 const { deriveMediaMetadata } = require('./content-ingest');
 const { mediaToolStatus } = require('./media-tools');
 
@@ -78,8 +78,8 @@ async function backfillMissingThumbnails({ delayMs = 500 } = {}) {
     const isVideo = row.mime_type.startsWith('video/');
     if (isVideo && (!tools.ffmpeg || !tools.ffprobe)) { stats.skipped++; continue; }
     const storedName = path.basename(row.filepath);
-    const sourcePath = path.join(config.contentDir, storedName);
-    if (!fs.existsSync(sourcePath)) { stats.skipped++; continue; }
+    const sourcePath = storage.file(storedName);
+    if (!sourcePath || !fs.existsSync(sourcePath)) { stats.skipped++; continue; }
     try {
       const { width, height, durationSec, thumbnailPath } =
         await deriveMediaMetadata(sourcePath, storedName, row.mime_type);
@@ -89,7 +89,7 @@ async function backfillMissingThumbnails({ delayMs = 500 } = {}) {
           // Row deleted/replaced while we were deriving. Don't leave the freshly
           // written file orphaned. (thumbnailPath === storedName is the SVG
           // self-thumbnail case — that file IS the content, never remove it.)
-          try { fs.unlinkSync(path.join(config.contentDir, path.basename(thumbnailPath))); } catch { /* best-effort */ }
+          try { storage.remove(path.basename(thumbnailPath)); } catch { /* best-effort */ }
         }
         stats.generated += res.changes;
       } else {

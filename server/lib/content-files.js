@@ -1,9 +1,8 @@
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
 const { db } = require('../db/database');
-const config = require('../config');
+const storage = require('./storage');
 
 /*
  * ⚠️ NEVER UNLINK A FILE ANOTHER ROW IS STILL USING.
@@ -40,10 +39,9 @@ function unlinkIfUnreferenced(rel, keeperId, column) {
 
   if (others && others.n > 0) return { unlinked: false, reason: 'still referenced', others: others.n };
 
-  const p = path.join(config.contentDir, base);
-  if (!fs.existsSync(p)) return { unlinked: false, reason: 'already gone' };
+  if (!storage.head(base)) return { unlinked: false, reason: 'already gone' };
   try {
-    fs.unlinkSync(p);
+    storage.remove(base);
     return { unlinked: true };
   } catch (e) {
     return { unlinked: false, reason: 'best-effort' };
@@ -104,6 +102,16 @@ module.exports.releaseMeshProvenance = releaseMeshProvenance;
  * provenance row, and the storage allowance all belong together — that is the whole reason they are
  * in one place.
  */
+function forgetPublished(row) {
+  const storage = require('./storage');
+  if (storage.backend !== 's3' || !storage.objects || !row || !row.id) return;
+  // The object is this row's key. A sibling that still names the same basename keeps its
+  // own object and the local file: unlinkIfUnreferenced only removes that file when no
+  // row names it. The operator drop is the path that removes a file rows still name, and
+  // only after every one of those rows has storage_key and a live object.
+  storage.objects.forgetContent({ id: row.id, workspace_id: row.workspace_id });
+}
+
 function removeUnreferencedContent(contentId) {
   const row = db.prepare('SELECT * FROM content WHERE id = ?').get(contentId);
   if (!row) return { removed: false, reason: 'already gone' };
@@ -111,6 +119,7 @@ function removeUnreferencedContent(contentId) {
   unlinkIfUnreferenced(row.filepath, row.id, 'filepath');
   unlinkIfUnreferenced(row.thumbnail_path, row.id, 'thumbnail_path');
   unlinkIfUnreferenced(row.subtitle_url, row.id, 'subtitle_url');
+  forgetPublished(row);
   releaseMeshProvenance(row.id);
   db.prepare('DELETE FROM content WHERE id = ?').run(row.id);
   return { removed: true, bytes: row.file_size || 0 };
@@ -139,6 +148,7 @@ function removeDeletedContentFiles(rows, { unlink } = {}) {
       if (r.filepath && rm(r.filepath, 'filepath').unlinked) { out.files_removed++; out.bytes_freed += r.file_size || 0; }
       if (r.thumbnail_path) rm(r.thumbnail_path, 'thumbnail_path');
       if (r.subtitle_url) rm(r.subtitle_url, 'subtitle_url');
+      forgetPublished(r);
       require('./revisions').removeRetainedFiles(r.id);
     } catch (e) {
       console.warn(`[content-files] could not remove files of deleted content ${r.id}: ${e.message}`);

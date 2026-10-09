@@ -5,6 +5,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { digestFile, digestFilename } = require('../content-digest');
 const uploadSniff = require('../upload-sniff');
+const contentStorage = require('../storage');
 
 /*
  * ⚠️ THE REAL SNIFFER. `deps.sniffExt` was called here and never implemented anywhere — the only
@@ -159,7 +160,7 @@ function evaluateManifest(db, edge, manifest, deps = {}) {
         .get(prov.local_content_id);
       // ⚠️ The row can exist while the bytes do not. Check the disk, not the database.
       const onDisk = row && row.filepath &&
-        fs.existsSync(path.join(contentDir, path.basename(row.filepath)));
+        contentStorage.open(contentDir).exists(row.filepath);
       if (row && onDisk && (!e.dg || !row.byte_digest || row.byte_digest === e.dg)) {
         have.push({ oid: e.oid, localId: row.id, matched: 'provenance' });
         continue;
@@ -186,7 +187,7 @@ function evaluateManifest(db, edge, manifest, deps = {}) {
             .get(e.dg, deps.workspaceId)
         : null;
       if (byDigest && byDigest.filepath &&
-          fs.existsSync(path.join(contentDir, path.basename(byDigest.filepath)))) {
+          contentStorage.open(contentDir).exists(byDigest.filepath)) {
         have.push({ oid: e.oid, localId: byDigest.id, matched: 'digest' });
         continue;
       }
@@ -299,13 +300,10 @@ async function commitStagedAsset(db, edge, entry, stagedPath, deps) {
   const { ext, mime } = sniffed;
 
   const finalName = digestFilename(digest, ext);
-  const finalPath = path.join(contentDir, finalName);
-
   try {
     // Same filesystem, so the rename is atomic. If the bytes are already here under this exact
     // name, they are byte-identical by construction — drop the duplicate rather than rewrite it.
-    if (fs.existsSync(finalPath)) fs.unlinkSync(stagedPath);
-    else fs.renameSync(stagedPath, finalPath);
+    contentStorage.open(contentDir).put(stagedPath, finalName, { overwrite: false });
   } catch (e) {
     return { ok: false, reason: 'That file could not be stored.' };
   }
@@ -334,6 +332,26 @@ async function commitStagedAsset(db, edge, entry, stagedPath, deps) {
   ).get(finalName, workspaceId);
 
   const localId = existing ? existing.id : crypto.randomUUID();
+  let placed = null;
+  if (require('../storage').backend === 's3') {
+    try {
+      placed = await require('../storage/publish').publishContentBytes({
+        workspaceId,
+        contentId: localId,
+        mime,
+        digest,
+        original: { path: finalPath },
+      });
+    } catch (e) {
+      if (!existing) { try { fs.unlinkSync(finalPath); } catch { /* best effort */ } }
+      return {
+        ok: false,
+        reason: e && e.code === 'STORAGE_LIMIT'
+          ? 'This server does not have room for that file right now.'
+          : 'That file could not be stored.',
+      };
+    }
+  }
   // Only bytes we actually added to this workspace are charged. A re-push that resolved to a file
   // already here has cost the operator nothing and must not spend their allowance again.
   const charge = existing ? 0 : stat.size;
@@ -386,6 +404,9 @@ async function commitStagedAsset(db, edge, entry, stagedPath, deps) {
     }
   });
   commit();
+  if (placed && placed.published) {
+    require('../storage/publish').rememberLocation(localId, placed.bucket, placed.storageKey);
+  }
     try { require('../revisions').recordCurrent(db, 'content', localId, { actor: { userId: null, kind: 'mesh', label: 'mesh hub' }, summary: existing ? 'Synced from hub (bytes changed)' : 'Synced from hub' }); } catch (_) {}
 
   return { ok: true, localId, filepath: finalName, digest, bytes: stat.size, reusedRow: !!existing };

@@ -2,10 +2,11 @@ const multer = require('multer');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const config = require('../config');
+const contentStorage = require('../lib/storage');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, config.contentDir);
+    cb(null, contentStorage.root());
   },
   filename: (req, file, cb) => {
     // busboy decodes the Content-Disposition filename header as latin1 by
@@ -100,7 +101,7 @@ const upload = multer({
 // video/image, so subtitles need their own instance. Written into the same content dir
 // (served at /uploads/content/<file>) with a .vtt name; capped small — subtitles are tiny.
 const subtitleStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, config.contentDir),
+  destination: (req, file, cb) => cb(null, contentStorage.root()),
   filename: (req, file, cb) => cb(null, `${uuidv4()}.vtt`),
 });
 const subtitleUpload = multer({

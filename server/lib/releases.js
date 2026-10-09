@@ -11,9 +11,7 @@
  * draft is what this file does for those three.
  */
 
-const fs = require('fs');
-const path = require('path');
-const config = require('../config');
+const storage = require('./storage');
 const revisions = require('./revisions');
 const policy = require('./release-policy');
 const { audit } = require('./audit');
@@ -130,7 +128,7 @@ function releaseContentDraft(db, contentId, req, { actor } = {}) {
   const draft = revisions.parseJson(c.draft_json, null);
   if (!draft) { const e = new Error('This item has no unpublished draft'); e.status = 400; throw e; }
   const gate = policy.assertReleasable(db, { workspaceId: c.workspace_id, type: 'content', id: contentId });
-  if (draft.filepath && !fs.existsSync(path.join(config.contentDir, path.basename(draft.filepath)))) {
+  if (draft.filepath && !storage.head(draft.filepath)) {
     const e = new Error('The draft file is missing on disk; upload it again'); e.status = 409; throw e;
   }
   const prevRev = revisions.latest(db, 'content', contentId);
@@ -159,6 +157,7 @@ function releaseContentDraft(db, contentId, req, { actor } = {}) {
     policy.afterRelease(db, { type: 'content', id: contentId, gate, actor: actor || actorOf(req), summary: 'Published' });
   })();
   pushDevices(req, require('./devices-playing').devicesPlayingContent(contentId));
+  try { require('./storage/publish').schedulePublish(db.prepare('SELECT * FROM content WHERE id = ?').get(contentId)); } catch { /* publish must not undo a release */ }
   audit('release:content', { userId: actor && actor.userId, workspaceId: c.workspace_id, details: { content_id: contentId, submission_id: gate.submission ? gate.submission.id : null } });
   return { gate };
 }

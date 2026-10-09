@@ -3,9 +3,9 @@ const router = express.Router();
 const { db } = require('../db/database');
 const os = require('os');
 const path = require('path');
-const { copyFileBytes } = require('../lib/fsutil'); // exFAT-safe; see lib/fsutil.js
 const fs = require('fs');
 const config = require('../config');
+const storage = require('../lib/storage');
 const replicaProxy = require('../lib/replica-proxy');
 const { sixDigitCode } = require('../lib/numeric-code');
 const VERSION = require('../version');
@@ -141,6 +141,24 @@ router.get('/', (req, res) => {
    */
   const maintenance = bootDefer.statusBlock();
   if (maintenance) body.maintenance = maintenance;
+
+  /*
+   * Content transfer (docs/rustfs-content-storage-plan.md §10). Present only when this
+   * process is the s3 primary's catalog: how many library rows still have no storage_key,
+   * how many have one, whether a transfer is running, and the last error. No paths, no
+   * bucket names, no keys. Omitted on a filesystem install so that payload stays as it was.
+   * Still 200. A counting failure must not fail the healthcheck.
+   */
+  try {
+    const contentStorage = require('../lib/storage/migrate').publicStatus();
+    if (contentStorage) {
+      try {
+        const sweep = require('../lib/storage/sweep').publicStatus();
+        if (sweep) Object.assign(contentStorage, sweep);
+      } catch { /* the transfer counts still answer */ }
+      body.content_storage = contentStorage;
+    }
+  } catch (e) { /* the health endpoint must never fail over a transfer counter */ }
 
   // #146: the debug block is admin-toggleable (app_settings.status_debug_enabled),
   // defaulting to the STATUS_DEBUG_ENABLED env behavior. Cheap cached boolean. When off,
@@ -332,17 +350,26 @@ router.get('/export', (req, res) => {
     const filesToInclude = [];
     for (const c of exportData.content) {
       if (c.remote_url || !c.filename) continue;
-      const row = db.prepare('SELECT filepath, thumbnail_path FROM content WHERE id = ?').get(c.id);
+      let row;
+      try {
+        row = db.prepare('SELECT filepath, thumbnail_path, storage_key FROM content WHERE id = ?').get(c.id);
+      } catch {
+        row = db.prepare('SELECT filepath, thumbnail_path FROM content WHERE id = ?').get(c.id);
+      }
       if (row?.filepath) {
-        const filePath = path.join(config.contentDir, path.basename(row.filepath));
-        if (fs.existsSync(filePath)) {
+        const filePath = storage.file(row.filepath);
+        if (filePath && fs.existsSync(filePath)) {
           c.original_filepath = path.basename(row.filepath);
           archive.file(filePath, { name: `files/${c.id}/${c.original_filepath}` });
+        } else if (row.storage_key) {
+          // The local copy was removed after the operator confirmed. The archive does not
+          // pull the object; a restore needs the database and the RustFS volume together.
+          c.bytes_in_object_storage = true;
         }
       }
       if (row?.thumbnail_path) {
-        const thumbPath = path.join(config.contentDir, path.basename(row.thumbnail_path));
-        if (fs.existsSync(thumbPath)) {
+        const thumbPath = storage.file(row.thumbnail_path);
+        if (thumbPath && fs.existsSync(thumbPath)) {
           c.original_thumbnail = path.basename(row.thumbnail_path);
           archive.file(thumbPath, { name: `files/${c.id}/${c.original_thumbnail}` });
         }
@@ -559,9 +586,10 @@ router.post('/import', proxyImportIfCopied, importUpload.single('file'), async (
            * file with it.
            */
           const destName = isDigestName(f.name) ? path.basename(f.name) : `${newId}${ext}`;
-          const destPath = path.join(config.contentDir, destName);
+          const destPath = storage.file(destName);
           try {
-            copyFileBytes(f.path, destPath);
+            if (!destPath) throw new Error('Invalid content name');
+            storage.copy(f.path, destName);
             // Match original filepath vs thumbnail
             if (c.original_filepath && f.name === c.original_filepath) {
               newFilepath = destName;
@@ -591,7 +619,7 @@ router.post('/import', proxyImportIfCopied, importUpload.single('file'), async (
       let restoredDigest = null;
       if (newFilepath) {
         // Synchronous because this runs inside the restore's transaction — see digestFileSync.
-        restoredDigest = digestFileSync(path.join(config.contentDir, newFilepath));
+        restoredDigest = digestFileSync(storage.file(newFilepath));
       }
 
       db.prepare(`INSERT INTO content (id, user_id, workspace_id, filename, filepath, mime_type, file_size, duration_sec, remote_url, thumbnail_path, width, height, created_at, byte_digest) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(newId, userId, workspaceId, c.filename, newFilepath, c.mime_type, c.file_size || 0, c.duration_sec || null, c.remote_url || null, newThumbnail, c.width || null, c.height || null, c.created_at || Math.floor(Date.now() / 1000), restoredDigest);
@@ -831,7 +859,7 @@ router.post('/import', proxyImportIfCopied, importUpload.single('file'), async (
         if (!c || !c.mime_type?.startsWith('video/') || !c.filepath) return c?.duration_sec ? Math.ceil(c.duration_sec) : null;
         if (c.duration_sec) return Math.ceil(c.duration_sec);
         try {
-          const fullPath = path.join(config.contentDir, c.filepath);
+          const fullPath = storage.file(c.filepath);
           const stdout = await new Promise((resolve, reject) => {
             execFile('ffprobe', ['-v', 'quiet', '-print_format', 'json', '-show_format', fullPath],
               { timeout: 15000 }, (err, out) => err ? reject(err) : resolve(out));

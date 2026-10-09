@@ -199,34 +199,37 @@ function moveDevices(db, devices, toWsId, opts = {}) {
 
 /*
  * What a "bring its playlist" move would charge against storage, refused BEFORE anything is
- * written when a plan cannot hold it. Bytes on disk are shared (refcounted), but storage allowances
- * count content rows, so a copy counts — that is what the allowance measures everywhere else.
- * Returns null (fine) or { status, error, code }.
+ * written when the target organization's plan cannot hold it. Bytes on disk are shared (refcounted),
+ * but storage allowances count content rows, so a copy counts — that is what the allowance measures
+ * everywhere else. Returns null (fine) or { status, error, code }.
  */
 function bringBudget(db, v) {
   if (!v.bring) return null;
   const bringLib = require('./device-bring');
-  const perUser = new Map();
+  let bytes = 0;
   for (const d of v.devices) {
     const p = bringLib.plan(db, d, v.target.id, { crossOrg: v.crossOrg });
     if (!p) continue;
-    for (const c of p.content.values()) {
-      const u = v.crossOrg ? v.ownerId : c.user_id;
-      if (!u) continue;
-      perUser.set(u, (perUser.get(u) || 0) + (Number(c.file_size) || 0));
-    }
+    for (const c of p.content.values()) bytes += Number(c.file_size) || 0;
   }
+  if (!bytes || !v.target || !v.target.id) return null;
   let sub = null;
   try { sub = require('../middleware/subscription'); } catch (_) { return null; }
-  for (const [u, bytes] of perUser) {
-    if (!bytes) continue;
-    let room = null;
-    try { room = sub.storageRoomBytes(u); } catch (_) { room = null; }
-    if (room != null && bytes > room) {
-      const mb = (n) => Math.ceil(Math.max(0, n) / (1024 * 1024));
-      return { status: 403, code: 'STORAGE_LIMIT',
-        error: `Copying this screen's playlist needs ${mb(bytes)} MB of storage and the account it is copied to has ${mb(room)} MB left. Move it without its playlist, or free some space first.` };
-    }
+  let allowance = null;
+  try { allowance = sub.storageRoomForUpload(v.target.id); } catch (_) { allowance = null; }
+  // A missing plan has no number to compare (storageRoomBytes' old null). A finite plan's
+  // remaining bytes are the organization's, so a copy into a full customer is refused even
+  // when the person moving the screen is on a larger plan of their own.
+  if (!allowance || allowance.blocked || allowance.room == null) return null;
+  if (bytes > allowance.room) {
+    const mb = (n) => Math.ceil(Math.max(0, n) / (1024 * 1024));
+    return {
+      status: 403,
+      code: 'STORAGE_LIMIT',
+      needed_mb: mb(bytes),
+      available_mb: mb(allowance.room),
+      error: `Copying this screen's playlist needs ${mb(bytes)} MB of storage and the organization it is copied to has ${mb(allowance.room)} MB left. Move it without its playlist, or free some space first.`,
+    };
   }
   return null;
 }

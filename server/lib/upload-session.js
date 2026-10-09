@@ -171,9 +171,8 @@ function append(session, expectedOffset, buffer) {
  */
 function stageForIngest(session) {
   const size = offsetOf(session);
-  const staged = path.join(config.contentDir, session.part_name);
-  fs.mkdirSync(config.contentDir, { recursive: true });
-  fs.renameSync(partPath(session), staged);
+  const storage = require('./storage');
+  const staged = storage.put(partPath(session), session.part_name);
   return {
     path: staged,
     originalname: session.filename,
@@ -236,7 +235,7 @@ function sweep({ ttlMs = SESSION_TTL_MS, now = Date.now() } = {}) {
 }
 
 /**
- * Bytes this user's OTHER open sessions have declared — the part of the storage allowance already
+ * Bytes this organization's OTHER open sessions have declared — the part of the storage allowance already
  * promised to uploads that have not finished.
  *
  * ⚠️ EXISTS BECAUSE THE CREATE-TIME CHECK ONLY HELD FOR ONE SESSION AT A TIME. storageRoomBytes sums
@@ -246,13 +245,23 @@ function sweep({ ttlMs = SESSION_TTL_MS, now = Date.now() } = {}) {
  *
  * Sessions past the sweeper's TTL are not counted: they are already collectable and the hourly
  * sweep has simply not reached them yet; an abandoned tab should not hold an allowance hostage.
- * Keyed on user_id, not workspace, because the allowance is the user's (subscription.js).
+ * Keyed on the workspace's organization, not the user. The allowance is the organization's
+ * (subscription.js), so two people uploading into two of its workspaces share one reservation.
+ * A session whose workspace has no organization holds nothing: there is no allowance to reserve.
  */
-function reservedBytes(userId, { excludeId = null, ttlMs = SESSION_TTL_MS, now = Date.now() } = {}) {
+function reservedBytesForWorkspace(workspaceId, { excludeId = null, ttlMs = SESSION_TTL_MS, now = Date.now() } = {}) {
+  if (!workspaceId) return 0;
+  const org = db.prepare('SELECT organization_id FROM workspaces WHERE id = ?').get(workspaceId);
+  if (!org || !org.organization_id) return 0;
   const cutoff = Math.floor((now - ttlMs) / 1000);
-  const row = db.prepare(
-    'SELECT COALESCE(SUM(declared_size), 0) AS n FROM upload_sessions WHERE user_id = ? AND updated_at >= ? AND id IS NOT ?'
-  ).get(userId, cutoff, excludeId);
+  const row = db.prepare(`
+    SELECT COALESCE(SUM(s.declared_size), 0) AS n
+      FROM upload_sessions s
+      JOIN workspaces w ON w.id = s.workspace_id
+     WHERE w.organization_id = ?
+       AND s.updated_at >= ?
+       AND s.id IS NOT ?
+  `).get(org.organization_id, cutoff, excludeId);
   return Number(row.n || 0);
 }
 
@@ -267,5 +276,5 @@ function stopSweep() { if (_sweepTimer) { clearInterval(_sweepTimer); _sweepTime
 module.exports = {
   CHUNK_SIZE, MAX_CHUNK_BYTES, SESSION_TTL_MS,
   create, get, append, offsetOf, isComplete, stageForIngest, discard, forget,
-  sweep, startSweep, stopSweep, incomingDir, partPath, reservedBytes,
+  sweep, startSweep, stopSweep, incomingDir, partPath, reservedBytesForWorkspace,
 };

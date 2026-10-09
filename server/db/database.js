@@ -2313,6 +2313,23 @@ const migrations = [
      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')), updated_at INTEGER,
      UNIQUE (org_id, idempotency_key))`,
   "CREATE INDEX IF NOT EXISTS idx_ai_credit_reservations_pending ON ai_credit_reservations(status, created_at)",
+  // Object storage (docs/rustfs-content-storage-plan.md §9). NULL means the bytes are still
+  // on the local disk. The principal secret is ciphertext of STORAGE_SEAL_KEY, never the key itself.
+  'ALTER TABLE content ADD COLUMN storage_bucket TEXT',
+  'ALTER TABLE content ADD COLUMN storage_key TEXT',
+  'CREATE INDEX IF NOT EXISTS idx_content_storage_key ON content(storage_key)',
+  `CREATE TABLE IF NOT EXISTS storage_principals (
+     id              TEXT PRIMARY KEY,
+     scope           TEXT NOT NULL,
+     organization_id TEXT,
+     workspace_id    TEXT,
+     bucket          TEXT NOT NULL,
+     access_key_id   TEXT NOT NULL,
+     secret_enc      TEXT NOT NULL,
+     created_at      INTEGER NOT NULL
+   )`,
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_storage_principals_workspace ON storage_principals(workspace_id) WHERE scope = 'workspace' AND workspace_id IS NOT NULL",
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_storage_principals_org ON storage_principals(organization_id) WHERE scope = 'organization' AND organization_id IS NOT NULL",
 ];
 // Apply each ALTER idempotently. A "duplicate column name" / "already exists"
 // error means the column is already present (expected on a migrated DB) - benign.
@@ -2551,7 +2568,7 @@ async function migrateAssignmentsToPlaylists() {
     if (content.duration_sec) return Math.ceil(content.duration_sec);
     if (!content.filepath) return null;
     try {
-      const fullPath = path.join(config.contentDir, content.filepath);
+      const fullPath = require('../lib/storage').file(content.filepath);
       const stdout = await new Promise((resolve, reject) => {
         execFile('ffprobe', [
           '-v', 'quiet', '-print_format', 'json', '-show_format', fullPath

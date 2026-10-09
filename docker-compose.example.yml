@@ -23,6 +23,15 @@ services:
       # GO2RTC_TURN_URL: "turn:turn.example.com:3478"      # only when UDP 8555 + host candidates are both unreachable
       # GO2RTC_TURN_USER: "user"
       # GO2RTC_TURN_PASS: "pass"
+      # Content stays on st-data unless you opt into the rustfs profile and set these.
+      # Herald's data path uses the provisioner only to create users, then each workspace key.
+      # CONTENT_BACKEND: "s3"
+      # RUSTFS_ENDPOINT: "http://rustfs:9000"
+      # RUSTFS_REGION: "us-east-1"
+      # RUSTFS_PROVISIONER_ACCESS_KEY: ""
+      # RUSTFS_PROVISIONER_SECRET_KEY: ""
+      # RUSTFS_PLATFORM_ACCESS_KEY: ""
+      # RUSTFS_PLATFORM_SECRET_KEY: ""
       TALK_ENABLED: "true"                 # master switch for voice Talk / PA; then enable per org under Admin -> Organizations
     depends_on:
       - go2rtc
@@ -63,6 +72,28 @@ services:
       - "8555:8555/tcp"
       - "8555:8555/udp"
 
+  # Optional bench bucket. Not started by `docker compose up` (profile rustfs) and not a
+  # dependency of luminascreen, so a normal self-host keeps files on st-data.
+  #   docker compose --profile rustfs up -d rustfs
+  # S3 stays on the compose network. The console is loopback only. Keys come from the
+  # environment, not from this file. Do not use a well-known default.
+  rustfs:
+    profiles: ["rustfs"]
+    image: rustfs/rustfs:1.0.0-beta.10
+    user: "10001:10001"
+    restart: unless-stopped
+    environment:
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:-}
+    command: ["/data"]
+    volumes:
+      - rustfs-data:/data
+    ports:
+      - "127.0.0.1:9001:9001"
+
 # ---- Optional: one-click upgrades (Platform -> System -> "Update Now") -----------------------
 # Without this, "Update Now" shows the commands to run by hand. With it, a platform admin can
 # upgrade from the dashboard: the updater backs up the database, pulls the release, pins this file
@@ -89,4 +120,5 @@ services:
 
 volumes:
   st-data:
+  rustfs-data:
   # st-updater:

@@ -9,10 +9,10 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../db/database');
 const config = require('../config');
+const storage = require('../lib/storage');
 const { encrypt, decrypt } = require('../lib/secretbox');
 const { generateImage } = require('../lib/image-gen');
 const fs = require('fs');
-const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { ingestUploadedFile } = require('../lib/content-ingest');
 const { logActivity, getClientIp } = require('../services/activity');
@@ -553,8 +553,8 @@ async function generateAndIngest({ row, prompt, width, height, name, userId, wor
 
   const bytes = Buffer.from(dataUrl.slice(dataUrl.indexOf('base64,') + 7), 'base64');
   const tmpName = `${uuidv4()}.part`;
-  const tmpPath = path.join(config.contentDir, tmpName);
-  fs.mkdirSync(config.contentDir, { recursive: true });
+  storage.ensureRoot();
+  const tmpPath = storage.file(tmpName);
   fs.writeFileSync(tmpPath, bytes);
 
   /*

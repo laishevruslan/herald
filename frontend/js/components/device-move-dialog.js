@@ -11,13 +11,20 @@
  *   - "I understand these screens leave this organization" for a move to another organization
  *     (acknowledge_other_org).
  * The server refuses without either, so a stale dialog cannot skip them. A move whose copy the
- * target account has no storage for is refused by the preview itself, before anyone ticks anything.
+ * target organization has no storage for is refused by the preview itself, before anyone ticks anything.
  */
 import { api } from '../api.js';
 import { t, tn } from '../i18n.js';
 import { esc, isPlatformAdmin } from '../utils.js';
 import { showToast } from './toast.js';
 import * as cui from './corporate-ui.js';
+
+function storageRefusalText(refusal) {
+  if (refusal && refusal.code === 'STORAGE_LIMIT' && typeof refusal.needed_mb === 'number' && typeof refusal.available_mb === 'number') {
+    return t('move.storage_limit', { needed: refusal.needed_mb, available: refusal.available_mb });
+  }
+  return (refusal && refusal.error) || '';
+}
 
 const DROPPED_KEYS = ['groups', 'wall', 'playlist', 'layout', 'default_content', 'schedules', 'power_schedules', 'endpoints', 'trigger_assignments', 'slot_content'];
 const BROUGHT_KEYS = ['playlists', 'widgets', 'kiosk_pages', 'data_sources', 'shaders', 'fonts'];
@@ -181,7 +188,7 @@ export async function openDeviceMoveDialog(deviceIds, { currentWorkspaceId, onMo
       const orgNotice = otherOrg ? `<div class="corp-notice corp-notice-warn">${esc(t('move.other_org', { org: otherOrg.name }))}
           <label class="corp-check" style="display:flex;gap:8px;margin-top:8px"><input type="checkbox" id="moveOrgAck"> ${esc(t('move.other_org_ack'))}</label></div>` : '';
       const plan = pv.plan_warning ? `<div class="corp-notice corp-notice-warn">${esc(t('move.plan_warning', { plan: pv.plan_warning.plan, after: pv.plan_warning.devices_after, limit: pv.plan_warning.devices_limit }))}</div>` : '';
-      const storage = refused ? `<div class="corp-notice corp-notice-danger">${esc(pv.storage_refusal.error)}</div>` : '';
+      const storage = refused ? `<div class="corp-notice corp-notice-danger">${esc(storageRefusalText(pv.storage_refusal))}</div>` : '';
       box.innerHTML = `${orgNotice}${plan}${storage}${headOfficeSummary(pv.screens)}
         ${bring.checked && hasOwn ? broughtSummary(pv.screens) : ''}${droppedSummary(pv.screens)}
         ${cui.storeTriggerImpactHtml(impact, s && s.store_triggers_under_mandate, { ackId: 'moveTrigAck' })}`;

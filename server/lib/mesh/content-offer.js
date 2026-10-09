@@ -2,7 +2,7 @@
 
 const crypto = require('crypto');
 const path = require('path');
-const fs = require('fs');
+const contentStorage = require('../storage');
 
 /*
  * OFFERING CONTENT TO A CHILD — the parent's half, and it is deliberately the dumber half.
@@ -71,9 +71,7 @@ function buildOffer(db, edge, contentIds, deps = {}) {
       continue;
     }
 
-    const abs = path.join(contentDir, path.basename(row.filepath || ''));
-    let stat = null;
-    try { stat = fs.statSync(abs); } catch (e) { stat = null; }
+    const stat = contentStorage.open(contentDir).head(row.filepath || '');
     /*
      * ⚠️ Checked on DISK before it is offered. A row whose file is missing — a restore, a migration,
      * a manual cleanup — would otherwise be advertised, ticketed, and fail at transfer, and the

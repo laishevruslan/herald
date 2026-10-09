@@ -6,17 +6,17 @@
 // upload. routes/content.js POST / is now a thin caller; behavior is unchanged (its
 // existing tests are the regression guard).
 
-const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('../db/database');
 const config = require('../config');
+const storage = require('./storage');
+const { publishContentBytes, rememberLocation } = require('./storage/publish');
 const { cleanUserText } = require('../middleware/sanitize');
 const { videoDisplayDims, imageDisplayDims } = require('./media-orientation');
 const { isSupportUserId } = require('./support-access');
 const { digestFile } = require('./content-digest');
 const { finalizeUpload } = require('./upload-sniff');
 const htmlBundle = require('./html-bundle');
-const fs = require('fs');
 
 // Multer takes file.originalname from the multipart header, bypassing sanitizeBody, so it is
 // cleaned here instead.
@@ -59,7 +59,7 @@ async function deriveMediaMetadata(sourcePath, filepath, mime) {
       // .metadata() only read the header). #170: rotation is implicit, the decoder auto-orients,
       // so the recorded dimensions and the thumbnail agree without an explicit rotate.
       const metadata = await imageOps.measureAndThumbnail(
-        sourcePath, path.join(config.contentDir, thumbName), config.thumbnailWidth, 70);
+        sourcePath, storage.file(thumbName), config.thumbnailWidth, 70);
       // #170: honor EXIF orientation so a portrait photo isn't stored as landscape. The decoder
       // applies it and reports orientation 1, so this is a no-op pass-through today — kept so the
       // rule lives in one place regardless of which decoder is underneath.
@@ -105,7 +105,7 @@ async function deriveMediaMetadata(sourcePath, filepath, mime) {
         const thumbName = `thumb_${filepath.replace(/\.[^.]+$/, '.jpg')}`;
         try {
           await execFileAsync('ffmpeg',
-            ['-y', '-i', sourcePath, '-ss', '2', '-vframes', '1', '-vf', `scale=${config.thumbnailWidth}:-1`, path.join(config.contentDir, thumbName)],
+            ['-y', '-i', sourcePath, '-ss', '2', '-vframes', '1', '-vf', `scale=${config.thumbnailWidth}:-1`, storage.file(thumbName)],
             { timeout: 15000 }
           );
           thumbnailPath = thumbName;
@@ -137,13 +137,13 @@ async function ingestUploadedFile({ file, userId, workspaceId, folderId = null }
    */
   let bundleEntry = null;
   if (mime === 'application/zip') {
-    const stored = path.join(config.contentDir, filepath);
+    const stored = storage.file(filepath);
     try {
       const info = await htmlBundle.validateBundle(stored);
       bundleEntry = info.entryPoint;
       mime = htmlBundle.BUNDLE_MIME;
     } catch (err) {
-      try { fs.unlinkSync(stored); } catch (e) { /* best effort */ }
+      try { storage.remove(filepath); } catch (e) { /* best effort */ }
       throw err;
     }
   }
@@ -164,7 +164,7 @@ async function ingestUploadedFile({ file, userId, workspaceId, folderId = null }
    * every existing row already is, so an unreadable file must not lose the upload.
    */
   let digest = null;
-  try { digest = await digestFile(path.join(config.contentDir, filepath)); } catch (e) { digest = null; }
+  try { digest = await digestFile(storage.file(filepath)); } catch (e) { digest = null; }
 
   /*
    * ⚠️ content.user_id IS A FOREIGN KEY INTO users, AND A SUPPORT SESSION HAS NO users ROW.
@@ -177,18 +177,43 @@ async function ingestUploadedFile({ file, userId, workspaceId, folderId = null }
    *
    * The column is nullable and workspace_id already carries the tenancy, so an upload made during
    * a support session is recorded as belonging to the workspace with no owning account — which is
-   * true. It also keeps it out of getUserStorageMB, which sums by user_id: support bytes are not
-   * the customer's allowance.
+   * true. The storage allowance sums by that workspace's organization, so these bytes count there
+   * and nowhere else: a NULL owner is not a second customer, and it is not a free pass.
    *
    * ⚠️ The same FK sits on playlists, content_folders, layouts, widgets and schedules, all of
    * which bind req.user.id the same way and are NOT fixed here. See the PR for why.
    */
   const ownerUserId = isSupportUserId(userId) ? null : userId;
 
-  db.prepare(`
-    INSERT INTO content (id, user_id, workspace_id, filename, filepath, mime_type, file_size, duration_sec, thumbnail_path, width, height, folder_id, byte_digest, bundle_entry)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, ownerUserId, workspaceId, safeFilename(file.originalname), filepath, mime, file.size, durationSec, thumbnailPath, width, height, folderId || null, digest, bundleEntry);
+  let placed = null;
+  try {
+    placed = await publishContentBytes({
+      workspaceId,
+      contentId: id,
+      mime,
+      digest,
+      original: { path: storage.file(filepath) },
+      thumb: thumbnailPath ? { path: storage.file(thumbnailPath) } : null,
+    });
+  } catch (e) {
+    try { storage.remove(filepath); } catch { /* best effort */ }
+    if (thumbnailPath) { try { storage.remove(thumbnailPath); } catch { /* best effort */ } }
+    throw e;
+  }
+
+  try {
+    db.prepare(`
+      INSERT INTO content (id, user_id, workspace_id, filename, filepath, mime_type, file_size, duration_sec, thumbnail_path, width, height, folder_id, byte_digest, bundle_entry)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, ownerUserId, workspaceId, safeFilename(file.originalname), filepath, mime, file.size, durationSec, thumbnailPath, width, height, folderId || null, digest, bundleEntry);
+  } catch (e) {
+    if (storage.objects) {
+      await storage.objects.forgetContent({ id, workspace_id: workspaceId });
+      await storage.objects.drain();
+    }
+    throw e;
+  }
+  if (placed && placed.published) rememberLocation(id, placed.bucket, placed.storageKey);
 
   try {
     require('./plugins/hooks').emit('content.uploaded', {

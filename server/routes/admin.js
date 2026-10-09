@@ -963,6 +963,49 @@ router.get('/limiter-rejections', requirePlatformAdmin, (req, res) => {
   });
 });
 
+// Library transfer. Start copies one row at a time and does not delete local files.
+// Drop is a second call and requires the confirmation phrase in the body.
+router.get('/content-storage', requirePlatformAdmin, (req, res) => {
+  try {
+    const migrate = require('../lib/storage/migrate').adminStatus();
+    let sweep = {};
+    try { sweep = require('../lib/storage/sweep').adminStatus() || {}; } catch { sweep = {}; }
+    res.json({ ...migrate, ...sweep });
+  } catch (err) {
+    res.status(500).json({ error: 'Content storage status is unavailable' });
+  }
+});
+
+router.post('/content-storage/start', requirePlatformAdmin, (req, res) => {
+  try {
+    const out = require('../lib/storage/migrate').start();
+    logActivity(req.user.id, 'content_storage_start', `on_disk=${out.rows_on_disk} in_bucket=${out.rows_in_bucket}`, null, getClientIp(req));
+    res.json(out);
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.status ? err.message : 'Transfer could not start' });
+  }
+});
+
+router.post('/content-storage/stop', requirePlatformAdmin, (req, res) => {
+  try {
+    const out = require('../lib/storage/migrate').stop();
+    logActivity(req.user.id, 'content_storage_stop', `on_disk=${out.rows_on_disk} in_bucket=${out.rows_in_bucket}`, null, getClientIp(req));
+    res.json(out);
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.status ? err.message : 'Transfer could not stop' });
+  }
+});
+
+router.post('/content-storage/drop-local', requirePlatformAdmin, async (req, res) => {
+  try {
+    const out = await require('../lib/storage/migrate').dropLocalCopies({ confirm: req.body && req.body.confirm });
+    logActivity(req.user.id, 'content_storage_drop_local', `removed=${out.removed} kept=${out.kept}`, null, getClientIp(req));
+    res.json(out);
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.status ? err.message : 'Local copies were not deleted' });
+  }
+});
+
 // Plugin inventory. The sub-router 404s when PLUGINS_ENABLED is unset (P1). requirePlatformAdmin
 // runs first, so a non-admin probing this path gets the same 403 as every other /api/admin/* handler.
 router.use('/plugins', requirePlatformAdmin, require('./admin-plugins'));

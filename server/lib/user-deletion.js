@@ -89,7 +89,8 @@ function purgeWorkspaces(db, wsIds, have) {
   let contentRows = [];
   if (have.has('content')) {
     const cols = new Set(db.prepare('PRAGMA table_info(content)').all().map(c => c.name));
-    const pick = ['id', ...CONTENT_FILE_COLS.filter(c => cols.has(c))].join(', ');
+    const idCols = ['id', ...(cols.has('workspace_id') ? ['workspace_id'] : [])];
+    const pick = [...idCols, ...CONTENT_FILE_COLS.filter(c => cols.has(c))].join(', ');
     contentRows = db.prepare(`SELECT ${pick} FROM content WHERE workspace_id IN (${wph})`).all(...wsIds);
   }
   for (const hist of ['submissions', 'revisions']) {
@@ -130,6 +131,30 @@ function removeDeletedFiles(contentRows, unlink) {
 
 // #36: cascade-delete a single workspace (and all its tenant resources). The
 // parent org is left intact. Platform-admin action; callers gate authorization.
+function releaseStoredWorkspace(workspaceId) {
+  try {
+    const storage = require('./storage');
+    if (storage.backend !== 's3' || !storage.objects || !storage.objects.releaseWorkspace) return;
+    storage.objects.releaseWorkspace(workspaceId).catch((e) => {
+      console.error(`[storage] release workspace failed: ${require('./storage/redact').redact(e && e.message)}`);
+    });
+  } catch (e) {
+    console.error(`[storage] release workspace failed: ${e && e.message}`);
+  }
+}
+
+function releaseStoredOrganization(organizationId, workspaceIds) {
+  try {
+    const storage = require('./storage');
+    if (storage.backend !== 's3' || !storage.objects || !storage.objects.releaseOrganization) return;
+    storage.objects.releaseOrganization(organizationId, workspaceIds).catch((e) => {
+      console.error(`[storage] release organization failed: ${require('./storage/redact').redact(e && e.message)}`);
+    });
+  } catch (e) {
+    console.error(`[storage] release organization failed: ${e && e.message}`);
+  }
+}
+
 function deleteWorkspaceCascade(db, { workspaceId, unlink, before }) {
   const gone = db.transaction(() => {
     db.pragma('defer_foreign_keys = ON');
@@ -138,23 +163,28 @@ function deleteWorkspaceCascade(db, { workspaceId, unlink, before }) {
     if (before) before();
     return purgeWorkspaces(db, [workspaceId], tablesPresent(db));
   })();
-  return removeDeletedFiles(gone, unlink);
+  const out = removeDeletedFiles(gone, unlink);
+  releaseStoredWorkspace(workspaceId);
+  return out;
 }
 
 // #36: cascade-delete an organization - all its workspaces + tenant resources,
 // then the org itself (cascades organization_members). Member USERS are NOT
 // deleted (they may belong to other orgs); they simply lose this membership.
 function deleteOrgCascade(db, { orgId, unlink }) {
+  let wsIds = [];
+  try { wsIds = db.prepare('SELECT id FROM workspaces WHERE organization_id = ?').all(orgId).map(r => r.id); } catch { wsIds = []; }
   const gone = db.transaction(() => {
     db.pragma('defer_foreign_keys = ON');
     const have = tablesPresent(db);
-    const wsIds = db.prepare('SELECT id FROM workspaces WHERE organization_id = ?').all(orgId).map(r => r.id);
     const rows = purgeWorkspaces(db, wsIds, have);
     if (have.has('activity_log')) db.prepare('UPDATE activity_log SET organization_id = NULL WHERE organization_id = ?').run(orgId);
     db.prepare('DELETE FROM organizations WHERE id = ?').run(orgId); // cascades organization_members
     return rows;
   })();
-  return removeDeletedFiles(gone, unlink);
+  const out = removeDeletedFiles(gone, unlink);
+  releaseStoredOrganization(orgId, wsIds);
+  return out;
 }
 
 function listOwnedOrgsWithSharing(db, userId) {

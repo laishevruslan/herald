@@ -14,9 +14,8 @@
  */
 
 const fs = require('fs');
-const path = require('path');
 const { db } = require('../../db/database');
-const config = require('../../config');
+const contentStorage = require('../storage');
 const store = require('./store');
 const params = require('./params');
 const render = require('./render');
@@ -82,12 +81,11 @@ function readContentImage(contentId, workspaceId) {
     ? db.prepare("SELECT filepath, mime_type FROM content WHERE id = ? AND workspace_id = ? AND mime_type LIKE 'image/%'").get(contentId, workspaceId)
     : null;
   if (!row || !row.filepath || !/^image\/[a-zA-Z0-9.+-]+$/.test(row.mime_type)) return null;
-  const base = path.resolve(config.contentDir || path.join(config.uploadsDir || path.join(config.dataDir, 'uploads'), 'content'));
-  const file = path.resolve(base, row.filepath);
-  if (!file.startsWith(base + path.sep)) return null;
+  const file = contentStorage.file(row.filepath);
+  if (!file) return null;
   try {
-    const st = fs.statSync(file);
-    if (!st.isFile() || st.size > render.MAX_INLINE_IMAGE_BYTES) return null;
+    const info = contentStorage.head(row.filepath);
+    if (!info || info.size > render.MAX_INLINE_IMAGE_BYTES) return null;
     return render.dataUri(row.mime_type, fs.readFileSync(file));
   } catch { return null; }
 }

@@ -8,16 +8,15 @@
  */
 
 const express = require('express');
-const fs = require('fs');
 const { denyReadOnly } = require('../lib/tenancy');
 const upload = require('../middleware/upload');
 const studio = require('../lib/studio-designs');
-const config = require('../config');
+const contentStorage = require('../lib/storage');
 
 const router = express.Router();
 
-// Multer writes into contentDir; ensure it exists (fresh DATA_DIR in tests / first boot).
-fs.mkdirSync(config.contentDir, { recursive: true });
+// Multer writes into the content root; ensure it exists (fresh DATA_DIR in tests / first boot).
+contentStorage.ensureRoot();
 
 function pushPlaylistRefresh(req, deviceIds) {
   try {

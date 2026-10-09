@@ -60,10 +60,11 @@ async function seedImage(userId = USER) {
   return row;
 }
 
-function headersFor({ user = USER, viewer = false, noWorkspace = false } = {}) {
+function headersFor({ user = USER, viewer = false, noWorkspace = false, workspace = null } = {}) {
   const h = { 'x-test-user': user };
   if (viewer) h['x-test-viewer'] = '1';
   if (noWorkspace) h['x-test-no-ws'] = '1';
+  if (workspace) h['x-test-ws'] = workspace;
   return h;
 }
 
@@ -99,7 +100,7 @@ before(async () => {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.workspaceId = req.get('x-test-no-ws') ? null : WS;
+    req.workspaceId = req.get('x-test-no-ws') ? null : (req.get('x-test-ws') || WS);
     req.user = { id: req.get('x-test-user') || USER, role: 'platform_admin' };
     if (req.get('x-test-viewer')) req.workspaceRole = 'workspace_viewer';
     next();
@@ -188,13 +189,23 @@ test('F16: a batch with an unsupported file in the middle adds NOTHING and leave
 
 /* ------------------------------------------------------------- F26: storage across sessions */
 
+function tinyHome(userId) {
+  const org = 'org-' + userId;
+  const ws = 'ws-' + userId;
+  db.prepare('INSERT INTO organizations (id, name, owner_user_id) VALUES (?, ?, ?)').run(org, org, userId);
+  db.prepare('INSERT INTO workspaces (id, organization_id, name) VALUES (?, ?, ?)').run(ws, org, ws);
+  return ws;
+}
+
 test('F26: parallel resumable sessions cannot together exceed the storage allowance', async () => {
   const u = 'u-upint-par';
   addUser(u, 'tiny-upint');
+  const ws = tinyHome(u);
   const size = 700 * 1024;   // fits in 1 MiB once, not twice
-  const a = await fetch(`${base}/uploads`, J({ filename: 'a.png', size }, { user: u }));
+  const opts = { user: u, workspace: ws };
+  const a = await fetch(`${base}/uploads`, J({ filename: 'a.png', size }, opts));
   assert.equal(a.status, 201, 'the first session fits');
-  const b = await fetch(`${base}/uploads`, J({ filename: 'b.png', size }, { user: u }));
+  const b = await fetch(`${base}/uploads`, J({ filename: 'b.png', size }, opts));
   const bb = await b.json();
   assert.equal(b.status, 403, 'the second would overshoot once the first is counted');
   assert.equal(bb.code, 'STORAGE_LIMIT');
@@ -202,29 +213,31 @@ test('F26: parallel resumable sessions cannot together exceed the storage allowa
 
   // Giving up the first frees its reservation.
   const aid = (await a.json()).id;
-  await fetch(`${base}/uploads/${aid}`, { method: 'DELETE', headers: headersFor({ user: u }) });
-  const c = await fetch(`${base}/uploads`, J({ filename: 'c.png', size }, { user: u }));
+  await fetch(`${base}/uploads/${aid}`, { method: 'DELETE', headers: headersFor(opts) });
+  const c = await fetch(`${base}/uploads`, J({ filename: 'c.png', size }, opts));
   assert.equal(c.status, 201, 'an abandoned (deleted) session no longer holds the allowance');
 });
 
 test('F26: finalize re-checks the allowance against the staged bytes', async () => {
   const u = 'u-upint-fin';
   addUser(u, 'tiny-upint');
+  const ws = tinyHome(u);
+  const opts = { user: u, workspace: ws };
   const bytes = pngOf(600 * 1024);
-  const cr = await fetch(`${base}/uploads`, J({ filename: 'f.png', size: bytes.length }, { user: u }));
+  const cr = await fetch(`${base}/uploads`, J({ filename: 'f.png', size: bytes.length }, opts));
   assert.equal(cr.status, 201);
   const { id } = await cr.json();
   const p = await fetch(`${base}/uploads/${id}`, {
     method: 'PATCH', body: bytes,
-    headers: { ...headersFor({ user: u }), 'Content-Type': 'application/octet-stream', 'Upload-Offset': '0' },
+    headers: { ...headersFor(opts), 'Content-Type': 'application/octet-stream', 'Upload-Offset': '0' },
   });
   assert.equal(p.status, 200);
 
   // Usage moved after the session was opened (another path, a downgrade): 600 KB is now in use.
   db.prepare('INSERT INTO content (id, user_id, workspace_id, filename, filepath, mime_type, file_size) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(crypto.randomUUID(), u, WS, 'other.png', 'other-upint.png', 'image/png', 600 * 1024);
+    .run(crypto.randomUUID(), u, ws, 'other.png', 'other-upint.png', 'image/png', 600 * 1024);
 
-  const fin = await fetch(`${base}/uploads/${id}/finalize`, J({}, { user: u }));
+  const fin = await fetch(`${base}/uploads/${id}/finalize`, J({}, opts));
   const fb = await fin.json();
   assert.equal(fin.status, 403, JSON.stringify(fb));
   assert.equal(fb.code, 'STORAGE_LIMIT');

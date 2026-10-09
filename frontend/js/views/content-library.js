@@ -346,6 +346,16 @@ const state = {
   suikaAvailable: false, // I5: Edit design only when /suika/ island is built
 };
 
+function uploadFailureDetail(err) {
+  const body = err && err.body;
+  if (body && body.code === 'STORAGE_LIMIT') {
+    return body.reserved_bytes > 0
+      ? t('content.toast.storage_limit_reserved')
+      : t('content.toast.storage_limit');
+  }
+  return (err && err.message) || '';
+}
+
 async function handleFiles(files) {
   const all = Array.from(files);
   if (all.length === 0) return;
@@ -407,7 +417,7 @@ async function handleFiles(files) {
     }
   } catch (err) {
     const label = all.length === 1 ? all[0].name : t('content.upload_progress_count', { count: all.length });
-    showToast(t('content.toast.upload_failed_named', { name: label, error: err.message }), 'error');
+    showToast(t('content.toast.upload_failed_named', { name: label, error: uploadFailureDetail(err) }), 'error');
   }
 
   progress.style.display = 'none';

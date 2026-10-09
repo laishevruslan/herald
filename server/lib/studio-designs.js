@@ -13,8 +13,7 @@ const { finalizeUpload } = require('./upload-sniff');
 const { unlinkIfUnreferenced } = require('./content-files');
 const { digestFile } = require('./content-digest');
 const { devicesPlayingContent } = require('./devices-playing');
-const path = require('path');
-const config = require('../config');
+const storage = require('./storage');
 
 /** Soft cap: scene must not embed data-URL bitmaps (D-SC / plan §7). */
 const MAX_SCENE_JSON_BYTES = 1_500_000;
@@ -211,7 +210,7 @@ async function replacePngBytes(content, file, opts = {}) {
   }
   if (!mime.startsWith('image/')) {
     try {
-      require('fs').unlinkSync(path.join(config.contentDir, filepath));
+      storage.remove(filepath);
     } catch { /* best effort */ }
     const err = new Error('Studio export must be an image (PNG/JPEG)');
     err.status = 400;
@@ -221,7 +220,7 @@ async function replacePngBytes(content, file, opts = {}) {
   const { width, height, durationSec, thumbnailPath } = await deriveMediaMetadata(file.path, filepath, mime);
   let newDigest = null;
   try {
-    newDigest = await digestFile(path.join(config.contentDir, filepath));
+    newDigest = await digestFile(storage.file(filepath));
   } catch {
     newDigest = null;
   }
@@ -267,6 +266,19 @@ async function replacePngBytes(content, file, opts = {}) {
       .run(filepath, mime, file.size, thumbnailPath, width, height, durationSec, newDigest, content.id);
     revisions.recordCurrent(db, 'content', content.id, { actor, summary: 'Studio replace' });
   })();
+
+  try {
+    await require('./storage/publish').publishContentBytes({
+      workspaceId: content.workspace_id,
+      contentId: content.id,
+      mime,
+      digest: newDigest,
+      original: { path: storage.file(filepath) },
+      thumb: thumbnailPath ? { path: storage.file(thumbnailPath) } : null,
+    });
+  } catch (e) {
+    console.error(`[storage] publish ${content.id} failed: ${e && e.message}`);
+  }
 
   return {
     row: db.prepare('SELECT * FROM content WHERE id = ?').get(content.id),
