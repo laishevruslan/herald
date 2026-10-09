@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LuminaScreen Public API
-  version: 2.4.3
+  version: 2.5.0
   description: |
     Public, token-scoped REST API for LuminaScreen digital signage.
 
@@ -27,6 +27,12 @@ servers:
   - url: /api
 
 tags:
+  - name: zapier
+    description: 'Zapier and other REST-hook clients: subscribe to events, poll them, and run actions. See docs/automation.md.'
+  - name: qr-links
+    description: Tracked QR links — a short /q/<code> redirect that counts scans.
+  - name: emergency-feeds
+    description: Public CAP alert feeds that take screens over while an alert matches.
   - name: content
     description: Media library items (uploads, remote URLs, YouTube).
   - name: folders
@@ -297,6 +303,17 @@ components:
           type: string
         notes:
           type: string
+        tags:
+          type: array
+          items: { type: string }
+          description: Labels for this screen (lower-case). Dynamic groups match on them.
+        group_ids:
+          type: array
+          items: { type: string }
+          description: The device groups this screen is a member of, ordered by group name.
+        latitude: { type: [number, "null"], description: Where the screen is. Used by weather and area conditions. }
+        longitude: { type: [number, "null"] }
+        location_label: { type: [string, "null"] }
         created_at:
           type: integer
         playlist_source:
@@ -522,6 +539,72 @@ components:
           type: integer
         workspace_id:
           type: [string, "null"]
+        rules:
+          oneOf:
+            - $ref: '#/components/schemas/GroupRules'
+            - type: "null"
+          description: When set, the group fills itself with every matching screen and its members cannot be edited by hand.
+
+    GroupRules:
+      type: object
+      required: [rules]
+      properties:
+        match:
+          type: string
+          enum: [all, any]
+          default: all
+        rules:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            type: object
+            required: [field, op, value]
+            properties:
+              field:
+                type: string
+                enum: [tag, name, platform, timezone]
+              op:
+                type: string
+                enum: [has, lacks, contains, starts_with, eq, neq]
+                description: "tag: has | lacks; name: contains | starts_with | eq; platform, timezone: eq | neq."
+              value:
+                type: string
+
+    CapFeedInput:
+      type: object
+      properties:
+        name: { type: string }
+        url: { type: string, description: 'A CAP document, a CAP Atom/RSS index, or NWS alert GeoJSON (https://api.weather.gov/alerts/active?area=WI).' }
+        enabled: { type: boolean }
+        poll_sec: { type: integer, minimum: 60, maximum: 3600 }
+        min_severity: { type: string, enum: [Extreme, Severe, Moderate, Minor, Unknown] }
+        events:
+          description: Only these CAP event names (empty = all).
+          oneOf:
+            - { type: array, items: { type: string } }
+            - { type: string }
+        area_match: { type: string, description: 'Comma-separated place names or area codes; matches areaDesc or any geocode.' }
+        language: { type: string, description: 'Preferred <info> language, e.g. en.' }
+        playlist_id: { type: [string, "null"], description: 'Play this instead of the generated alert card.' }
+        scopes:
+          type: array
+          items:
+            type: object
+            required: [scope_kind]
+            properties:
+              scope_kind: { type: string, enum: [workspace, group, device] }
+              scope_id: { type: string }
+    CapFeed:
+      allOf:
+        - $ref: '#/components/schemas/CapFeedInput'
+        - type: object
+          properties:
+            id: { type: string }
+            screens_in_scope: { type: integer }
+            live_count: { type: integer, description: Matching alerts on screens now. }
+            last_polled_at: { type: [integer, "null"] }
+            last_error: { type: [string, "null"] }
 
     Schedule:
       type: object
@@ -546,8 +629,10 @@ components:
           type: string
         start_time:
           type: string
+          description: 'Wall clock in the schedule''s timezone, "YYYY-MM-DDTHH:MM". On write, a time with Z or an offset is converted to it (400 when no zone is known).'
         end_time:
           type: string
+          description: Same format as start_time.
         timezone:
           type: string
         recurrence:
@@ -1243,6 +1328,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
+        - { name: tag, in: query, required: false, schema: { type: string }, description: Only screens carrying this tag. }
       responses:
         '200':
           description: Array of devices.
@@ -1251,6 +1337,18 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Device' }
+  /devices/geocode:
+    get:
+      tags: [devices]
+      summary: Search a place for a screen's location
+      description: 'Requires scope: read. Up to six places with coordinates (Open-Meteo geocoding).'
+      x-required-scope: read
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+        - { name: lang, in: query, required: false, schema: { type: string } }
+      responses:
+        '200': { description: '[{ name, region, country, latitude, longitude }].' }
+        '502': { description: Place search unavailable. }
   /devices/{id}:
     get:
       tags: [devices]
@@ -1281,6 +1379,14 @@ paths:
               properties:
                 name: { type: string }
                 notes: { type: string }
+                tags:
+                  description: An array of labels or a comma-separated string. May move the screen into or out of dynamic groups.
+                  oneOf:
+                    - { type: array, items: { type: string } }
+                    - { type: string }
+                latitude: { type: [number, "null"], description: 'With longitude; both null clears the location.' }
+                longitude: { type: [number, "null"] }
+                location_label: { type: [string, "null"] }
                 timezone: { type: string }
                 orientation: { type: string }
                 default_content_id: { type: string }
@@ -1493,12 +1599,31 @@ paths:
               properties:
                 name: { type: string }
                 color: { type: string }
+                rules: { $ref: '#/components/schemas/GroupRules' }
       responses:
         '201':
           description: Created group.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Group' }
+  /groups/rules-preview:
+    post:
+      tags: [groups]
+      summary: Preview which screens a rule set would select
+      description: 'Requires scope: write (a POST; nothing is saved). Excludes screens on a video wall, which never join a group.'
+      x-required-scope: write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rules]
+              properties:
+                rules: { $ref: '#/components/schemas/GroupRules' }
+      responses:
+        '200': { description: '{ devices: [{ id, name, status, platform }] }.' }
+        '400': { description: Invalid rules. }
   /groups/{id}:
     put:
       tags: [groups]
@@ -1515,8 +1640,14 @@ paths:
               properties:
                 name: { type: string }
                 color: { type: string }
+                rules:
+                  description: A rule set re-fills the group; null turns rules off and keeps the current members.
+                  oneOf:
+                    - $ref: '#/components/schemas/GroupRules'
+                    - type: "null"
       responses:
         '200': { description: Updated group. }
+        '400': { description: Invalid rules. }
     delete:
       tags: [groups]
       summary: Delete a group (converts group schedules to per-device)
@@ -1629,9 +1760,12 @@ paths:
       summary: Send an operational command to every device in a group
       description: |
         Sends reboot / shutdown / screen on/off / launch / update to all devices
-        in the group. Requires scope: full (the highest scope; tokens with only
-        read or write are rejected).
+        in the group. Requires scope: full (the highest scope), EXCEPT for the five
+        undoable commands listed in `x-write-scope-commands` (refresh, screen_on,
+        screen_off, set_volume, set_brightness), which a `write` token may also send.
+        A read token is always rejected.
       x-required-scope: full
+      x-write-scope-commands: [refresh, screen_on, screen_off, set_volume, set_brightness]
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
       requestBody:
@@ -1672,14 +1806,22 @@ paths:
         (`POST /groups/{id}/command`) has existed far longer; this route did not, so commanding one
         screen was reachable only over the dashboard's websocket and not over the API at all.
 
-        Requires scope: full (the highest scope; read and write tokens are rejected), the same as
-        the group route — a fleet-affecting action is not an ordinary write.
+        Requires scope: full (the highest scope), the same as the group route — a fleet-affecting
+        action is not an ordinary write. The exception is the five commands in
+        `x-write-scope-commands` (refresh, screen_on, screen_off, set_volume, set_brightness): each is
+        undone by sending its opposite, so a `write` token may send those. A read token is always
+        rejected.
+
+        `set_volume` and `set_brightness` take `payload: { level }`, a 0..1 fraction (brightness
+        also accepts -1, "follow the system"). That is what the dashboard sends and what every
+        player reads.
 
         A panel that does not support the command is answered `400` with a `capability` field
         naming what it lacks, rather than a generic failure: "this screen cannot do that" is
         actionable and "failed" is not. The `status` in a success response says whether the panel
         actually received it or the command was queued for a device that is currently offline.
       x-required-scope: full
+      x-write-scope-commands: [refresh, screen_on, screen_off, set_volume, set_brightness]
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
       requestBody:
@@ -1873,6 +2015,325 @@ paths:
         '404': { description: 'No such font.' }
 
   # ----------------------------------------------------------------- triggers
+  /cap-feeds:
+    get:
+      tags: [emergency-feeds]
+      summary: List the workspace's emergency (CAP) feeds
+      description: 'Requires scope: read. Each feed reports how many matching alerts are on screens now.'
+      x-required-scope: read
+      responses:
+        '200':
+          description: Array of feeds.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/CapFeed' } }
+    post:
+      tags: [emergency-feeds]
+      summary: Add an emergency feed
+      description: 'Requires scope: full and a workspace admin. A feed can take over every screen in its scope.'
+      x-required-scope: full
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CapFeedInput' }
+      responses:
+        '201': { description: Created feed. }
+        '400': { description: Invalid input. }
+        '403': { description: Not a workspace admin. }
+        '409': { description: The workspace is replicated over the mesh. }
+  /cap-feeds/test:
+    post:
+      tags: [emergency-feeds]
+      summary: Fetch a feed without saving it and report what would show
+      description: 'Requires scope: full and a workspace admin. Rate-limited.'
+      x-required-scope: full
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CapFeedInput' }
+      responses:
+        '200': { description: '{ kind, total, would_show, alerts: [{ event, severity, headline, area, live, matches }] }.' }
+        '400': { description: The feed could not be fetched or read. }
+  /cap-feeds/{id}:
+    get:
+      tags: [emergency-feeds]
+      summary: Get a feed
+      description: 'Requires scope: read.'
+      x-required-scope: read
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The feed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CapFeed' }
+        '404': { description: Not found. }
+    put:
+      tags: [emergency-feeds]
+      summary: Update a feed (filters, scope, playlist, on/off)
+      description: 'Requires scope: full and a workspace admin. Takes effect on screens at once.'
+      x-required-scope: full
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CapFeedInput' }
+      responses:
+        '200': { description: Updated feed. }
+        '400': { description: Invalid input. }
+    delete:
+      tags: [emergency-feeds]
+      summary: Delete a feed (screens showing its alerts go back to their playlists)
+      description: 'Requires scope: full and a workspace admin.'
+      x-required-scope: full
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: '{ success: true }.' }
+  /cap-feeds/{id}/alerts:
+    get:
+      tags: [emergency-feeds]
+      summary: Alerts the feed carried in the last week, and whether each is on screens
+      description: 'Requires scope: read.'
+      x-required-scope: read
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Array of alerts. }
+  /cap-feeds/{id}/poll:
+    post:
+      tags: [emergency-feeds]
+      summary: Check the feed now
+      description: 'Requires scope: full and a workspace admin.'
+      x-required-scope: full
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: '{ ok, count | error, feed }.' }
+  /zapier/me:
+    get:
+      tags: [zapier]
+      summary: Auth test — which workspace this token is for
+      description: 'Requires scope: read.'
+      x-required-scope: read
+      responses:
+        '200': { description: '{ workspace_id, workspace_name, token: { name, prefix, scope }, events }.' }
+  /zapier/events:
+    get:
+      tags: [zapier]
+      summary: Recent events of one type, newest first (polling fallback)
+      description: 'Requires scope: read. Each event has a stable string id to deduplicate on. With no events yet, one sample event (sample: true) is returned unless sample=0.'
+      x-required-scope: read
+      parameters:
+        - { name: event, in: query, required: true, schema: { type: string, enum: [device_offline, device_online, emergency_raised, emergency_cleared, content_approved, playlist_published] } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: sample, in: query, schema: { type: string, enum: ['0', '1'] } }
+      responses:
+        '200': { description: Array of events. }
+        '400': { description: Unknown event. }
+  /zapier/subscriptions:
+    post:
+      tags: [zapier]
+      summary: Subscribe a REST hook to an event
+      description: 'Requires scope: write, and a workspace admin (token owner or session). target_url must be https on a public address. Deliveries are POSTed as JSON and signed with X-LuminaScreen-Signature (t=<unix>,v1=<hex HMAC-SHA256 of "t.body">) using the signing_secret returned here, once. A 410 from the receiver unsubscribes it; other failures retry at 1, 5, 30 and 120 minutes.'
+      x-required-scope: write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event, target_url]
+              properties:
+                event: { type: string, enum: [device_offline, device_online, emergency_raised, emergency_cleared, content_approved, playlist_published] }
+                target_url: { type: string, format: uri }
+      responses:
+        '201': { description: '{ id, event, signing_secret }.' }
+        '400': { description: Invalid event or target URL. }
+  /zapier/subscriptions/{id}:
+    delete:
+      tags: [zapier]
+      summary: Unsubscribe a REST hook (idempotent)
+      description: 'Requires scope: write, and a workspace admin (token owner or session).'
+      x-required-scope: write
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: '{ ok: true, removed }.' }
+  /zapier/options/{kind}:
+    get:
+      tags: [zapier]
+      summary: Choices for a dropdown (groups, playlists, triggers, tables, screens)
+      description: 'Requires scope: read.'
+      x-required-scope: read
+      parameters:
+        - { name: kind, in: path, required: true, schema: { type: string, enum: [groups, playlists, triggers, tables, screens] } }
+      responses:
+        '200': { description: 'Array of { id, name }.' }
+  /zapier/actions/emergency:
+    post:
+      tags: [zapier]
+      summary: Raise or clear an emergency alert on screens
+      description: 'Requires scope: full and a workspace admin. Keyed on alert_id: raising the same id twice is one alert, and clear without an alert_id clears every alert Zapier raised. Screens: scopes, or group_id / device_id / tag, or the whole workspace.'
+      x-required-scope: full
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                op: { type: string, enum: [raise, clear] }
+                alert_id: { type: string }
+                headline: { type: string }
+                message: { type: string }
+                instruction: { type: string }
+                severity: { type: string, enum: [Extreme, Severe, Moderate, Minor, Unknown] }
+                expires_min: { type: integer, minimum: 1, maximum: 10080 }
+                group_id: { type: string }
+                device_id: { type: string }
+                tag: { type: string }
+      responses:
+        '200': { description: '{ ok, result }.' }
+        '403': { description: 'Not a workspace admin, or the token is not full.' }
+  /zapier/actions/playlist:
+    post:
+      tags: [zapier]
+      summary: Switch screens to a playlist for N minutes, or stop
+      description: 'Requires scope: full and a workspace admin. Never applies to a screen on a head office playlist; an emergency alert still outranks it.'
+      x-required-scope: full
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                op: { type: string, enum: [start, stop] }
+                playlist_id: { type: string }
+                minutes: { type: integer, minimum: 1, maximum: 1440 }
+                group_id: { type: string }
+                device_id: { type: string }
+                tag: { type: string }
+      responses:
+        '200': { description: '{ ok, result }.' }
+  /zapier/actions/trigger:
+    post:
+      tags: [zapier]
+      summary: Fire or clear a trigger on the screens it is assigned to
+      description: 'Requires scope: full and a workspace admin. Relayed to native Pi and Windows players; the result counts screens that can only be fired on their own network.'
+      x-required-scope: full
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [trigger_id]
+              properties:
+                trigger_id: { type: string }
+                op: { type: string, enum: [fire, clear] }
+      responses:
+        '200': { description: '{ ok, result }.' }
+  /zapier/actions/data:
+    post:
+      tags: [zapier]
+      summary: Write rows into a Table data source
+      description: 'Requires scope: write. rows is an array of objects (matched to columns by name) or arrays (by position).'
+      x-required-scope: write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [data_source_id, rows]
+              properties:
+                data_source_id: { type: string }
+                mode: { type: string, enum: [replace, upsert, append] }
+                key_column: { type: string }
+                rows: { type: array, items: {} }
+      responses:
+        '200': { description: '{ ok, result }.' }
+  /qr-links:
+    get:
+      tags: [qr-links]
+      summary: List tracked QR links, with scan counts
+      description: 'Requires scope: read.'
+      x-required-scope: read
+      responses:
+        '200': { description: '[{ id, name, code, path, target_url, enabled, scans, last_7_days, last_scan_at }].' }
+    post:
+      tags: [qr-links]
+      summary: Create a tracked QR link
+      description: 'Requires scope: write. The short address is /q/<code> on this server.'
+      x-required-scope: write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, target_url]
+              properties:
+                name: { type: string }
+                target_url: { type: string, description: 'http(s) address the QR opens.' }
+      responses:
+        '201': { description: Created link. }
+        '400': { description: Invalid name or address. }
+  /qr-links/{id}:
+    get:
+      tags: [qr-links]
+      summary: A link with its scan statistics (30 days by day, platform split)
+      description: 'Requires scope: read.'
+      x-required-scope: read
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: 'The link, plus stats: { total, last_7_days, days: [{ date, scans }], platforms: { ios, android, other } }.' }
+        '404': { description: Not found. }
+    put:
+      tags: [qr-links]
+      summary: Rename, retarget or switch off a link (the code and every printed QR stay the same)
+      description: 'Requires scope: write.'
+      x-required-scope: write
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                target_url: { type: string }
+                enabled: { type: boolean }
+      responses:
+        '200': { description: Updated link. }
+    delete:
+      tags: [qr-links]
+      summary: Delete a link and its scans
+      description: 'Requires scope: write.'
+      x-required-scope: write
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: '{ success: true }.' }
+  /qr-links/{id}/qr.svg:
+    get:
+      tags: [qr-links]
+      summary: The QR code for a link, as SVG
+      description: 'Requires scope: read. `origin` sets the public address encoded (default APP_URL, then this server).'
+      x-required-scope: read
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: origin, in: query, required: false, schema: { type: string } }
+      responses:
+        '200': { description: An SVG image. }
   /triggers:
     get:
       tags: [triggers]
@@ -2190,9 +2651,9 @@ paths:
                 layout_id: { type: string }
                 playlist_id: { type: string }
                 title: { type: string }
-                start_time: { type: string }
-                end_time: { type: string }
-                timezone: { type: string }
+                start_time: { type: string, example: '2026-07-28T09:00', description: 'Wall clock in the schedule''s timezone, "YYYY-MM-DDTHH:MM" (no Z or offset). A time sent with Z or an offset is converted to wall clock in the schedule''s timezone (the explicit timezone, else the target screen''s); with no zone to convert to it is refused with 400.' }
+                end_time: { type: string, example: '2026-07-28T17:00', description: 'Same format and conversion as start_time.' }
+                timezone: { type: string, description: 'IANA zone. Omitted, the target screen''s (or group/wall leader''s) zone is used.' }
                 recurrence: { type: string }
                 recurrence_end: { type: string }
                 priority: { type: integer }
@@ -2203,6 +2664,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Schedule' }
+        '400': { description: 'Missing times or target, or a time with Z/an offset and no timezone to convert it to.' }
   /schedules/device/{deviceId}:
     get:
       tags: [schedules]
@@ -2522,6 +2984,33 @@ paths:
           content:
             text/html:
               schema: { type: string }
+  /widgets/{id}/menu-items/{itemId}:
+    patch:
+      tags: [widgets]
+      summary: Mark a menu-board item sold out, or back on
+      description: |
+        Requires scope: write. For a till or POS system, or a manager's phone. Goes live at once even
+        when the workspace requires approval (it changes availability, not content), is applied to any
+        pending draft as well, and is recorded in the widget's history. A menu whose items come from a
+        data source is refused (409): change the item there.
+      x-required-scope: write
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: itemId, in: path, required: true, schema: { type: string }, description: The item's id in the menu config. }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sold_out]
+              properties:
+                sold_out: { type: boolean }
+      responses:
+        '200': { description: '{ success, item: { id, name, sold_out } }.' }
+        '400': { description: 'Not a menu board, or sold_out is not a boolean.' }
+        '404': { description: No such item. }
+        '409': { description: The menu comes from a data source. }
   /widgets/{id}:
     get:
       tags: [widgets]
@@ -2578,6 +3067,82 @@ paths:
           content:
             text/html:
               schema: { type: string }
+
+  /widgets/{id}/bi-image.png:
+    get:
+      tags: [widgets]
+      summary: The latest Grafana render of a BI dashboard widget (public)
+      description: |
+        Unauthenticated, like /render: a bi-dashboard widget's page on a screen loads this image. The
+        server renders the dashboard with the organization's Grafana token (which never leaves the
+        server), caches it for the widget's refresh interval, and serves the last good image while
+        Grafana is unreachable (header X-Dashboard-Stale: 1). Limited per widget.
+      security: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: w, in: query, schema: { type: integer }, description: 'Width in pixels; rounded to 64, 320-3840.' }
+        - { name: h, in: query, schema: { type: integer }, description: 'Height in pixels; rounded to 64, 240-2160.' }
+      responses:
+        '200':
+          description: The dashboard image.
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+        '404': { description: 'Not a Grafana bi-dashboard widget, or its connection is gone.' }
+        '429': { description: Too many requests for this widget. }
+        '502': { description: Grafana could not render it and there is no earlier image. }
+  /widgets/{id}/bi-token:
+    get:
+      tags: [widgets]
+      summary: A fresh embed token for a Power BI or Tableau dashboard widget (public)
+      description: |
+        Unauthenticated, like /render: the widget's page on a screen fetches this at run time, so the
+        cached page never holds a token. Power BI returns a view-only embed token for the one report
+        (cached server-side until shortly before it expires); Tableau returns a five-minute
+        connected-app JWT scoped to embedding views. Never a client secret. Limited per widget.
+      security: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: 'Power BI: { provider, embedUrl, reportId, token, expiration }. Tableau: { provider, src, token, expires_in }.' }
+        '404': { description: Not a credentialed Power BI / Tableau bi-dashboard widget. }
+        '429': { description: Too many requests for this widget. }
+        '502': { description: The dashboard service did not issue a token. }
+  /widgets/{id}/social.json:
+    get:
+      tags: [widgets]
+      summary: The posts a social wall widget shows (public)
+      description: |
+        Unauthenticated, like /render: a social wall's page polls this every two minutes. It returns
+        only the feed's visible posts — approved, within the feed's filters — as text and image
+        addresses on this server. Never a token, never a link to the network's own media. Limited per
+        widget.
+      security: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: '{ posts: [{ k, n, a, h, av, t, m, v, at }], configured, title }' }
+        '404': { description: Not a social wall widget. }
+        '429': { description: Too many requests for this widget. }
+  /widgets/{id}/social-media/{hash}:
+    get:
+      tags: [widgets]
+      summary: A cached image used by one of a social wall's visible posts (public)
+      description: |
+        This server's copy of a post image or avatar. Only images that one of THIS wall's visible
+        posts uses are served, and only files whose bytes are an image were ever stored.
+      security: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: hash, in: path, required: true, schema: { type: string, pattern: '^[0-9a-f]{64}$' } }
+      responses:
+        '200':
+          description: The image.
+          content:
+            image/*:
+              schema: { type: string, format: binary }
+        '404': { description: Not an image this wall shows. }
+        '429': { description: Too many requests for this widget. }
 
   # -------------------------------------------------------------------- kiosk
   /kiosk:

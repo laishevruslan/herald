@@ -329,6 +329,20 @@ const LINUX_TERMINAL_PRESETS = [
   { label: 'Whoami', cmd: 'id' },
 ];
 
+// The native macOS player: /bin/sh as the signed-in user, read-only diagnostics. There is no
+// privileged helper on a Mac, so nothing here could reach root even if it tried.
+const MAC_TERMINAL_PRESETS = [
+  { label: 'System', cmd: 'sw_vers; sysctl -n hw.model' },
+  { label: 'Storage', cmd: 'df -h /' },
+  { label: 'Memory', cmd: 'vm_stat | head -6' },
+  { label: 'Network', cmd: 'ifconfig | grep -E "^[a-z]|inet "' },
+  { label: 'Uptime', cmd: 'uptime' },
+  { label: 'Power', cmd: 'pmset -g | head -20' },
+  { label: 'Player status', cmd: 'launchctl print gui/$(id -u)/com.luminascreen.player | head -25' },
+  { label: 'Player log', cmd: 'tail -n 50 "$HOME/Library/Application Support/LuminaScreen/state/player.log"' },
+  { label: 'Whoami', cmd: 'id' },
+];
+
 // The native Windows player: its one-shot shell is PowerShell (`powershell -NoProfile -Command`), run
 // as the signed-in player user. Read-only diagnostics only; anything needing elevation is not
 // reachable from here at all (the SYSTEM helper takes a fixed verb list, not commands).
@@ -453,6 +467,8 @@ function isAndroidDevice(device) {
   if (device.client_type === 'pi' || platform.startsWith('linux/')) return false;
   // The native Windows player, same reasoning and same inlining (see isWindowsDevice below).
   if (device.client_type === 'win' || platform.startsWith('windows/')) return false;
+  // And the native macOS player (see isMacDevice below).
+  if (device.client_type === 'mac' || platform.startsWith('macos/')) return false;
   if (device.client_type === 'apk') return true;
   const av = String(device.android_version || '');
   return av !== '' && !av.startsWith('Web/');
@@ -476,17 +492,72 @@ function isWindowsDevice(device) {
   return String(device.platform || '').toLowerCase().startsWith('windows/');
 }
 
-// Either native player (the shared Python/Qt engine): what they have in common is that they are not
+// Mirrors the 'macos' arm of platformFamily(): the native macOS player registers client_type 'mac'
+// and platform 'macOS/<version> (<model>)'. NOT Safari or Chrome opening /player on a Mac.
+function isMacDevice(device) {
+  if (!device) return false;
+  if (device.client_type === 'mac') return true;
+  return String(device.platform || '').toLowerCase().startsWith('macos/');
+}
+
+// Any native player (the shared Python/Qt engine): what they have in common is that they are not
 // Android, have no device-owner tier, and carry an on-device settings menu behind the PIN.
 function isNativeDevice(device) {
-  return isLinuxDevice(device) || isWindowsDevice(device);
+  return isLinuxDevice(device) || isWindowsDevice(device) || isMacDevice(device);
 }
 
 // The one-shot shell's presets and wording, per native OS. Android keeps TERMINAL_PRESETS.
 function terminalPresets(device) {
   if (isWindowsDevice(device)) return WINDOWS_TERMINAL_PRESETS;
+  if (isMacDevice(device)) return MAC_TERMINAL_PRESETS;
   if (isLinuxDevice(device)) return LINUX_TERMINAL_PRESETS;
   return TERMINAL_PRESETS;
+}
+
+
+/*
+ * Location field (lib/local-conditions.js): search a place, pick it, Save stores its coordinates.
+ * Delegated from the document and installed once, because this page re-renders its form and a
+ * listener on the input itself would be left on a node that is no longer there.
+ */
+let locWired = false;
+function wireLocationSearch() {
+  if (locWired) return;
+  locWired = true;
+  let timer = null;
+  let rows = [];
+  document.addEventListener('input', (e) => {
+    const input = e.target;
+    if (!input || input.id !== 'deviceLocSearch') return;
+    const results = document.getElementById('deviceLocResults');
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      const q = input.value.trim();
+      if (!results) return;
+      if (q.length < 2) { results.innerHTML = ''; return; }
+      try {
+        rows = await api.get(`/devices/geocode?q=${encodeURIComponent(q)}`);
+        results.innerHTML = rows.map((r, i) => `<button type="button" class="btn btn-secondary btn-sm" data-loc-i="${i}" style="text-align:left">${esc([r.name, r.region, r.country].filter(Boolean).join(', '))}</button>`).join('');
+      } catch (err) { results.innerHTML = `<span style="font-size:12px;color:var(--danger)">${esc(err.message)}</span>`; }
+    }, 300);
+  });
+  document.addEventListener('click', (e) => {
+    const pick = e.target.closest && e.target.closest('#deviceLocResults [data-loc-i]');
+    const clear = e.target.closest && e.target.closest('#deviceLocClear');
+    const input = document.getElementById('deviceLocSearch');
+    if (!input || (!pick && !clear)) return;
+    if (pick) {
+      const r = rows[Number(pick.dataset.locI)];
+      if (!r) return;
+      input.value = [r.name, r.region, r.country].filter(Boolean).join(', ');
+      input.dataset.lat = String(r.latitude); input.dataset.lon = String(r.longitude);
+    } else {
+      input.value = ''; input.dataset.lat = ''; input.dataset.lon = '';
+    }
+    input.dataset.changed = '1';
+    const results = document.getElementById('deviceLocResults');
+    if (results) results.innerHTML = '';
+  });
 }
 
 export function render(container, deviceId) {
@@ -626,7 +697,7 @@ async function loadDevice(deviceId, activeTab = null) {
           ${(() => { const b = livenessBadge(device); return `<span class="device-status-badge ${b.state}"${b.title ? ` title="${esc(b.title)}"` : ''}>${esc(b.label)}</span>`; })()}
           ${device.owner_name || device.owner_email ? `<span style="font-size:12px;color:var(--text-muted)">${t('device.owner_label', { owner: esc(device.owner_name || device.owner_email) })}</span>` : ''}
         </div>
-        <div style="display:flex;gap:8px">
+        <div class="device-header-actions">
           <button class="btn btn-secondary btn-sm" id="devicePreviewBtn">${t('device.preview_btn')}</button>
           <button class="btn btn-secondary btn-sm" id="renameBtn">${t('device.rename')}</button>
           ${can('remote.screenshot') ? `
@@ -1112,6 +1183,23 @@ async function loadDevice(deviceId, activeTab = null) {
                 <option value="">${t('device.form.default_content_none')}</option>
               </select>
             </div>
+          </div>
+          <div class="form-group">
+            <label>${t('device.form.tags_label')}</label>
+            <input id="deviceTags" class="input" value="${esc((Array.isArray(device.tags) ? device.tags : []).join(', '))}" placeholder="${t('device.form.tags_placeholder')}">
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${t('device.form.tags_hint')}</div>
+          </div>
+          <div class="form-group">
+            <label>${t('device.form.location_label')}</label>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input id="deviceLocSearch" class="input" style="flex:1;min-width:200px" value="${esc(device.location_label || (device.latitude != null ? `${device.latitude}, ${device.longitude}` : ''))}" placeholder="${t('device.form.location_placeholder')}"
+                data-lat="${device.latitude != null ? esc(String(device.latitude)) : ''}" data-lon="${device.longitude != null ? esc(String(device.longitude)) : ''}">
+              <button type="button" class="btn btn-secondary btn-sm" id="deviceLocClear">${t('device.form.location_clear')}</button>
+            </div>
+            <div id="deviceLocResults" style="display:flex;flex-direction:column;gap:4px;margin-top:6px"></div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${device.local_weather
+              ? esc(t('device.form.location_weather', { cond: t(`playlist.condition.wx.${device.local_weather.group || 'clear'}`), temp: Math.round(device.local_weather.temperature_c) }))
+              : t('device.form.location_hint')}</div>
           </div>
           <div class="form-group">
             <label>${t('device.form.notes_label')}</label>
@@ -2419,6 +2507,7 @@ function setupActions(device) {
     showToast(ok ? t('device.debug.copied', { n: panel.childElementCount }) : t('device.debug.copy_failed'), ok ? 'success' : 'error');
   });
 
+  wireLocationSearch();
   document.getElementById('saveNotesBtn')?.addEventListener('click', async () => {
     try {
   // #325: "Use the default" clears the override. A colour input cannot be empty, so the intent is
@@ -2434,7 +2523,14 @@ function setupActions(device) {
     bgInput.addEventListener('input', () => { bgInput.dataset.cleared = ''; });
   }
 
-      await api.updateDevice(device.id, {
+      const loc = document.getElementById('deviceLocSearch');
+      const locBody = loc && loc.dataset.changed === '1'
+        ? (loc.dataset.lat ? { latitude: Number(loc.dataset.lat), longitude: Number(loc.dataset.lon), location_label: loc.value.trim() || null }
+          : { latitude: null, longitude: null, location_label: null })
+        : {};
+      const saved = await api.updateDevice(device.id, {
+        ...locBody,
+        tags: document.getElementById('deviceTags')?.value ?? undefined,
         notes: document.getElementById('deviceNotes').value,
         orientation: document.getElementById('deviceOrientation').value,
         // #325: the reset button clears the field, which sends '' and the API stores NULL, putting
@@ -2451,6 +2547,14 @@ function setupActions(device) {
           ? { live_video_enabled: document.getElementById('liveVideoToggle').checked ? 1 : 0 } : {}),
       });
       showToast(t('device.toast.settings_saved'), 'success');
+      // A tag change can move the screen into or out of dynamic groups; say which.
+      for (const c of (saved && saved.groups_changed) || []) {
+        showToast(t(c.op === 'add' ? 'device.toast.joined_group' : 'device.toast.left_group', { name: c.name }), 'info');
+      }
+      if (saved && Array.isArray(saved.tags)) {
+        const el = document.getElementById('deviceTags');
+        if (el) el.value = saved.tags.join(', ');   // show what was stored (normalised), not what was typed
+      }
     } catch (err) {
       showToast(err.message, 'error');
     }

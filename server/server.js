@@ -282,10 +282,27 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(cors({
+/*
+ * ⚠️ /mcp HAS ITS OWN CORS POLICY: NONE, unless the operator names origins in MCP_CORS_ORIGINS.
+ *
+ * MCP clients are native apps and server-side connectors, not web pages, and the endpoint
+ * authenticates with a bearer token, never a cookie. Under the global policy below a self-hosted or
+ * development instance reflected ANY Origin with credentials, which no documented client needs and
+ * which the MCP transport spec warns against (validate Origin; DNS rebinding). Without an approved
+ * preflight a browser cannot send the Authorization header at all, so withholding CORS is what
+ * stops a web page driving /mcp. A browser-based client (e.g. the MCP Inspector in direct mode)
+ * still works once its origin is listed.
+ */
+const isMcpPath = (p) => p === '/mcp' || p.startsWith('/mcp/');
+const mcpCors = cors({
+  origin: (origin, cb) => cb(null, !!origin && config.mcpCorsOrigins.includes(origin)),
+  credentials: false,
+});
+const globalCors = cors({
   origin: corsOriginCheck,
   credentials: true,
-}));
+});
+app.use((req, res, next) => (isMcpPath(req.path) ? mcpCors : globalCors)(req, res, next));
 // Stripe webhook needs raw body (before express.json parses it)
 const stripeRouter = require('./routes/stripe');
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), stripeRouter);
@@ -322,7 +339,15 @@ app.use((req, res, next) => {
  * with a size decided per upload kind — so the global JSON parser leaves that one path alone.
  */
 const jsonBody = express.json({ limit: '12mb' });
-app.use((req, res, next) => (req.path === '/api/templates/import' ? next() : jsonBody(req, res, next)));
+// Inbound automation hooks are signed over their exact bytes too, and arrive as XML (CAP) as often
+// as JSON — routes/hooks-in.js reads the raw body itself.
+/*
+ * ⚠️ /mcp PARSES ITS OWN BODY. Parsed here, malformed JSON became Express's HTML 400 (with a stack
+ * trace in development) instead of a JSON-RPC -32700 an MCP client can read, and the route's 1 MB
+ * limit never applied because this 12 MB parser had already consumed the body. routes/mcp.js has
+ * the parser and the error handler both.
+ */
+app.use((req, res, next) => (req.path === '/api/templates/import' || req.path.startsWith('/api/hooks/in/') || isMcpPath(req.path) ? next() : jsonBody(req, res, next)));
 const { sanitizeBody } = require('./middleware/sanitize');
 app.use(sanitizeBody);
 
@@ -626,6 +651,12 @@ app.get(['/integrations', '/integrations/'], (req, res) => {
   if (req.path === '/integrations') return res.redirect(301, '/integrations/');
   res.sendFile(path.join(config.frontendDir, 'integrations', 'index.html'));
 });
+// The solutions hub (use cases: emergency alerts, meeting rooms, menu boards...) is served the same
+// way, for the same reason: static runs with index:false.
+app.get(['/solutions', '/solutions/'], (req, res) => {
+  if (req.path === '/solutions') return res.redirect(301, '/solutions/');
+  res.sendFile(path.join(config.frontendDir, 'solutions', 'index.html'));
+});
 
 // Serve frontend static files
 // JS/CSS/HTML: no-cache (always revalidate, uses ETag/304)
@@ -636,6 +667,9 @@ app.use(express.static(config.frontendDir, { index: false, etag: true, lastModif
   } else if (/\.(png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot|webp|mp4|webm)$/i.test(filePath)) {
     res.setHeader('Cache-Control', 'public, max-age=2592000'); // 30 days
   }
+  // The Power BI client is loaded by the bi-dashboard widget page, which a player frames in a
+  // sandboxed (opaque-origin) iframe — helmet's same-origin CORP would block the script there.
+  if (filePath.includes(`${path.sep}vendor${path.sep}powerbi${path.sep}`)) res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
 }}));
 
 // Player HTML: dynamic route. Injects a small inline window.__playerConfig
@@ -1187,7 +1221,13 @@ const rateLimits = new Map();
  */
 const { canonicalLimitPath } = require('./lib/limit-paths');
 
-function rateLimit(windowMs, maxRequests) {
+/*
+ * `onReject(req, res, retryAfterSec)`, when given, writes the 429 itself — for a surface whose
+ * clients only understand their own error shape (/mcp answers JSON-RPC). The default body is
+ * unchanged. Every 429 now carries Retry-After, so a client in a loop knows how long to back off
+ * instead of guessing — which, for an agent, means retrying immediately.
+ */
+function rateLimit(windowMs, maxRequests, onReject) {
   return (req, res, next) => {
     // #100: key on the FULL path, not req.path. These limiters are mounted via
     // app.use('/api/auth/login', ...) etc., and Express strips the mount path, so
@@ -1217,7 +1257,9 @@ function rateLimit(windowMs, maxRequests) {
       // its job, several means a shared egress IP is denying real users. Identifiers are
       // salted-hashed inside the telemetry module and only ever counted. Response unchanged.
       try {
-        const endpoint = (req.originalUrl || req.url || req.path).split('?')[0];
+        // The bucket's SHAPE, never the raw path: a path can carry a credential (an inbound hook's
+        // URL is /api/hooks/in/<id>/<secret>), and this line goes to the server log.
+        const endpoint = normalisedPath;
         const ip = getClientIp(req);
         const ident = req.body && (req.body.email || req.body.username);
         const t = limiterTelemetry.recordRejection({ endpoint, ip, identifier: ident });
@@ -1228,6 +1270,10 @@ function rateLimit(windowMs, maxRequests) {
           { warn: t.distinctIdentifiers >= 3 },
         );
       } catch (_) { /* telemetry must never break the limiter */ }
+      // Seconds until the oldest hit in the window expires, i.e. until one more request fits.
+      const retryAfter = Math.max(1, Math.ceil((hits[0] + windowMs - now) / 1000));
+      res.set('Retry-After', String(retryAfter));
+      if (onReject) return onReject(req, res, retryAfter);
       return res.status(429).json({ error: 'Too many requests, try again later' });
     }
     hits.push(now);
@@ -1287,6 +1333,28 @@ app.use('/api/auth/users', rateLimit(60000, 20));
 // and an RFC 8058 one-click client posts `List-Unsubscribe=One-Click` urlencoded. That parser is not
 // global (see /api/hardware-submissions above for the same reason), so without it req.body is
 // undefined here and the token silently never arrives. Small limit — the body is two short fields.
+/*
+ * Tracked QR links (lib/qr-links.js): the public redirect a phone opens after scanning. No auth by
+ * design. Rate-limited per IP like the other public endpoints; the scan itself stores no IP.
+ */
+app.get('/q/:code', rateLimit(60000, 120), require('./routes/qr-links').redirect);
+// Canva OAuth callback (routes/canva.js): the browser returns from canva.com with no Authorization
+// header, so it cannot sit behind the JWT-only /api/canva mount below. It trusts only the signed
+// httpOnly transaction cookie set when the person pressed Connect.
+app.get('/api/canva/callback', rateLimit(60000, 30), require('./routes/canva').callback);
+// Inbound automation hooks (routes/hooks-in.js): the secret URL is the credential. Per-IP limit
+// here; each hook also has its own (30 a minute) inside, so one busy sender cannot starve another.
+app.use('/api/hooks/in', rateLimit(60000, 240), require('./routes/hooks-in'));
+
+/*
+ * Meeting-room display pages (lib/rooms/render.js) read their room's state and send book / end /
+ * check-in here. No session by design: the page runs in a sandboxed frame. Reads are what the
+ * widget's own render already shows; actions need the panel capability the server gave that screen
+ * (routes/room-panel.js), and are limited per device inside. The per-IP limit here is generous on
+ * purpose — every panel in a building polls from one NAT address.
+ */
+app.use('/api/room-panel', rateLimit(60000, 1200), require('./routes/room-panel'));
+
 app.use('/unsubscribe',
   rateLimit(60000, 20),
   express.urlencoded({ extended: false, limit: '4kb' }),
@@ -1303,7 +1371,8 @@ app.use('/unsubscribe',
  *
  * Rate-limited per IP: a model in a loop is the normal failure mode here, not an attacker.
  */
-app.use('/mcp', rateLimit(60000, 120), require('./routes/mcp'));
+const mcpRoute = require('./routes/mcp');
+app.use('/mcp', rateLimit(60000, 120, mcpRoute.rateLimited), mcpRoute);
 
 app.use('/api/auth', require('./routes/auth'));
 // Per-organization SSO configuration. Mounted under /api/organizations so the org id is the
@@ -1433,6 +1502,7 @@ app.get('/api/devices/:id/screenshot', (req, res) => {
 // send an Authorization header, so the dashboard fetches these with the Bearer
 // token; this verifies it and checks workspace membership. Anonymous players
 // (no token) still fall back to the playlist/widget reference gate. (#39)
+const { isReferencedForPlayers } = require('./lib/content-reference');
 function requesterCanAccessContent(req, content) {
   try {
     const m = (req.headers.authorization || '').match(/^Bearer (.+)$/);
@@ -1457,20 +1527,18 @@ app.get('/api/content/:id/file', (req, res) => {
   const content = db.prepare('SELECT * FROM content WHERE id = ?').get(req.params.id);
   if (!content) return res.status(404).json({ error: 'Content not found' });
   if (!content.filepath) return res.status(404).json({ error: 'No file (remote URL content)' });
-  const inPlaylist = db.prepare('SELECT id FROM playlist_items WHERE content_id = ? LIMIT 1').get(req.params.id);
-  // Scope widget lookup to widgets in the content's workspace — prevents a user
-  // in another workspace from unlocking this content by creating a widget that
-  // references the UUID. Phase 2.2d: keyed off content.workspace_id (was user_id).
-  // Perf note: LIKE scan on widgets.config is O(n) per request. Fine at current scale
-  // (<100 widgets); revisit with a content_widget_refs join table if this grows.
-  const inWidget = inPlaylist ? null : db.prepare('SELECT id FROM widgets WHERE workspace_id = ? AND config LIKE ? LIMIT 1').get(content.workspace_id, `%/api/content/${req.params.id}/%`);
-  if (!inPlaylist && !inWidget && !requesterCanAccessContent(req, content)) return res.status(403).json({ error: 'Content not assigned to any playlist or widget' });
+  if (!isReferencedForPlayers(db, content) && !requesterCanAccessContent(req, content)) return res.status(403).json({ error: 'Content not assigned to any playlist or widget' });
   const safePath = contentStorage.file(content.filepath);
   if (!safePath) return res.status(403).json({ error: 'Invalid path' });
   if (contentStorage.backend === 's3' && !config.primaryUrl) {
     return require('./lib/storage/public').sendPublishedOrLocal(req, res, {
       row: content, filename: content.filepath, harden: hardenUploadResponse,
     }).then((sent) => { if (!sent) res.status(404).json({ error: 'Not found' }); });
+  }
+  if (!fs.existsSync(safePath) && require('./lib/storage/serve').storedElsewhere(content)) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    return require('./lib/storage/serve').serveFromStorage(req, res, content, 'asset', { harden: hardenUploadResponse });
   }
   // Scale-out (docs/scale-out.md): the row was copied, the bytes were not — fetch through, or (C3,
   // under a caches-content edge) store them here first and then serve the local file.
@@ -1560,16 +1628,20 @@ app.get('/api/content/:id/bundle', async (req, res) => {
   if (content.mime_type !== htmlBundle.BUNDLE_MIME || !content.filepath) {
     return res.status(404).json({ error: 'Not an HTML bundle' });
   }
-  const inPlaylist = db.prepare('SELECT id FROM playlist_items WHERE content_id = ? LIMIT 1').get(req.params.id);
-  const inWidget = inPlaylist ? null : db.prepare('SELECT id FROM widgets WHERE workspace_id = ? AND config LIKE ? LIMIT 1').get(content.workspace_id, `%/api/content/${req.params.id}/%`);
-  if (!inPlaylist && !inWidget && !requesterCanAccessContent(req, content)) {
+  if (!isReferencedForPlayers(db, content) && !requesterCanAccessContent(req, content)) {
     return res.status(403).json({ error: 'Content not assigned to any playlist or widget' });
   }
 
-  const safePath = contentStorage.file(content.filepath);
+  let safePath = contentStorage.file(content.filepath);
   if (!safePath) return res.status(403).json({ error: 'Invalid path' });
 
   try {
+    // The inliner reads the archive's central directory from a FILE; a bundle held only in a
+    // storage backend is fetched once into the storage cache (never into contentDir) first.
+    if (!fs.existsSync(safePath) && require('./lib/storage/serve').storedElsewhere(content)) {
+      safePath = await require('./lib/storage/locations').ensureLocalFile(content, 'asset');
+      if (!safePath) return res.status(404).json({ error: 'Bundle not found' });
+    }
     const { inlineBundle } = require('./lib/bundle-inline');
     const entry = content.bundle_entry || 'index.html';
     const out = await inlineBundle(safePath, entry);
@@ -1627,9 +1699,7 @@ app.get('/api/content/:id/thumbnail', (req, res) => {
   // referenced by a playlist or by a widget IN THE CONTENT'S WORKSPACE. Without
   // this, any anonymous caller holding a content UUID could pull any tenant's
   // thumbnail (the /file route already had this check; the thumbnail route did not).
-  const inPlaylist = db.prepare('SELECT id FROM playlist_items WHERE content_id = ? LIMIT 1').get(req.params.id);
-  const inWidget = inPlaylist ? null : db.prepare('SELECT id FROM widgets WHERE workspace_id = ? AND config LIKE ? LIMIT 1').get(content.workspace_id, `%/api/content/${req.params.id}/%`);
-  if (!inPlaylist && !inWidget && !requesterCanAccessContent(req, content)) return res.status(403).json({ error: 'Content not assigned to any playlist or widget' });
+  if (!isReferencedForPlayers(db, content) && !requesterCanAccessContent(req, content)) return res.status(403).json({ error: 'Content not assigned to any playlist or widget' });
   // YouTube (and any future remote-sourced) content stores thumbnail_path as a remote
   // http(s) URL, not a local file. Proxy it instead of resolving it to a local path that
   // doesn't exist (contentDir/hqdefault.jpg -> ENOENT spam). Local thumbnails are
@@ -1645,6 +1715,9 @@ app.get('/api/content/:id/thumbnail', (req, res) => {
   // See /file — cross-origin so sandboxed widget iframes can load it.
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  if (!fs.existsSync(safePath) && require('./lib/storage/serve').storedElsewhere(content)) {
+    return require('./lib/storage/serve').serveFromStorage(req, res, content, 'thumb', { harden: hardenUploadResponse });
+  }
   hardenUploadResponse(res, content.thumbnail_path);
   res.sendFile(safePath);
 });
@@ -1772,6 +1845,14 @@ app.get('/api/widgets/:id/data.json', (req, res, next) => { req._skipAuth = true
 app.post('/api/widgets/:id/telemetry', (req, res, next) => { req._skipAuth = true; next(); }); // diag widget reports frame stats (null-origin iframe)
 app.get('/api/widgets/:id/telemetry', (req, res, next) => { req._skipAuth = true; next(); });
 app.get('/api/widgets/preview-session/:id', (req, res, next) => { req._skipAuth = true; next(); });
+// bi-dashboard (lib/bi/widget.js): the Grafana image and the Power BI / Tableau embed token a
+// screen's widget page fetches. Public like /render, and for the same reason (a null-origin frame).
+app.get('/api/widgets/:id/bi-image.png', (req, res, next) => { req._skipAuth = true; next(); });
+app.get('/api/widgets/:id/bi-token', (req, res, next) => { req._skipAuth = true; next(); });
+// Social walls (lib/social/widget.js): the posts and cached images a wall's page fetches. Public for
+// the same reason (a null-origin frame), and limited to what that wall shows.
+app.get('/api/widgets/:id/social.json', (req, res, next) => { req._skipAuth = true; next(); });
+app.get('/api/widgets/:id/social-media/:hash', (req, res, next) => { req._skipAuth = true; next(); });
 /*
  * ⚠️ AI GENERATION IS HEAVIER THAN THE PREVIEW ROUTES BELOW AND WAS THE ONLY ONE UNLIMITED.
  *
@@ -1817,6 +1898,7 @@ app.use('/api/widgets/preview-session', rateLimit(60000, 30)); // preview sessio
 // `/test` triggers an outbound fetch of an arbitrary calendar feed; cap it so a single
 // workspace cannot fan out unbounded requests to third-party URLs.
 app.use('/api/data-sources/test', rateLimit(60000, 10));
+app.use('/api/cap-feeds/test', rateLimit(60000, 10));   // fetches an arbitrary public URL, like the data-source test
 app.post('/api/plugin-submissions', rateLimit(3600000, 10)); // 10 plugin zips per hour per IP
 app.post('/api/admin/plugins/submissions', rateLimit(3600000, 20));
 app.get('/api/kiosk/:id/render', (req, res, next) => { req._skipAuth = true; next(); });
@@ -2004,6 +2086,18 @@ app.get('/api/release-notes', (req, res) => {
 app.use('/api/status', require('./routes/status'));
 
 /*
+ * The zone this server sees the caller in, for the Pi/Debian installers to set a real time zone
+ * on a fresh image (Pi OS ships Europe/London). Answered from Cloudflare's cf-timezone header, so
+ * luminascreen.ru can say and a self-hosted server without Cloudflare answers null (the dashboard
+ * then offers the pairing admin's browser zone instead). ⚠️ no-store: one cached answer would
+ * give every Pi the first caller's zone.
+ */
+app.get('/api/public/timezone', (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
+  res.json({ timezone: require('./lib/device-timezone').requestTimezone(req) });
+});
+
+/*
  * Opt-in install statistics — the COLLECTOR side, plus the public aggregate the marketing
  * page reads. Both live in routes/telemetry-collector.js; both are mounted only when
  * TELEMETRY_COLLECTOR=1, so a normal self-hosted install exposes neither.
@@ -2064,7 +2158,22 @@ winCache.start();                                    // native Windows player: n
 // /api/win/update/check + /download/win — the same factory as the Pi route (routes/native-update.js),
 // plus the device-less sha256 lookup the SYSTEM helper service makes before running an installer.
 require('./routes/win-update')(app);
+const macCache = require('./lib/mac-cache');
+macCache.start();                                    // native macOS player: newest LuminaScreen-<ver>.dmg + its sha256
+// /download/mac only — a Mac never updates itself, so the factory mounts no update check for it.
+require('./routes/mac-update')(app);
+// The OPTIONAL audience-counting add-on for the Pi/Windows players (OpenCV + face model, per
+// platform), fetched by their installers only when the operator ticks it. Never pushed to a screen.
+require('./lib/audience-addon').start();
+require('./routes/audience-addon')(app);
 require('./lib/revision-retention').start(require('./db/database').db);   // version history: bounded retention, daily
+// Storage backends (docs/storage.md): resume a migration copier a restart interrupted (it never
+// commits or drains by itself), honour STORAGE_DRAIN_AFTER_HOURS, probe open breakers. Idle on an
+// install that never configured storage — there is nothing in storage_migrations to resume.
+try {
+  const storageMigrate = require('./lib/storage/migrate');
+  if (typeof storageMigrate.startBackground === 'function') storageMigrate.startBackground();
+} catch (e) { console.error('[storage] migration copier:', e && e.message); }
 const { getBand } = require('./services/loop-lag');  // #146 Item C: critical-band download shed
 app.get('/api/update/check', (req, res) => {
   const currentVersion = req.query.version;
@@ -2119,6 +2228,24 @@ app.get('/api/update/check', (req, res) => {
   // so ticking the box on a server with no beta build is a no-op, not a broken display.
   const onBeta = betaChannel && apkCache.betaAvailable();
   if (onBeta) latestVersion = apkCache.getBeta().version;
+
+  /*
+   * Health-checked rollout (lib/ota-rollout.js): a stable version reaches screens in waves and halts
+   * itself if the screens that took it do worse. Android cannot downgrade, so a halt here only stops
+   * the spread. Beta and forced checks skip the waves; nothing skips a halt.
+   */
+  if (!onBeta) {
+    const g = require('./lib/ota-rollout').gate('android', apkCache.get(), { deviceId, currentVersion, forced });
+    const isUpgrade = currentVersion && (otaBreaker.cmp(String(currentVersion), latestVersion) || 0) < 0;
+    if ((g.action === 'wait' || g.action === 'halted') && isUpgrade) {
+      logOtaCheck(deviceId, currentVersion, latestVersion, false, g.reason);
+      return res.json({
+        latest_version: latestVersion, current_version: currentVersion || 'unknown',
+        update_available: false, reason: g.reason, download_url: '/download/apk', apk_size: 0, apk_modified: 0,
+        retry_after_seconds: 1800,
+      });
+    }
+  }
 
   // The hold-my-prerelease guard only applies when we are NOT actively serving a beta: on the beta
   // channel the beta build is the target, so normal comparison does the right thing.
@@ -2386,6 +2513,21 @@ app.use('/uploads/content', (req, res, next) => {
    */
   res.removeHeader('Cache-Control');
   res.removeHeader('Content-Disposition');
+  /*
+   * Storage backends (lib/storage): the name belongs to a row whose bytes are in a bucket (or on a
+   * copy that is not this disk). Streamed from whichever stored copy answers, under the same
+   * immutable header the static route sets — the name changes whenever the bytes do, which is what
+   * makes immutable true. This is what lets every existing player keep building
+   * /uploads/content/<filepath> while the file lives in S3, Azure or MinIO: no player change needed.
+   */
+  {
+    const hit = require('./lib/storage/serve').rowForUploadName(require('./db/database').db, path.basename(req.path));
+    if (hit) {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      return require('./lib/storage/serve').serveFromStorage(req, res, hit.row, hit.kind, { harden: hardenUploadResponse, cacheControl: 'public, max-age=2592000, immutable' });
+    }
+  }
   // Scale-out (docs/scale-out.md): a copied workspace's file lives on the primary. Only a name that
   // belongs to a copied content row is fetched through; anything else stays the miss above.
   // C3: under a caches-content edge the fetch-through STORES the file first, then serves it
@@ -2438,6 +2580,23 @@ try { require('./lib/corporate/reconcile').reconcileAtBoot(require('./db/databas
 // timers and the 30-second belt sweep (lib/corporate/emergency-live.js).
 require('./lib/corporate/emergency-live').init(io);
 require('./lib/smart-playlist').start(io);
+require('./lib/ota-rollout').start();   // player rollouts: waves, automatic halt and rollback
+require('./lib/local-conditions').start(io);   // local weather for weather conditions
+// Dynamic device groups: a backstop for membership inputs changed by a path that does not reconcile
+// (an import, a mesh sync, a direct fix-up). A sweep that finds nothing to change writes nothing.
+{
+  const t = setInterval(() => {
+    try { require('./lib/device-group-rules').sweep(db, io); } catch (e) { console.warn(`[groups] sweep failed: ${e.message}`); }
+  }, 5 * 60 * 1000);
+  if (t.unref) t.unref();
+}
+require('./lib/cap/feeds').start(io);   // CAP emergency feeds: polling, expiry, pushes
+require('./lib/canva').start(io);       // Canva: re-export linked designs that changed
+require('./lib/cloud-folders').start(io);   // SharePoint/OneDrive folder syncs
+require('./lib/automation/overrides').setIo(io);   // automation: timed playlist overrides
+require('./lib/automation/events').start();          // automation: REST-hook deliveries, screen up/down events
+require('./lib/social/feeds').start(io);   // social walls: fetch feeds, cache images
+require('./lib/rooms/service').start();   // meeting rooms: release meetings nobody checked in to (off unless an org turns it on)
 
 // Start alert service
 const { startAlertService } = require('./services/alerts');
@@ -2803,11 +2962,27 @@ app.post('/api/provision/pair', requireAuth, resolveTenancy, checkDeviceLimit, (
     }
   } catch (e) { console.warn(`[#150] settings restore failed for ${device.id}: ${e.message}`); }
 
+  // Join any dynamic group whose rules this screen matches, before it asks for its first playlist.
+  require('./lib/device-group-rules').reconcileDeviceAsSystem(db, null, device.id);
+
   // Notify the device via WebSocket — or, scale-out C2, through the replica it is attached to.
   const pairedMsg = { device_id: device.id, name: pairedName, settings_pin: settingsPin };
   const pairedRoom = deviceNs.adapter.rooms.get(device.id);
   if (pairedRoom && pairedRoom.size > 0) deviceNs.to(device.id).emit('device:paired', pairedMsg);
   else if (device.attached_node_id) { try { require('./lib/mesh/command-relay').relayToAttached(db, device.id, 'device:paired', pairedMsg); } catch (e) { /* the screen learns on its next register */ } }
+
+  // Time zone fallback: a display still on its image's default zone (Pi OS ships Europe/London)
+  // gets the pairing admin's browser zone, when it can set its own (system.time: the native
+  // players). Only for a LAN server's sake — on luminascreen.ru the installer already asked
+  // /api/public/timezone. Never blocks the pairing; an override or a chosen zone is left alone.
+  try {
+    const row = db.prepare('SELECT * FROM devices WHERE id = ?').get(device.id);
+    const tz = require('./lib/device-timezone').pairingTimezone(row, req.body && req.body.browser_timezone);
+    if (tz) {
+      const r = require('./lib/device-command').deliverCommand(deviceNs, row, 'set_timezone', { timezone: tz });
+      console.log(`[pair] ${device.id}: time zone ${row.reported_timezone || '(none)'} → ${tz} from the pairing browser (${r.status})`);
+    }
+  } catch (e) { console.warn(`[pair] time zone fallback failed for ${device.id}: ${e.message}`); }
 
   const updated = db.prepare('SELECT * FROM devices WHERE id = ?').get(device.id);
   require('./lib/device-sanitize').stripDeviceSecrets(updated); // never leak device_token to clients
@@ -2882,6 +3057,7 @@ app.get(['/download', '/download/'], (req, res) => {
     brightsign: { exists: bsPackage.available(), version: bsPackage.version() },
     deb: debCache.get(),
     exe: winCache.get(),
+    dmg: macCache.get(),
   }, base));
 });
 
@@ -3041,7 +3217,7 @@ app.get(['/tizen', '/tizen/'], (req, res) => {
  *
  * /suika/ is the Suika design island (Phase 0+). Same soft-404 class when unbuilt.
  */
-const CONTENT_PREFIXES = ['/guides/', '/integrations/', '/studio/', '/suika/'];
+const CONTENT_PREFIXES = ['/guides/', '/integrations/', '/solutions/', '/studio/', '/suika/'];
 
 /*
  * ⚠️ A MISSING ASSET IS A 404, NEVER THE APP SHELL. Every app route is `/#/…`, so a path ending in a

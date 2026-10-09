@@ -29,6 +29,539 @@ available alongside Suika (no feature-flag hide). Help documents both editors. S
 - **Reports → Interactive sessions: the "Sessions per day" bars stacked down the page (#497)**
   instead of standing side by side like the other charts.
 
+## 2.5.0
+
+Thanks to the people whose reports this release fixes: @xela1978, JackyL, Mr. Car [MHA], J.O. and
+カタカナ. Every commit in it was authored by the LuminaScreen team.
+
+### Added
+
+- **Automation: hooks, Zapier, Alertus and InformaCast** (new Automation page).
+  - A **hook** is a secret web address another system calls. A call can raise or clear an emergency
+    alert, fire a trigger, update a table, or switch screens to a playlist for a while. A fire panel,
+    a building system or a script can call it; no account is needed.
+  - **Mass notification systems.** Alertus, Singlewire InformaCast and anything that sends CAP 1.2
+    can raise alerts on screens. The same alert sent twice shows once, and a cancel clears it.
+  - **Zapier.** Zaps can start when a screen goes offline or comes back, when an emergency alert is
+    raised or cleared, or when content is approved or a playlist is published. Zap actions can raise
+    alerts, switch playlists, fire triggers and update tables. Make and n8n can use the same API.
+  - Hook addresses are shown once and stored only as a fingerprint. Signing is optional, and every
+    call is logged. See `docs/automation.md`.
+- **Social walls: real posts from Instagram, Facebook, YouTube, X, Bluesky and Mastodon** (menu →
+  Social feeds, and the Social wall widget). The old Social Feed widget only ever said "Configure
+  API key"; existing ones now ask you to choose a feed.
+  - A feed collects posts from up to 10 sources: accounts, hashtags, a Facebook Page, a YouTube
+    channel or playlist, or a search. Bluesky and Mastodon need no setup. For the others, an
+    organization admin adds your own access token or key in Settings → Social connections. Tokens
+    are stored encrypted and never shown again; Instagram tokens renew themselves.
+  - **Moderation:** show new posts straight away, or approve each one first. You can also hide a
+    post at any time, hide posts containing blocked words, show only posts with pictures, and
+    leave out old posts. A hidden post never comes back by itself, and posts their authors delete
+    disappear from the wall.
+  - **Three layouts:** one large post at a time, a rotating grid, or a scrolling ticker for a strip
+    zone. All work in portrait and landscape.
+  - **Screens never contact a social network.** Your server fetches the posts and keeps copies of
+    the images, so a wall keeps showing its last posts when the internet is down. Post text is
+    always shown as plain text.
+  - LinkedIn and TikTok are not supported; `docs/social-feeds.md` explains why, and covers each
+    network's setup, permissions, costs and limits.
+- **Meeting-room displays** (Widgets → Room Display).
+  - The screen outside a room shows **Available** or **In use** in large type, the meeting in
+    progress and time left, the rest of today's meetings, and when it is next free. Portrait or
+    landscape, readable from across a corridor, and not reliant on colour alone.
+  - Reads **Microsoft 365** room mailboxes or **Google Workspace** resource calendars through your
+    organization's own app or service account (Settings → Meeting rooms), or any calendar
+    published as an ICS address.
+  - On touch screens running the Android, web or Raspberry Pi / Windows player, people can **book
+    the room now** (15, 30 or 60 minutes, never into the next meeting) and **end a meeting** booked
+    there. Organizations can also allow ending any meeting, and **release rooms nobody checks in
+    to**. Both are off by default.
+  - Private meetings show as "Private meeting", or every meeting as "Reserved"; hidden details
+    never leave the server. Panels keep switching between free and busy on time with the network
+    down. See `docs/room-booking.md`.
+- **Audience counting: how many people looked at a screen, and for how long** (Audience, under
+  Insights). Off by default.
+  - An organization owner or admin allows it, then switches it on for screens or groups. The
+    screen's camera and a detector built into the player count faces looking at the screen, per
+    minute and per item on screen. The report shows impressions, how long people looked, and
+    impressions per play, by content, screen, playlist, hour and day, with CSV export.
+  - **No picture or video is stored or leaves the screen, and nobody is recognised.** Only counts
+    are sent, and the server refuses anything else. A small camera icon shows on screens that are
+    counting (you can turn it off). Counts are kept for 90 days by default.
+  - Android players need no extra download. **Raspberry Pi and Windows players count with an
+    optional add-on** that you choose when installing, and it's **off by default**. On Windows it's
+    the **Audience counting add-on** checkbox (silent installs: `/MERGETASKS=audience`). On a Pi,
+    answer **y** at the installer's prompt, or pass `--audience`, or run
+    `sudo luminascreen-pi audience-addon install` later.
+  - The add-on is about 54 MB. It comes from your own server and is checked against the checksum
+    the server publishes. It needs a USB webcam (a Pi camera module isn't supported) and, on a Pi,
+    64-bit Pi OS.
+  - The server hosts the add-on at `/download/audience-addon/<platform>`. Build it with
+    `native/packaging/audience/build-addon.py`.
+  - See `docs/audience-counting.md`, which includes a notice to put up.
+- **Mac and iPad/iPhone players (beta).**
+  - **Mac:** the native player that runs on Raspberry Pi and Windows now runs on macOS 12 or later, as
+    `LuminaScreen.app` in a .dmg on your instance's download page. It plays from its own offline cache
+    and does zones, transitions, video walls, triggers, screen on/off, volume and the remote terminal.
+    `--install-autostart` starts it at login and restarts it if it crashes.
+  - **iPad and iPhone:** a new app shows your server's player full screen and keeps the device awake,
+    with an orientation lock. Distribute it through TestFlight or device management, and lock it with
+    Guided Access or Single App Mode.
+  - Both are new and have only been tested in CI so far. Neither can be rebooted or updated from the
+    dashboard: update a Mac from the .dmg or with device management, and the app updates through Apple.
+    iOS gives an app no media volume or offline media cache, so those controls do not appear for it.
+    See `docs/macos-player.md` and `docs/ios-player.md`. Apple TV is still not supported
+    (`docs/tvos-player.md`).
+
+- **SAML 2.0 single sign-on for organizations** (Settings → Single sign-on → Add provider →
+  SAML 2.0).
+  - Paste your identity provider's metadata, give it the entity ID and ACS URL that Settings
+    shows, and verify your domains. Okta, Entra ID, ADFS, Google Workspace and OneLogin all work
+    this way.
+  - Every sign-in must carry a signed assertion, answer a sign-in we started, be addressed to us,
+    and be used only once. The email must be in one of your verified domains.
+  - Signing in is otherwise the same as with OIDC: **Require SSO**, joining your organization on
+    first sign-in, and the same protections against account takeover all apply. See
+    `docs/sso-setup.md`.
+- **Import designs from Canva, and keep them up to date** (Content → Canva).
+  - Each person connects their own Canva account. Pick a design, choose its pages, and import
+    them as images (one per page) or as one video, optionally with a playlist in page order.
+  - Imported items stay linked. When the design changes in Canva, they update within 30 minutes,
+    or straight away with **Sync now**. Updates go through the same path as **Replace file**:
+    screens re-download, history keeps the old version, and approval applies.
+  - Org admins add their Canva integration in Settings, or operators set `CANVA_CLIENT_ID` /
+    `CANVA_CLIENT_SECRET` for the whole server. See `docs/canva.md`.
+- **Google and Microsoft documents on screens.**
+  - A new **Cloud document** widget shows a Google Slides, Docs or Sheets file, or a PowerPoint,
+    Word or Excel file from OneDrive or SharePoint, through the provider's own viewer. Paste the
+    share link, published link or embed code (Content → Google & Microsoft documents). Slides
+    advance and loop on their own; Docs and Sheets reload every few minutes.
+  - **SharePoint & OneDrive folder sync** keeps a folder's images, videos and audio in the content
+    library, with an optional playlist in file-name order:
+    - new files are added
+    - changed files are replaced, so screens pick up the new version
+    - removed files are taken out
+  - The folder sync uses your organization's own Microsoft Entra app (Settings → Microsoft 365),
+    so files are read with permissions your admins control. See `docs/cloud-documents.md`.
+- **Grafana, Power BI and Tableau dashboards on screens**, with the new **BI Dashboard** widget.
+  - An organization admin adds the organization's own Grafana token, Power BI app or Tableau
+    connected app in **Settings → BI dashboards**, and editors pick a dashboard from it. A public
+    link also works: a Grafana public dashboard, Power BI "Publish to web", or Tableau Public.
+  - Credentials stay on the server. Screens get a rendered image (Grafana) or a short-lived,
+    view-only token (Power BI, Tableau).
+  - Grafana images refresh on a schedule and stay up when Grafana is down. Power BI pages and
+    Tableau sheets can rotate.
+  - See `docs/bi-dashboards.md`, including what each service needs set up on its side.
+
+- **New player versions roll out in waves, and stop themselves if they're bad** (Platform → Player
+  rollouts).
+  - A new Android, Raspberry Pi or Windows player now goes to about 10% of that platform's screens
+    first, then 50%, then everyone. Each wave waits until the screens that updated look healthy.
+  - If updated screens crash repeatedly or go dark after updating, clearly more than the rest of
+    the fleet, the rollout **halts automatically** and platform admins are emailed. A site-wide
+    outage doesn't count against a release.
+  - **Pi and Windows roll back automatically**: screens on a halted version are given the previous
+    one again. **Android can't go back to an older version**, so there a halt stops the spread and
+    the fix is a newer build.
+  - Pause, resume, release to everyone, halt and clear a halt from the Platform area. Beta-channel
+    screens and Force update skip the waves.
+
+- **QR codes that count scans** (Create → QR codes).
+  - A tracked link is a short address (`/q/…`) that opens your page and counts the scan: totals,
+    the last 30 days, and iPhone / Android / other.
+  - Use one on a slide (QR element → Tracked link) or download its QR as SVG. Change where the
+    link goes at any time, and the QR on screens and in print keeps working. Switch a link off and
+    scans see "no longer active".
+  - Nothing about the person scanning is stored: no IP address and no browser details. Link
+    previews from chat apps aren't counted.
+
+- **Play an item depending on the weather, or the area, where each screen is.**
+  - Give a screen a location (Display → Info → Location: search a city or address).
+  - New playlist item conditions: **Weather where the screen is** (clear, cloudy, rain, snow,
+    thunderstorm, fog, or a temperature above or below a value in °C or °F) and **Where the screen
+    is** (within or outside N km of a place).
+  - Each screen is judged at its own location, so one playlist shows the umbrella ad only where
+    it's raining, or a regional offer only in that region. Weather is checked every 15 minutes.
+  - A screen with no location plays weather-conditioned items, but never area-limited ones.
+  - These conditions are applied by the server, so every player supports them without an update.
+    When the weather changes, the screen's playlist starts again from the first item.
+
+- **Offline alerts to Slack, Microsoft Teams, PagerDuty, email or a webhook** (Automate → Alerts).
+  - Each channel says when to alert (offline for N minutes, and back online), and for which
+    screens: all, some groups or some screens. One message per outage, and "back online" only
+    after an offline alert went out.
+  - PagerDuty incidents close themselves when the screen comes back. Webhooks can be signed with
+    a shared secret (`X-LuminaScreen-Signature`).
+  - **Send test** checks a channel. A failed delivery is retried, and the error is shown on the
+    channel.
+  - Webhook addresses and PagerDuty keys are never shown again after saving. Only workspace
+    admins can add or change channels.
+  - The owner's offline email is unchanged.
+
+- **Menu boards** (Widgets → Menu Board), for restaurants, cafés and bars.
+  - Sections and items with one or more prices (Small / Large, Glass / Bottle), descriptions,
+    photos and dietary tags (V, VG, GF, DF, nuts, halal, spicy, new, popular), with a key on screen.
+  - Mark items sold out in the editor, or from a till or phone with
+    `PATCH /api/widgets/:id/menu-items/:itemId`. It shows on screens at once, even when approval is
+    required.
+  - Sections that show only at certain times (breakfast until 11:30, happy hour), by each screen's
+    own clock.
+  - Four looks (dark, light, chalkboard, bold), an accent colour, any currency. The columns fit the
+    screen in landscape or portrait, and a long menu turns pages instead of being cut off.
+  - Start from a café, burger bar or bar example, or keep the menu in a Google Sheet or CSV data
+    source with columns like section, item and price. Edits to the sheet reach the screens on the
+    next sync.
+
+- **Device tags and dynamic groups.**
+  - Give a screen tags (Display → Tags, or the API) and filter the Displays page by them.
+  - A group can fill itself from **rules**: tag is or is not, name contains or starts with,
+    platform, timezone. Matching screens join, and leave when their tags change. Anything assigned
+    to the group follows: its playlist, schedules, triggers, emergency alerts, power schedule and
+    sync. Group → **Rules** shows which screens match before you save.
+  - Screens on a video wall never join a group. A tag change that would change which head office
+    playlist a screen plays is refused for store users, as moving the screen by hand would be.
+  - Tags survive deleting and re-pairing a screen, so it rejoins its groups.
+- **Emergency feeds: public CAP alerts on your screens automatically** (Automate → Emergency feeds).
+  - Subscribe to an alert feed: the US National Weather Service by state or zone, MeteoAlarm for
+    38 European countries, or any CAP 1.1/1.2 feed (a CAP document, an Atom/RSS index, or NWS
+    GeoJSON).
+  - While an alert matches the feed's filters (minimum severity, alert types, areas), every screen
+    in its scope shows it instead of its playlist: a full-screen alert card with the headline, the
+    area, what to do and until when, colour-coded by severity. You can pick a playlist instead.
+    Screens go back when the alert is cancelled, replaced or expires.
+  - Scope it to all screens, some groups or some screens. **Test feed** shows what would be on
+    screens before you save.
+  - If the feed can't be reached, alerts already showing stay up until they expire.
+  - Workspace admins only. A head office emergency alert still takes priority.
+
+- **A video wall now works like one big screen.** See `docs/video-walls.md`.
+  - **Zones on a wall.** A wall can take a layout: put content anywhere on it, in one screen,
+    across a bezel or over the whole wall. **One zone per screen** builds the obvious layout in one
+    click, and the zones are drawn over the wall editor's canvas.
+  - **Screens can take turns.** Every zone runs on one shared clock, so "video A on screen 1, then
+    video B on screen 2, then A again" is two zones with a **hold** between their videos. The wall
+    stays in step with no screen in charge, including while the server is unreachable.
+  - **Hold items** (Content → Hold): show nothing new for a set time, frozen on the last frame or
+    blank. They work on any screen, not only walls.
+  - **Live view.** The wall page shows every panel's picture where the panel hangs, and the wall's
+    card on Displays shows the same.
+  - **Commands to the whole wall** (screen on/off, restart, update, reboot, shut down), counted per
+    panel.
+  - **Schedules for a wall.** A schedule can target a wall; every panel switches together on one
+    clock. A schedule on a single panel of a wall is refused, because it switched that panel alone
+    and tore the picture.
+  - **Snapping** in the wall editor (screens to each other, the player box and the bezel gap) and
+    in the layout editor (zones to each other, the canvas and, for a wall, the screen seams). Hold
+    Alt to place freely. The layout editor also takes the canvas size, draws very wide wall shapes
+    correctly and has a layer field for overlapping zones.
+  - Thanks to J.O. (Discord) for the question that started this.
+
+- **Live input: show the screen's own HDMI IN as a playlist item.**
+  - On an Android TV box with an HDMI input, such as the Fire TV Cube (3rd gen), whatever is
+    plugged into it plays like any other item: a cable box, a console, another signage player.
+  - Add it from Content → **Live input (HDMI IN)**. It plays full screen or in a zone, and other
+    zones can be layered on top of it, such as a channel logo or a lower-third.
+  - Only screens that actually have an HDMI input receive it. Every other player skips it and plays
+    the rest of the playlist.
+  - The live picture can't be captured, so dashboard screenshots show a "Live HDMI input" card in
+    its place, with everything around and above it captured normally.
+- **Storage backends: local disk, S3 and S3-compatible stores, Azure Blob.** Media — each file, its
+  thumbnail, subtitle and retained revision copies — can live in Amazon S3, any S3-compatible store
+  (MinIO, Garage, Ceph RGW, SeaweedFS, R2, B2, Wasabi, Spaces) or Azure Blob. With nothing
+  configured nothing changes: uploads land on local disk exactly as before. See `docs/storage.md`.
+  - **Three levels.** A workspace's new uploads go to the workspace's own choice, else its
+    organization's, else the instance default:
+    - **Instance:** set from the environment (`STORAGE_PROVIDER`, `S3_*`, `AZURE_STORAGE_*`) or by a
+      platform admin under **Platform → System → Instance storage**. The environment wins when set,
+      and the card says so.
+    - **Organization:** org owners and admins, under **Settings → Where media is stored**.
+    - **Workspace:** a workspace can store its media somewhere else, in a profile of the
+      organization or one of its own that no other workspace can see. Org admins can always set
+      this. Workspace admins can too, but only if the organization turns on *Workspace admins may
+      choose their own workspace's storage*, which is off by default.
+  - **Live migration.** *Move media here* copies and verifies every file while screens keep playing
+    from the existing copies; *Switch* makes the new copies primary while the old ones stay
+    readable; *Remove old copies* deletes them only where another ready copy exists. A restart
+    resumes a copy and never switches or deletes anything by itself. A move covers either one
+    workspace, or the whole organization except workspaces that have their own storage.
+  - **Any available copy.** A file with several copies is served from the first one that answers; a
+    failing store is skipped, and a dead one is not retried for 60 s.
+  - **Attach an existing bucket** read-only and import objects by reference (never modified or
+    deleted) or by copy.
+  - **Screens are unchanged.** Players keep fetching the same URLs; the server serves them from the
+    bucket. A new `file_url` field offers a presigned direct link when the screen can reach the
+    bucket. Screens on a network that cannot reach the bucket are always served by the server.
+  - Storage keys are encrypted with the server's JWT secret and never shown again; changing
+    `JWT_SECRET` means re-entering them. Endpoints go through the SSRF guard: cloud metadata is
+    always refused, and loopback and private networks are refused unless the profile allows them.
+  - Database: new tables `storage_profiles`, `content_locations` and `storage_migrations`, plus
+    nullable columns. All additive; nothing is backfilled at boot.
+  - New dependencies: `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` (Apache-2.0), and
+    `@azure/storage-blob` (MIT). Each is loaded only when its provider is used.
+- **New screens get the right time zone.** A Raspberry Pi set up without the Imager's locale
+  settings is on UK time (Pi OS's default), and schedules ran on it.
+  - On luminascreen.ru, the installers ask the server which time zone it sees the screen in
+    (`GET /api/public/timezone`, answered from Cloudflare). No outside location service is used.
+  - On a self-hosted server, which can't tell where a screen is, pairing a screen that's still
+    on a default zone (UTC or Europe/London) sets it to the time zone of the browser you pair it
+    from. The dashboard sends the zone name only.
+  - A zone you set on the screen, or chose on the device, is never changed. Players that can set
+    their own clock get this: the Raspberry Pi, Linux and Windows players.
+  - Fixed along the way: what a new screen says it can do is now recorded as soon as it shows a
+    pairing code, not only after its first reconnect.
+- **Raspberry Pi 4 Model B is Certified Hardware** (certified with limits, from 2.5.0), on the
+  native player under Pi OS Trixie Lite and Desktop. The limits: it needs a supply that holds
+  5.1 V at 3 A, and it was tested on one screen at up to 1920x1200. See
+  `/certified-hardware#raspberry-pi-4-model-b`.
+
+### Fixed (Android player)
+
+- **A newly paired screen could wait up to a minute before it started downloading its playlist.**
+  It now asks for its playlist as soon as the player screen opens after pairing.
+
+- **A screen deleted from the dashboard stayed on "Waiting for content" instead of showing a new
+  pairing code** (#508), whenever it had last been paired through the pairing screen. The pairing
+  screen, closing late, removed the main screen's handlers along with its own. The same late close
+  also stopped reconnects from clearing the status and re-reporting downloads, and the re-pair
+  screen's code and countdown no longer showed when it opened. Thanks to @xela1978 for the report
+  and the diagnosis.
+- **A web, widget or YouTube item no longer shows "webpage not available" when the network
+  drops.**
+  - A page that fails to load is hidden instead of showing the browser's error page, and it keeps
+    retrying in the background.
+  - While the screen is offline, the playlist skips items that need the network, as long as
+    something cached can play instead. When the connection comes back, the full playlist returns
+    on the next advance.
+  - If nothing cached can play, the standby image covers the screen after 30 seconds of failed
+    loads.
+  - A page that had already loaded, such as Google Slides, keeps showing.
+  - "Offline" means the connection to the server is down or a page just failed to load. Android's
+    own network check is not used, because it can take minutes to notice a disconnected modem.
+
+  Multi-zone layouts get the hidden-page part only.
+- **The Android player now deletes downloaded media nothing uses any more.**
+  - Before this, removing an item from a playlist or the library left its file on the screen
+    forever, until small devices such as a Fire TV Stick ran out of space and new downloads
+    failed.
+  - A file is deleted after 7 days in which no playlist, trigger or standby image on the screen
+    refers to it, so schedules that switch playlists don't download the same media again every
+    day.
+  - When free space is low, unused files are deleted straight away.
+- **Zones now keep their layering when they change item.** A zone's new item used to go on top of
+  every other zone, so `z_index` only held for the first item. Side-by-side zones never noticed;
+  overlays such as a logo over a video did.
+
+### Fixed (Raspberry Pi native player)
+
+- **On Pi OS with a desktop, the player could fail to start at login with nothing on screen.**
+  The desktop session runs on Wayland, and Qt's Wayland support is a separate package
+  (`qt6-wayland`) that the player didn't depend on. Without it, Qt aborted before drawing
+  anything. The package now depends on it, and the player falls back to X11 (through Xwayland) if
+  Wayland still can't be used.
+- **Running `sudo luminascreen-pi setup URL` by hand on a desktop Pi switched it to Lite mode.**
+  `setup` now detects the mode the same way the installer does when `--mode` is left out. Asking
+  for `--mode lite` on a Pi that boots to a desktop prints a warning, because the desktop keeps the
+  screen and the Lite service can't draw on it.
+- **On Pi OS Lite, installing the native player (menu option 3) stopped partway with no error.**
+  Right after printing "Native player mode: lite" it looked up the desktop's autologin user in a
+  file Lite doesn't have, and that failed lookup ended the script. An earlier browser kiosk was
+  left in charge of the screen and the player was never set up ("No server configured"). The
+  lookup no longer stops the install. Thanks to JackyL (Discord) for the report.
+- **Pi OS Lite played no sound.** Debian's Qt plays audio only through a sound server, and the
+  Lite player runs without a login session, so none was ever started ("No audio device
+  detected"). The package now brings PipeWire and starts it for the player at boot. Sound plays
+  on every output at once (both HDMI ports and the headphone jack), so whichever one has a
+  speaker plays it.
+- **A screen turned to portrait cropped landscape content to its middle third** (Raspberry Pi,
+  Windows and macOS players). With no fit chosen, these players filled the screen and cut off what
+  spilled over; Android and the web player show the whole picture. They now do too. A fit you set,
+  and a zone's own fit, are unchanged.
+- **Transitions now play inside layout zones** (Raspberry Pi, Windows and macOS players). They used
+  to run only on a fullscreen playlist, and zones cut straight to the next item. Each zone now
+  transitions on its own; a zone showing one item never transitions into itself. Video-wall zones
+  still cut, on the wall's shared clock. Android and the web player still cut in zones.
+- **Pi OS Desktop played video sound on the headphone jack only, never HDMI.** The desktop player
+  runs as the login user, who was left on the Pi's default output. Setup now sends that user's
+  sound to every output at once too, from the next login.
+- **A black frame flashed when a video started.** The player showed a video a fixed 120 ms after it
+  started playing, and the Pi's hardware decoder takes 91-115 ms to produce its first picture, so it
+  was a close race. It now waits for the first picture.
+- **Transitions didn't show on the Pi.** Every transition failed to start on the Pi's OpenGL ES
+  graphics and the screen cut straight to the next item. The player now picks a shader build
+  that works on OpenGL ES; other players keep the one they had.
+- **Changing a screen's time zone from the dashboard didn't take effect until the player
+  restarted.** Schedules on a screen with no time zone of its own ran on the old zone until
+  then. The player now switches straight away.
+- **Pis set up without the Imager's locale settings ran their schedules on UK time.** Pi OS's
+  default time zone is Europe/London. The installers (and `luminascreen-pi setup`) now turn on
+  network time and set a real time zone: `--timezone Area/City` if you give one, the zone you
+  already chose if there is one, otherwise the zone your LuminaScreen server sees the Pi in.
+
+### Fixed (video walls)
+
+- **A wall panel that restarted without the server played the whole picture uncropped** until the
+  server answered. The wall setup is now kept on the panel and restored before the first frame.
+- **Changing a wall's geometry, or a screen's layout, only showed at the next item.** A wall looping
+  one video never showed it at all. It now redraws straight away.
+- **The wall page said "2 of 2 not online" for a wall whose panels were all healthy.**
+- **A web-player wall went black for a moment at every switch between images and videos.** The
+  outgoing picture now stays up until the next one is ready, as on a single screen, and the wall
+  stays in sync across the switch. YouTube, live streams and widgets on a wall still switch the old
+  way.
+- **The wall's Live view showed the whole picture on every web-player panel** instead of that
+  panel's part. A web player's screenshot now matches what the panel shows, including rotation and
+  wall zones. Android, Pi/Windows and BrightSign capture the real screen and were not affected;
+  Tizen still has this for images.
+
+### Fixed (Samsung Tizen player)
+
+- **A playlist update with no media deleted every file the TV had downloaded.** The server sends
+  an empty playlist for a screen with nothing assigned, an unpublished playlist, or a published
+  playlist it fails to read, and the TV treated each one as "delete everything". It then had nothing
+  to play offline until it had downloaded it all again. An update with no media now leaves the
+  cache alone, as on the other players.
+- **The setup screen could not be finished with a TV remote.** Down in the Server URL field only
+  moved the cursor, so the Connect button was reachable only with a USB keyboard's Tab, and the
+  on-screen keyboard's Done key just closed the keyboard. Down and Up now move between the field
+  and Connect, and Done connects like Enter. "Change server" also puts focus in the field. Thanks to
+  Mr. Car [MHA] for the report.
+
+### Fixed (server)
+
+- **A tag typed with a leading `#` (such as `#lobby`) was silently dropped.** Tags are shown with
+  a `#`, so people type one. It's now ignored and the tag is kept.
+- **Adding or removing a screen in a synced group left the other members out of step** until
+  something else re-sent their playlist. They're now updated straight away.
+- **Mesh replication missed edits to device settings added after it was turned on.** Its change
+  tracking listed the device columns once, when it was first set up. It now refreshes itself when
+  the table changes.
+- **Deleting a screen didn't reach the screen.** It carried on showing its old content until it
+  next reconnected or restarted, so the pairing code needed to re-pair it wasn't there. The screen
+  is now told straight away and shows its pairing code.
+- **A deleted screen now removes the media it downloaded** (Android, Pi/Windows, Tizen and the web
+  player). Files used by its triggers are kept, so a trigger can still fire from local storage.
+  This happens only for a delete from the dashboard. A screen the server simply doesn't recognise,
+  for example after restoring an older backup, keeps everything, so a restore can't wipe the
+  whole fleet.
+
+- **The standby image never reached Android screens unless it was also in a playlist.** The
+  Android player downloads it like any other media so it can show offline, and the server refused
+  that download because the image wasn't in a playlist or widget. A device's standby image now
+  counts, scoped to the device's own workspace. Found while testing the offline fallback above.
+- **The NOC drew every telemetry-only child server as "down"** while it was reporting every minute
+  (since the NOC shipped). It compared the link's freshness against a value that is never returned.
+  Replicating children were not affected.
+- **Mesh: a child that redials now replaces its old connection at once.** The parent used to keep
+  the old socket half-open until its ping timeout (30 s), logging a false "ping timeout" disconnect,
+  and a read, write or content offer in that window could go to the dead socket and time out.
+- **Mesh: a child now logs why its link dropped** (for example "ping timeout" or "transport close")
+  instead of "unknown".
+
+Thanks to カタカナ for the report and for the approach, which they had already tested on Fire TV
+and Fire tablets in their fork.
+
+
+### Hardened before release (review of this release's new features)
+
+The features added above were reviewed before release, and these were fixed (#529–#539):
+
+- **BI dashboards:** every Power BI, Tableau and Grafana page now runs in a sandbox. Before, a
+  Tableau server address an organization admin entered could run script on the dashboard's own
+  site. On hosted LuminaScreen, a Tableau address must be on `online.tableau.com` unless a
+  platform admin adds it. Rate limits now count only cache misses, per screen, so a large wall no
+  longer goes blank.
+- **Automation:**
+  - A malformed Zapier request could stop the server; it now gets a 400.
+  - An emergency alert that was cleared can be raised again straight away. Before, the same alert
+    sent again within 7 days did nothing.
+  - One Zap's alert can no longer move another's to different screens.
+  - Webhook deliveries are shared fairly between organizations.
+  - A hook's secret no longer appears in the server log.
+- **SAML:**
+  - Sign-in is tied to the browser that started it, which closes a login-CSRF hole.
+  - The identity provider's Issuer is checked.
+  - Transient NameIDs are refused with a clear message.
+- **SharePoint/OneDrive folders:**
+  - A folder of more than 500 files no longer removes synced media.
+  - Syncs are safe on a scaled-out pair.
+  - A sync pauses when its workspace, organization or creator is gone.
+  - Media head office plays in a corporate playlist is only updated by someone who may change it.
+    The same applies to Canva syncs.
+- **Room displays:**
+  - A meeting is released only while a screen that can check in shows the room.
+  - A workspace admin can only pick calendars the connection lists.
+  - On Google, a release declines the room's attendance instead of deleting the event.
+- **Social walls:**
+  - A hidden post stays hidden: it no longer reappears from a cached page or after a refetch.
+  - An edited approved post goes back for review.
+  - Blocked words match through zero-width characters, full-width letters and accents.
+  - Hashtag walls no longer empty out a day after the last post.
+- **Audience counting:**
+  - "Impressions per play" counts only plays on screens that were counting.
+  - Averages are weighted by how long each item was on screen.
+  - Date ranges follow your time zone.
+  - A camera restart mid-minute no longer loses the rest of that minute.
+- **iPad/iPhone app:** the app moves to another server only when the player asks, and its
+  pairing is only given to the server it was paired with. The PiP web overlay on the web player
+  and on Tizen can no longer navigate the player away.
+- **Mac:** a kiosk-locked Mac now restarts after Cmd+Q.
+- **Deleting things:** deleting a workspace, organization or user now also deletes that tenant's
+  data in all of these features. Removing a member or revoking an API token stops their Canva
+  links, folder syncs and Zapier subscriptions.
+
+### Fixed (dashboard)
+
+- **The Content Library's "add content" row no longer crushes the upload area** (#540). With seven
+  ways to add content side by side, the drop zone had shrunk to a sliver with its text one word per
+  line. The upload area is now a full-width strip, and the cards wrap onto as many rows as needed.
+
+### Upgrade notes
+
+- Player rollouts now go out in waves, so the whole fleet updates over a few hours instead of at
+  once. Set `OTA_STAGED_ROLLOUT=off` to keep the old behaviour, and `OTA_ROLLOUT_SOAK_MIN`
+  (default 120) to change how long each wave waits. Rollback needs the previous package, which is
+  kept from the first release after this one onwards.
+- **SAML sign-in needs HTTPS.** The identity provider returns to LuminaScreen with a cross-site
+  POST, which only carries the new sign-in cookie over HTTPS. Behind a reverse proxy, the server
+  must see the request as HTTPS (trust proxy).
+- **Power BI and Tableau reports run in a sandbox.** Check that your reports still load before
+  rolling out. Turning off "Widget sandbox isolation" no longer changes this.
+- **Who can do what:**
+  - Only an organization owner or admin can add a SharePoint/OneDrive folder.
+  - Only a workspace admin can create or delete Zapier subscriptions.
+  - Hooks no longer fire on a GET unless "Allow GET" is turned on for that hook.
+- **Room auto-release** only happens for rooms shown on a screen that can check in: the web
+  player, Android and the Pi/Windows/Mac players on this release.
+- **The Raspberry Pi audience add-on** now installs in `/usr/lib/luminascreen-pi-audience`.
+- The `schedules` table is rebuilt once on first start, to let a schedule target a video wall.
+  Every row, column, index and trigger is kept. A table that does not look as expected is left
+  alone and logged (`[migrate] wall schedules`), and wall schedules are then unavailable on that
+  server. Take the usual backup before upgrading.
+
+## 2.4.3
+
+Three dashboard fixes, found while capturing a real 2.4.2 server for the release video. Server and
+dashboard only: no player changes, no database changes.
+
+### Fixed
+
+- **Platform → System showed nothing about the updater (#497).** The page asked whether you are a
+  platform admin without saying who you are, which always answered no, so it never fetched the
+  updater's status. With the updater installed:
+  - the **Updater ready** card now shows;
+  - **Update Now** asks for confirmation before it queues an upgrade;
+  - reloading the page mid-upgrade picks the progress back up, and a failed or rolled-back upgrade
+    from the last day is shown again.
+
+  Upgrades always needed an admin to press the button; that is unchanged.
+- **Reports → Top Content showed "NaN%" completion for every item (#497).** The column divided by a
+  count the report has not returned since the hourly proof-of-play rollup in 2.3.0. Nothing
+  measures whether a play completed (the rollup keeps no such count, and the raw flag is set on
+  every advance), so the column is removed rather than replaced with a number nobody measured. The
+  raw-plays CSV export is unchanged.
+- **Reports → Interactive sessions: the "Sessions per day" bars stacked down the page (#497)**
+  instead of standing side by side like the other charts.
+
 ## 2.4.2
 
 One-click upgrades from the dashboard, hosted AI slide images paid in organization credits, and

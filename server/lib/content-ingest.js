@@ -227,4 +227,28 @@ async function ingestUploadedFile({ file, userId, workspaceId, folderId = null }
   return db.prepare('SELECT * FROM content WHERE id = ?').get(id);
 }
 
-module.exports = { ingestUploadedFile, safeFilename, deriveMediaMetadata };
+/*
+ * A storage put failed during ingest. Carries the local files (asset first) so the caller can
+ * decide: a resumable upload moves the asset back into its session and lets the client retry the
+ * finalize; a single-shot upload removes them. status 502, message safe to show: the StorageError
+ * underneath never carries a credential or an SDK dump.
+ */
+class StorageWriteError extends Error {
+  constructor(message, files) {
+    super(message);
+    this.name = 'StorageWriteError';
+    this.status = 502;
+    this.files = files;
+  }
+
+  /** Remove the local files: for callers with no session to retry from. */
+  discard() {
+    for (const f of this.files || []) { try { fs.unlinkSync(f); } catch (_) { /* already gone */ } }
+  }
+}
+function storageWriteError(e, files) {
+  const reason = e && e.name && /Storage/.test(e.name) ? e.message : 'The storage backend refused the file.';
+  return new StorageWriteError(`The file could not be stored: ${reason}`, files.map((f) => f.abs));
+}
+
+module.exports = { ingestUploadedFile, safeFilename, deriveMediaMetadata, StorageWriteError };

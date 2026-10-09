@@ -13,6 +13,7 @@ import {
   createSuikaHeraldMessageHandler,
   openDesignEditorWindow,
 } from '../lib/suika-open.js';
+import { mountCanvaCard, reportConnectResult, loadCanvaLinks, syncCanvaLink } from '../components/canva-import.js';
 
 /* The mime lib/html-bundle.js stamps on an uploaded HTML bundle. Kept as a constant rather than
  * spelled out at each site: it is compared in three places here, and a typo in one of them is a
@@ -76,8 +77,8 @@ export function render(container) {
          nothing that mentions it is how someone loses the thread. -->
     <div id="gettingStarted"></div>
 
-    <div class="content-toolbar" style="display:flex;gap:16px;margin-bottom:24px">
-      <div class="upload-area" id="uploadArea" style="flex:1;margin-bottom:0">
+    <div class="content-toolbar">
+      <div class="upload-area" id="uploadArea">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="17 8 12 3 7 8"/>
@@ -93,7 +94,7 @@ export function render(container) {
           <p style="font-size:12px;color:var(--text-secondary);margin-top:6px" id="uploadProgressText">${t('content.upload_progress')}</p>
         </div>
       </div>
-      <div style="width:320px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px">
+      <div class="content-source" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px">
         <div style="display:flex;align-items:center;gap:8px;color:var(--text-primary);font-weight:500">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
@@ -114,7 +115,7 @@ export function render(container) {
         </select>
         <button class="btn btn-primary" id="addRemoteBtn">${t('content.remote_add_btn')}</button>
       </div>
-      <div style="width:320px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px">
+      <div class="content-source" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px">
         <div style="display:flex;align-items:center;gap:8px;color:var(--text-primary);font-weight:500">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19.13C5.12 19.56 12 19.56 12 19.56s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.43z"/>
@@ -127,7 +128,20 @@ export function render(container) {
         <input type="text" id="youtubeNameInput" class="input" placeholder="${t('content.youtube_name_placeholder')}">
         <button class="btn btn-primary" id="addYoutubeBtn">${t('content.youtube_add_btn')}</button>
       </div>
-      <div style="width:320px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px">
+      <div class="content-source" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--text-primary);font-weight:500">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+          </svg>
+          ${t('content.cloud_docs')}
+        </div>
+        <p style="font-size:12px;color:var(--text-muted)">${t('content.cloud_docs_desc')}</p>
+        <input type="text" id="cloudDocUrlInput" class="input" placeholder="${t('content.cloud_docs_url_placeholder')}">
+        <input type="text" id="cloudDocNameInput" class="input" placeholder="${t('content.cloud_docs_name_placeholder')}">
+        <button class="btn btn-primary" id="addCloudDocBtn">${t('content.cloud_docs_add_btn')}</button>
+        <button class="btn btn-secondary" id="cloudFoldersBtn">${t('content.cloud_folders_btn')}</button>
+      </div>
+      <div class="content-source" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px">
         <div style="display:flex;align-items:center;gap:8px;color:var(--text-primary);font-weight:500">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polygon points="23 7 16 12 23 17 23 7"/>
@@ -140,6 +154,41 @@ export function render(container) {
         <input type="text" id="hlsNameInput" class="input" placeholder="${t('content.hls_name_placeholder')}">
         <button class="btn btn-primary" id="addHlsBtn">${t('content.hls_add_btn')}</button>
       </div>
+      <div class="content-source" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--text-primary);font-weight:500">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="7" width="20" height="10" rx="2"/>
+            <path d="M6 11h12M8 14h8"/>
+          </svg>
+          ${t('content.hdmi_in')}
+        </div>
+        <p style="font-size:12px;color:var(--text-muted)">${t('content.hdmi_in_desc')}</p>
+        <select id="hdmiInPort" class="input">
+          <option value="">${t('content.hdmi_in_first')}</option>
+          <option value="1">HDMI 1</option>
+          <option value="2">HDMI 2</option>
+          <option value="3">HDMI 3</option>
+          <option value="4">HDMI 4</option>
+        </select>
+        <input type="text" id="hdmiInName" class="input" placeholder="${t('content.hdmi_in_name_placeholder')}">
+        <button class="btn btn-primary" id="addHdmiInBtn">${t('content.hdmi_in_add_btn')}</button>
+      </div>
+      <div class="content-source" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--text-primary);font-weight:500">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+          </svg>
+          ${t('content.hold')}
+        </div>
+        <p style="font-size:12px;color:var(--text-muted)">${t('content.hold_desc')}</p>
+        <select id="holdMode" class="input">
+          <option value="freeze">${t('content.hold_freeze')}</option>
+          <option value="blank">${t('content.hold_blank')}</option>
+        </select>
+        <button class="btn btn-primary" id="addHoldBtn">${t('content.hold_add_btn')}</button>
+      </div>
+      <!-- Canva (components/canva-import.js): hidden until /api/canva/status answers. -->
+      <div id="canvaCard" class="content-source" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;flex-direction:column;gap:12px"></div>
     </div>
     </div>
 
@@ -197,6 +246,14 @@ export function render(container) {
 
   uploadArea.addEventListener('click', () => fileInput.click());
 
+  reportConnectResult();
+  {
+    const canvaCard = document.getElementById('canvaCard');
+    mountCanvaCard(canvaCard, { onImported: () => loadContent() }).then(() => {
+      if (canvaCard && canvaCard.style.display !== 'none') canvaCard.style.display = 'flex';
+    });
+  }
+
   uploadArea.addEventListener('dragover', (e) => {
     e.preventDefault();
     uploadArea.classList.add('dragover');
@@ -218,6 +275,24 @@ export function render(container) {
   });
 
   // Remote URL handling
+  // Google / Office documents become a cloud-doc WIDGET (lib/cloud-docs.js): the screen shows the
+  // provider's own embed, so there is no file to store. The server rebuilds and checks the link.
+  document.getElementById('addCloudDocBtn')?.addEventListener('click', async () => {
+    const url = document.getElementById('cloudDocUrlInput').value.trim();
+    const name = document.getElementById('cloudDocNameInput').value.trim() || t('content.cloud_docs_default_name');
+    if (!url) { showToast(t('content.cloud_docs_need_url'), 'error'); return; }
+    try {
+      await api.post('/widgets', { widget_type: 'cloud-doc', name, config: { url } });
+      document.getElementById('cloudDocUrlInput').value = '';
+      document.getElementById('cloudDocNameInput').value = '';
+      showToast(t('content.cloud_docs_added'), 'success');
+    } catch (err) { showToast(err.message, 'error'); }
+  });
+  document.getElementById('cloudFoldersBtn')?.addEventListener('click', async () => {
+    const { openCloudFolders } = await import('../components/m365-settings.js');
+    openCloudFolders({ onChange: () => loadContent() });
+  });
+
   document.getElementById('addRemoteBtn').addEventListener('click', async () => {
     const url = document.getElementById('remoteUrlInput').value.trim();
     const name = document.getElementById('remoteNameInput').value.trim();
@@ -271,6 +346,32 @@ export function render(container) {
       showToast(t('content.toast.hls_added'), 'success');
       document.getElementById('hlsUrlInput').value = '';
       document.getElementById('hlsNameInput').value = '';
+      loadContent();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  // Live input: the screen's own HDMI IN. Same route as a live stream — the server classifies
+  // hdmi://<port> — and the same rule: only a screen that has an input is ever sent it.
+  document.getElementById('addHdmiInBtn').addEventListener('click', async () => {
+    const port = document.getElementById('hdmiInPort').value;
+    const name = document.getElementById('hdmiInName').value.trim();
+    try {
+      await api.addHlsContent('hdmi://' + port, name || (port ? 'HDMI ' + port : 'HDMI input'));
+      showToast(t('content.toast.hdmi_in_added'), 'success');
+      document.getElementById('hdmiInName').value = '';
+      loadContent();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+
+  // A hold: nothing new for its duration (freeze or blank) — how screens take turns (lib/hold-item.js).
+  document.getElementById('addHoldBtn').addEventListener('click', async () => {
+    try {
+      await api.addHoldContent(document.getElementById('holdMode').value);
+      showToast(t('content.toast.hold_added'), 'success');
       loadContent();
     } catch (err) {
       showToast(err.message, 'error');
@@ -469,11 +570,12 @@ async function loadContent() {
   if (!grid || !folderGrid || !breadcrumb) return;
 
   try {
-    const [content, folders] = await Promise.all([
+    const [content, folders, canvaLinks] = await Promise.all([
       api.getContent(state.currentFolderId === null ? null : state.currentFolderId, state.showExpired, {
         q: state.search, type: state.type, sort: state.sort,
       }),
       api.getFolders(),
+      loadCanvaLinks(),
     ]);
     state.folders = folders;
 
@@ -647,6 +749,20 @@ async function loadContent() {
                 </svg>
                 <span style="font-size:10px;color:var(--text-muted)">${t('content.type_bundle_short')}</span>
               </div>`
+          : c.mime_type === 'application/x-st-hold'
+            ? `<div class="video-icon" style="flex-direction:column;gap:4px">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+                </svg>
+                <span style="font-size:10px;color:var(--text-muted)">${c.remote_url === 'hold://freeze' ? t('content.hold_freeze') : t('content.hold_blank')}</span>
+              </div>`
+          : c.mime_type === 'video/hdmi-in'
+            ? `<div class="video-icon" style="flex-direction:column;gap:4px">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="2" y="7" width="20" height="10" rx="2"/><path d="M6 11h12M8 14h8"/>
+                </svg>
+                <span style="font-size:10px;color:var(--text-muted)">${t('content.type_hdmi_in')}</span>
+              </div>`
           : c.remote_url
             ? `<div class="video-icon" style="flex-direction:column;gap:4px">
                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -670,17 +786,22 @@ async function loadContent() {
           <div class="content-item-name" title="${esc(c.filename)}">${esc(c.filename)}</div>
           ${Array.isArray(c.tags) && c.tags.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${c.tags.map((tg) => `<span data-tag="${esc(tg)}" style="font-size:10px;padding:1px 6px;border-radius:4px;background:var(--bg-input);color:var(--text-muted);cursor:pointer">#${esc(tg)}</span>`).join('')}</div>` : ''}
           <div class="content-item-size">
-            ${c.mime_type === 'video/hls' || c.mime_type === 'video/rtsp' ? t('content.type_live') : c.mime_type === 'video/youtube' ? t('content.type_youtube') : c.mime_type === BUNDLE_MIME ? t('content.type_bundle') : c.remote_url ? t('content.type_remote') : (c.mime_type?.startsWith('video/') ? t('content.type_video') : t('content.type_image'))}
+            ${c.mime_type === 'application/x-st-hold' ? t('content.type_hold') : c.mime_type === 'video/hdmi-in' ? t('content.type_hdmi_in') : c.mime_type === 'video/hls' || c.mime_type === 'video/rtsp' ? t('content.type_live') : c.mime_type === 'video/youtube' ? t('content.type_youtube') : c.mime_type === BUNDLE_MIME ? t('content.type_bundle') : c.remote_url ? t('content.type_remote') : (c.mime_type?.startsWith('video/') ? t('content.type_video') : t('content.type_image'))}
             ${c.duration_sec ? ` &middot; ${Math.floor(c.duration_sec / 60)}:${String(Math.floor(c.duration_sec % 60)).padStart(2, '0')}` : ''}
             ${c.file_size ? ' &middot; ' + formatFileSize(c.file_size) : ''}
             ${c.width && c.height ? ` &middot; ${c.width}x${c.height}` : ''}
           </div>
+          ${canvaLinks.has(c.id) ? (() => {
+            const l = canvaLinks.get(c.id);
+            return `<div style="font-size:11px;margin-top:4px;color:${l.last_error ? 'var(--danger,#e5484d)' : 'var(--text-muted)'}" title="${esc(l.last_error || '')}">${esc(t('canva.linked_badge'))}${l.last_error ? ` &middot; ${esc(t('canva.sync_problem'))}` : ''}
+              <button class="btn btn-secondary btn-sm" data-canva-sync="${c.id}" style="margin-left:4px;padding:1px 6px;font-size:11px">${esc(t('canva.sync_now'))}</button></div>`;
+          })() : ''}
           ${exp.expired
             ? `<div style="font-size:11px;color:var(--danger,#e5484d);font-weight:600;margin-top:4px">${t('content.expired_badge')}${exp.dateLabel ? ` &middot; ${exp.dateLabel}` : ''}</div>`
             : (exp.dateLabel ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px">${t('content.expires_label', { date: exp.dateLabel })}</div>` : '')}
         </div>
         <div class="content-item-actions">
-          <button class="btn btn-secondary btn-sm" data-history-content="${c.id}" title="${t('history.button')}">${t('history.button')}</button>
+          <button class="btn btn-secondary btn-sm btn-icon-only" data-history-content="${c.id}" title="${t('history.button')}" aria-label="${t('history.button')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg></button>
           ${c.studio_design && c.studio_editor !== 'suika'
             ? `<button class="btn btn-secondary btn-sm" data-edit-poster="${c.id}" title="${t('studio.edit_poster')}">${t('studio.edit_poster')}</button>`
             : ''}
@@ -691,13 +812,7 @@ async function loadContent() {
             </svg>
             ${t('content.btn_edit')}
           </button>
-          <button class="btn btn-danger btn-sm" data-delete-content="${c.id}" title="${t('content.btn_delete')}">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-            ${t('content.btn_delete')}
-          </button>
+          <button class="btn btn-danger btn-sm btn-icon-only" data-delete-content="${c.id}" title="${t('content.btn_delete')}" aria-label="${t('content.btn_delete')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
         </div>
       </div>
     `;
@@ -738,6 +853,18 @@ async function loadContent() {
 
     // Delete handler via event delegation
     grid.onclick = async (e) => {
+      const syncBtn = e.target.closest('[data-canva-sync]');
+      if (syncBtn) {
+        syncBtn.disabled = true;
+        syncBtn.textContent = t('canva.syncing');
+        try {
+          const r = await syncCanvaLink(syncBtn.dataset.canvaSync);
+          if (r.errors) showToast(t('canva.sync_failed'), 'error');
+          else showToast(r.replaced ? t('canva.synced') : t('canva.up_to_date'), 'success');
+        } catch (err) { showToast(err.message, 'error'); }
+        loadContent();
+        return;
+      }
       const histBtn = e.target.closest('[data-history-content]');
       if (histBtn) {
         const c = content.find(x => x.id === histBtn.dataset.historyContent);
@@ -1211,7 +1338,9 @@ async function showPreview(content) {
   }
 
   const isYoutube = content.mime_type === 'video/youtube';
-  const isVideo = !isYoutube && content.mime_type?.startsWith('video/');
+  // The screen's HDMI input exists only on the screen: nothing here can open hdmi://.
+  const isHdmiIn = content.mime_type === 'video/hdmi-in';
+  const isVideo = !isYoutube && !isHdmiIn && content.mime_type?.startsWith('video/');
   const src = content.remote_url || `/uploads/content/${content.filepath}`;
 
   const overlay = document.createElement('div');
@@ -1223,6 +1352,8 @@ async function showPreview(content) {
       <div style="max-width:80vw;max-height:80vh">
         ${isYoutube
           ? `<iframe referrerpolicy="strict-origin-when-cross-origin" src="${(() => { /* #YT153 ROOT CAUSE: the dashboard sends Referrer-Policy: no-referrer (helmet default), so a raw YouTube iframe reaches youtube.com with NO Referer -> YouTube can't identify the embedding site -> "Video player configuration error" (153). referrerpolicy on THIS iframe overrides the page policy to send just our origin, which YouTube uses to validate the embed. (The device player dodges no-referrer differently: YT.Player's iframe_api origin postMessage handshake, which doesn't rely on Referer.) The enablejsapi/origin URL params are inert in a raw iframe (no API loaded), so they're dropped. */ try { const u = new URL(src); u.searchParams.set('mute', '1'); u.searchParams.delete('enablejsapi'); u.searchParams.delete('origin'); return u.toString(); } catch { return src; } })()}" style="width:80vw;height:45vw;max-height:80vh;display:block;border:none" allow="autoplay;encrypted-media" allowfullscreen></iframe>`
+          : isHdmiIn
+            ? `<div style="padding:48px 56px;max-width:520px;color:var(--text-primary)"><div style="font-weight:600;font-size:18px;margin-bottom:8px">${esc(content.filename)}</div><div style="color:var(--text-muted);font-size:14px">${t('content.hdmi_in_desc')}</div></div>`
           : isVideo
             ? `<video src="${esc(src)}" controls autoplay style="max-width:80vw;max-height:80vh;display:block"></video>`
             : `<img src="${esc(src)}" style="max-width:80vw;max-height:80vh;display:block">`

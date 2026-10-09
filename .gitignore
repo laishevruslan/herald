@@ -6,6 +6,7 @@ node_modules/
 # the payload build with "cp: Too many levels of symbolic links".
 node_modules
 
+upstream
 
 .pnpm-store/
 .pnpm-debug.log*
@@ -127,3 +128,7 @@ __pycache__/
 .pytest_cache/
 native/build/
 native/packaging/windows/THIRD-PARTY-NOTICES.txt
+# The iOS app's Xcode project is generated from ios/project.yml (xcodegen) and never committed.
+ios/LuminaScreen.xcodeproj/
+ios/build/
+ios/DerivedData/

@@ -11,10 +11,12 @@ const { resourceAccess } = require('../lib/tenancy');
 // requireScope gates by API-token scope; the workspace WRITE gate is checkDeviceOwnership, which
 // already rejects workspace_viewer — the same check requireFleetWrite performs in routes/triggers.js.
 const { requireScope } = require('../middleware/apiToken');
-const { ALLOWED_COMMANDS, LOCAL_API_COMMANDS, deliverCommand, validateCommand } = require('../lib/device-command');
+const { ALLOWED_COMMANDS, LOCAL_API_COMMANDS, deliverCommand, validateCommand, requireCommandScope } = require('../lib/device-command');
 const { stripDeviceSecrets, stripDeviceSecretsForList, stripSecretsForTokens } = require('../lib/device-sanitize');
 const { layoutZones, orphanCountsByDevice } = require('../lib/zone-validate');
 const deviceSettings = require('../lib/device-settings'); // #150 delete+re-pair settings preservation
+const { normalizeTags, parseTags } = require('../lib/content-tags');
+const groupRules = require('../lib/device-group-rules');
 const playerCapabilities = require('../lib/player-capabilities');
 
 // List devices in the caller's current workspace.
@@ -27,6 +29,8 @@ router.get('/', (req, res) => {
   if (!req.workspaceId) return res.json([]);
   const limit = Math.min(parseInt(req.query.limit) || 100, 500);
   const offset = parseInt(req.query.offset) || 0;
+  // ?tag=lobby narrows the list to screens carrying that tag (normalised like the stored ones).
+  const tagFilter = req.query.tag ? ((normalizeTags([String(req.query.tag)]) || [])[0] || '\u0000') : null;
   const devices = db.prepare(`
     SELECT d.*,
       t.battery_level, t.battery_charging, t.storage_free_mb, t.storage_total_mb,
@@ -47,12 +51,14 @@ router.get('/', (req, res) => {
       ON sc.device_id = latest.device_id AND sc.captured_at = latest.max_at
     ) s ON d.id = s.device_id
     WHERE d.workspace_id = ?
+      AND (? IS NULL OR EXISTS (SELECT 1 FROM json_each(CASE WHEN json_valid(d.tags) THEN d.tags ELSE '[]' END) WHERE value = ?))
     ORDER BY d.sort_order ASC, d.created_at ASC
     LIMIT ? OFFSET ?
-  `).all(req.workspaceId, limit, offset);
+  `).all(req.workspaceId, tagFilter, tagFilter, limit, offset);
   // #zone-orphan: lightweight per-device count of playlist items whose zone_id isn't in
   // the device's active layout, so the dashboard can flag screens that need attention.
   const orphanCounts = orphanCountsByDevice(devices.map(d => d.id));
+  const groupIds = groupIdsByDevice(devices.map(d => d.id));
   // The RESOLVED capability set, the same shape GET /:id returns. The raw column shipped here
   // before: a JSON *string* ('[]') or null, which every consumer would have had to parse — and
   // `Array.isArray("[]")` is false, so the dashboard's `can()` helper reads a device that declared
@@ -67,8 +73,31 @@ router.get('/', (req, res) => {
     // from the rest without re-deriving the precedence rules client-side.
     platform_family: playerCapabilities.platformFamily(d),
     orphan_count: orphanCounts[d.id] || 0,
+    tags: parseTags(d.tags),
+    group_ids: groupIds[d.id] || [],
   })));
 });
+
+/*
+ * The device groups each screen belongs to, as { deviceId: [groupId, ...] }, ordered by group name.
+ *
+ * ⚠️ NOT devices.team_id. That column is a TEAM (the old sharing unit), and the MCP tools reported it
+ * as `group_id` — so an agent asked "which group is the lobby screen in" answered with a team id that
+ * no group endpoint recognises. Membership lives in device_group_members, and a screen can be in
+ * several groups, so it is a list.
+ */
+function groupIdsByDevice(deviceIds) {
+  const out = {};
+  if (!deviceIds.length) return out;
+  const rows = db.prepare(`
+    SELECT m.device_id, m.group_id FROM device_group_members m
+    JOIN device_groups g ON g.id = m.group_id
+    WHERE m.device_id IN (${deviceIds.map(() => '?').join(',')})
+    ORDER BY g.name ASC, g.id ASC
+  `).all(...deviceIds);
+  for (const r of rows) (out[r.device_id] = out[r.device_id] || []).push(r.group_id);
+  return out;
+}
 
 // #106: reorder display tiles (cosmetic, within-section). Writes devices.sort_order
 // = position in the given id array. Workspace-scoped: the UPDATE matches WHERE
@@ -198,6 +227,8 @@ router.post('/move-workspace', (req, res) => {
       } catch (e) { console.warn(`[move-workspace] notify failed for ${m.device_id}: ${e && e.message}`); }
     }
   }
+  // In its new workspace the screen joins whichever dynamic groups its tags and name match there.
+  for (const m of moved) groupRules.reconcileDeviceAsSystem(db, io, m.device_id);
   res.json({
     success: true, workspace_id: target.id, moved,
     store_triggers_hidden: after.store_triggers_hidden || [],
@@ -228,6 +259,19 @@ router.get('/unassigned', (req, res) => {
 router.get('/removed', (req, res) => {
   if (!req.workspaceId) return res.json([]);
   res.json(deviceSettings.listRemoved(req.workspaceId));
+});
+
+/*
+ * Place search for a screen's location (Open-Meteo geocoding, keyless, through the weather source's
+ * allowlisted and SSRF-guarded fetch). Workspace members only; returns names and coordinates.
+ */
+router.get('/geocode', async (req, res) => {
+  if (!req.workspaceId) return res.status(403).json({ error: 'No workspace context' });
+  try {
+    res.json(await require('../lib/local-conditions').searchPlaces(req.query.q, req.query.lang || 'en'));
+  } catch (e) {
+    res.status(502).json({ error: 'Place search is unavailable right now.' });
+  }
 });
 
 // Get single device with telemetry history
@@ -424,7 +468,7 @@ router.get('/:id', (req, res) => {
   // that never reported one, or whose block is unreadable — the card simply does not render.
   const edid = require('../lib/edid').parseEdid(device.hardware_edid);
 
-  res.json({ ...stripDeviceSecrets(device), capabilities, edid, telemetry, screenshot, assignments, active_layout_zones, playlist_status, playlist_has_published, uptimeData, statusLog, deviceEvents });
+  res.json({ ...stripDeviceSecrets(device), tags: parseTags(device.tags), group_ids: groupIdsByDevice([device.id])[device.id] || [], local_weather: require('../lib/local-conditions').readingFor(device), capabilities, edid, telemetry, screenshot, assignments, active_layout_zones, playlist_status, playlist_has_published, uptimeData, statusLog, deviceEvents });
 });
 
 /*
@@ -549,7 +593,23 @@ router.put('/:id', (req, res) => {
   const device = checkDeviceOwnership(req, res);
   if (!device) return;
 
-  const { name, notes, timezone, orientation, background_color, default_content_id, layout_id, ota_enabled, ota_beta, reboot_schedule, live_video_enabled } = req.body;
+  const { name, notes, timezone, orientation, background_color, default_content_id, layout_id, ota_enabled, ota_beta, reboot_schedule, live_video_enabled, tags } = req.body;
+  // Where the screen is (lib/local-conditions.js). Both coordinates or neither; both null clears.
+  let locUpdate = null;
+  if (req.body.latitude !== undefined || req.body.longitude !== undefined || req.body.location_label !== undefined) {
+    const clear = req.body.latitude === null && req.body.longitude === null;
+    const lat = Number(req.body.latitude), lon = Number(req.body.longitude);
+    if (!clear && (req.body.latitude !== undefined || req.body.longitude !== undefined)
+        && !(Number.isFinite(lat) && Number.isFinite(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) {
+      return res.status(400).json({ error: 'latitude and longitude must both be given, as -90..90 and -180..180 (or both null to clear)' });
+    }
+    locUpdate = {
+      ...(req.body.latitude !== undefined || req.body.longitude !== undefined ? { latitude: clear ? null : lat, longitude: clear ? null : lon } : {}),
+      ...(req.body.location_label !== undefined ? { location_label: req.body.location_label ? String(req.body.location_label).replace(/[\u0000-\u001f<>]/g, '').slice(0, 120) : null } : {}),
+    };
+  }
+  const normTags = normalizeTags(tags);
+  if (normTags === false) return res.status(400).json({ error: 'tags must be an array of labels or a comma-separated string' });
   // #150: validate orientation against the known enum (previously accepted any string, which
   // let a bad value reach the player -> unknown rotation falls back to landscape silently).
   // #325: a CSS colour that reaches the player's inline style, so it is constrained to a hex
@@ -616,9 +676,36 @@ router.put('/:id', (req, res) => {
     updates.push('reboot_schedule = ?'); values.push(val);
     updates.push('reboot_last_date = ?'); values.push(null);
   }
+  if (normTags !== undefined) { updates.push('tags = ?'); values.push(JSON.stringify(normTags)); }
+  if (locUpdate) for (const [k, v] of Object.entries(locUpdate)) { updates.push(`${k} = ?`); values.push(v); }
+  /*
+   * Tags, name and timezone are what dynamic groups match on, so this edit can move the screen into
+   * or out of groups. Planned against the NEW values, then written together with the membership
+   * under the corporate guard, as this operator: a change that would alter which head office
+   * playlist the screen plays is refused exactly like dragging it out of the group by hand, and
+   * nothing is written.
+   */
+  const dynOverrides = {};
+  if (normTags !== undefined) dynOverrides.tags = JSON.stringify(normTags);
+  if (name !== undefined) dynOverrides.name = name;
+  if (timezone !== undefined) dynOverrides.timezone = timezone;
+  const dynOps = Object.keys(dynOverrides).length ? groupRules.planDevice(db, req.params.id, dynOverrides) : [];
   if (updates.length > 0) {
     values.push(req.params.id);
-    db.prepare(`UPDATE devices SET ${updates.join(', ')}, updated_at = strftime('%s','now') WHERE id = ?`).run(...values);
+    const write = () => {
+      db.prepare(`UPDATE devices SET ${updates.join(', ')}, updated_at = strftime('%s','now') WHERE id = ?`).run(...values);
+      if (dynOps.length) groupRules.applyOps(db, dynOps);
+      return true;
+    };
+    if (dynOps.length) {
+      const corpGuard = require('../lib/corporate/guard');
+      const ok = corpGuard.guarded(req, res, () => corpGuard.assertNoMandateLoss(req, [req.params.id], write,
+        (c) => `This change would move the screen ${dynOps[0].op === 'add' ? 'into' : 'out of'} the group "${dynOps[0].group.name}", which changes what it plays (head office's "${c.name}"). Ask your organization admin to do it.`));
+      if (!ok) return;
+      groupRules.pushTo(req.app.get('io'), groupRules.devicesToPush(db, dynOps));
+    } else {
+      write();
+    }
     // Allowed on a head office screen, and recorded so head office can see who changed it.
     if (orientation !== undefined || timezone !== undefined) {
       require('../lib/corporate/guard').auditMandatedAction(req, device, orientation !== undefined ? 'orientation' : 'timezone');
@@ -626,6 +713,8 @@ router.put('/:id', (req, res) => {
   }
 
   const updated = db.prepare('SELECT * FROM devices WHERE id = ?').get(req.params.id);
+  updated.tags = parseTags(updated.tags);
+  if (dynOps.length) updated.groups_changed = dynOps.map((o) => ({ group_id: o.group.id, name: o.group.name, op: o.op }));
   // ⚠️ stripDeviceSecrets only removes device_token. GET /:id additionally calls
   // stripSecretsForTokens; these two echo paths did not, so a token got the trigger secret
   // back from a rename — the escalation lib/device-sanitize.js exists to prevent.
@@ -671,11 +760,12 @@ router.put('/:id', (req, res) => {
  * mesh write channel re-enters this node's own HTTP API precisely so that a remote request passes
  * the same guards a local one does. Without an HTTP surface there was nothing for it to re-enter.
  *
- * Guarded exactly as the group route is: requireScope('full') for API tokens (a fleet-affecting
- * action is not an ordinary write), checkDeviceOwnership for the workspace, the shared command
- * allowlist, and the panel's own declared capabilities.
+ * Guarded exactly as the group route is: requireCommandScope for API tokens (`full`, except the
+ * five undoable commands a `write` token may send — lib/device-command.js WRITE_SCOPE_COMMANDS),
+ * checkDeviceOwnership for the workspace, the shared command allowlist, and the panel's own
+ * declared capabilities.
  */
-router.post('/:id/command', requireScope('full'), (req, res) => {
+router.post('/:id/command', requireCommandScope, (req, res) => {
   const device = checkDeviceOwnership(req, res);
   if (!device) return;
 
@@ -1155,6 +1245,11 @@ router.delete('/:id', (req, res) => {
   if (io) {
     const { workspaceRoom, emitToWorkspace } = require('../lib/socket-rooms');
     emitToWorkspace(io.of('/dashboard'), workspaceRoom(device.workspace_id), 'dashboard:device-removed', { device_id: req.params.id });
+    // Tell the screen now. Without this a connected player only learned on its next register (a
+    // reconnect, or an app restart), and sat on its old content until then. `reason: 'deleted'` is
+    // what lets a player wipe its downloads: the not_found a register gets is also what a restored
+    // backup or an unreplicated edge says, so players must never wipe on that.
+    io.of('/device').to(req.params.id).emit('device:unpaired', { reason: 'deleted' });
   }
 
   res.json({ success: true });

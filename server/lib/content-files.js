@@ -122,6 +122,8 @@ function removeUnreferencedContent(contentId) {
   forgetPublished(row);
   releaseMeshProvenance(row.id);
   db.prepare('DELETE FROM content WHERE id = ?').run(row.id);
+  // Copies in a storage backend: rows now, objects once nothing else names them (lib/storage).
+  require('./storage/locations').releaseDeletedContent([row.id]);
   return { removed: true, bytes: row.file_size || 0 };
 }
 
@@ -150,6 +152,8 @@ function removeDeletedContentFiles(rows, { unlink } = {}) {
       if (r.subtitle_url) rm(r.subtitle_url, 'subtitle_url');
       forgetPublished(r);
       require('./revisions').removeRetainedFiles(r.id);
+      // Bucket copies (asset, thumbnail, subtitle, retained history) of the deleted row, refcounted.
+      require('./storage/locations').releaseDeletedContent([r.id]);
     } catch (e) {
       console.warn(`[content-files] could not remove files of deleted content ${r.id}: ${e.message}`);
     }

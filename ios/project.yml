@@ -1,0 +1,76 @@
+# XcodeGen spec for the LuminaScreen iPad/iPhone app. The repository keeps this text file, never a
+# generated .xcodeproj:  brew install xcodegen && xcodegen generate  (docs/ios-player.md).
+name: LuminaScreen
+options:
+  bundleIdPrefix: com.luminascreen
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "2.4.3"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.9"
+    # Signing is the distributor's, not the repository's: set DEVELOPMENT_TEAM (or sign in Xcode).
+    CODE_SIGN_STYLE: Automatic
+    TARGETED_DEVICE_FAMILY: "1,2"
+targets:
+  LuminaScreen:
+    type: application
+    platform: iOS
+    sources:
+      - path: LuminaScreen
+    info:
+      path: LuminaScreen/Info.plist
+      properties:
+        CFBundleDisplayName: LuminaScreen
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UIRequiresFullScreen: true
+        UIStatusBarHidden: true
+        UIViewControllerBasedStatusBarAppearance: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+          - UIInterfaceOrientationPortraitUpsideDown
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # A signage server is often on the LAN, sometimes over plain http. Web content only — the
+        # app's own requests stay on ATS defaults.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoadsInWebContent: true
+          NSAllowsLocalNetworking: true
+        NSLocalNetworkUsageDescription: LuminaScreen connects to your signage server on the local network.
+        NSMicrophoneUsageDescription: The LuminaScreen dashboard can open a two-way intercom with this screen.
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.luminascreen.player
+        INFOPLIST_FILE: LuminaScreen/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+  LuminaScreenTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: LuminaScreenTests
+    dependencies:
+      - target: LuminaScreen
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: true
+        PRODUCT_BUNDLE_IDENTIFIER: com.luminascreen.player.tests
+schemes:
+  LuminaScreen:
+    build:
+      targets:
+        LuminaScreen: all
+        LuminaScreenTests: [test]
+    test:
+      targets:
+        - LuminaScreenTests

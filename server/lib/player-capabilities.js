@@ -40,11 +40,27 @@ const CAPABILITIES = [
    * player declares it and the deviceSocket strip keeps rtsp items off every other screen. In no
    * baseline (brand new). */
   'playback.rtsp',
+  /* The screen's own HDMI INPUT played as an item (mime video/hdmi-in, remote_url hdmi://<port>):
+   * a cable box or console plugged into a Fire TV Cube / Android TV box with HDMI in. Declared by
+   * the native Android player ONLY when it found an HDMI passthrough input on this device at
+   * runtime — most Android boxes have none, which is exactly why a static table could not know.
+   * In NO baseline; the deviceSocket strip keeps it off every other screen. */
+  'playback.hdmi_in',
   /* An uploaded HTML bundle (.wgt / .zip) played as a playlist item. Declared by a player that can
    * MOUNT one — today that means loading the server's flattened single-document render, which every
    * player with an iframe can do. It does NOT imply the player can unpack an archive locally, so it
    * says nothing about whether a bundle survives an outage; that is offline.cache's job. */
   'playback.bundle',
+  /* A HOLD item (mime application/x-st-hold, remote_url hold://blank | hold://freeze): show nothing
+   * new for the item's duration — blank, or freeze the previous frame. How a timeline across screens
+   * is written (see lib/hold-item.js). In NO baseline: an old player would skip it as an unknown
+   * type, shortening the timeline, so the deviceSocket strip keeps it off any screen that does not
+   * declare it. */
+  'playback.hold',
+  /* Zones on a VIDEO WALL: the wall's layout, in percent of the wall's player rect, each zone paced
+   * by the shared clock (lib/wall-layout.js). A wall member without it still plays the wall's
+   * playlist across the whole wall, so the dashboard names the panels that lack it. In NO baseline. */
+  'playback.wall_zones',
   /* A webpage widget with `interactive: true` played as a walk-up kiosk page (#473): touch reaches
    * the site, the playlist holds while a visitor uses it, and an idle reset wipes the session.
    * FULL support: the site loads TOP-LEVEL in a browser the player controls, so the navigation
@@ -135,6 +151,21 @@ const CAPABILITIES = [
    * In NO baseline — brand new, and a fielded player simply ignores the unknown command.
    */
   'net.http_request',
+  /*
+   * Audience counting (lib/audience.js): the player has a camera it can open and an on-device face
+   * detector, and will report COUNTS ONLY. Declared by a player that could count if asked — not a
+   * statement that it is counting; that is the org's switch, sent in the payload. In NO baseline.
+   */
+  'audience.camera',
+  /*
+   * A meeting-room display (lib/rooms) on this screen can be USED: the player hands the page its
+   * panel capability (the #panel fragment, ws/deviceSocket.js) and a person at the screen can press
+   * its buttons. The release sweep (lib/rooms/service.js sweepReleases) gives a room back only while
+   * a screen with this is showing it, because releasing a meeting nobody COULD check in to just loses
+   * a real booking. In NO baseline: a player older than room displays never passes the capability.
+   * Not declared by Tizen, webOS, BrightSign or Vega (docs/room-booking.md lists them read-only).
+   */
+  'room.panel',
 
   // synchronisation
   'sync.clock', 'sync.native',
@@ -416,6 +447,43 @@ const BASELINE = {
     'system.restart_player',
     'sync.clock', 'offline.cache',
   ],
+  /*
+   * The NATIVE macOS player — the same engine again (native/luminascreen_native, platform/macos),
+   * client_type 'mac', platform 'macOS/<version> (<model>)'. Exactly BASELINE.windows, for exactly its
+   * reason: no macOS build has been released, the player declares on every register, and only what
+   * the shared engine does by itself is assumed. And never system.self_update — a Mac does not update
+   * itself at all (platform/macos/ops.py withdraws it from its own declaration too).
+   */
+  macos: [
+    'playback.video', 'playback.image', 'playback.widget', 'playback.youtube',
+    'playback.zones', 'playback.transitions', 'playback.pip',
+    'playback.bundle', 'playback.slide_audio',
+    'audio.mute',
+    'display.rotation', 'display.brightness',
+    'remote.screenshot', 'remote.stream', 'remote.input',
+    'system.restart_player',
+    'sync.clock', 'offline.cache',
+  ],
+  /*
+   * The iPad/iPhone app (ios/): the web player, top-level in a WKWebView, platform 'ios'. BASELINE.web
+   * minus two things iOS takes away from a web view:
+   *   - audio.volume: HTMLMediaElement.volume is read-only (always 1) on iOS — the slider would be
+   *     dead. The player withdraws it from its own declaration as well (declaredCapabilities).
+   *   - offline.cache: a WKWebView runs service workers only for the "app-bound domains" an app lists
+   *     in its Info.plist at build time, and a customer's server cannot be listed in advance. The
+   *     player claims offline.cache only for a worker in control, so a row that declares never has it.
+   */
+  ios: [
+    'playback.video', 'playback.image', 'playback.widget', 'playback.youtube',
+    'playback.zones', 'playback.transitions', 'playback.pip',
+    'playback.bundle',
+    'playback.slide_audio',
+    'audio.mute',
+    'display.rotation',
+    'remote.screenshot', 'remote.stream', 'remote.input',
+    'system.restart_player',
+    'sync.clock',
+  ],
   // A browser tab. Deliberately the smallest set: it cannot reboot its host, rotate a panel, or
   // capture anything outside its own document.
   web: [
@@ -475,6 +543,12 @@ function platformFamily(device) {
   // before the Android fallback — it sends android_version '' today, and a build that ever put its
   // OS string there must not become an Android panel.
   if (clientType === 'win' || platform.startsWith('windows/')) return 'windows';
+  // The native macOS player: the same engine, the same two signals, the same position ahead of the
+  // Android fallback.
+  if (clientType === 'mac' || platform.startsWith('macos/')) return 'macos';
+  // The iPad/iPhone app registers through the web player (android_version 'Web/…', client_type
+  // 'player'), so this must come before the browser fallback below — like Vega above.
+  if (platform === 'ios') return 'ios';
   // client_type 'apk' is the Android player; android_version that is NOT the web player's
   // "Web/..." shape is the older signal for the same thing.
   if ((device && device.client_type === 'apk') || (android && !android.startsWith('Web/'))) return 'android';

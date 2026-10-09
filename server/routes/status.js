@@ -222,7 +222,7 @@ router.get('/backup', (req, res) => {
 });
 
 // User data export (own data only)
-router.get('/export', (req, res) => {
+router.get('/export', async (req, res) => {
   const token = req.query.token;
   if (!token) return res.status(401).json({ error: 'Token required' });
 
@@ -246,7 +246,7 @@ router.get('/export', (req, res) => {
   const user = db.prepare('SELECT id, email, name, role, auth_provider, plan_id, created_at FROM users WHERE id = ?').get(userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
 
-  const devices = db.prepare('SELECT id, name, status, ip_address, android_version, app_version, screen_width, screen_height, created_at FROM devices WHERE user_id = ?').all(userId);
+  const devices = db.prepare('SELECT id, name, status, ip_address, android_version, app_version, screen_width, screen_height, tags, created_at FROM devices WHERE user_id = ?').all(userId);
   const deviceIds = devices.map(d => d.id);
   const devicePlaceholders = deviceIds.map(() => '?').join(',') || "'__none__'";
 
@@ -298,7 +298,7 @@ router.get('/export', (req, res) => {
   const wallDevices = wallIds.length ? db.prepare(`SELECT * FROM video_wall_devices WHERE wall_id IN (${wallPlaceholders})`).all(...wallIds) : [];
 
   const kioskPages = db.prepare('SELECT id, name, config, created_at FROM kiosk_pages WHERE user_id = ?').all(userId);
-  const deviceGroups = db.prepare('SELECT id, name, color, created_at FROM device_groups WHERE user_id = ?').all(userId);
+  const deviceGroups = db.prepare('SELECT id, name, color, rules, created_at FROM device_groups WHERE user_id = ?').all(userId);
   const groupIds = deviceGroups.map(g => g.id);
   const groupPlaceholders = groupIds.map(() => '?').join(',') || "'__none__'";
   const groupMembers = groupIds.length ? db.prepare(`SELECT * FROM device_group_members WHERE group_id IN (${groupPlaceholders})`).all(...groupIds) : [];
@@ -348,13 +348,22 @@ router.get('/export', (req, res) => {
 
     // Collect file info and add files to archive
     const filesToInclude = [];
+    const storageLoc = require('../lib/storage/locations');
     for (const c of exportData.content) {
       if (c.remote_url || !c.filename) continue;
-      let row;
-      try {
-        row = db.prepare('SELECT filepath, thumbnail_path, storage_key FROM content WHERE id = ?').get(c.id);
-      } catch {
-        row = db.prepare('SELECT filepath, thumbnail_path FROM content WHERE id = ?').get(c.id);
+      const row = db.prepare('SELECT * FROM content WHERE id = ?').get(c.id);
+      if (row && storageLoc.hasExplicitLocations(row.id)) {
+        for (const [kind, col, field] of [['asset', 'filepath', 'original_filepath'], ['thumb', 'thumbnail_path', 'original_thumbnail']]) {
+          if (!row[col] || (kind === 'thumb' && row.thumbnail_path === row.filepath)) continue;
+          try {
+            const abs = await storageLoc.ensureLocalFile(row, kind);
+            if (abs && fs.existsSync(abs)) {
+              c[field] = path.basename(row[col]);
+              archive.file(abs, { name: `files/${c.id}/${c[field]}` });
+            }
+          } catch (_) { /* unreadable everywhere: omitted */ }
+        }
+        continue;
       }
       if (row?.filepath) {
         const filePath = storage.file(row.filepath);
@@ -546,7 +555,8 @@ router.post('/import', proxyImportIfCopied, importUpload.single('file'), async (
       const newId = uuid.v4();
       idMap.devices[d.id] = newId;
       const pairingCode = sixDigitCode(); // CSPRNG (lib/numeric-code): this code claims a device
-      db.prepare(`INSERT INTO devices (id, user_id, workspace_id, name, pairing_code, status, screen_width, screen_height, created_at) VALUES (?, ?, ?, ?, ?, 'provisioning', ?, ?, ?)`).run(newId, userId, workspaceId, d.name, pairingCode, d.screen_width || null, d.screen_height || null, d.created_at || Math.floor(Date.now() / 1000));
+      const tags = require('../lib/content-tags').normalizeTags(d.tags == null ? undefined : require('../lib/content-tags').parseTags(d.tags));
+      db.prepare(`INSERT INTO devices (id, user_id, workspace_id, name, pairing_code, status, screen_width, screen_height, tags, created_at) VALUES (?, ?, ?, ?, ?, 'provisioning', ?, ?, ?, ?)`).run(newId, userId, workspaceId, d.name, pairingCode, d.screen_width || null, d.screen_height || null, tags && tags.length ? JSON.stringify(tags) : null, d.created_at || Math.floor(Date.now() / 1000));
       stats.devices++;
     }
 
@@ -624,6 +634,9 @@ router.post('/import', proxyImportIfCopied, importUpload.single('file'), async (
 
       db.prepare(`INSERT INTO content (id, user_id, workspace_id, filename, filepath, mime_type, file_size, duration_sec, remote_url, thumbnail_path, width, height, created_at, byte_digest) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(newId, userId, workspaceId, c.filename, newFilepath, c.mime_type, c.file_size || 0, c.duration_sec || null, c.remote_url || null, newThumbnail, c.width || null, c.height || null, c.created_at || Math.floor(Date.now() / 1000), restoredDigest);
       stats.content++;
+      // The restored file is local; if the workspace writes to a bucket it moves there once this
+      // transaction has committed (a rolled-back import leaves no row, and the settle is a no-op).
+      if (newFilepath) require('../lib/storage/locations').settleSoon(newId);
     }
 
     // Import widgets
@@ -641,6 +654,20 @@ router.post('/import', proxyImportIfCopied, importUpload.single('file'), async (
           config = JSON.stringify(require('../lib/templates/widget').buildConfig(parsed.template, parsed.values, workspaceId));
         } catch {
           config = JSON.stringify({ template: typeof parsed.template === 'string' ? parsed.template.slice(0, 100) : '', values: {}, ds_refs: [] });
+        }
+      }
+      // A dashboard widget's config is validated as a whole (lib/bi/widget.js), against a connection
+      // of THIS workspace's organization. One that does not pass — an export from another server
+      // names connections that do not exist here — keeps only its provider, and the screen says to
+      // choose a connection.
+      if (w.widget_type === 'bi-dashboard') {
+        const bi = require('../lib/bi/widget');
+        let parsed = {};
+        try { parsed = JSON.parse(config); } catch { parsed = {}; }
+        try {
+          config = JSON.stringify(bi.normaliseConfig(db, require('../lib/bi/connections').orgOfWorkspace(db, workspaceId), parsed));
+        } catch {
+          config = JSON.stringify(bi.PROVIDERS.includes(parsed && parsed.provider) ? { provider: parsed.provider, mode: 'connection' } : {});
         }
       }
       db.prepare(`INSERT INTO widgets (id, user_id, workspace_id, widget_type, name, config, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(newId, userId, workspaceId, w.widget_type, w.name, config, w.created_at || Math.floor(Date.now() / 1000));
@@ -816,7 +843,8 @@ router.post('/import', proxyImportIfCopied, importUpload.single('file'), async (
     for (const g of (data.device_groups || [])) {
       const newId = uuid.v4();
       idMap.groups[g.id] = newId;
-      db.prepare(`INSERT INTO device_groups (id, user_id, workspace_id, name, color, created_at) VALUES (?, ?, ?, ?, ?, ?)`).run(newId, userId, workspaceId, g.name, g.color || '#3B82F6', g.created_at || Math.floor(Date.now() / 1000));
+      const rules = require('../lib/device-group-rules').parseRules(g.rules);   // invalid -> a hand-built group
+      db.prepare(`INSERT INTO device_groups (id, user_id, workspace_id, name, color, rules, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(newId, userId, workspaceId, g.name, g.color || '#3B82F6', rules ? JSON.stringify(rules) : null, g.created_at || Math.floor(Date.now() / 1000));
       stats.device_groups++;
     }
     for (const gm of (data.device_group_members || [])) {

@@ -108,7 +108,7 @@ function releaseLayoutDraft(db, layoutId, req, { actor } = {}) {
     applyZones(db, layoutId, Array.isArray(draft.zones) ? draft.zones : []);
     policy.afterRelease(db, { type: 'layout', id: layoutId, gate, actor: actor || actorOf(req), summary: 'Published' });
   })();
-  pushDevices(req, db.prepare('SELECT id FROM devices WHERE layout_id = ?').all(layoutId).map((r) => r.id));
+  pushDevices(req, db.prepare(require('./wall-layout').SCREENS_ON_LAYOUT_SQL).all(layoutId, layoutId).map((r) => r.id));
   audit('release:layout', { userId: actor && actor.userId, workspaceId: l.workspace_id, details: { layout_id: layoutId, submission_id: gate.submission ? gate.submission.id : null } });
   return { gate };
 }
@@ -128,7 +128,8 @@ function releaseContentDraft(db, contentId, req, { actor } = {}) {
   const draft = revisions.parseJson(c.draft_json, null);
   if (!draft) { const e = new Error('This item has no unpublished draft'); e.status = 400; throw e; }
   const gate = policy.assertReleasable(db, { workspaceId: c.workspace_id, type: 'content', id: contentId });
-  if (draft.filepath && !storage.head(draft.filepath)) {
+  // A draft that keeps the live bytes needs no separate file. Only new draft bytes must be present.
+  if (draft.filepath && draft.filepath !== c.filepath && !storage.head(draft.filepath)) {
     const e = new Error('The draft file is missing on disk; upload it again'); e.status = 409; throw e;
   }
   const prevRev = revisions.latest(db, 'content', contentId);
@@ -158,6 +159,7 @@ function releaseContentDraft(db, contentId, req, { actor } = {}) {
   })();
   pushDevices(req, require('./devices-playing').devicesPlayingContent(contentId));
   try { require('./storage/publish').schedulePublish(db.prepare('SELECT * FROM content WHERE id = ?').get(contentId)); } catch { /* publish must not undo a release */ }
+  if (draft.filepath && draft.filepath !== c.filepath) require('./storage/locations').settleSoon(contentId, { kinds: ['asset', 'thumb'] });
   audit('release:content', { userId: actor && actor.userId, workspaceId: c.workspace_id, details: { content_id: contentId, submission_id: gate.submission ? gate.submission.id : null } });
   return { gate };
 }

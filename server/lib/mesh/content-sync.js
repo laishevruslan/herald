@@ -407,6 +407,7 @@ async function commitStagedAsset(db, edge, entry, stagedPath, deps) {
   if (placed && placed.published) {
     require('../storage/publish').rememberLocation(localId, placed.bucket, placed.storageKey);
   }
+  try { require('../storage/locations').settleSoon(localId, { kinds: ['asset'] }); } catch (_) { /* stays local */ }
     try { require('../revisions').recordCurrent(db, 'content', localId, { actor: { userId: null, kind: 'mesh', label: 'mesh hub' }, summary: existing ? 'Synced from hub (bytes changed)' : 'Synced from hub' }); } catch (_) {}
 
   return { ok: true, localId, filepath: finalName, digest, bytes: stat.size, reusedRow: !!existing };

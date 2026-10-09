@@ -57,7 +57,7 @@ Unchanged wire format (`device:command {type, payload}`), gated by capability as
 | `shell {cmd}` | `system.shell` | one-shot; answer with `device:shell-result {cmd, output, exit}` (output capped at 8000 chars server-side) |
 | `install_apk {url}` | `system.install_apk` | the dashboard labels it "Install package (.deb URL)" for a Pi; the Pi hands the URL to dpkg |
 | `kiosk_lock` / `kiosk_unlock` / `lock_now` / `power_menu` | `system.kiosk` (stand-in for `system.device_owner`) | the dashboard shows these for a Pi that declares `system.kiosk` |
-| `set_time` / `set_timezone` | `system.time` | no dashboard control exists yet |
+| `set_time` / `set_timezone` | `system.time` | no dashboard control yet; pairing sends `set_timezone` (the pairing browser's zone) to a screen still on a default zone (UTC, Europe/London) with no override |
 | `set_server_url {url}` | `remote.set_server_url` | no enrol key is minted for `client_type 'pi'` (that is for browser players only) |
 
 ## 3. Interactive terminal (PTY) — `system.pty`
@@ -158,3 +158,10 @@ breaker. A package held by `block_uninstall` is un-held for the upgrade and held
 
 ⚠️ After `set_server_url`, the helper still verifies against the server in `/etc` (by design — the
 player's own state is not trusted); re-run `luminascreen-pi setup <new-url>` on panels that move.
+
+## Audience counting (optional add-on)
+
+The player declares `audience.camera` only when the optional audience-counting add-on is installed
+and a USB webcam is present. The add-on is OpenCV and the YuNet face model, chosen at install time
+and off by default. It counts with the same rules and wire format as Android (`device:audience`,
+acked by `device:audience-ack`). See [audience-counting.md](audience-counting.md#the-add-on-for-raspberry-pi-and-windows).

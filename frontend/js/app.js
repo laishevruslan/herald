@@ -14,9 +14,15 @@ import * as dataSources from './views/data-sources.js';
 import * as reviews from './views/reviews.js';
 import * as videoWall from './views/video-wall.js';
 import * as reports from './views/reports.js';
+import * as audience from './views/audience.js';
 import * as servers from './views/servers.js';
 import * as noc from './views/noc.js';
 import * as triggers from './views/triggers.js';
+import * as qrCodes from './views/qr-codes.js';
+import * as socialFeeds from './views/social.js';
+import * as alerts from './views/alerts.js';
+import * as capFeeds from './views/cap-feeds.js';
+import * as automation from './views/automation.js';
 import * as corporate from './views/corporate.js';
 import * as activity from './views/activity.js';
 import * as kiosk from './views/kiosk.js';
@@ -241,8 +247,14 @@ const NAV_LABEL_KEYS = {
   schedule: 'nav.schedule',
   walls: 'nav.walls',
   reports: 'nav.reports',
+  audience: 'nav.audience',
   servers: 'nav.servers',
   triggers: 'nav.triggers',
+  'qr-codes': 'nav.qr_codes',
+  social: 'nav.social',
+  alerts: 'nav.alerts',
+  'emergency-feeds': 'nav.emergency_feeds',
+  automation: 'nav.automation',
   // corporate is relabelled per viewer (Corporate / Head office) by syncCorporateNav.
   kiosk: 'nav.kiosk',
   designer: 'nav.designer',
@@ -569,10 +581,12 @@ function route() {
     else if (hash === '#/schedule' && link.dataset.view === 'schedule') link.classList.add('active');
     else if (hash === '#/widgets' && link.dataset.view === 'widgets') link.classList.add('active');
     else if (hash === '#/slides' && link.dataset.view === 'slides') link.classList.add('active');
+    else if (hash === '#/social' && link.dataset.view === 'social') link.classList.add('active');
     else if (hash === '#/templates' && link.dataset.view === 'templates') link.classList.add('active');
     else if ((hash === '#/data-sources' || hash.startsWith('#/data-sources/')) && link.dataset.view === 'data-sources') link.classList.add('active');
     else if ((hash.startsWith('#/wall') || hash === '#/walls') && link.dataset.view === 'walls') link.classList.add('active');
     else if (hash === '#/reports' && link.dataset.view === 'reports') link.classList.add('active');
+    else if (hash === '#/audience' && link.dataset.view === 'audience') link.classList.add('active');
     else if (hash === '#/activity' && link.dataset.view === 'activity') link.classList.add('active');
     else if ((hash === '#/designer' || hash.startsWith('#/designer/')) && link.dataset.view === 'designer') link.classList.add('active');
     else if ((hash === '#/kiosk' || hash.startsWith('#/kiosk/')) && link.dataset.view === 'kiosk') link.classList.add('active');
@@ -592,7 +606,8 @@ function route() {
     const deviceId = hash.split('#/device/')[1].split('/')[0];
     currentView = deviceDetail;
     deviceDetail.render(app, deviceId);
-  } else if (hash === '#/content') {
+  } else if (hash === '#/content' || hash.startsWith('#/content?')) {
+    // ?canva=connected / ?canva_error=… come back from the Canva connect round trip.
     currentView = contentLibrary;
     contentLibrary.render(app);
   } else if (hash === '#/playlists' || hash.startsWith('#/playlists/')) {
@@ -625,6 +640,21 @@ function route() {
   } else if (hash === '#/triggers') {
     currentView = triggers;
     triggers.render(app);
+  } else if (hash === '#/qr-codes') {
+    currentView = qrCodes;
+    qrCodes.render(app);
+  } else if (hash === '#/social') {
+    currentView = socialFeeds;
+    socialFeeds.render(app);
+  } else if (hash === '#/alerts') {
+    currentView = alerts;
+    alerts.render(app);
+  } else if (hash === '#/emergency-feeds') {
+    currentView = capFeeds;
+    capFeeds.render(app);
+  } else if (hash === '#/automation') {
+    currentView = automation;
+    automation.render(app);
   } else if (hash === '#/corporate' || hash.startsWith('#/corporate/')) {
     // Head office (corporate) playlists: head office's face or a store's, chosen inside the view.
     currentView = corporate;
@@ -647,6 +677,9 @@ function route() {
   } else if (hash === '#/reports') {
     currentView = reports;
     reports.render(app);
+  } else if (hash === '#/audience') {
+    currentView = audience;
+    audience.render(app);
   } else if (hash === '#/kiosk' || hash.startsWith('#/kiosk/')) {
     currentView = kiosk;
     kiosk.render(app);

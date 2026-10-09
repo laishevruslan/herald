@@ -47,6 +47,10 @@ function dateFormatLabel(format) {
  */
 import { esc, hydrateAuthImages } from '../utils.js';
 import { pluginFieldsHtml, readPluginFields } from '../lib/plugin-fields.js';
+import { mountMenuEditor, readMenuConfig } from '../components/menu-board-editor.js';
+import { mountBiEditor, readBiConfig } from '../components/bi-dashboard-editor.js';
+import { mountSocialEditor, readSocialConfig } from '../components/social-wall-editor.js';
+import { mountRoomEditor, readRoomConfig } from '../components/room-display-editor.js';
 
 // A refused request must reject, not resolve.
 //
@@ -69,7 +73,7 @@ const API = (url, opts = {}) => {
 
 // Widget type ids only — name + desc are looked up via t() so they switch
 // language with the rest of the UI.
-const WIDGET_TYPES = ['clock', 'weather', 'rss', 'text', 'webpage', 'social', 'directory-board', 'directory-search', 'transition'];
+const WIDGET_TYPES = ['clock', 'weather', 'rss', 'text', 'webpage', 'cloud-doc', 'social', 'directory-board', 'directory-search', 'menu-board', 'bi-dashboard', 'room-display', 'transition'];
 const WIDGET_ICONS = {
   clock: '&#128339;',
   weather: '&#9925;',
@@ -79,6 +83,10 @@ const WIDGET_ICONS = {
   social: '&#128172;',
   'directory-board': '&#127970;',
   'directory-search': '&#128269;',
+  'menu-board': '&#127860;',
+  'cloud-doc': '&#128209;',
+  'bi-dashboard': '&#128202;',
+  'room-display': '&#128682;',
   transition: '&#127916;',
   // Built-in, but never offered in the "new widget" grid: a template widget is created from the
   // Templates library (the server refuses POST /widgets for it) and edited with the same form.
@@ -467,8 +475,8 @@ function showPreviewModal(sessionId, widgetType) {
   // #104: webpage widgets pointing at frame-denying sites (X-Frame-Options) can't be
   // embedded in a browser preview — and an XFO refusal is provably indistinguishable
   // client-side from a working embed, so we don't guess. Always show the honest note.
-  const webpageNote = widgetType === 'webpage'
-    ? `<div style="padding:8px 16px;border-top:1px solid var(--border);color:var(--text-secondary);font-size:13px;text-align:center">${t('widget.webpage_blocked_note')}</div>`
+  const webpageNote = widgetType === 'webpage' || widgetType === 'cloud-doc'
+    ? `<div style="padding:8px 16px;border-top:1px solid var(--border);color:var(--text-secondary);font-size:13px;text-align:center">${t(widgetType === 'cloud-doc' ? 'widget.cloud.preview_note' : 'widget.webpage_blocked_note')}</div>`
     : '';
   overlay.innerHTML = `
     <div style="width:100%;max-width:1400px;height:90vh;background:var(--bg-card);border-radius:8px;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--border)">
@@ -519,7 +527,7 @@ export async function render(container) {
       `).join('')}
     </div>
     <div class="content-grid" id="widgetGrid"></div>
-    <div id="pluginSubmitCard" style="display:none;margin-top:32px" class="card"></div>
+    <div id="pluginSubmitCard" style="display:none;margin-top:32px" class="corp-card"></div>
 
     <!-- Widget Config Modal -->
     <div class="modal-overlay" id="widgetModal" style="display:none">
@@ -754,10 +762,32 @@ export async function render(container) {
             </div>
           </div>`;
         break;
-      case 'social':
+      case 'cloud-doc':
+        // The server rebuilds the link (lib/cloud-docs.js); #wCloudCheck shows what it resolved to.
         html += `
-          <div class="form-group"><label>${t('widget.field.platform')}</label><select id="wPlatform" class="input" style="background:var(--bg-input)"><option value="twitter">${t('widget.field.platform_twitter')}</option><option value="instagram">${t('widget.field.platform_instagram')}</option></select></div>
-          <div class="form-group"><label>${t('widget.field.query')}</label><input type="text" id="wQuery" class="input" value="${esc(config.query || '')}" placeholder="${t('widget.field.query_placeholder')}"></div>`;
+          <div class="form-group"><label>${t('widget.cloud.url')}</label>
+            <textarea id="wCloudUrl" class="input" rows="2" spellcheck="false" placeholder="https://docs.google.com/presentation/d/…">${escAttr(config.url || '')}</textarea>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${t('widget.cloud.url_hint')}</div>
+            <div id="wCloudCheck" style="font-size:12px;margin-top:6px"></div></div>
+          <div class="form-group"><label>${t('widget.cloud.delay')}</label><input type="number" id="wCloudDelay" class="input" min="1" max="3600" value="${escAttr(Number(config.delay_sec) || 10)}"></div>
+          <div class="form-group"><label>${t('widget.cloud.refresh')}</label><input type="number" id="wCloudRefresh" class="input" min="0" max="1440" value="${escAttr(config.refresh_min ?? '')}" placeholder="${escAttr(t('widget.cloud.refresh_ph'))}">
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${t('widget.cloud.refresh_hint')}</div></div>
+          <div class="form-group"><label>${t('widget.field.zoom_pct')}</label><input type="number" id="wZoom" class="input" min="25" max="400" value="${escAttr(Number(config.zoom) || 100)}"></div>
+          <div class="form-group"><label>${t('widget.field.background')}</label><input type="color" id="wBg" value="${escAttr(config.background || '#000000')}" style="width:60px;height:32px;border:none"></div>`;
+        break;
+      case 'social':
+        html += `<div id="wSocialEditor"></div>`;
+        break;
+      case 'menu-board':
+        // components/menu-board-editor.js renders into this box once the modal is open.
+        html += `<div id="wMenuEditor"></div>`;
+        break;
+      case 'bi-dashboard':
+        html += `<div id="wBiEditor"></div>`;
+        break;
+      case 'room-display':
+        // components/room-display-editor.js renders into this box once the modal is open.
+        html += `<div id="wRoomEditor"></div>`;
         break;
       case 'directory-board':
         html += `
@@ -853,11 +883,12 @@ export async function render(container) {
 
     document.getElementById('widgetConfigForm').innerHTML = html;
     const modalEl = document.querySelector('#widgetModal .modal');
-    if (modalEl) modalEl.style.width = type === 'directory-board' ? '720px' : (type === 'transition' ? '620px' : '560px');
+    if (modalEl) modalEl.style.width = type === 'menu-board' ? '860px' : type === 'directory-board' ? '720px' : (type === 'transition' ? '620px' : '560px');
     document.getElementById('widgetModal').style.display = 'flex';
     // Transitions carry their own live preview, so the iframe "Preview" button doesn't apply.
     const pvBtn = document.getElementById('previewWidgetBtn');
-    if (pvBtn) pvBtn.style.display = (type === 'transition') ? 'none' : '';
+    // A room display reads its saved room's live state, which an unsaved preview has no id for.
+    if (pvBtn) pvBtn.style.display = (type === 'transition' || type === 'room-display') ? 'none' : '';
 
     if (type === 'webpage') {
       const box = document.getElementById('wInteractive');
@@ -912,8 +943,43 @@ export async function render(container) {
       renderLogoPicker();
     }
 
+    if (type === 'menu-board') mountMenuEditor(document.getElementById('wMenuEditor'), config, { apiGet: (u) => API(u) });
+    if (type === 'cloud-doc') initCloudDocForm();
+    if (type === 'bi-dashboard') mountBiEditor(document.getElementById('wBiEditor'), config, { apiGet: (u) => API(u) });
+    if (type === 'social') mountSocialEditor(document.getElementById('wSocialEditor'), config, { apiGet: (u) => API(u) });
+    if (type === 'room-display') mountRoomEditor(document.getElementById('wRoomEditor'), config, {
+      get: (u) => API(u),
+      post: (u, b) => API(u, { method: 'POST', body: JSON.stringify(b || {}) }),
+      put: (u, b) => API(u, { method: 'PUT', body: JSON.stringify(b || {}) }),
+    });
     if (type === 'transition') initTransitionForm(config);
     if (type === 'clock') initClockForm();
+  }
+
+  function initCloudDocForm() {
+    const box = document.getElementById('wCloudUrl');
+    const out = document.getElementById('wCloudCheck');
+    if (!box || !out) return;
+    const KIND = { slides: t('widget.cloud.kind_slides'), doc: t('widget.cloud.kind_doc'), sheet: t('widget.cloud.kind_sheet'), office: t('widget.cloud.kind_office') };
+    let seq = 0;
+    const check = async () => {
+      const url = box.value.trim();
+      if (!url) { out.textContent = ''; return; }
+      const mine = ++seq;
+      try {
+        const r = await API('/widgets/cloud-doc/check', { method: 'POST', body: JSON.stringify({ url, delay_sec: document.getElementById('wCloudDelay')?.value }) });
+        if (mine !== seq) return;
+        out.style.color = 'var(--success,#15803d)';
+        out.innerHTML = `✓ ${esc(r.provider === 'google' ? 'Google' : 'Microsoft')} · ${esc(KIND[r.kind] || r.kind)} — <a href="${escAttr(r.url)}" target="_blank" rel="noopener noreferrer">${esc(t('widget.cloud.open'))}</a>`;
+      } catch (e) {
+        if (mine !== seq) return;
+        out.style.color = 'var(--danger,#b91c1c)';
+        out.textContent = e.message;
+      }
+    };
+    box.addEventListener('change', check);
+    box.addEventListener('blur', check);
+    check();
   }
 
   function initClockForm() {
@@ -1393,7 +1459,17 @@ export async function render(container) {
         }
         break;
       }
-      case 'social': Object.assign(config, { platform: val('wPlatform'), query: val('wQuery') }); break;
+      case 'cloud-doc': {
+        const refresh = String(val('wCloudRefresh') || '').trim();
+        Object.assign(config, { url: val('wCloudUrl'), delay_sec: parseInt(val('wCloudDelay')) || 10, zoom: parseInt(val('wZoom')) || 100, background: val('wBg') || '#000000' });
+        if (refresh !== '') config.refresh_min = Math.max(0, parseInt(refresh) || 0);
+        break;
+      }
+      case 'social': Object.assign(config, readSocialConfig()); break;
+      case 'menu-board': Object.assign(config, readMenuConfig()); break;
+      case 'bi-dashboard': Object.assign(config, readBiConfig()); break;
+        break;
+      case 'room-display': Object.assign(config, readRoomConfig()); break;
       case 'transition': {
         const shaders = Array.from(document.querySelectorAll('#wTransList input[type=checkbox]:checked')).map(c => c.dataset.id);
         const params = {}; // per-shader tuned values held in transState.params
@@ -1495,9 +1571,9 @@ export async function render(container) {
           </div>
           <div class="content-item-actions">
             <button class="btn btn-secondary btn-sm" data-edit-widget="${escAttr(w.id)}">${t('common.edit')}</button>
-            <button class="btn btn-secondary btn-sm" data-duplicate-widget="${escAttr(w.id)}" title="${escAttr(t('widget.duplicate_hint'))}">${t('widget.duplicate')}</button>
-            <button class="btn btn-secondary btn-sm" data-history-widget="${escAttr(w.id)}" title="${t('history.button')}">${t('history.button')}</button>
-            <button class="btn btn-danger btn-sm" data-delete-widget="${escAttr(w.id)}">${t('common.delete')}</button>
+            <button class="btn btn-secondary btn-sm btn-icon-only" data-duplicate-widget="${escAttr(w.id)}" title="${escAttr(t('widget.duplicate_hint'))}" aria-label="${escAttr(t('widget.duplicate'))}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+            <button class="btn btn-secondary btn-sm btn-icon-only" data-history-widget="${escAttr(w.id)}" title="${t('history.button')}" aria-label="${t('history.button')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg></button>
+            <button class="btn btn-danger btn-sm btn-icon-only" data-delete-widget="${escAttr(w.id)}" title="${t('common.delete')}" aria-label="${t('common.delete')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
           </div>
           <div data-approval-widget="${escAttr(w.id)}" style="padding:0 12px 10px"></div>
         </div>

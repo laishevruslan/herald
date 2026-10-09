@@ -5,7 +5,7 @@ schema-version = 1
 
 [package]
 title = "LuminaScreen"
-version = "2.4.3"
+version = "2.5.0"
 id = "com.luminascreen.vega"
 icon = "@image/app_icon.png"
 

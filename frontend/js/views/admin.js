@@ -12,6 +12,7 @@ import { openTypeToConfirmModal } from '../components/type-to-confirm-modal.js';
 // 409 duplicate-email / weak-password / invalid-email cases) so we don't fork a
 // second mapper.
 import { mapMutationError } from './workspace-members.js';
+import { mountInstanceStorage } from '../components/storage-settings.js';
 
 const headers = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' });
 // A refused request must reject, not resolve.
@@ -154,16 +155,22 @@ ${section(t('admin.orgs.title'), t('admin.orgs.desc'), `
     html: () => section(t('admin.branding.title'), t('admin.branding.desc'), `<div id="brandingForm">${loading()}</div>`),
     load: () => loadBranding(),
   },
+  rollouts: {
+    tab: 'platform.tab.rollouts', title: 'platform.rollouts.title', subtitle: 'platform.rollouts.subtitle',
+    html: () => section(t('platform.rollouts.title'), t('platform.rollouts.desc'), `<div id="rolloutsBody">${loading()}</div>`),
+    load: () => loadRollouts(),
+  },
   system: {
     tab: 'platform.tab.system', title: 'platform.system.title', subtitle: 'platform.system.subtitle',
     html: () => `
       ${section(t('admin.system'), '', `<div id="systemInfo">${loading()}</div>`)}
+      ${section('Instance storage', '', `<div id="instanceStorage">${loading()}</div>`)}
     <div class="settings-section">
       <h3>${t('admin.diag.title')}</h3>
       <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px">${t('admin.diag.desc')}</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
         <button class="btn btn-secondary" id="diagRefreshBtn">${t('admin.diag.refresh')}</button>
-        <select id="diagProfileSecs" class="form-control" style="width:auto">
+        <select id="diagProfileSecs" class="input" style="width:auto">
           <option value="30">30s</option><option value="60">60s</option><option value="15">15s</option>
         </select>
         <button class="btn btn-secondary" id="diagProfileBtn">${t('admin.diag.profile')}</button>
@@ -173,7 +180,7 @@ ${section(t('admin.orgs.title'), t('admin.orgs.desc'), `
     </div>
       ${section(esc(t('platform.system.status_endpoint')), '', `<div id="statusDebugForm">${loading()}</div>`)}
       ${section(esc(t('platform.system.player_debug')), esc(t('platform.system.player_debug_desc')), `<a class="btn btn-secondary" href="#/admin/player-debug">${esc(t('platform.system.player_debug_open'))} &rarr;</a>`)}`,
-    load: () => { loadSystem(); loadDiagnostics(); wireDiagnostics(); loadStatusDebug(); },
+    load: () => { loadSystem(); mountInstanceStorage(document.getElementById('instanceStorage')); loadDiagnostics(); wireDiagnostics(); loadStatusDebug(); },
   },
   cleanup: {
     tab: 'platform.tab.cleanup', title: 'platform.cleanup.title', subtitle: 'platform.cleanup.subtitle',
@@ -1114,7 +1121,7 @@ async function loadDiagnostics() {
     </div>
 
     <h4 style="margin:12px 0 6px">${t('admin.diag.lag_daily')}</h4>
-    <div style="overflow-x:auto"><table class="data-table"><thead><tr>
+    <div class="table-wrap"><table class="corp-table"><thead><tr>
       <th>day</th><th>samples</th><th>avg p50</th><th>avg p99</th><th>worst</th><th>not normal</th>
     </tr></thead><tbody>${daily || `<tr><td colspan="6">${t('admin.diag.no_history')}</td></tr>`}</tbody></table></div>
 
@@ -1125,7 +1132,7 @@ async function loadDiagnostics() {
       <span>largest widget config: <b>${mb((shape.widgets || {}).max_config_bytes)}</b></span>
       <span>workspaces: <b>${num(shape.workspaces)}</b></span>
     </div>
-    <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>table</th><th>rows</th></tr></thead>
+    <div class="table-wrap"><table class="corp-table"><thead><tr><th>table</th><th>rows</th></tr></thead>
       <tbody>${tables}</tbody></table></div>
     <div id="diagProfileOut"></div>`;
 }
@@ -1169,7 +1176,7 @@ function wireDiagnostics() {
         <tr><td style="text-align:right">${x.pct}%</td><td>${esc(x.fn)}</td><td style="color:var(--text-muted)">${esc(x.at)}</td></tr>`).join('');
       if (out) out.innerHTML = `
         <h4 style="margin:16px 0 6px">${t('admin.diag.top_self')}</h4>
-        <div style="overflow-x:auto"><table class="data-table"><thead><tr>
+        <div class="table-wrap"><table class="corp-table"><thead><tr>
           <th>self</th><th>function</th><th>where</th></tr></thead><tbody>${rows}</tbody></table></div>`;
       const d = document.getElementById('diagDownloadBtn');
       if (d) d.style.display = '';
@@ -1226,7 +1233,7 @@ async function loadPlugins() {
       subHost.innerHTML = `<p style="color:var(--text-muted);font-size:12px">${t('admin.plugins.pending_empty')}</p>`;
     } else {
       subHost.innerHTML = pending.map((s) => `
-        <details class="card" style="margin-bottom:8px;padding:12px">
+        <details class="corp-card" style="margin-bottom:8px;padding:12px">
           <summary style="cursor:pointer;font-weight:600">${esc(s.name || s.plugin_id)} <span style="font-weight:400;color:var(--text-muted);font-family:monospace;font-size:12px">${esc(s.plugin_id)} @ ${esc(s.version || '')}</span></summary>
           <p style="font-size:12px;color:var(--text-muted);margin:8px 0">${esc(s.description || '')}</p>
           <p style="font-size:11px;font-family:monospace;word-break:break-all">sha256 ${esc(s.sha256)}</p>
@@ -1248,7 +1255,7 @@ async function loadPlugins() {
   if (!plugins.length) {
     host.innerHTML = `<p style="color:var(--text-muted)">${t('admin.plugins.empty')}</p>`;
   } else {
-    host.innerHTML = `<table class="data-table"><thead><tr>
+    host.innerHTML = `<div class="table-wrap"><table class="corp-table"><thead><tr>
       <th>${t('admin.plugins.col_name')}</th>
       <th>${t('admin.plugins.col_id')}</th>
       <th>${t('admin.plugins.col_origin')}</th>
@@ -1275,10 +1282,10 @@ async function loadPlugins() {
         <td>${hash}</td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">${action}${pinBtn}</td>
       </tr>`;
-    }).join('')}</tbody></table>
+    }).join('')}</tbody></table></div>
     <p style="color:var(--text-muted);font-size:12px;margin-top:8px">${t('admin.plugins.restart')}</p>
     ${plugins.filter((p) => Array.isArray(p.settings_fields) && p.settings_fields.length).map((p) => `
-      <details class="card" style="margin-top:12px;padding:12px" data-plugin-settings="${esc(p.id)}">
+      <details class="corp-card" style="margin-top:12px;padding:12px" data-plugin-settings="${esc(p.id)}">
         <summary style="cursor:pointer;font-weight:600">${esc(p.name || p.id)} — ${t('admin.plugins.settings')}</summary>
         <form data-plugin-settings-form="${esc(p.id)}" style="margin-top:12px">
           ${pluginFieldsHtml(p.settings_fields, p.settings || {}, 'plugset_' + p.id + '_')}
@@ -1291,13 +1298,13 @@ async function loadPlugins() {
     if (!pins.length) {
       pinHost.innerHTML = `<p style="color:var(--text-muted);font-size:12px">${t('admin.plugins.allowlist_empty')}</p>`;
     } else {
-      pinHost.innerHTML = `<table class="data-table"><thead><tr>
+      pinHost.innerHTML = `<div class="table-wrap"><table class="corp-table"><thead><tr>
         <th>${t('admin.plugins.col_id')}</th><th>sha256</th><th>source</th></tr></thead><tbody>
         ${pins.map((r) => `<tr>
           <td style="font-family:monospace;font-size:12px">${esc(r.plugin_id)}</td>
           <td style="font-family:monospace;font-size:11px;word-break:break-all">${esc(r.sha256)}</td>
           <td>${esc(r.source)}</td>
-        </tr>`).join('')}</tbody></table>`;
+        </tr>`).join('')}</tbody></table></div>`;
     }
   }
 
@@ -1580,4 +1587,35 @@ async function mountCleanup(el, days = 180, lastResult = null, noticeDays = 14) 
       },
     });
   };
+}
+
+
+/* ── Player rollouts (server lib/ota-rollout.js) ─────────────────────────────────────────────── */
+const ROLLOUT_ACTIONS = { rolling: ['pause', 'release', 'halt'], paused: ['resume', 'release', 'halt'], halted: ['clear'], complete: [], superseded: [] };
+async function loadRollouts() {
+  const host = document.getElementById('rolloutsBody');
+  if (!host) return;
+  let data;
+  try { data = await api.get('/admin/ota-rollouts'); } catch (e) { host.innerHTML = `<p class="error">${esc(e.message)}</p>`; return; }
+  const rows = data.rollouts || [];
+  host.innerHTML = `
+    ${data.enabled ? '' : `<p style="color:#ca8a04;font-size:13px">${esc(t('platform.rollouts.disabled'))}</p>`}
+    ${rows.length ? `<div class="table-wrap"><table class="corp-table" style="min-width:640px"><thead><tr>
+      <th>${esc(t('platform.rollouts.col.player'))}</th><th>${esc(t('platform.rollouts.col.status'))}</th>
+      <th>${esc(t('platform.rollouts.col.health'))}</th><th></th></tr></thead><tbody>
+      ${rows.map((r) => `<tr>
+        <td><strong>${esc(t(`platform.rollouts.family.${r.family}`))} ${esc(r.version)}</strong>
+          <div class="corp-help">${esc(t('platform.rollouts.started', { when: new Date(r.started_at * 1000).toLocaleString() }))}</div></td>
+        <td>${esc(t(`platform.rollouts.status.${r.status}`, { pct: r.wave_percent }))}
+          ${r.status === 'halted' ? `<div style="font-size:12px;color:#dc2626;max-width:340px">${esc(r.halted_reason || '')}</div>
+            <div class="corp-help">${esc(r.family === 'android' ? t('platform.rollouts.android_note') : r.can_roll_back ? t('platform.rollouts.rolled_back', { v: r.prev_version }) : t('platform.rollouts.no_prev'))}</div>` : ''}</td>
+        <td style="font-size:12px">${r.health ? esc(t('platform.rollouts.health', { updated: r.health.updated, bad: r.health.bad, size: r.health.family_size })) : ''}</td>
+        <td style="white-space:nowrap">${(ROLLOUT_ACTIONS[r.status] || []).map((a) => `<button class="btn btn-secondary btn-sm" data-ro="${esc(r.family)}|${esc(r.version)}|${a}" style="margin:2px">${esc(t(`platform.rollouts.act.${a}`))}</button>`).join('')}</td>
+      </tr>`).join('')}</tbody></table></div>` : `<div class="corp-empty">${esc(t('platform.rollouts.empty'))}</div>`}`;
+  host.querySelectorAll('[data-ro]').forEach((b) => b.addEventListener('click', async () => {
+    const [family, version, action] = b.dataset.ro.split('|');
+    if ((action === 'halt' || action === 'release') && !confirm(t(`platform.rollouts.confirm.${action}`, { v: version }))) return;
+    try { await api.post(`/admin/ota-rollouts/${encodeURIComponent(family)}/${encodeURIComponent(version)}/${action}`, {}); showToast(t('platform.rollouts.done'), 'success'); loadRollouts(); }
+    catch (e) { showToast(e.message, 'error'); }
+  }));
 }

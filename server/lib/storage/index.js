@@ -1,5 +1,6 @@
 'use strict';
 
+const fs = require('fs');
 const config = require('../../config');
 const { createFilesystemStorage } = require('./fs');
 
@@ -58,5 +59,39 @@ if (backend === 's3') {
   const env = readS3Env();
   storage.objects = createS3Storage({ provision: liveProvision(env), endpoint: env.endpoint, region: env.region });
 }
+
+/*
+ * Local-disk answers for the upstream location layer (lib/storage/locations.js).
+ * RustFS stays on CONTENT_BACKEND=s3 through publish.js. These methods keep playlist
+ * payloads, deletes and replaces from throwing when no storage profile is configured.
+ * A profile id other than local resolves as missing, so nothing here writes a bucket.
+ */
+const LOCAL_PROFILE = Object.freeze({
+  id: 'local', org_id: null, name: 'Local disk', provider: 'local', mode: 'rw',
+  read_priority: 0, presign: 0, synthetic: true,
+});
+storage.LOCAL_PROFILE = LOCAL_PROFILE;
+storage.ENV_ID = 'env';
+storage.outId = (id) => (id == null || id === '' ? 'local' : String(id));
+storage.presignTtl = (sec) => {
+  const n = Number(sec);
+  return Math.min(3600, Math.max(60, Number.isFinite(n) && n > 0 ? n : 900));
+};
+storage.getProfile = (id) => (id == null || id === '' || id === 'local' ? LOCAL_PROFILE : null);
+storage.writeTargetsForWorkspace = () => ({ primary: LOCAL_PROFILE, dualWrite: null, orgId: null });
+storage.profileForWorkspace = () => null;
+storage.profileForOrg = () => null;
+storage.publicView = (p) => p || null;
+storage.backendFor = (profile) => {
+  if (!profile || profile.provider === 'local' || profile.id === 'local') {
+    return {
+      existsSync(key) {
+        const p = storage.file(key);
+        return !!(p && fs.existsSync(p));
+      },
+    };
+  }
+  return null;
+};
 
 module.exports = storage;

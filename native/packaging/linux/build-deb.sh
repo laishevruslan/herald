@@ -43,6 +43,7 @@ install -m 0755 "$HERE/luminascreen-pi" "$ROOT/usr/bin/luminascreen-pi"
 install -m 0644 "$HERE/luminascreen-pi.service" "$ROOT/lib/systemd/system/luminascreen-pi.service"
 install -m 0644 "$HERE/luminascreen-pi-desktop.desktop" "$ROOT/etc/xdg/autostart/luminascreen-pi.desktop"
 install -m 0440 "$HERE/sudoers" "$ROOT/etc/sudoers.d/luminascreen-pi"
+install -D -m 0644 "$HERE/pipewire-all-outputs.conf" "$ROOT/usr/share/luminascreen-pi/pipewire-all-outputs.conf"
 
 cat > "$ROOT/DEBIAN/control" <<EOF
 Package: luminascreen-pi
@@ -55,9 +56,10 @@ Homepage: https://luminascreen.ru
 Depends: python3 (>= 3.13), python3-pyside6.qtcore, python3-pyside6.qtgui, python3-pyside6.qtqml,
  python3-pyside6.qtquick, python3-pyside6.qtmultimedia, python3-pyside6.qtwebenginequick, python3-pyside6.qtnetwork,
  qml6-module-qtquick, qml6-module-qtquick-window, qml6-module-qtqml-workerscript,
- qml6-module-qtmultimedia, qml6-module-qtwebengine, qt6-qpa-plugins, qt6-shader-baker,
+ qml6-module-qtmultimedia, qml6-module-qtwebengine, qt6-qpa-plugins, qt6-wayland, qt6-shader-baker,
  python3-socketio (>= 5), python3-aiohttp, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good,
- gstreamer1.0-plugins-bad, gstreamer1.0-libav, fonts-noto-color-emoji, sudo, util-linux, curl
+ gstreamer1.0-plugins-bad, gstreamer1.0-libav, fonts-noto-color-emoji, sudo, util-linux, curl,
+ pipewire, pipewire-pulse, wireplumber
 Recommends: cec-utils, ddcutil, alsa-utils, wlopm, x11-xserver-utils
 Description: LuminaScreen native digital signage player for Raspberry Pi
  A native (Qt/QML) LuminaScreen player with Android-app parity: offline playback,
@@ -87,6 +89,17 @@ if [ "$1" = "configure" ]; then
   chmod 0755 /usr/lib/luminascreen-pi/st-helper
   visudo -cf /etc/sudoers.d/luminascreen-pi >/dev/null || { echo "sudoers check failed" >&2; rm -f /etc/sudoers.d/luminascreen-pi; }
   [ -e /etc/modules-load.d/luminascreen-pi.conf ] || echo i2c-dev > /etc/modules-load.d/luminascreen-pi.conf
+  # ⚠️ SOUND on Lite. Debian's Qt plays audio only through a sound server, and the Lite service runs
+  # as a system user with no login session, so nothing ever started one: every Lite Pi was silent
+  # ("No audio device detected"). Lingering gives the luminascreen user its own PipeWire at boot,
+  # with nobody logged in; the launcher points the player at it. Sound goes to every output at once.
+  install -d -o luminascreen -g luminascreen -m 0755 /var/lib/luminascreen-pi/.config \
+    /var/lib/luminascreen-pi/.config/pipewire /var/lib/luminascreen-pi/.config/pipewire/pipewire.conf.d
+  install -o luminascreen -g luminascreen -m 0644 /usr/share/luminascreen-pi/pipewire-all-outputs.conf \
+    /var/lib/luminascreen-pi/.config/pipewire/pipewire.conf.d/50-luminascreen-all-outputs.conf
+  if [ -d /run/systemd/system ] && command -v loginctl >/dev/null; then
+    loginctl enable-linger luminascreen || true
+  fi
   if [ -d /run/systemd/system ]; then
     systemctl daemon-reload || true
     # Restart only if it was running: an upgrade must come back up, a fresh install waits for `setup`.
@@ -104,7 +117,20 @@ if [ "$1" = "remove" ] && [ -d /run/systemd/system ]; then
 fi
 exit 0
 EOF
-chmod 0755 "$ROOT/DEBIAN/postinst" "$ROOT/DEBIAN/prerm"
+# The optional audience-counting add-on is not in this package (luminascreen-pi audience-addon
+# install puts it in /usr/lib/luminascreen-pi-audience; older players used
+# /opt/luminascreen/audience-addon). Purging the player takes it too.
+cat > "$ROOT/DEBIAN/postrm" <<'EOF'
+#!/bin/sh
+set -e
+if [ "$1" = "purge" ]; then
+  rm -rf /usr/lib/luminascreen-pi-audience
+  rm -rf /opt/luminascreen/audience-addon
+  rmdir /opt/luminascreen 2>/dev/null || true
+fi
+exit 0
+EOF
+chmod 0755 "$ROOT/DEBIAN/postinst" "$ROOT/DEBIAN/prerm" "$ROOT/DEBIAN/postrm"
 
 OUT="$PI/dist/luminascreen-pi_${VERSION}_all.deb"
 dpkg-deb --root-owner-group --build "$ROOT" "$OUT" >/dev/null
