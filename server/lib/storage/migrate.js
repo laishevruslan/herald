@@ -506,14 +506,35 @@ function shared() {
   return singleton;
 }
 
+/* Profile moves (copy, flip, drain) live beside the RustFS transfer above. `start()` with no
+ * arguments is the RustFS transfer; `start(scope, targetId)` is a profile migration. */
+function profileMigrate() { return require('./profile-migrate'); }
+
+function start(scope, targetId) {
+  if (arguments.length === 0) return shared().start();
+  return profileMigrate().start(scope, targetId);
+}
+
 module.exports = {
   DROP_CONFIRM,
   createMigrator,
   publicStatus: () => shared().publicStatus(),
   adminStatus: () => shared().adminStatus(),
-  start: () => shared().start(),
+  start,
   stop: () => shared().stop(),
   resumeIfRequested: () => shared().resumeIfRequested(),
   tickOnce: () => shared().tickOnce(),
   dropLocalCopies: (opts) => shared().dropLocalCopies(opts),
+  commit: (...args) => profileMigrate().commit(...args),
+  abort: (...args) => profileMigrate().abort(...args),
+  drain: (...args) => profileMigrate().drain(...args),
+  get: (...args) => profileMigrate().get(...args),
+  activeFor: (...args) => profileMigrate().activeFor(...args),
+  latestFor: (...args) => profileMigrate().latestFor(...args),
+  startBackground: (...args) => profileMigrate().startBackground(...args),
+  stopAll: (...args) => profileMigrate().stopAll(...args),
+  copyRow: (...args) => profileMigrate().copyRow(...args),
+  probeOpenBreakers: (...args) => profileMigrate().probeOpenBreakers(...args),
+  get ACTIVE() { return profileMigrate().ACTIVE; },
+  _settle: (...args) => profileMigrate()._settle(...args),
 };

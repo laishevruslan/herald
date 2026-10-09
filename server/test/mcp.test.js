@@ -487,7 +487,7 @@ test('tool calls cannot hang the request forever', () => {
 test('the MCP endpoint is advertised where an agent will look', () => {
   const ai = require('../lib/ai-surface');
   const cat = ai.apiCatalog('https://luminascreen.ru');
-  assert.match(JSON.stringify(cat), /https:\/\/luminascreen\.com\/mcp/);
+  assert.match(JSON.stringify(cat), /https:\/\/luminascreen\.ru\/mcp/);
   assert.match(ai.authMarkdown('https://luminascreen.ru'), /Model Context Protocol/);
 });
 

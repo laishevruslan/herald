@@ -124,7 +124,7 @@ test('a redeemed grant is a platform_operator session that lives exactly as long
   assert.equal(s.viaSupport, true);
   assert.equal(s.user.role, 'platform_operator', 'cross-org read/write, no owner powers (#13)');
   assert.equal(s.user.id, `support:${grant.jti}`);
-  assert.match(s.user.name, /me@luminascreen\.com/);
+  assert.match(s.user.name, /me@luminascreen\.ru/);
   const row = db.prepare('SELECT first_used_at, source_ip FROM support_grants WHERE jti = ?').get(grant.jti);
   assert.ok(row.first_used_at, 'first use is stamped');
   // The JWT's own expiry matches the grant's, to the minute.

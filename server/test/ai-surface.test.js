@@ -97,7 +97,7 @@ test('⚠️ the capability catalogue lists only things we serve', () => {
   assert.match(SERVER_SRC, /ai-catalog\.json[\s\S]{0,240}Access-Control-Allow-Origin/);
   // robots.txt points at it, which is the other way the scanner and a crawler find it.
   const robots = fs.readFileSync(path.join(FRONTEND, 'robots.txt'), 'utf8');
-  assert.match(robots, /^Agentmap: https:\/\/luminascreen\.com\/\.well-known\/ai-catalog\.json$/m);
+  assert.match(robots, /^Agentmap: https:\/\/luminascreen\.ru\/\.well-known\/ai-catalog\.json$/m);
 });
 
 // ───────────────────────────── protected resource metadata ─────────────────────────────
@@ -234,7 +234,7 @@ test('⚠️ an unknown /.well-known path 404s instead of returning the app shel
 test('the discovery documents point at the root copy we actually serve', () => {
   const cat = ai.apiCatalog(BASE).linkset[0];
   assert.equal(cat['service-meta'][0].href, `${BASE}/auth.md`);
-  assert.match(ai.linkHeader(BASE), /<https:\/\/luminascreen\.com\/auth\.md>; rel="service-meta"/);
+  assert.match(ai.linkHeader(BASE), /<https:\/\/luminascreen\.ru\/auth\.md>; rel="service-meta"/);
 });
 
 // ───────────────────────────── which pages have a rendition ─────────────────────────────
@@ -381,7 +381,7 @@ test('the Link header advertises the catalogue, the spec and the rendition', () 
   assert.ok(!/rel="alternate"/.test(plain), 'no markdown alternate for a page that has none');
 
   const withMd = ai.linkHeader(BASE, { markdownOf: '/guides/x.md' });
-  assert.match(withMd, /<https:\/\/luminascreen\.com\/guides\/x\.md>; rel="alternate"; type="text\/markdown"/);
+  assert.match(withMd, /<https:\/\/luminascreen\.ru\/guides\/x\.md>; rel="alternate"; type="text\/markdown"/);
   // Every URI reference in a Link header is angle-bracketed; an unbracketed one is silently dropped.
   for (const part of withMd.split(', ')) assert.match(part, /^<[^>]+>;/, `not bracketed: ${part}`);
 });
@@ -406,7 +406,7 @@ test('robots.txt declares Content Signals without losing a single existing direc
 test('llms.txt names every solutions and integrations page, and nothing that does not exist', () => {
   const llms = fs.readFileSync(path.join(FRONTEND, 'llms.txt'), 'utf8');
   for (const dir of ['solutions', 'integrations']) {
-    const linked = (llms.match(new RegExp(`https://luminascreen\\.com/${dir}/[a-z0-9-]+\\.html`, 'g')) || [])
+    const linked = (llms.match(new RegExp(`https://luminascreen\\.ru/${dir}/[a-z0-9-]+\\.html`, 'g')) || [])
       .map((u) => u.split('/').pop());
     for (const g of new Set(linked)) {
       assert.ok(fs.existsSync(path.join(FRONTEND, dir, g)), `llms.txt links ${dir}/${g}, which does not exist`);
@@ -420,7 +420,7 @@ test('llms.txt names every solutions and integrations page, and nothing that doe
 
 test('llms.txt names the guides that exist and no others', () => {
   const llms = fs.readFileSync(path.join(FRONTEND, 'llms.txt'), 'utf8');
-  const guides = (llms.match(/https:\/\/luminascreen\.com\/guides\/[a-z0-9-]+\.html/g) || [])
+  const guides = (llms.match(/https:\/\/luminascreen\.ru\/guides\/[a-z0-9-]+\.html/g) || [])
     .map((u) => u.split('/').pop());
   assert.ok(guides.length >= 9, `expected every guide to be listed, found ${guides.length}`);
   for (const g of new Set(guides)) {

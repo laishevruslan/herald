@@ -148,7 +148,7 @@ test('the new guides are indexable, canonical and in the sitemap', () => {
     assert.match(html, /name="robots" content="index, follow"/, `${name} robots`);
     assert.match(
       html,
-      new RegExp(`<link rel="canonical" href="https://luminascreen\\.com/guides/${name.replace('.', '\\.')}">`),
+      new RegExp(`<link rel="canonical" href="https://luminascreen\\.ru/guides/${name.replace('.', '\\.')}">`),
       `${name} canonical`
     );
     assert.ok(sitemap.includes(`/guides/${name}`), `${name} is missing from sitemap.xml`);
