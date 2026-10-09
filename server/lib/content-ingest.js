@@ -185,9 +185,27 @@ async function ingestUploadedFile({ file, userId, workspaceId, folderId = null }
    */
   const ownerUserId = isSupportUserId(userId) ? null : userId;
 
-  let placed = null;
+  /*
+   * The bytes go where this workspace writes before the row exists. Sniffing, the thumbnail and
+   * the digest already ran on the local file. A local-disk workspace makes placeFiles a no-op
+   * and the file stays where it has always been. A bucket workspace puts first; a refused put
+   * inserts nothing. CONTENT_BACKEND=s3 still publishes through publish.js while the local copy
+   * is here — that path is the RustFS bench, and it is unchanged when no storage profile is set.
+   */
+  const placedFiles = [{ kind: 'asset', abs: storage.file(filepath), basename: filepath, digest }];
+  if (thumbnailPath && thumbnailPath !== filepath) {
+    placedFiles.push({ kind: 'thumb', abs: storage.file(thumbnailPath), basename: thumbnailPath });
+  }
+  let plan;
   try {
-    placed = await publishContentBytes({
+    plan = await require('./storage/locations').placeFiles({ workspaceId, files: placedFiles, mime });
+  } catch (e) {
+    throw storageWriteError(e, placedFiles);
+  }
+
+  let published = null;
+  try {
+    published = await publishContentBytes({
       workspaceId,
       contentId: id,
       mime,
@@ -202,10 +220,13 @@ async function ingestUploadedFile({ file, userId, workspaceId, folderId = null }
   }
 
   try {
-    db.prepare(`
-      INSERT INTO content (id, user_id, workspace_id, filename, filepath, mime_type, file_size, duration_sec, thumbnail_path, width, height, folder_id, byte_digest, bundle_entry)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, ownerUserId, workspaceId, safeFilename(file.originalname), filepath, mime, file.size, durationSec, thumbnailPath, width, height, folderId || null, digest, bundleEntry);
+    db.transaction(() => {
+      db.prepare(`
+        INSERT INTO content (id, user_id, workspace_id, filename, filepath, mime_type, file_size, duration_sec, thumbnail_path, width, height, folder_id, byte_digest, bundle_entry)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(id, ownerUserId, workspaceId, safeFilename(file.originalname), filepath, mime, file.size, durationSec, thumbnailPath, width, height, folderId || null, digest, bundleEntry);
+      plan.commit(id);
+    })();
   } catch (e) {
     if (storage.objects) {
       await storage.objects.forgetContent({ id, workspace_id: workspaceId });
@@ -213,7 +234,8 @@ async function ingestUploadedFile({ file, userId, workspaceId, folderId = null }
     }
     throw e;
   }
-  if (placed && placed.published) rememberLocation(id, placed.bucket, placed.storageKey);
+  if (published && published.published) rememberLocation(id, published.bucket, published.storageKey);
+  plan.cleanup();
 
   try {
     require('./plugins/hooks').emit('content.uploaded', {
