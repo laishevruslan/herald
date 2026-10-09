@@ -181,7 +181,7 @@ module.exports = {
   graphClientId: process.env.GRAPH_CLIENT_ID || '',
   graphClientSecret: process.env.GRAPH_CLIENT_SECRET || '',
   graphSenderEmail: process.env.GRAPH_SENDER_EMAIL || '',
-  graphSenderName: process.env.GRAPH_SENDER_NAME || 'ScreenTinker',
+  graphSenderName: process.env.GRAPH_SENDER_NAME || 'LuminaScreen',
   // Dev safety net: comma-separated allow-list of recipient emails. When set,
   // sends to any address NOT in the list are suppressed (logged but not posted
   // to Graph). Intended for local dev that pulls fresh prod DB copies - keeps
@@ -214,7 +214,7 @@ module.exports = {
   // Off by default, because the default is the safe one — on a managed panel the install
   // confirm dialog can't be reliably auto-dismissed and ends up sitting over customer content,
   // and the MDM is normally the thing that pushes packages. Set this only when you run an MDM
-  // that does NOT distribute the player and you want ScreenTinker's OTA to own updates instead.
+  // that does NOT distribute the player and you want LuminaScreen's OTA to own updates instead.
   // Advertised to players in /api/update/check as `allow_managed`; a player that doesn't
   // understand the field simply keeps its own behaviour.
   otaAllowManagedDevices: ['true', '1'].includes(String(process.env.OTA_ALLOW_MANAGED_DEVICES || '').toLowerCase()),
@@ -501,7 +501,7 @@ module.exports = {
   // Version update indicator — polls GHCR for the latest Docker image tag via
   // anonymous token flow. All optional with safe defaults.
   ghcrCheckIntervalHours: parseInt(process.env.GHCR_CHECK_INTERVAL_HOURS) || 36,
-  composeFilePath: process.env.COMPOSE_FILE_PATH || '/opt/screentinker/docker-compose.yml',
+  composeFilePath: process.env.COMPOSE_FILE_PATH || '/opt/luminascreen/docker-compose.yml',
 
   // #143 fingerprint-reclaim liveness. A reinstalled app (same fingerprint, no
   // device_id, has pairing_code) may reclaim its old device's identity once that
@@ -521,7 +521,7 @@ module.exports = {
   // ── go2rtc media plane (OPTIONAL live video; see docs/live-video.md) ──────────────────────────
   // Unset GO2RTC_URL and the app behaves exactly as before: live view stays the screenshot stream.
   // The server is the ONLY thing that talks to this URL; the browser signals through a proxied
-  // ScreenTinker route, so the admin API port (1984) is never exposed to a dashboard user.
+  // LuminaScreen route, so the admin API port (1984) is never exposed to a dashboard user.
   go2rtcUrl: process.env.GO2RTC_URL || null,
   go2rtcApiToken: process.env.GO2RTC_API_TOKEN || null,
   go2rtcBasicAuth: process.env.GO2RTC_BASIC_AUTH || null,   // "user:pass" if go2rtc's API is basic-auth'd

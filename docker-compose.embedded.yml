@@ -1,15 +1,15 @@
-# Docker Compose for ScreenTinker with Embedded E-Paper & Full Widget/Slide Rendering Support
+# Docker Compose for LuminaScreen with Embedded E-Paper & Full Widget/Slide Rendering Support
 # (Recommended for Seeed Studio reTerminal Sticky, TRMNL, and other E-Paper displays).
 #
 # Usage:
 #   docker compose -f docker-compose.embedded.yml up -d --build
 #
 services:
-  screentinker:
+  luminascreen:
     build:
       context: .
       dockerfile: Dockerfile.embedded
-    container_name: screentinker-embedded
+    container_name: luminascreen-embedded
     restart: unless-stopped
     ports:
       - "3001:3001"

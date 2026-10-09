@@ -14,7 +14,7 @@ What it shows, and anything the operator must set up (e.g. "a Weather data sourc
 
 ## Author checklist
 
-- [ ] `node <screentinker>/scripts/template-catalog.js build templates -o /tmp/dist` passes
+- [ ] `node <luminascreen>/scripts/template-catalog.js build templates -o /tmp/dist` passes
 - [ ] `node tools/lint-templates.js templates` passes
 - [ ] I rendered it with `tools/render-previews.js` and looked at 1920×1080 and one other shape
 - [ ] `version` is bumped for any change to a published template

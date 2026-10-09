@@ -18,8 +18,8 @@ const crypto = require('crypto');
 const config = require('../config');
 
 // Where the updater writes; the app only reads. Docker mounts its volume at /updater, the systemd
-// installer uses /var/lib/screentinker-updater. An explicit env wins.
-const STATUS_CANDIDATES = ['/updater', '/var/lib/screentinker-updater'];
+// installer uses /var/lib/luminascreen-updater. An explicit env wins.
+const STATUS_CANDIDATES = ['/updater', '/var/lib/luminascreen-updater'];
 const DOCKER_HEARTBEAT_MAX_SEC = 120;   // the sidecar heartbeats every few seconds
 const STALE_JOB_SEC = 45 * 60;          // a "running" status this old is a dead job, not a live one
 const RUNNING = new Set(['starting', 'backup', 'fetch', 'pull', 'install', 'restart', 'verify', 'rollback']);

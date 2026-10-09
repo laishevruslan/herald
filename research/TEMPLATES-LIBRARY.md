@@ -6,7 +6,7 @@ Run an isolated server for experiments with `research/run-server.sh` (port 3098,
 ## The ask (Discord)
 
 Community "app store" for templates: a zip of HTML/JS + a manifest of editable fields (logo, location,
-colours, playlist) + thumbnail. Authors PR to a templates repo under the ScreenTinker org; merge publishes
+colours, playlist) + thumbnail. Authors PR to a templates repo under the LuminaScreen org; merge publishes
 an index on GitHub Pages; each on-prem server checks the index daily; Content → Templates → Library shows
 "New"; Install stores the zip locally; fill fields with live preview; "Add to…" screen/playlist.
 Air-gapped: import a zip like a plugin. Each server fetches its own data (weather etc.).
@@ -46,7 +46,7 @@ client-side wttr.in, current conditions only), and a playlist *region* inside an
 
 Plugins stay what they are (trusted in-process Node code, platform-admin only). A template is never a plugin.
 
-### 2. Catalog: `screentinker/templates` repo
+### 2. Catalog: `luminascreen/templates` repo
 
 - `templates/<id>/` holds source; **CI builds the zips** (reproducible: sorted entries, fixed mtimes) and
   attaches them to a release in that repo. Authors never control the published bytes; every update is a
@@ -75,7 +75,7 @@ Plugins stay what they are (trusted in-process Node code, platform-admin only). 
 
 ### 4. Air-gapped servers
 
-- **Offline bundle:** CI also produces `screentinker-templates-YYYYMMDD.tar` (index + signature + all zips).
+- **Offline bundle:** CI also produces `luminascreen-templates-YYYYMMDD.tar` (index + signature + all zips).
   Importing it runs exactly the same signature, hash and revocation checks as online (Grafana's rule: offline
   must still verify).
 - **Mirror:** unpack that tarball on any internal web server and add it as a catalog URL (same key).
@@ -106,7 +106,7 @@ Recommendation: ship v1 without it (slide templates), decide (a) vs (b) with a p
 1. Slide templates with a `params` schema + built-in weather data source + local Library tab
    (built-in templates only, no network). Useful on day one, including hosted.
 2. Export/import of a template file (air-gapped path, unverified local import).
-3. `screentinker/templates` repo + CI + signed index + offline tarball; server catalog fetch behind the switch.
+3. `luminascreen/templates` repo + CI + signed index + offline tarball; server catalog fetch behind the switch.
 4. HTML (code) templates behind the per-workspace switch.
 5. Playlist regions, after the (a)/(b) prototype.
 

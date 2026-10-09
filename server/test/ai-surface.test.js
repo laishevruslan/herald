@@ -22,7 +22,7 @@ const ai = require('../lib/ai-surface');
 const md = require('../lib/markdown-rendition');
 
 const FRONTEND = path.join(__dirname, '..', '..', 'frontend');
-const BASE = 'https://screentinker.com';
+const BASE = 'https://luminascreen.ru';
 
 // ───────────────────────────── agent skills & capability catalogue ─────────────────────────────
 
@@ -97,7 +97,7 @@ test('⚠️ the capability catalogue lists only things we serve', () => {
   assert.match(SERVER_SRC, /ai-catalog\.json[\s\S]{0,240}Access-Control-Allow-Origin/);
   // robots.txt points at it, which is the other way the scanner and a crawler find it.
   const robots = fs.readFileSync(path.join(FRONTEND, 'robots.txt'), 'utf8');
-  assert.match(robots, /^Agentmap: https:\/\/screentinker\.com\/\.well-known\/ai-catalog\.json$/m);
+  assert.match(robots, /^Agentmap: https:\/\/luminascreen\.com\/\.well-known\/ai-catalog\.json$/m);
 });
 
 // ───────────────────────────── protected resource metadata ─────────────────────────────
@@ -144,7 +144,7 @@ test('⚠️ a 401 says where to read about the resource', () => {
   assert.match(authSrc, /module\.exports = \{ wwwAuthenticate,/);
   const mcpSrc = fs.readFileSync(path.join(__dirname, '..', 'routes', 'mcp.js'), 'utf8');
   assert.match(mcpSrc, /wwwAuthenticate\(req\)/, 'the MCP 401 must use the shared builder');
-  assert.ok(!/realm="ScreenTinker", error="invalid_token"'/.test(mcpSrc),
+  assert.ok(!/realm="LuminaScreen", error="invalid_token"'/.test(mcpSrc),
     'the MCP route must not hand-roll its own header');
 });
 
@@ -166,7 +166,7 @@ test('⚠️ auth.md is served from the service ROOT, not only from /.well-known
 });
 
 test('⚠️ the auth.md H1 names the document, because that is what identifies it', () => {
-  // Scanners key on the heading as well as the path. "Authenticating with the ScreenTinker API"
+  // Scanners key on the heading as well as the path. "Authenticating with the LuminaScreen API"
   // reads as a page that happens to be about auth, not as the document the convention defines.
   const h1 = ai.authMarkdown(BASE).split('\n')[0];
   assert.match(h1, /^# /);
@@ -234,7 +234,7 @@ test('⚠️ an unknown /.well-known path 404s instead of returning the app shel
 test('the discovery documents point at the root copy we actually serve', () => {
   const cat = ai.apiCatalog(BASE).linkset[0];
   assert.equal(cat['service-meta'][0].href, `${BASE}/auth.md`);
-  assert.match(ai.linkHeader(BASE), /<https:\/\/screentinker\.com\/auth\.md>; rel="service-meta"/);
+  assert.match(ai.linkHeader(BASE), /<https:\/\/luminascreen\.com\/auth\.md>; rel="service-meta"/);
 });
 
 // ───────────────────────────── which pages have a rendition ─────────────────────────────
@@ -379,7 +379,7 @@ test('the Link header advertises the catalogue, the spec and the rendition', () 
   assert.ok(!/rel="alternate"/.test(plain), 'no markdown alternate for a page that has none');
 
   const withMd = ai.linkHeader(BASE, { markdownOf: '/guides/x.md' });
-  assert.match(withMd, /<https:\/\/screentinker\.com\/guides\/x\.md>; rel="alternate"; type="text\/markdown"/);
+  assert.match(withMd, /<https:\/\/luminascreen\.com\/guides\/x\.md>; rel="alternate"; type="text\/markdown"/);
   // Every URI reference in a Link header is angle-bracketed; an unbracketed one is silently dropped.
   for (const part of withMd.split(', ')) assert.match(part, /^<[^>]+>;/, `not bracketed: ${part}`);
 });
@@ -396,14 +396,14 @@ test('robots.txt declares Content Signals without losing a single existing direc
 
   // The directives that were already there are what keeps crawlers out of the app surfaces.
   for (const d of ['User-agent: *', 'Allow: /', 'Disallow: /api/', 'Disallow: /app',
-                   'Disallow: /player', 'Disallow: /uploads/', 'Sitemap: https://screentinker.com/sitemap.xml']) {
+                   'Disallow: /player', 'Disallow: /uploads/', 'Sitemap: https://luminascreen.ru/sitemap.xml']) {
     assert.ok(robots.includes(d), `robots.txt lost: ${d}`);
   }
 });
 
 test('llms.txt names the guides that exist and no others', () => {
   const llms = fs.readFileSync(path.join(FRONTEND, 'llms.txt'), 'utf8');
-  const guides = (llms.match(/https:\/\/screentinker\.com\/guides\/[a-z0-9-]+\.html/g) || [])
+  const guides = (llms.match(/https:\/\/luminascreen\.com\/guides\/[a-z0-9-]+\.html/g) || [])
     .map((u) => u.split('/').pop());
   assert.ok(guides.length >= 9, `expected every guide to be listed, found ${guides.length}`);
   for (const g of new Set(guides)) {

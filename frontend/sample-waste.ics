@@ -1,12 +1,12 @@
 BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//ScreenTinker//Waste Test Calendar//DE
+PRODID:-//LuminaScreen//Waste Test Calendar//DE
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
 X-WR-CALNAME:Abfallkalender (Musterstadt)
 X-WR-TIMEZONE:Europe/Berlin
 BEGIN:VEVENT
-UID:waste-event-1@screentinker.local
+UID:waste-event-1@luminascreen.local
 DTSTAMP:20260904T100000Z
 DTSTART;VALUE=DATE:20260905
 DTEND;VALUE=DATE:20260906
@@ -15,7 +15,7 @@ DESCRIPTION:Altpapier und Kartonagen bereitstellen
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
-UID:waste-event-2@screentinker.local
+UID:waste-event-2@luminascreen.local
 DTSTAMP:20260904T100000Z
 DTSTART;VALUE=DATE:20260908
 DTEND;VALUE=DATE:20260909
@@ -24,7 +24,7 @@ DESCRIPTION:Restabfall
 STATUS:CONFIRMED
 END:VEVENT
 BEGIN:VEVENT
-UID:waste-event-3@screentinker.local
+UID:waste-event-3@luminascreen.local
 DTSTAMP:20260904T100000Z
 DTSTART;VALUE=DATE:20260912
 DTEND;VALUE=DATE:20260913

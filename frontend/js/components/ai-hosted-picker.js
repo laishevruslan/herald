@@ -1,5 +1,5 @@
 /*
- * "My endpoint" vs "ScreenTinker credits" — the path and model picker for hosted AI images.
+ * "My endpoint" vs "LuminaScreen credits" — the path and model picker for hosted AI images.
  *
  * ⚠️ THE USER CHOOSES THE MODEL AND SEES ITS PRICE FIRST. Every row shows its credits and dollars;
  * the cheap row is PRESELECTED (highlighted) the first time, never silently substituted, and the
@@ -50,7 +50,7 @@ export async function buyPack(packId) {
 
 /**
  * Mount the picker into `el`. Resolves to a controller, or null when hosted AI is off.
- *   ctl.isHosted()   — the user picked "ScreenTinker credits"
+ *   ctl.isHosted()   — the user picked "LuminaScreen credits"
  *   ctl.generate(prompt, dims) — confirm the cost, spend, and return {content_id, ...} (or null)
  */
 export async function mountHostedPicker(el) {
@@ -73,7 +73,7 @@ export async function mountHostedPicker(el) {
         Images from
         <select id="aiPathSel" class="input" style="margin:0;padding:3px 6px;font-size:12px">
           <option value="byo" ${path === 'byo' ? 'selected' : ''}>My endpoint</option>
-          <option value="hosted" ${path === 'hosted' ? 'selected' : ''}>ScreenTinker credits</option>
+          <option value="hosted" ${path === 'hosted' ? 'selected' : ''}>LuminaScreen credits</option>
         </select>
       </label>
       ${path === 'hosted' ? `

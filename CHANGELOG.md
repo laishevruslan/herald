@@ -264,7 +264,7 @@ and **JackyL** (Discord), whose native Pi reports led to the installer fix (#489
   to the kiosk: no player after reboot, and `Could not set DRM mode … Permission denied`. The installer
   now picks Lite or Desktop by whether a desktop boots (not by which packages are installed), removes
   the kiosk's launchers, and takes `--native-mode lite|desktop`. In desktop mode the player writes
-  `~/.local/state/screentinker-pi/player.log`. The Raspberry Pi guide now covers Lite with the native
+  `~/.local/state/luminascreen-pi/player.log`. The Raspberry Pi guide now covers Lite with the native
   player.
 
 ### Known issues
@@ -486,7 +486,7 @@ capability this instance does not have. The `/.well-known` 404 says what is publ
 ### Added
 
 **OAuth 2.0 Protected Resource Metadata at `/.well-known/oauth-protected-resource`** (RFC 9728).
-ScreenTinker *is* a protected resource that takes bearer tokens, so this document is true and worth
+LuminaScreen *is* a protected resource that takes bearer tokens, so this document is true and worth
 publishing: the resource identifier, the scopes that exist, that credentials are presented in the
 `Authorization` header, and where the prose lives.
 
@@ -518,11 +518,11 @@ uses the shared definition rather than restating the same fields by hand.
 ⚠️ **The card describes, it does not grant.** The endpoint still refuses everything without a token,
 so the card says the credential is issued by a human and points at `/auth.md`.
 
-**No OAuth or OIDC discovery metadata is published, deliberately.** ScreenTinker is not an
+**No OAuth or OIDC discovery metadata is published, deliberately.** LuminaScreen is not an
 authorization server: it has no `/authorize`, no `/token`, and its sessions are signed with a
 symmetric secret, so there is no public key a `jwks_uri` could serve. Publishing metadata naming
 endpoints that do not exist would make a scanner pass and send real agents into a flow that cannot
-complete — the precise failure `/auth.md` exists to prevent. ScreenTinker *consumes* OIDC discovery as
+complete — the precise failure `/auth.md` exists to prevent. LuminaScreen *consumes* OIDC discovery as
 a relying party for per-organisation SSO; that is the opposite direction and does not make it a
 provider.
 
@@ -557,9 +557,9 @@ hunting for one.
 
 **No A2A agent card is published, deliberately.** An agent card's `supportedInterfaces` is a promise
 of a protocol endpoint: a client reads it and then speaks A2A JSON-RPC (`message/send`, `tasks/get`)
-to the URL it names. ScreenTinker does not implement A2A, and pointing the card at `/mcp` would name
+to the URL it names. LuminaScreen does not implement A2A, and pointing the card at `/mcp` would name
 an endpoint that speaks a different protocol, so every call would fail after the client had committed
-to it. A2A is for tasking an autonomous agent; ScreenTinker is a tool provider, which is what MCP is
+to it. A2A is for tasking an autonomous agent; LuminaScreen is a tool provider, which is what MCP is
 for — the two are complementary by design. The 404 below says so.
 
 ⚠️ **An unknown `/.well-known/…` path now returns 404 instead of the app shell.** Everything under
@@ -636,7 +636,7 @@ instead of quietly emptying the tool again.
 ## 2.2.0 (2026-09-26)
 
 Contributed by [@awatterott](https://github.com/awatterott) of
-[Watterott electronic](https://www.watterott.com), who runs ScreenTinker on large LED video walls in
+[Watterott electronic](https://www.watterott.com), who runs LuminaScreen on large LED video walls in
 production and supplied the Colorlight/EDID configuration behind the new LED wall guide, the
 certified-hardware entry and the photograph on it — and who reported the camera-permission prompt on
 the pairing screen that is fixed below.
@@ -652,7 +652,7 @@ back and says so — but a player from before this release still declares the ol
 
 ### Added
 
-**ScreenTinker speaks the Model Context Protocol.** Every instance, hosted or self-hosted, now serves
+**LuminaScreen speaks the Model Context Protocol.** Every instance, hosted or self-hosted, now serves
 an MCP server at `/mcp`. Point Claude — or any MCP client — at it with the same
 `Authorization: Bearer st_...` the REST API takes, and ask for things in plain English: which screens
 are offline, put this video on the lobby TV, did the autumn campaign actually run. No other digital
@@ -688,7 +688,7 @@ too, taking the platform count to eleven.
 
 ⚠️ **The guides no longer link a GitHub release for a player.** The BrightSign archive has the server
 URL stamped into its bytes when it is built, so a release asset points a freshly imaged player at
-screentinker.com — which presents as a pairing bug rather than a packaging one, and is expensive to
+luminascreen.ru — which presents as a pairing bug rather than a packaging one, and is expensive to
 diagnose because every individual step looks correct. `/download/autorun.zip` is built for the
 instance serving it.
 
@@ -747,7 +747,7 @@ The certified-hardware entries stay **not supported**. See
 
 **Device-side REST — a screen can now make an HTTP request on its own network.** Signage sits on the
 customer's LAN next to the things worth asking: a PLC, a door sensor, a local Home Assistant. The
-ScreenTinker server is frequently in another country and has no route to that `192.168.x.x`, so the
+LuminaScreen server is frequently in another country and has no route to that `192.168.x.x`, so the
 request runs on the **panel** and nothing is proxied. Up to 64 KiB of the answer comes back, with a
 `truncated` flag, for the dashboard to show.
 
@@ -1103,7 +1103,7 @@ added in 2.1.5 (#409) refused to touch an existing `~/.config/labwc/rc.xml`, on 
 it would hold the owner's own keybindings. Pi OS ships one — a stub rooted at `<openbox_config/>`,
 which labwc will not read keybindings from at all ([labwc#3190]) — so on the images this feature
 exists for, the safe-looking branch was the only branch, and it did nothing but print a warning.
-The installer now replaces that stub (keeping a `.screentinker-bak`), merges into a real
+The installer now replaces that stub (keeping a `.luminascreen-bak`), merges into a real
 `<labwc_config>` instead of overwriting it the way the wayfire path already did, and runs
 `labwc --reconfigure` so the binding applies without waiting for a reboot. Reported by
 [@awatterott](https://github.com/awatterott) on #409.
@@ -1472,7 +1472,7 @@ list merge (preserves other services, no duplicates).
 
 ### Added
 
-**Provisioned panels can enable the ScreenTinker accessibility service by themselves.** The
+**Provisioned panels can enable the LuminaScreen accessibility service by themselves.** The
 accessibility service is the durable way to mirror a panel's whole screen in the remote view (it
 survives updates, unlike the screen-record permission that is wiped on every app restart) and the
 only way the remote arrow keys work. Until now it could only be turned on by hand at the panel or by
@@ -1499,7 +1499,7 @@ needs `INJECT_EVENTS` (a signature permission the app cannot hold, even as devic
 failed silently. The arrows now move a highlight box around the on-screen items through the
 accessibility service, and Enter / Center taps the highlighted item, so a panel can be navigated
 entirely from the dashboard even on screens that only respond to a remote. The highlight clears when
-the operator taps directly, leaves the screen, or ends the session. Requires the ScreenTinker
+the operator taps directly, leaves the screen, or ends the session. Requires the LuminaScreen
 accessibility service enabled on the panel (see the self-enable note above).
 
 **The remote live view no longer flickers, and keeps up with control.** On a panel using the
@@ -1531,7 +1531,7 @@ the 30-minute timer. (#369)
 
 **Live TV / IPTV as a playlist item.** Add a **live stream** in the content library: an HLS
 (`.m3u8`) URL the screen opens itself. The URL can be a LAN address (venue and hotel IPTV live on
-10.x / `.local`), because ScreenTinker never fetches or restreams it: the bytes go straight from
+10.x / `.local`), because LuminaScreen never fetches or restreams it: the bytes go straight from
 your source to the screen, so a 5 Mbps channel on 40 screens is not our WAN bill. A live item is
 ordinary content (`video/hls`): it takes tags, schedules, from/to windows, conditions, fit and
 weight, and shuffles like anything else. Its duration is **dwell** (how long to stay on the channel,
@@ -1878,7 +1878,7 @@ player logged that it was clearing update state while the 29.6MB APK remained on
 
 **The Android APK is 44% smaller.** 2.0.9's live-video publisher added the WebRTC native library for
 all four ABIs, and AGP's default packaging stored those ~43MB uncompressed so they could be mapped
-straight out of the APK. That default assumes a per-ABI split delivered by Play; ScreenTinker
+straight out of the APK. That default assumes a per-ABI split delivered by Play; LuminaScreen
 sideloads one universal APK over its own OTA, so every device carries four copies and runs one.
 Compressing them (`useLegacyPackaging`) takes the download from 52,724,535 to 29,557,559 bytes and
 the installed footprint from ~52.7MB to ~41MB — smaller on both counts, because only the matching
@@ -1893,7 +1893,7 @@ install time; nothing in the player changed. The v1 JAR signature MDM signage re
 **Live video (WebRTC).** An optional path that shows sub-second video of what a screen is actually
 playing, alongside the existing screenshot stream. With a [go2rtc](https://github.com/AlexxIT/go2rtc)
 sidecar and a publishing player, one screen can be watched by many dashboards without asking the
-device to encode a separate stream per viewer; ScreenTinker is only ever the signaling proxy and
+device to encode a separate stream per viewer; LuminaScreen is only ever the signaling proxy and
 never becomes an SFU. Off by default at every level (server master gate `LIVE_VIDEO_ENABLED`, per
 workspace, per device), so enabling the sidecar never silently starts streaming. The Android
 publisher was rewritten onto a WebSocket + trickle-ICE path (native libwebrtc drops the inline
@@ -2079,7 +2079,7 @@ section correctly rather than silently hiding it.
 ### Added — e-paper and microcontroller displays
 
 `/api/embedded/render` pre-renders whatever a screen should be showing into a device-native image, so
-a panel with no browser and no Android on it can still be a ScreenTinker display. Server-side resize
+a panel with no browser and no Android on it can still be a LuminaScreen display. Server-side resize
 and Floyd-Steinberg or Atkinson dithering, output as a packed 1-bit bitstream (48 KB for an 800x480
 e-paper), BMP, JPEG or PNG. Contributed by @renebohne in #322 and tested against a Seeed Studio
 reTerminal Sticky.
@@ -2627,7 +2627,7 @@ Reported from a 73-device install on a Synology DS225+ over spinning SATA, upgra
 - **All 73 players reconnected at once and HTTP was unreachable for about twenty minutes**, even
   though the WebSocket layer was accepting. The #142 shed was working exactly as designed and could
   not help — nothing was misbehaving, there were simply 73 well-behaved players arriving together
-  while the stranded-play sweep was still draining. Setting `SCREENTINKER_DEFER_PLAYERS=1` (and, by
+  while the stranded-play sweep was still draining. Setting `LUMINASCREEN_DEFER_PLAYERS=1` (and, by
   default, the first boot after a migration that touched plays) now refuses players with a 503
   until the sweep reports idle. `/api/status` keeps answering 200 with a `maintenance` block saying
   why — failing a healthcheck mid-maintenance is how a slow boot becomes a restart loop — and the
@@ -2797,7 +2797,7 @@ at two tiers, and the mesh is read-only for the things it does not yet carry acr
 
 ### Added — running the server on the player
 
-A BrightSign can now run ScreenTinker itself: the server as a real Node process, the player in the
+A BrightSign can now run LuminaScreen itself: the server as a real Node process, the player in the
 widget beside it. Screenshots, audio-plane muting and LAN trigger ingress all work on that shape.
 Video backgrounds composite behind slide content there too, which took a hardware session to prove.
 
@@ -3807,7 +3807,7 @@ link, and both sides on 2.0.0 or newer. See that entry.
 
 ## 2.0.0-alpha0
 
-The first build of **Node Mesh**: connecting one ScreenTinker server to another, so an operator
+The first build of **Node Mesh**: connecting one LuminaScreen server to another, so an operator
 running several of them — or an MSP watching customers who each run their own — can see and work
 across all of them from one place.
 
@@ -3909,7 +3909,7 @@ reported.
 
 ### Fixed — a player hosting its own server showed a black screen
 
-On a BrightSign running ScreenTinker for the screens around it, the player area was black once the
+On a BrightSign running LuminaScreen for the screens around it, the player area was black once the
 first account existed. Nothing was broken in the player: the page and every one of its scripts
 loaded normally, and nothing appeared in any log.
 
@@ -3929,7 +3929,7 @@ black one level deeper.
 
 Reported by a partner reselling the platform under their own brand (#292).
 
-**The APK download filename.** Downloads saved as `ScreenTinker.apk` regardless of branding, which
+**The APK download filename.** Downloads saved as `LuminaScreen.apk` regardless of branding, which
 told whoever received the file exactly what the upstream product was. It now uses the configured
 brand name, resolved from the domain the request arrived on, sanitised to something safe as both a
 filename and an HTTP header.
@@ -3999,7 +3999,7 @@ shipped with had never been executed by any test.
 
 ### Added — a BrightSign player can host the server
 
-A BrightSign XT245 can now run ScreenTinker itself, serving the displays around it, with the setup
+A BrightSign XT245 can now run LuminaScreen itself, serving the displays around it, with the setup
 address on screen until the first account exists and the player taking over afterwards. It is opt-in
 per device and off by default. Video thumbnails and durations work there too: the package carries
 `ffprobe` and `ffmpeg` built for the player.
@@ -4147,7 +4147,7 @@ No migrations and no configuration changes. See the upgrade note at the end of t
 What shipped as "OAuth" verified almost nothing. It asked whether an **access** token was valid and
 then trusted the email address that came back, never asking the only question that matters: *who was
 this token issued for?* Any other site a user had signed into — anything holding a token with the
-right scope — could replay it against ScreenTinker and receive a session as that user. No password,
+right scope — could replay it against LuminaScreen and receive a session as that user. No password,
 no interaction from the victim.
 
 Identity now comes from an **ID token only**, with the signature checked against the provider's
@@ -4162,7 +4162,7 @@ OpenID Connect — configured by that organization's own admins in Settings, wit
 involvement and no restart.
 
 A provider may only assert addresses at domains the organization has **proved it controls**, via a
-TXT record at `_screentinker-verify.<domain>`. An unverified claim lapses after eight hours and
+TXT record at `_luminascreen-verify.<domain>`. An unverified claim lapses after eight hours and
 releases the domain, so a typo cannot park someone else's domain indefinitely. A domain belongs to
 one organization only. Proof by delegated name (CNAME) is refused outright: it would need a wildcard
 zone we do not operate, and it would turn a subdomain takeover into an apex takeover.
@@ -4281,7 +4281,7 @@ Reported on an RK356x Android box, where it was compounded by an unrelated HDMI 
 pinning the output resolution fixed the corruption, and this fixes the band that remained.
 
 ### Added — opt-in install statistics
-ScreenTinker cannot see how widely it is deployed, because self-hosted installs are private by
+LuminaScreen cannot see how widely it is deployed, because self-hosted installs are private by
 design and should stay that way. A platform administrator is asked, once, whether this install will
 share how many screens it runs.
 
@@ -4769,7 +4769,7 @@ and verified on an XT245.
 - **`Unpack()` deletes everything already in its target directory.** Unpacking an update to the
   volume root would have erased the player's provisioning and its whole content pool as a side
   effect of a routine upgrade. It now stages to a directory of its own and never overwrites
-  `screentinker.json`.
+  `luminascreen.json`.
 - Rotation moves to `SetScreenModes()` (`SetMode()` takes one argument) and fires only on a real
   change, because that call reboots the player.
 
@@ -5050,7 +5050,7 @@ thing.
   now gets a playlist holding that item.
 
 ### Added
-- **Per-display pre-release channel.** Publish `ScreenTinker-beta.apk` with a declared version
+- **Per-display pre-release channel.** Publish `LuminaScreen-beta.apk` with a declared version
   alongside the stable APK and send it only to displays you choose; untick to move a display back.
   See the README.
 
@@ -5062,10 +5062,10 @@ reverted, while the build itself still had to be installed by hand on every disp
 opt-in mean something the server can act on.
 
 ### Added — beta channel
-- **A second APK slot.** Put `ScreenTinker-beta.apk` beside the stable one and it is served only to
+- **A second APK slot.** Put `LuminaScreen-beta.apk` beside the stable one and it is served only to
   displays with **Accept pre-release builds** ticked. Everyone else continues to get the stable APK,
   unchanged.
-- **The beta build must declare its version**, in a sidecar `ScreenTinker-beta.apk.version` holding
+- **The beta build must declare its version**, in a sidecar `LuminaScreen-beta.apk.version` holding
   just the version (e.g. `1.9.27-rc1`). This is not optional and it fails closed: a beta with no
   declared version — or an unparseable one — does not activate the channel at all, and opted-in
   displays keep getting stable. The server cannot infer it (stable's version is the server's own
@@ -5537,7 +5537,7 @@ rapid patch redeploy** — the debounce closes that in code, but reducing redepl
 independently reduces warm-up-window exposure.
 
 Server/CMS only; ships no APK (versionCode still increments so a future player build is
-OTA-recognized). Docker: `ghcr.io/screentinker/screentinker:1.9.2-patch2` (pre-release —
+OTA-recognized). Docker: `ghcr.io/luminascreen/luminascreen:1.9.2-patch2` (pre-release —
 `:latest` stays at 1.9.2).
 
 ## 1.9.2-patch1
@@ -5563,7 +5563,7 @@ Sophos-edge review — **do not consider #148 fully closed on this patch alone.*
   OS layer.
 
 Server/CMS version only; ships no APK (versionCode still increments so a future player build is
-OTA-recognized). Docker: `ghcr.io/screentinker/screentinker:1.9.2-patch1` (pre-release —
+OTA-recognized). Docker: `ghcr.io/luminascreen/luminascreen:1.9.2-patch1` (pre-release —
 `:latest` stays at 1.9.2).
 
 ## 1.9.2

@@ -145,7 +145,7 @@ def should_defer_swap(is_running: bool, wall_follower: bool, has_content_on_scre
 # ============================== ItemTiming ==============================
 
 # The mime the server stamps on an uploaded HTML bundle (lib/html-bundle.js).
-BUNDLE_MIME = "application/vnd.screentinker.bundle+zip"
+BUNDLE_MIME = "application/vnd.luminascreen.bundle+zip"
 
 
 def ends_on_timer(mime_type: str, is_widget: bool) -> bool:

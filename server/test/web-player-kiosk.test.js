@@ -809,7 +809,7 @@ function loadBridge(probeRes) {
   };
   vm.createContext(sandbox);
   vm.runInContext(read('brightsign/st-bridge.js'), sandbox);
-  return { api: sandbox.ScreenTinkerBS, posted };
+  return { api: sandbox.LuminaScreenBS, posted };
 }
 
 test('bridge: top-level kiosk only when the host announced it; open resolves on the host\'s answer', async () => {
@@ -907,7 +907,7 @@ test('framed: a frame that ends up on the player\'s own origin (readable) is clo
   assert.equal(e.isShowing(), false);
 });
 
-test('autorun.brs: top-level mode is OFF unless screentinker.json / the registry opts in', () => {
+test('autorun.brs: top-level mode is OFF unless luminascreen.json / the registry opts in', () => {
   const load = brsBlock('LoadConfig');
   assert.match(load, /kiosk_toplevel: false/);
   assert.match(load, /t\$ = type\(json\.kiosk_toplevel\)\s*if t\$ = "Boolean" or t\$ = "roBoolean" then cfg\.kiosk_toplevel = json\.kiosk_toplevel/);

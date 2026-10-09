@@ -3,7 +3,7 @@
   "name": "JSON API",
   "version": "1.0.0",
   "description": "Poll a JSON HTTP endpoint and expose fields as {{ds:slug.key}}.",
-  "screentinker": ">=2.0.0",
+  "luminascreen": ">=2.0.0",
   "main": "index.js",
   "capabilities": ["data-source"],
   "dataSource": {

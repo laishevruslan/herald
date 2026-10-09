@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# Assemble the scene frame-sequences + VO into "ScreenTinker 2.0".
+# Assemble the scene frame-sequences + VO into "LuminaScreen 2.0".
 #
 # Every scene is a FULL-DURATION frame sequence (motion baked in by scenes.py), so there is no
 # STATIC/ANIM split like the Pi video — just per-scene clips, then one xfade/acrossfade chain.
 #
 #   python3 assemble.py         -> draft-nomusic.mp4        (for review)
-#   python3 assemble.py final   -> screentinker-2p0.mp4     (music bed ducked under the VO)
+#   python3 assemble.py final   -> luminascreen-2p0.mp4     (music bed ducked under the VO)
 #
 # ⚠️ SCENE COUNT IS DERIVED, NOT HARDCODED. The version this was cloned from had `range(1,11)` and
 #    `for k in range(1,10)` written out twice; bumping to 17 scenes by editing one of them would
@@ -14,7 +14,7 @@ import subprocess, os, sys, glob
 
 V="audio"; SA="scenes_anim"; W="work"; os.makedirs(W, exist_ok=True)
 OV=0.5; TAIL=0.6
-OUTNAME="screentinker-2p1.mp4"
+OUTNAME="luminascreen-2p1.mp4"
 
 scenes=sorted(os.path.basename(d)[1:] for d in glob.glob(f"{SA}/s*") if os.path.isdir(d))
 if not scenes: raise SystemExit(f"no frame directories in {SA}/ — run: python3 scenes.py frames 1 17")

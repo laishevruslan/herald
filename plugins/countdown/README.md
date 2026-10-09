@@ -1,6 +1,6 @@
 # Countdown widget
 
-Sample ScreenTinker plugin. Counts down to a date and time on a sign.
+Sample LuminaScreen plugin. Counts down to a date and time on a sign.
 
 ## Install
 
@@ -18,7 +18,7 @@ Sample ScreenTinker plugin. Counts down to a date and time on a sign.
    PLUGINS_ENABLED=true
    ```
 
-3. Restart ScreenTinker.
+3. Restart LuminaScreen.
 
 4. Sign in as a platform admin → **Admin** → **Plugins** → enable **Countdown**. Restart again.
 

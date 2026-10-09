@@ -58,7 +58,7 @@ def terminal(name, eyebrow, title, lines):
 # S02 what you need
 slate("s02","01 · What you need",'What you <span class="hl">need</span>',
       bullets=['A <b>Raspberry Pi</b> <span class="k">— 4 or 5</span>','A <b>microSD card</b> <span class="k">— 8GB+</span>',
-               'Any screen with <b>HDMI</b>','A <b>ScreenTinker</b> server <span class="k">— free plan or self-host</span>'])
+               'Any screen with <b>HDMI</b>','A <b>LuminaScreen</b> server <span class="k">— free plan or self-host</span>'])
 # S03 flash
 slate("s03","02 · Flash the card",'Flash <span class="hl">Raspberry Pi OS</span>',
       bullets=['Open <b>Raspberry Pi Imager</b>','Choose <b>Raspberry Pi OS Lite</b> <span class="k">(no desktop needed)</span>',
@@ -78,15 +78,15 @@ terminal("s04","03 · First boot","Raspberry Pi 4 Model B — serial console",[
 ])
 # S05 installer terminal (hero command)
 terminal("s05","04 · One command","pi@raspberrypi: ~",[
- '<span class="pmt">pi@raspberrypi</span>:~ $ <span class="cmd">curl -sSL screentinker.com/scripts/\\</span>',
+ '<span class="pmt">pi@raspberrypi</span>:~ $ <span class="cmd">curl -sSL luminascreen.ru/scripts/\\</span>',
  '<span class="cmd">      raspberry-pi-setup.sh | sudo bash</span>',
  '',
- '<span class="st">[ScreenTinker]</span> Detected: Pi OS Lite (headless)',
- '<span class="st">[ScreenTinker]</span> Installing kiosk packages...',
- '<span class="st">[ScreenTinker]</span> Creating kiosk service...',
- '<span class="ok">Created symlink screentinker-kiosk.service</span>',
- '<span class="st">[ScreenTinker]</span> Configuring auto-login...',
- '<span class="st">[ScreenTinker]</span> <span class="ok">Setup Complete!</span>',
+ '<span class="st">[LuminaScreen]</span> Detected: Pi OS Lite (headless)',
+ '<span class="st">[LuminaScreen]</span> Installing kiosk packages...',
+ '<span class="st">[LuminaScreen]</span> Creating kiosk service...',
+ '<span class="ok">Created symlink luminascreen-kiosk.service</span>',
+ '<span class="st">[LuminaScreen]</span> Configuring auto-login...',
+ '<span class="st">[LuminaScreen]</span> <span class="ok">Setup Complete!</span>',
 ])
 # S06 what it sets up
 slate("s06","05 · Zero config",'The installer <span class="hl">does it all</span>',
@@ -94,7 +94,7 @@ slate("s06","05 · Zero config",'The installer <span class="hl">does it all</spa
                '<b>Auto-restart</b> service — never goes down','<b>No screen blanking</b> — your sign stays lit'])
 # S08 pair
 slate("s08","07 · Pair it",'Enter the code, <span class="hl">claim the screen</span>',
-      bullets=['Open your <b>ScreenTinker dashboard</b>','Click <b>Add Display</b>','Type the <b>pairing code</b>',
+      bullets=['Open your <b>LuminaScreen dashboard</b>','Click <b>Add Display</b>','Type the <b>pairing code</b>',
                'The Pi appears <span class="k">— Online</span>'])
 # S09 content
 slate("s09","08 · Push content",'Publish, and it\'s <span class="hl">live</span>',
@@ -103,7 +103,7 @@ slate("s09","08 · Push content",'Publish, and it\'s <span class="hl">live</span
 # S10 CTA
 slate("s10","","<span class='hl'>Free</span> digital signage,<br>on your own hardware.",
       sub="Open source · Self-hosted · No per-screen fees",
-      extra='<div class="links">🌐 <span class="u">screentinker.com</span><br>⭐ <span class="u">github.com/screentinker/screentinker</span></div>')
+      extra='<div class="links">🌐 <span class="u">luminascreen.ru</span><br>⭐ <span class="u">github.com/luminascreen/luminascreen</span></div>')
 
 # S01 / S07 use the real player screenshot
 for s in ("s01","s07"):

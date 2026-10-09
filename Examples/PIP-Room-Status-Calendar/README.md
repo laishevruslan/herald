@@ -8,9 +8,9 @@ board, waste reminder, or daily agenda. See
 [`docs/data-sources-templates-plan.md`](../../docs/data-sources-templates-plan.md).
 
 This example remains for **air-gapped overlays** only: a machine that can reach the ICS feed and
-POST a PiP web overlay, without giving the ScreenTinker server the calendar URL. It is not deleted.
+POST a PiP web overlay, without giving the LuminaScreen server the calendar URL. It is not deleted.
 
-Turns a ScreenTinker display into a meeting-room sign. It polls an **ICS calendar
+Turns a LuminaScreen display into a meeting-room sign. It polls an **ICS calendar
 feed** and pushes a [PiP](../../docs) web overlay that shows **AVAILABLE** (green) or
 **BUSY** (red) plus the current/next meeting time. Re-pushed every poll so the state
 stays fresh; cleared when you stop the script.
@@ -61,7 +61,7 @@ Stop with Ctrl-C — it clears the overlay on the way out.
 
 ### Local quick-start (self-signed dev server)
 
-For a local ScreenTinker instance on `https://localhost:3443` with a self-signed cert:
+For a local LuminaScreen instance on `https://localhost:3443` with a self-signed cert:
 
 ```json
 {
@@ -99,7 +99,7 @@ You can also drive the overlay against the fixture by setting `ics_file` (instea
 | key | meaning |
 | --- | --- |
 | `room_name` | label shown on the overlay |
-| `api_base` | ScreenTinker server base URL |
+| `api_base` | LuminaScreen server base URL |
 | `api_token` | `st_` API token with the **full** scope |
 | `overlay_base_url` | URL where `room-overlay.html` is served (same-origin with the player) |
 | `device_id` | target device **or** group id |

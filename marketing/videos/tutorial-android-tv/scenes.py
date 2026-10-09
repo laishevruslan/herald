@@ -145,21 +145,21 @@ SCENES = {
         "A <b>Fire TV</b> on Fire OS <span class='k'>— 4K, 4K Max, or Cube</span><span style='display:block;font-size:26px;color:#7b8aa0;margin-top:4px'>not the new Vega OS sticks yet</span>",
         "…or an <b>Android TV box</b> <span class='k'>— Onn, Shield, generic</span>",
         "Any screen with <b>HDMI</b>",
-        "A <b>ScreenTinker</b> server <span class='k'>— free hosted or self-host</span>"]),
+        "A <b>LuminaScreen</b> server <span class='k'>— free hosted or self-host</span>"]),
  "03": slate("02 · Get the app", "One <span class='hl'>APK</span>, no account gate",
-        sub="Downloaded straight from your ScreenTinker server — nothing to buy.",
-        extra="<div class='perm a' style='animation-delay:.7s'><span style='font:700 34px ui-monospace,monospace;color:#34d399'>ScreenTinker.apk</span>"
+        sub="Downloaded straight from your LuminaScreen server — nothing to buy.",
+        extra="<div class='perm a' style='animation-delay:.7s'><span style='font:700 34px ui-monospace,monospace;color:#34d399'>LuminaScreen.apk</span>"
               "<span class='dim' style='font:500 30px ui-monospace,monospace;color:#6b7889'>·  ~9&nbsp;MB  ·  /download/apk</span></div>"),
  "04": terminal("03 · Sideload it", "Fire TV — Downloader / adb", [
         "<span class='dim'># Fire TV: Settings &gt; My Fire TV &gt; Developer options</span>",
         "<span class='dim'>#   Apps from Unknown Sources  ->  ON</span>",
         "<span class='dim'># Then the Downloader app -> enter your APK link:</span>",
         "<span class='pmt'>&gt;</span> <span class='cmd'>https://your-server/download/apk</span>",
-        "<span class='ok'>Downloaded ScreenTinker.apk  (9.0 MB)</span>",
+        "<span class='ok'>Downloaded LuminaScreen.apk  (9.0 MB)</span>",
         "<span class='st'>Installing…</span> <span class='ok'>done ✓</span>",
         "",
         "<span class='dim'># Android TV, same idea:</span>",
-        "<span class='pmt'>$</span> <span class='cmd'>adb install ScreenTinker.apk</span>",
+        "<span class='pmt'>$</span> <span class='cmd'>adb install LuminaScreen.apk</span>",
         "<span class='ok'>Success</span>"], caret=False),
  "05": slate("04 · Launch &amp; permit", "Launch, grant, <span class='hl'>done</span>",
         sub="First run asks for a couple of permissions so the player can stay full-screen.",
@@ -168,12 +168,12 @@ SCENES = {
  "06": (head("body{background:#080b11}") +
         "<div class='tvwrap'><div class='tv' style='animation:popIn .8s both cubic-bezier(.2,.8,.2,1)'>"
         "<div class='screen' style='display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0e1420'>"
-        "<div style='font:700 26px ui-monospace,monospace;color:#34d399;letter-spacing:.2em' class='a'>SCREENTINKER PLAYER</div>"
+        "<div style='font:700 26px ui-monospace,monospace;color:#34d399;letter-spacing:.2em' class='a'>LUMINASCREEN PLAYER</div>"
         "<div style='font:600 34px system-ui;color:#9aa7b8;margin:22px 0 6px' class='a' style='animation-delay:.3s'>Pair this screen</div>"
         "<div class='pair'>" + "".join(f"<div class='digit' style='animation:popIn .5s {(.5+i*.12):.2f}s both cubic-bezier(.2,.8,.2,1)'>{d}</div>" for i,d in enumerate("4 8 3 1 9 2".split())) + "</div>"
         "</div><div class='stand'></div></div></div>"
         "<div class='cap a' style='animation-delay:1.4s'>A freshly-deployed sign — just the <b>pairing code</b></div></div>"),
- "07": cap_frame("05 · Add the display", "caps/cap-add-display.png", "screentinker.com/app  ·  Add Display",
+ "07": cap_frame("05 · Add the display", "caps/cap-add-display.png", "luminascreen.ru/app  ·  Add Display",
         "Dashboard &gt; <b>Add Display</b> &gt; enter the code &gt; <b>online</b>"),
  "08": (head("body{background:#080b11}") + brandchrome("06 · Push content") +
         "<div class='tvwrap'><div class='tv' style='animation:popIn .8s both cubic-bezier(.2,.8,.2,1)'>" +
@@ -193,7 +193,7 @@ SCENES = {
         "<div class='logo' style='position:static;font:800 40px sans-serif;color:#8aa'>Screen<b>Tinker</b></div>"
         "<div class='big a' style='animation-delay:.15s'>Free digital signage.<br><b>Hardware you already own.</b></div>"
         "<div class='links a' style='animation-delay:.5s'>"
-        "<span class='pill'><span class='u'>screentinker.com</span></span>"
+        "<span class='pill'><span class='u'>luminascreen.ru</span></span>"
         "<span class='pill'>GitHub · <span class='u'>MIT</span></span>"
         "<span class='pill'>Discord</span></div>"
         "<div class='sub a' style='animation-delay:.8s;color:#7b8aa0;text-align:center'>Open source · Self-hostable · No per-screen fees</div>"

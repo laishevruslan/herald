@@ -342,7 +342,7 @@ test('test_no_builtin_relay_address (I9)', () => {
    * fix: a connection fails, someone adds a "sensible default" relay, and now every deployment
    * depends on a host the vendor operates. There is never a compiled-in address.
    */
-  const HOSTNAME = /(screentinker\.com|relay\.|\.amazonaws\.|\.cloudfront\.|stun:|turn:)/i;
+  const HOSTNAME = /(luminascreen\.com|relay\.|\.amazonaws\.|\.cloudfront\.|stun:|turn:)/i;
   for (const { file, src } of meshSources()) {
     assert.doesNotMatch(src, HOSTNAME,
       `${file} names a host — a relay address must always come from the operator (I9)`);

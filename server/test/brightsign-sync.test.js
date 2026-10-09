@@ -57,7 +57,7 @@ function load({ withModule = true } = {}) {
 
   vm.createContext(sandbox);
   vm.runInContext(SRC, sandbox);
-  return { api: sandbox.ScreenTinkerBSSync, instances };
+  return { api: sandbox.LuminaScreenBSSync, instances };
 }
 
 /** A fake BrightSign <video> — the real one gains setSyncParams from the platform. */
@@ -107,7 +107,7 @@ test('THE TRAP: the 1Hz repeat of one id fires the handler exactly once', () => 
   let fired = 0;
   s.onItem = () => { fired++; };
 
-  const e = { domain: 'ScreenTinkerSync', id: 'st_item7_123', iso_timestamp: '2026-08-04T21:00:00Z' };
+  const e = { domain: 'LuminaScreenSync', id: 'st_item7_123', iso_timestamp: '2026-08-04T21:00:00Z' };
   for (let i = 0; i < 10; i++) instances[0].emit(e);   // ten seconds of rebroadcast
 
   assert.equal(fired, 1, 'ten repeats must not be ten video reloads');
@@ -170,9 +170,9 @@ test('attachVideo sets the sync params from the event, then loads and plays', ()
   const v = fakeVideo();
   s.onItem = (e) => s.attachVideo(v, e);
 
-  instances[0].emit({ domain: 'ScreenTinkerSync', id: 'x1', iso_timestamp: '2026-08-04T21:00:00Z' });
+  instances[0].emit({ domain: 'LuminaScreenSync', id: 'x1', iso_timestamp: '2026-08-04T21:00:00Z' });
 
-  assert.deepEqual(v.params, { domain: 'ScreenTinkerSync', id: 'x1', ts: '2026-08-04T21:00:00Z' });
+  assert.deepEqual(v.params, { domain: 'LuminaScreenSync', id: 'x1', ts: '2026-08-04T21:00:00Z' });
   assert.equal(v.loaded, 1);
   assert.equal(v.played, 1);
 });

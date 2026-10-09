@@ -1,8 +1,8 @@
-# Build the ScreenTinker native player installer for Windows.
+# Build the LuminaScreen native player installer for Windows.
 #
 #   powershell -ExecutionPolicy Bypass -File native\packaging\windows\build.ps1 [-Version 2.3.0]
 #
-# Output: native\dist\ScreenTinker-Setup-<Version>.exe - the path the server's /download/win and
+# Output: native\dist\LuminaScreen-Setup-<Version>.exe - the path the server's /download/win and
 # /api/win/update/check look in (server/lib/win-cache.js). Needs: Python 3.12 x64, Inno Setup 6.
 # !! Version: X.Y.Z or X.Y.Z~rcN (same rule as the Pi .deb; `~` becomes `-` in the server's compare).
 param([string]$Version = "")
@@ -27,21 +27,21 @@ $py = Join-Path $venv "Scripts\python.exe"
 if ($LASTEXITCODE) { throw "pip install failed" }
 
 # Stamp the version into the bundled copy only (version.py falls back to the checkout for -dev).
-$verFile = Join-Path $native "screentinker_native\version.py"
+$verFile = Join-Path $native "luminascreen_native\version.py"
 $orig = Get-Content $verFile -Raw
 try {
     ($orig -replace '(?m)^_STAMPED = .*$', "_STAMPED = `"$Version`"") | Set-Content $verFile -NoNewline
-    & $py -m PyInstaller --noconfirm --clean --distpath (Join-Path $build "dist") --workpath (Join-Path $build "work") (Join-Path $here "screentinker.spec")
+    & $py -m PyInstaller --noconfirm --clean --distpath (Join-Path $build "dist") --workpath (Join-Path $build "work") (Join-Path $here "luminascreen.spec")
     if ($LASTEXITCODE) { throw "PyInstaller failed" }
 } finally {
     $orig | Set-Content $verFile -NoNewline
 }
 
-# Third-party notices: ScreenTinker's MIT licence, then every bundled Python distribution's name,
+# Third-party notices: LuminaScreen's MIT licence, then every bundled Python distribution's name,
 # version and declared licence, then the LGPL statement Qt/PySide6 require. LGPL-3.0 is satisfied by
 # dynamic linking (Qt and PySide6 ship as separate DLLs/.pyd a user can replace) plus this notice.
 $notices = Join-Path $here "THIRD-PARTY-NOTICES.txt"
-$lines = @("ScreenTinker Player $Version", "", (Get-Content (Join-Path $repo "LICENSE") -Raw), "",
+$lines = @("LuminaScreen Player $Version", "", (Get-Content (Join-Path $repo "LICENSE") -Raw), "",
            ("=" * 78), "Bundled third-party components", ("=" * 78), "")
 $lines += & $py -c @"
 import importlib.metadata as m
@@ -63,6 +63,6 @@ $lines | Set-Content $notices -Encoding UTF8
 
 $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | ? { Test-Path $_ } | Select -First 1
 if (-not $iscc) { throw "Inno Setup 6 (ISCC.exe) not found" }
-& $iscc "/DAppVersion=$Version" (Join-Path $here "ScreenTinker.iss")
+& $iscc "/DAppVersion=$Version" (Join-Path $here "LuminaScreen.iss")
 if ($LASTEXITCODE) { throw "ISCC failed" }
-Write-Host (Join-Path $native "dist\ScreenTinker-Setup-$Version.exe")
+Write-Host (Join-Path $native "dist\LuminaScreen-Setup-$Version.exe")

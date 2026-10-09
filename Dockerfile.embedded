@@ -1,4 +1,4 @@
-# ScreenTinker Server Image with Embedded E-Paper & Full Widget/Slide Rendering Support
+# LuminaScreen Server Image with Embedded E-Paper & Full Widget/Slide Rendering Support
 # Includes Chromium and system fonts for server-side rasterization to E-Paper displays
 # (Seeed Studio reTerminal Sticky, TRMNL, Inky, ESP32-S3 E-Paper displays).
 

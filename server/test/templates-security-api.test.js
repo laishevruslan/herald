@@ -34,7 +34,7 @@ const DATA_DIR = path.join(TMP, 'data');
 const CONTENT_DIR = path.join(DATA_DIR, 'uploads', 'content');
 const PHRASE = 'I understand unsigned templates run unreviewed code on my screens';
 
-// TEST keys only. Nothing here reads ~/.config/screentinker.
+// TEST keys only. Nothing here reads ~/.config/luminascreen.
 const official = crypto.generateKeyPairSync('ed25519');
 const OFFICIAL_PEM = official.publicKey.export({ type: 'spki', format: 'pem' });
 
@@ -382,7 +382,7 @@ test('POST /api/widgets refuses widget_type "template" (JWT and st_ token)', asy
 
 test('workspace import (/api/status/import) is refused for a workspace_viewer', async () => {
   const exp = {
-    format: 'screentinker-export-v2',
+    format: 'luminascreen-export-v2',
     widgets: [{ id: 'old1', widget_type: 'template', name: 'viewer-import', config: { template: 'official/slide-probe', values: {} } }],
     // Also probes the branding write the import performs (white-label.js restricts these two
     // fields to platform admins: custom_css is injected into the login page's <style>).
@@ -401,7 +401,7 @@ test('workspace import cannot set platform-admin-only branding (custom_css / cus
 
 test('unvalidated roads (workspace import) cannot make a ws B widget render ws A image/data', async () => {
   const exp = {
-    format: 'screentinker-export-v2',
+    format: 'luminascreen-export-v2',
     widgets: [
       { id: 'o1', widget_type: 'template', name: 'evil-slide', config: { template: 'official/slide-probe', values: { logo: U.imgA.id, feed: 'secrets', headline: { toString: 1 } }, extra: 'x' } },
       { id: 'o2', widget_type: 'template', name: 'evil-html', config: { template: 'local/html-probe', values: { photo: U.imgA.id, feed: 'secrets', title: '</script><script>alert(1)</script>' } } },

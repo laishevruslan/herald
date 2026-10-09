@@ -38,7 +38,7 @@
         "Interactive web pages have a new switch, \"Wipe the site's cookies and storage after each visitor\". Turn it off for information pages such as menus or maps, so the cookie banner and the chosen language stay between visitors.",
         "Interactive web pages: you can now choose how long the \"Still there?\" warning shows before a page resets, or turn it off.",
         "Saving a web page widget no longer drops settings that the form does not show.",
-        "The ScreenTinker website has a public template gallery with live previews. On a self-hosted server it is on with the homepage; set DISABLE_HOMEPAGE to hide both."
+        "The LuminaScreen website has a public template gallery with live previews. On a self-hosted server it is on with the homepage; set DISABLE_HOMEPAGE to hide both."
       ]
     },
     {
@@ -163,7 +163,7 @@
       "version": "2.1.3",
       "date": "2026-09-17",
       "notes": [
-        "Remote control works fully again on Android panels: the Remote tab mirrors the whole screen (Settings and other apps, not just the playlist), and the arrow keys move a highlight you can select. Needs the ScreenTinker accessibility service enabled on the panel.",
+        "Remote control works fully again on Android panels: the Remote tab mirrors the whole screen (Settings and other apps, not just the playlist), and the arrow keys move a highlight you can select. Needs the LuminaScreen accessibility service enabled on the panel.",
         "A panel provisioned for it can now turn that accessibility service on by itself, instead of someone enabling it by hand at the screen.",
         "The remote view is steadier and keeps up: no more flicker between the real screen and the playlist, and a fresh picture right after each tap or key press.",
         "A device rebooted from the dashboard shows as online within seconds of coming back, instead of appearing offline for several minutes while it is actually playing.",
@@ -206,7 +206,7 @@
       "version": "2.0.10",
       "date": "2026-09-14",
       "notes": [
-        "A published list of hardware that works, at screentinker.com/certified-hardware. It says which devices have been tested, what resolution each one really runs at, and which ones to avoid. You can report hardware you are running and it will be listed once it is reviewed.",
+        "A published list of hardware that works, at luminascreen.ru/certified-hardware. It says which devices have been tested, what resolution each one really runs at, and which ones to avoid. You can report hardware you are running and it will be listed once it is reviewed.",
         "Screens stopped losing full-screen capture after an update. The remote view used to fall back to showing only the playlist, going blank over Settings, with nothing to explain it. The screen page now tells you which kind of capture a panel is using and how to make it stick.",
         "The Android app download is 44% smaller, which matters most on slow or metered connections.",
         "LG webOS 4, 5 and 6 panels can now run the player. Older panels that loaded nothing before will work, and anything too old to run it now says so instead of showing a black screen.",

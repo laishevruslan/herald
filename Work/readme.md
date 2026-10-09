@@ -2,7 +2,7 @@
 
 Результат
 APK: android/app/build/outputs/apk/release/app-release.apk (~28 MB)
-Копия: ScreenTinker.apk (+ ScreenTinker.apk.version = 2.1.4)
+Копия: LuminaScreen.apk (+ LuminaScreen.apk.version = 2.1.4)
 Подписи: v1 + v2 + v3
 Ключи (сохраните, в git не коммитить)
 Файл

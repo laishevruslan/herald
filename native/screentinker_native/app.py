@@ -1,4 +1,4 @@
-"""The ScreenTinker native Raspberry Pi player — process wiring.
+"""The LuminaScreen native Raspberry Pi player — process wiring.
 
 Two threads, one rule each:
   * the Qt (main) thread owns the scene and every playback decision: Stage, PlaybackEngine, the
@@ -466,7 +466,7 @@ class App:
         self._refresh_menu()
         if what == "no_server":
             self.show_status("No server configured",
-                             "Run:  sudo screentinker-pi setup https://your-server")
+                             "Run:  sudo luminascreen-pi setup https://your-server")
         elif what == "pairing":
             self.stage.set("pairingCode", str(detail or ""))
             if not self.engine.playing or not self.engine.controller.has_content_on_screen:
@@ -713,7 +713,7 @@ class App:
                 self.link.reconnect_soon()
                 self.on_ui(lambda: self.stage.toast.emit("Server changed to %s" % url))
             else:
-                self.log_remote("warn", "set_server_url", "%s did not answer as a ScreenTinker server — keeping %s"
+                self.log_remote("warn", "set_server_url", "%s did not answer as a LuminaScreen server — keeping %s"
                                 % (url, self.config.server_url))
         self.on_net(go())
 
@@ -984,7 +984,7 @@ class App:
     # ------------------------------------------------------------------ boot
     def _find_transitions(self):
         for p in (os.path.join(HERE, "transitions"), os.path.join(HERE, "..", "..", "shared", "Transitions"),
-                  "/usr/share/screentinker-pi/transitions"):
+                  "/usr/share/luminascreen-pi/transitions"):
             if os.path.isdir(p):
                 return os.path.abspath(p)
         return os.path.join(HERE, "transitions")
@@ -1037,7 +1037,7 @@ def _single_instance():
     import ctypes
     k32 = ctypes.windll.kernel32
     global _instance_mutex
-    _instance_mutex = k32.CreateMutexW(None, False, "Local\\ScreenTinkerPlayer")
+    _instance_mutex = k32.CreateMutexW(None, False, "Local\\LuminaScreenPlayer")
     return k32.GetLastError() != 183   # ERROR_ALREADY_EXISTS
 
 
@@ -1057,7 +1057,7 @@ def main(argv=None):
 
 
 def _main(argv=None):
-    ap = argparse.ArgumentParser(prog="screentinker-pi")
+    ap = argparse.ArgumentParser(prog="luminascreen-pi")
     ap.add_argument("--server", help="server URL (overrides the stored one)")
     ap.add_argument("--state-dir", help="where pairing/cache/state live")
     ap.add_argument("--windowed", action="store_true", help="do not go fullscreen (development)")
@@ -1066,7 +1066,7 @@ def _main(argv=None):
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     if sys.stderr is None or getattr(sys, "frozen", False):
-        # A windowed build (ScreenTinker.exe) has no console: without a file the log goes nowhere
+        # A windowed build (LuminaScreen.exe) has no console: without a file the log goes nowhere
         # and a field failure leaves no trace. <state>/player.log, 2 MB x 3.
         from .config import default_state_dir
         d = args.state_dir or default_state_dir()
@@ -1107,7 +1107,7 @@ def _main(argv=None):
     os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--autoplay-policy=no-user-gesture-required")
     QtWebEngineQuick.initialize()
     qt = QGuiApplication(sys.argv)
-    qt.setApplicationName("ScreenTinker")
+    qt.setApplicationName("LuminaScreen")
     app = App(args)
 
     from PySide6.QtQml import QQmlApplicationEngine

@@ -1,7 +1,7 @@
 ========================================================================
 YOUTUBE UPLOAD PACKAGE
 Video: Free Digital Signage on Android TV & Fire TV
-File:  screentinker-androidtv.mp4  (2:21 · 1080p30)
+File:  luminascreen-androidtv.mp4  (2:21 · 1080p30)
 ========================================================================
 
 
@@ -16,7 +16,7 @@ Free Digital Signage on Android TV & Fire TV Stick — Open Source, No Monthly F
 ---------------------------- DESCRIPTION -------------------------------
 
 Turn any Fire TV Stick or Android TV box into a fully managed digital
-signage display — for free. ScreenTinker is open source and self-hostable,
+signage display — for free. LuminaScreen is open source and self-hostable,
 so there are no per-screen fees and your content stays on your own server.
 
 In under three minutes: grab the app, sideload it, pair the screen, and push
@@ -38,10 +38,10 @@ Works great on Amazon Fire TV (4K, 4K Max, Cube) and Android TV boxes
 2:05  Get started
 
 🔗 Links
-• Try it free (hosted): https://screentinker.com
-• Android TV / Fire TV setup guide: https://screentinker.com/guides/digital-signage-android-tv.html
-• Self-hosting guide: https://screentinker.com/guides/self-hosted-digital-signage.html
-• Source (MIT licensed) — a star helps! https://github.com/screentinker/screentinker
+• Try it free (hosted): https://luminascreen.ru
+• Android TV / Fire TV setup guide: https://luminascreen.ru/guides/digital-signage-android-tv.html
+• Self-hosting guide: https://luminascreen.ru/guides/self-hosted-digital-signage.html
+• Source (MIT licensed) — a star helps! https://github.com/luminascreen/luminascreen
 • Community & support (Discord): https://discord.gg/utTdsrqq4Z
 
 Free plan supports 1 device. Pro trial unlocks 15 devices for 14 days — no
@@ -57,7 +57,7 @@ Open source · Self-hostable · No per-screen fees · Your data on your hardware
 
 digital signage, android tv, fire tv, fire tv stick, fire stick, amazon fire tv,
 free digital signage, open source digital signage, self hosted digital signage,
-digital signage software, android tv signage, fire tv signage, screentinker,
+digital signage software, android tv signage, fire tv signage, luminascreen,
 yodeck alternative, screencloud alternative, optisigns alternative, xibo alternative,
 menu board software, kiosk software, digital menu board, retail signage,
 android digital signage, self hosted, open source, nvidia shield signage,

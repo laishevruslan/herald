@@ -3,7 +3,7 @@
 /*
  * Framing headers when this server IS the display it serves.
  *
- * ⚠️ THE BUG THIS PINS. A BrightSign hosting ScreenTinker shows a local page from
+ * ⚠️ THE BUG THIS PINS. A BrightSign hosting LuminaScreen shows a local page from
  * `file:///ssd:/node-server.html` that layers the player in an iframe. helmet sets
  * X-Frame-Options: SAMEORIGIN, file:// is not the same origin as http://127.0.0.1:8181, and the
  * result was a BLACK SCREEN on real hardware while every asset inside the frame returned 200 — the

@@ -334,7 +334,7 @@ const check = (name, ok, detail) => {
   }, bundleZip);
 
   check('an HTML bundle uploads and is typed as one', !bundleResult.err
-    && bundleResult.mime === 'application/vnd.screentinker.bundle+zip' && bundleResult.entry === 'index.html',
+    && bundleResult.mime === 'application/vnd.luminascreen.bundle+zip' && bundleResult.entry === 'index.html',
     bundleResult.err || `mime=${bundleResult.mime} entry=${bundleResult.entry}`);
   check('a flattened bundle RUNS its own scripts in the player\'s sandbox',
     !!(bundleResult.msg && bundleResult.msg.bg === 'rgb(1, 2, 3)'),

@@ -1,6 +1,6 @@
-# ScreenTinker — Node Mesh: Full Directive
+# LuminaScreen — Node Mesh: Full Directive
 
-Supersedes `screentinker-enterprise-directive.md` Track B and `screentinker-mesh-directive.md`.
+Supersedes `luminascreen-enterprise-directive.md` Track B and `luminascreen-mesh-directive.md`.
 Track A (scheduled screenshots, threshold alerts, bulk enrollment, README truth pass) is unchanged
 and still lands first — A2 is a hard prerequisite for Phase 3.
 
@@ -13,7 +13,7 @@ parity, tests as part of the work) apply throughout.
 
 ## Concept
 
-Every ScreenTinker instance is a **node**. A node may accept enrollments from below and may enroll
+Every LuminaScreen instance is a **node**. A node may accept enrollments from below and may enroll
 upward. A player is a node with no children. A site server is a node with players below and possibly
 a parent. A hub is a node with sites below. A proxy relays for its subtree. An analytics sink consumes
 and relays nothing. These are not separate types — they are one node declaring different
@@ -68,7 +68,7 @@ blocks a dashboard, or throws into a shared handler. Extends #146 one tier up.
 **I7 — No phone home.** Pairing codes minted locally. UUIDs generated locally. No license check, no
 activation, no usage beacon, no central registry. Air-gapped is first-class.
 
-**I8 — Cloud is a peer.** screentinker.com is a node with no special privileges. A self-hosted hub
+**I8 — Cloud is a peer.** luminascreen.ru is a node with no special privileges. A self-hosted hub
 with hosted sites below must work exactly as well as the reverse.
 
 **I9 — No built-in relay address and no automatic relay fallback.** Relay is a capability any node

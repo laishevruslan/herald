@@ -39,7 +39,7 @@ Scenify закрывает именно это ожидание («Canva-like в
                               LICENSE файла в react-design-editor нет
 ```
 
-| Артефакт | Что внутри | Лицензия на диске | Можно ли класть в ScreenTinker |
+| Артефакт | Что внутри | Лицензия на диске | Можно ли класть в LuminaScreen |
 |---|---|---|---|
 | `bazooka720/scenify-editor` | CRA-приложение, `@scenify/sdk@0.1.8`, Iconscout, Pixabay, сервер Express+Mongo+`node-canvas`+AWS | README: MIT | Код UI — как референс. Не vendoring целиком: CRA 4, Node 14, чужой бэкенд |
 | `@scenify/sdk` / `umanda/scenify-sdk` | Fabric 4/5, GSAP, gifshot. README: «not production ready» | **GPL-3.0** | **Нет.** `license-check.js` DENY на GPL; MIT-продукт нельзя «просто слинковать» |

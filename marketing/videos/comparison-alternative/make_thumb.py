@@ -13,7 +13,7 @@ def bar(name, amt, pct, cls, delay=0):
 BARS = (bar("ScreenCloud","$300+",100,"paid")
       + bar("OptiSigns","$165",55,"paid")
       + bar("Yodeck","$120",40,"paid")
-      + bar("ScreenTinker","$0*",14,"st"))
+      + bar("LuminaScreen","$0*",14,"st"))
 
 HTML = f"""<!doctype html><meta charset=utf-8><style>
 *{{margin:0;box-sizing:border-box;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif}}

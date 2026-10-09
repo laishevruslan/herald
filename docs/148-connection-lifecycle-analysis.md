@@ -82,7 +82,7 @@ client's half-open handling.**
 | Candidate | Verdict |
 |---|---|
 | **Per-IP / total connection cap** (SNAT'd fleet = one IP) | **CLEARED.** No `maxConnections`, no per-IP handshake limit. The flap-limiter keys on **identity** (device_id→fingerprint→token→anon), never IP — SNAT-safe. |
-| **ScreenTinker's own proxy** (nginx/short WS read timeout) | **CLEARED.** The image runs `CMD ["node","server.js"]` — no proxy layer. Any WS timeout is on **Bold's edge**. |
+| **LuminaScreen's own proxy** (nginx/short WS read timeout) | **CLEARED.** The image runs `CMD ["node","server.js"]` — no proxy layer. Any WS timeout is on **Bold's edge**. |
 | **Anon-bucket collapse under SNAT** | **CLEARED for reconnects.** A reconnect carries the saved `device_id` → per-device bucket, not `anon:global`. |
 | **Flap-limiter / reconnect-throttle** | **IMPLICATED as an AMPLIFIER.** A reconnect on a fresh socket has `currentDeviceId=null` → `isRefreshConnect=false` → it **counts** toward the 20-connects/5-min limit. A repeated reap→reconnect cycle trips it → **30-min in-memory quarantine** → a recoverable blip becomes a 30-min offline. Because every device behind the edge gets reaped together, each trips its *own* limit at ~the same time → a **fleet-wide, synchronized-looking quarantine** (not via a shared bucket — via synchronized independent tripping). This is 1.9.2-only (beta5 has no flap-limiter). |
 
@@ -119,7 +119,7 @@ client's half-open handling.**
   (2), flap-limiter paired-device exemption (3). With these, any silent drop self-heals in
   ~15–60s and is never amplified into a 30-min lockout — independent of the firewall.
 - **Bold should still set (their side):** raise/disable the Sophos WebSocket idle/session
-  timeout for the ScreenTinker host; **disable SSL/DPI inspection** for that host (DPI is the
+  timeout for the LuminaScreen host; **disable SSL/DPI inspection** for that host (DPI is the
   most likely reason a 15s-active socket still gets reaped); confirm no reverse proxy with a
   short WS read timeout. These reduce how often the reap fires, but are not a substitute for
   client self-heal.
@@ -131,11 +131,11 @@ client's half-open handling.**
 1. **Disconnect interval during quiet periods** (from #148): is it a round number
    (60/120/300s)? A fixed round interval ⇒ idle/session-timeout confirmed. Irregular ⇒
    half-open/other.
-2. **Sophos model + config:** the WebSocket/idle/session-timeout value on the ScreenTinker
+2. **Sophos model + config:** the WebSocket/idle/session-timeout value on the LuminaScreen
    host; is **SSL/deep-packet inspection** enabled for that host (this is the prime suspect for
    reaping a socket that already has 15s traffic)?
 3. **Reverse proxy?** Any nginx / HAProxy / Cloudflare Tunnel / load balancer in front of the
-   ScreenTinker Docker container, and its WebSocket read/idle timeout?
+   LuminaScreen Docker container, and its WebSocket read/idle timeout?
 4. **MAXHUB `logcat` at the moment of a drop** (the decisive missing evidence): does it log
    `EVENT_DISCONNECT` (client detected the drop → recovery is the throttle/quarantine story) or
    **nothing** (half-open undetected → the client-watchdog fix is required)?

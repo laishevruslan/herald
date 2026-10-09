@@ -1,7 +1,7 @@
-# ScreenTinker community templates
+# LuminaScreen community templates
 
-This repository is the **official template catalog** for [ScreenTinker](https://github.com/screentinker/screentinker)
-digital signage. Every folder under `templates/` is a template that any ScreenTinker server can
+This repository is the **official template catalog** for [LuminaScreen](https://github.com/luminascreen/luminascreen)
+digital signage. Every folder under `templates/` is a template that any LuminaScreen server can
 install from its **Content → Templates → Library** tab: a welcome screen, a weather forecast, a news
 ticker, a menu board. You pick one, fill in its settings (logo, colours, location, text) with a live
 preview, and put it on a screen or in a playlist like any other item.
@@ -18,14 +18,14 @@ Want to write one? Read [CONTRIBUTING.md](CONTRIBUTING.md). Maintainers publishi
 
 ## How a server uses this catalog
 
-**Off by default.** A ScreenTinker server never contacts this catalog on its own. A platform admin
+**Off by default.** A LuminaScreen server never contacts this catalog on its own. A platform admin
 has to switch on *Settings → Templates → Community library* first — the same "no phone home"
 promise the server makes for plugins. With it off, everything below still works by importing files
 by hand.
 
 **Signed index.** Merging to `main` builds the catalog; a maintainer then signs it **offline** with
 the catalog key (never a CI secret — see [SIGNING.md](SIGNING.md)) and publishes it to GitHub Pages
-at `https://screentinker.github.io/templates/`. What a server downloads is:
+at `https://luminascreen.github.io/templates/`. What a server downloads is:
 
 ```
 index.json            the list of templates and versions, each pinned by sha256
@@ -51,7 +51,7 @@ never auto-update — and shows a black screen with the reason in the admin UI u
 installs a version that is not revoked. Revocations can match by id + version or by package sha256
 (which also catches unsigned copies of the same bytes).
 
-**Offline bundle.** Each release also produces `screentinker-templates-YYYYMMDD.zip`: `index.json`,
+**Offline bundle.** Each release also produces `luminascreen-templates-YYYYMMDD.zip`: `index.json`,
 `index.json.sig` and every package, attached to the GitHub release. An air-gapped server imports it
 with *Import → Offline bundle*; it goes through exactly the same signature, hash, serial and
 revocation checks as the online path. (Thumbnails are not in the bundle; the server reads them out

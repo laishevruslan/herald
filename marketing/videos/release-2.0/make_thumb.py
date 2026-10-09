@@ -2,7 +2,7 @@ from playwright.sync_api import sync_playwright
 import os
 BASE = os.path.dirname(os.path.abspath(__file__))
 
-# Thumbnail for "ScreenTinker 2.0".
+# Thumbnail for "LuminaScreen 2.0".
 # Money shot = the version number, huge, with the REAL slide editor behind glass on the right —
 # the one thing this release is about. Readable at 210px wide, which is where most impressions
 # are actually served.
@@ -43,7 +43,7 @@ html,body{{width:1280px;height:720px;overflow:hidden}}
   <div class='text'>
     <div class='eyebrow'>Open source · self-hosted</div>
     <div class='ver'>2.0</div>
-    <div class='name'>ScreenTinker</div>
+    <div class='name'>LuminaScreen</div>
     <div class='tag'>A real <b>slide editor</b>,<br>triggers &amp; a <b>node mesh</b></div>
   </div>
   <div class='pills'>

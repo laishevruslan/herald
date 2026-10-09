@@ -1,6 +1,6 @@
 {
-  "name": "ScreenTinker",
-  "short_name": "ScreenTinker",
+  "name": "LuminaScreen",
+  "short_name": "LuminaScreen",
   "description": "Digital Signage Management",
   "start_url": "/",
   "display": "standalone",

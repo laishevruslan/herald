@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Data Sources & Integrations REST API Routes for ScreenTinker.
+ * Data Sources & Integrations REST API Routes for LuminaScreen.
  */
 
 const express = require('express');

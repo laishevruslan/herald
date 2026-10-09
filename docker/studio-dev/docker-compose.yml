@@ -1,6 +1,6 @@
 # Studio island — local Vite in Docker Desktop (separate from verify containers).
 #
-# Prerequisite: Herald CMS already up (service name `screentinker` on network `herald_default`).
+# Prerequisite: Herald CMS already up (service name `luminascreen` on network `herald_default`).
 #   docker compose up -d
 #
 # Then:
@@ -19,7 +19,7 @@ services:
     ports:
       - "5174:5174"
     environment:
-      STUDIO_API_PROXY: http://screentinker:3001
+      STUDIO_API_PROXY: http://luminascreen:3001
     volumes:
       # Live reload — edit frontend-studio on the host
       - ../../frontend-studio:/app

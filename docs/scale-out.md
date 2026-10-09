@@ -1,6 +1,6 @@
 # Scale-out: one writer, many readers
 
-*Operator guide for a **replica** — a second ScreenTinker server that holds a live, read-only copy of
+*Operator guide for a **replica** — a second LuminaScreen server that holds a live, read-only copy of
 another server's workspaces and serves their dashboards. The design and its reasoning are in
 [scale-out-design.md](scale-out-design.md); the inventory that led to it is in
 [scale-out-inventory.md](scale-out-inventory.md). This page is what to do and what to expect.*

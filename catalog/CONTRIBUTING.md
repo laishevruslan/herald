@@ -18,7 +18,7 @@ read its source — so the bar is "a stranger can trust it", and this document i
 ## Slide or html?
 
 **Prefer a slide template whenever it can do the job.** A slide template is data: a layout in the
-same shape ScreenTinker's slide editor saves (`template` = view, `fields` = text), with
+same shape LuminaScreen's slide editor saves (`template` = view, `fields` = text), with
 `{{param:…}}` placeholders. No code of yours runs anywhere — the server substitutes the values and
 renders it with its own renderer, which clamps every position, size and colour. It works on every
 player that shows slides, review is quick, and it can show logos, text, colours, clocks, dates,
@@ -85,7 +85,7 @@ extensions: `html css js json svg png jpg jpeg webp gif woff2 txt md`; plus `LIC
 | `homepage` | — | an `https://` URL, ≤ 200 characters |
 | `tags` | — | ≤ 12 tags, each `^[a-z0-9][a-z0-9-]{0,23}$` |
 | `orientation` | — | non-empty list of `landscape` / `portrait`; default `["landscape"]` |
-| `min_server` | — | lowest ScreenTinker version the template works on, `x.y.z`; default `0.0.0`. Servers below it refuse to install |
+| `min_server` | — | lowest LuminaScreen version the template works on, `x.y.z`; default `0.0.0`. Servers below it refuse to install |
 | `entry` | — | default `template.json` (slide, must be `.json`) or `index.html` (html, must be `.html`); must exist |
 | `thumbnail` | — (required here) | a png/jpg/webp in the package; published beside the package for the library |
 | `network` | — | html only: ≤ 8 bare hostnames the template may contact (`api.example.com`, `*.example.com`) — no scheme, port, path or IP. The CSP allows exactly `https://` and `wss://` to these |
@@ -137,7 +137,7 @@ template reads only the resulting public values.
 
 ## Writing a slide template
 
-`template.json` is a slide document, exactly the shape ScreenTinker's slide renderer
+`template.json` is a slide document, exactly the shape LuminaScreen's slide renderer
 (`server/lib/slide-render.js`) takes:
 
 ```json
@@ -168,7 +168,7 @@ template reads only the resulting public values.
 - **Geometry** is in percent of the stage: `box.x/y/w/h`. **Type** is in `size_cqw` (percent of the
   stage width), so a slide looks the same from 720p to 4K. `style`: `color` (hex), `size_cqw`,
   `weight` 100–900, `align` `left|center|right`, `font`, `opacity` 0–1, `radius_cqw`.
-- **Fonts** are the five bundled with ScreenTinker (SIL OFL): `inter` (text), `archivo` (display),
+- **Fonts** are the five bundled with LuminaScreen (SIL OFL): `inter` (text), `archivo` (display),
   `oswald` (condensed), `bitter` (serif), `jetbrains-mono` (monospace).
 - **Motion**: `animation` `fade|slideL|slideR|slideU|slideD|zoom|wipe`, `delay`, `duration`,
   `easing` `ease-out|ease-in|ease-in-out|linear|soft`. ⚠️ Every animation except `wipe` ends at
@@ -237,11 +237,11 @@ ST.ready(function () {                 // DOMContentLoaded, or now if already pa
 
 ## Testing locally
 
-You need a checkout of [screentinker/screentinker](https://github.com/screentinker/screentinker)
+You need a checkout of [luminascreen/luminascreen](https://github.com/luminascreen/luminascreen)
 (`npm ci` in `server/`) and Node 20.
 
 ```bash
-ST=../screentinker
+ST=../luminascreen
 # 1. validate and pack everything — the same check CI runs
 node $ST/scripts/template-catalog.js build templates -o /tmp/dist
 # 2. render every template through the real server code, with a THROWAWAY key
@@ -307,7 +307,7 @@ A pull request is merged only if **all** of these hold.
 ## Review process
 
 1. **Automated checks** (`.github/workflows/validate.yml`) run on every pull request:
-   - *build* — the real ScreenTinker packer validates every manifest, file, parameter and default,
+   - *build* — the real LuminaScreen packer validates every manifest, file, parameter and default,
      exactly as a server will;
    - *lint* — `eval` / `new Function` / string timers, `http(s)://` hosts not declared in `network`,
      missing `LICENSE`/`README.md`, oversized thumbnails, minified-looking files;

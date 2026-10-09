@@ -76,7 +76,7 @@ test('THE MIXED FLEET: one Android member drops the whole group back to our prot
   ]);
   const first = db.prepare('SELECT device_id FROM device_group_members WHERE group_id = ? ORDER BY device_id').get(g);
   const gs = __test.resolveGroupSync({ playlist_id: PL }, first.device_id);
-  assert.equal(gs.backend, 'screentinker');
+  assert.equal(gs.backend, 'luminascreen');
   assert.equal(gs.sync_downgraded, true);
   assert.match(gs.sync_reason, /non-BrightSign/);
 });
@@ -88,7 +88,7 @@ test('THE SILENT SPLIT: BrightSigns on different subnets do not get multicast sy
   ]);
   const first = db.prepare('SELECT device_id FROM device_group_members WHERE group_id = ? ORDER BY device_id').get(g);
   const gs = __test.resolveGroupSync({ playlist_id: PL }, first.device_id);
-  assert.equal(gs.backend, 'screentinker');
+  assert.equal(gs.backend, 'luminascreen');
   assert.match(gs.sync_reason, /multicast|different networks/);
 });
 
@@ -102,7 +102,7 @@ test('THE DEAD LEADER: native sync falls back when nobody is left to broadcast',
   ]);
   const first = db.prepare('SELECT device_id FROM device_group_members WHERE group_id = ? ORDER BY device_id').get(g);
   const gs = __test.resolveGroupSync({ playlist_id: PL }, first.device_id);
-  assert.equal(gs.backend, 'screentinker');
+  assert.equal(gs.backend, 'luminascreen');
   assert.equal(gs.sync_downgraded, true);
   assert.match(gs.sync_reason, /leader is offline/);
 });
@@ -121,12 +121,12 @@ test('exactly one member is told it is the leader, and it is an online one', () 
 });
 
 test('an operator choosing our protocol on an all-BrightSign group is obeyed, not overridden', () => {
-  const g = makeGroup('screentinker', [
+  const g = makeGroup('luminascreen', [
     { platform: 'brightsign', ip: '10.0.9.1' },
     { platform: 'brightsign', ip: '10.0.9.2' },
   ]);
   const first = db.prepare('SELECT device_id FROM device_group_members WHERE group_id = ? ORDER BY device_id').get(g);
   const gs = __test.resolveGroupSync({ playlist_id: PL }, first.device_id);
-  assert.equal(gs.backend, 'screentinker');
+  assert.equal(gs.backend, 'luminascreen');
   assert.equal(gs.sync_downgraded, false);
 });

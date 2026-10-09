@@ -114,37 +114,37 @@ test('THE DEPLOYMENT BUG: every member of the package is STORED, never deflated'
 //
 // A zip pulled from alpha must provision against alpha. Before this, every package carried the
 // committed default (prod) regardless of origin, so provisioning a self-hosted or alpha player
-// from its own server silently pointed it at screentinker.com — which surfaces as a pairing bug,
+// from its own server silently pointed it at luminascreen.ru — which surfaces as a pairing bug,
 // miles from the packaging code that caused it.
 //
 // The invariant at the top of this file becomes PER ORIGIN: different URL, different bytes,
 // different checksum — and the manifest and download routes must derive the same one.
 // ---------------------------------------------------------------------------------------------
 
-// Entries are STORED (no compression), so screentinker.json sits verbatim in the archive and can be
+// Entries are STORED (no compression), so luminascreen.json sits verbatim in the archive and can be
 // read without a zip library. Matched on the "key": "value" form specifically: autorun.brs also
 // mentions server_url, but only as reg.Exists("server_url") / SaveRegistry("server_url", …), which
 // this pattern cannot match.
 const packagedServerUrl = (buffer) => {
   const m = buffer.toString('latin1').match(/"server_url"\s*:\s*"([^"]*)"/);
-  assert.ok(m, 'screentinker.json should be readable in the stored archive');
+  assert.ok(m, 'luminascreen.json should be readable in the stored archive');
   return m[1];
 };
 
 test('a package fetched from alpha points at alpha, not the committed default', async () => {
   pkgLib._reset();
-  const alpha = await pkgLib.getPackage('https://alpha.screentinker.com');
-  assert.equal(packagedServerUrl(alpha.buffer), 'https://alpha.screentinker.com');
+  const alpha = await pkgLib.getPackage('https://alpha.luminascreen.ru');
+  assert.equal(packagedServerUrl(alpha.buffer), 'https://alpha.luminascreen.ru');
   pkgLib._reset();
   const plain = await pkgLib.getPackage();
-  assert.equal(packagedServerUrl(plain.buffer), 'https://screentinker.com',
+  assert.equal(packagedServerUrl(plain.buffer), 'https://luminascreen.ru',
     'with no URL to stamp, the committed default ships unchanged');
 });
 
 test('THE OTA LOOP, per origin: each package hashes its OWN bytes', async () => {
   pkgLib._reset();
-  const a = await pkgLib.getPackage('https://alpha.screentinker.com');
-  const b = await pkgLib.getPackage('https://screentinker.com');
+  const a = await pkgLib.getPackage('https://alpha.luminascreen.ru');
+  const b = await pkgLib.getPackage('https://luminascreen.ru');
   assert.notEqual(a.sha256, b.sha256, 'different URLs must produce different bytes');
   for (const p of [a, b]) {
     assert.equal(p.sha256, crypto.createHash('sha256').update(p.buffer).digest('hex'));
@@ -156,9 +156,9 @@ test('reproducibility survives: the same URL yields byte-identical packages', as
   // The whole reason entry timestamps are fixed. Per-origin caching must not reintroduce the
   // churn — a player that sees a new checksum every poll re-downloads forever.
   pkgLib._reset();
-  const first = await pkgLib.getPackage('https://alpha.screentinker.com');
+  const first = await pkgLib.getPackage('https://alpha.luminascreen.ru');
   pkgLib._reset();
-  const second = await pkgLib.getPackage('https://alpha.screentinker.com');
+  const second = await pkgLib.getPackage('https://alpha.luminascreen.ru');
   assert.equal(first.sha256, second.sha256);
 });
 
@@ -171,8 +171,8 @@ test('the URL is not taken on trust — APP_URL wins, and a hostile Host is sani
       'a configured APP_URL must win over the request header, and lose its trailing slash');
 
     delete process.env.APP_URL;
-    assert.equal(pkgLib.packageServerUrl(req('alpha.screentinker.com')),
-      'https://alpha.screentinker.com', 'otherwise fall back to the host, so self-hosting needs no config');
+    assert.equal(pkgLib.packageServerUrl(req('alpha.luminascreen.ru')),
+      'https://alpha.luminascreen.ru', 'otherwise fall back to the host, so self-hosting needs no config');
     for (const bad of ['a.example"; rm -rf /', 'a.example/../x', 'a b.example', 'x'.repeat(200),
                        'http://a.example', 'a.example:notaport']) {
       assert.equal(pkgLib.packageServerUrl(req(bad)), null,
@@ -188,7 +188,7 @@ test('the URL is not taken on trust — APP_URL wins, and a hostile Host is sani
 });
 
 test('a corrupt config ships as-is rather than shipping corrupt', async () => {
-  // autorun.brs reads screentinker.json at boot. A package that cannot be parsed there is a player
+  // autorun.brs reads luminascreen.json at boot. A package that cannot be parsed there is a player
   // that never starts — strictly worse than one pointing at the wrong server.
   const pkgSrc = require('node:fs').readFileSync(
     require('node:path').join(__dirname, '..', 'lib', 'brightsign-package.js'), 'utf8');

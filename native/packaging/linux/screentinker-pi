@@ -1,15 +1,15 @@
 #!/usr/bin/python3
-"""screentinker-pi — launcher and setup for the native ScreenTinker Raspberry Pi player.
+"""luminascreen-pi — launcher and setup for the native LuminaScreen Raspberry Pi player.
 
-  screentinker-pi setup URL [--name NAME] [--mode lite|desktop] [--user USER]
+  luminascreen-pi setup URL [--name NAME] [--mode lite|desktop] [--user USER]
                             [--allow-package-install] [--state-dir DIR]     (as root)
-  screentinker-pi run                  start the player in the foreground (what the service runs)
-  screentinker-pi status               show configuration and service state
-  screentinker-pi unpair               forget this panel's pairing (as root, or as the player user)
+  luminascreen-pi run                  start the player in the foreground (what the service runs)
+  luminascreen-pi status               show configuration and service state
+  luminascreen-pi unpair               forget this panel's pairing (as root, or as the player user)
 
 Two run modes:
   lite     Pi OS Lite, no desktop: a system service draws straight to the display over KMS (eglfs)
-           as the dedicated `screentinker` user. The recommended shape for signage.
+           as the dedicated `luminascreen` user. The recommended shape for signage.
   desktop  Pi OS with a desktop: the player starts full screen inside the desktop session of --user
            (labwc / wayfire / X11), through /etc/xdg/autostart.
 """
@@ -22,9 +22,9 @@ import pwd
 import subprocess
 import sys
 
-LIB = "/usr/lib/screentinker-pi"
-SYSTEM_CONFIG = "/etc/screentinker-pi/config.json"
-SERVICE = "screentinker-pi"
+LIB = "/usr/lib/luminascreen-pi"
+SYSTEM_CONFIG = "/etc/luminascreen-pi/config.json"
+SERVICE = "luminascreen-pi"
 
 
 def load_cfg():
@@ -46,7 +46,7 @@ def save_cfg(cfg):
 
 def need_root():
     if os.geteuid() != 0:
-        sys.exit("run this as root (sudo screentinker-pi ...)")
+        sys.exit("run this as root (sudo luminascreen-pi ...)")
 
 
 def sh(*argv, check=False):
@@ -77,7 +77,7 @@ def cmd_run(args):
         env.setdefault("QT_QPA_EGLFS_ALWAYS_SET_MODE", "1")
         card = kms_card()
         if card and "QT_QPA_EGLFS_KMS_CONFIG" not in env:
-            rundir = env.get("XDG_RUNTIME_DIR") or "/run/screentinker-pi"
+            rundir = env.get("XDG_RUNTIME_DIR") or "/run/luminascreen-pi"
             os.makedirs(rundir, exist_ok=True)
             kcfg = os.path.join(rundir, "eglfs-kms.json")
             with open(kcfg, "w") as f:
@@ -89,7 +89,7 @@ def cmd_run(args):
     # (video, images, transitions) keeps its GPU path regardless.
     env.setdefault("QTWEBENGINE_CHROMIUM_FLAGS",
                    "--autoplay-policy=no-user-gesture-required --disable-gpu-rasterization --enable-zero-copy")
-    argv = [sys.executable, "-m", "screentinker_native"] + args.rest
+    argv = [sys.executable, "-m", "luminascreen_native"] + args.rest
     os.execve(sys.executable, argv, env)
 
 
@@ -107,8 +107,8 @@ def cmd_setup(args):
             sys.exit("--mode desktop needs --user (the desktop login user)")
         pwd.getpwnam(user)
         cfg["desktop_user"] = user
-        # The helper is granted to the screentinker GROUP: put the desktop user in it.
-        sh("adduser", user, "screentinker")
+        # The helper is granted to the luminascreen GROUP: put the desktop user in it.
+        sh("adduser", user, "luminascreen")
         sh("systemctl", "disable", "--now", SERVICE)
         print("Desktop mode: the player starts full screen at %s's next desktop login." % user)
         print("⚠️  The dashboard's remote terminal runs as %s — if that user has sudo, so does the terminal." % user)
@@ -116,7 +116,7 @@ def cmd_setup(args):
         cfg.pop("desktop_user", None)
         sh("systemctl", "enable", SERVICE)
         sh("systemctl", "restart", SERVICE)
-        print("Lite mode: the player runs as a system service on the display (screentinker-pi.service).")
+        print("Lite mode: the player runs as a system service on the display (luminascreen-pi.service).")
     save_cfg(cfg)
     print("Server: %s" % cfg["server_url"])
     print("A pairing code will appear on screen; enter it in the dashboard (Displays → Add display).")
@@ -147,12 +147,12 @@ def cmd_autostart(args):
 
 def cmd_status(args):
     cfg = load_cfg()
-    print(json.dumps(cfg, indent=1) if cfg else "not configured (sudo screentinker-pi setup URL)")
+    print(json.dumps(cfg, indent=1) if cfg else "not configured (sudo luminascreen-pi setup URL)")
     sh("systemctl", "--no-pager", "status", SERVICE)
 
 
 def cmd_unpair(args):
-    for d in ("/var/lib/screentinker-pi",):
+    for d in ("/var/lib/luminascreen-pi",):
         p = os.path.join(d, "state.json")
         if os.path.exists(p):
             with open(p) as f:
@@ -166,7 +166,7 @@ def cmd_unpair(args):
 
 
 def main():
-    ap = argparse.ArgumentParser(prog="screentinker-pi")
+    ap = argparse.ArgumentParser(prog="luminascreen-pi")
     sub = ap.add_subparsers(dest="cmd")
     s = sub.add_parser("setup")
     s.add_argument("url")

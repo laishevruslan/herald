@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * "ScreenTinker hosted images" — the SECOND AI path (docs/ai-credits.md). The bring-your-own path
+ * "LuminaScreen hosted images" — the SECOND AI path (docs/ai-credits.md). The bring-your-own path
  * in routes/ai.js is untouched and never spends credits; this one calls providers with PLATFORM
  * keys and spends the caller's ORG credits.
  *
@@ -186,7 +186,7 @@ router.post('/checkout', async (req, res) => {
         quantity: 1,
         price_data: {
           currency: 'usd', unit_amount: pack.usd_cents,
-          product_data: { name: `ScreenTinker AI credits — ${pack.credits.toLocaleString('en-US')}` },
+          product_data: { name: `LuminaScreen AI credits — ${pack.credits.toLocaleString('en-US')}` },
         },
       }],
       success_url: `${base}#/settings?credits=success`,

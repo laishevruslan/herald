@@ -27,8 +27,8 @@ process.env.DATA_DIR = tmp;
 const apkCache = require('../lib/apk-cache');
 const breaker = require('../lib/ota-breaker');
 
-const STABLE = path.join(tmp, 'ScreenTinker.apk');
-const BETA = path.join(tmp, 'ScreenTinker-beta.apk');
+const STABLE = path.join(tmp, 'LuminaScreen.apk');
+const BETA = path.join(tmp, 'LuminaScreen-beta.apk');
 
 function writeStable() { fs.writeFileSync(STABLE, Buffer.alloc(100, 1)); }
 function writeBeta(version) {

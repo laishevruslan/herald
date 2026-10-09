@@ -107,7 +107,7 @@ const NOT_WORKSPACE_SCOPED = Object.freeze({
   'admin.js': 'platform-admin, node-local',
   'admin-plugins.js': 'platform-admin plugin management, node-local',
   'diagnostics.js': 'platform-admin diagnostics, node-local',
-  'telemetry-collector.js': 'stats.screentinker.com ingest, node-local',
+  'telemetry-collector.js': 'stats.luminascreen.ru ingest, node-local',
   'hardware-submissions.js': 'public community report, no workspace',
   'plugin-submissions.js': 'mounted with tenancy in api-surface; listed for the inline rate-limit mount',
   'agency.js': 'agency-token surface, mounted behind bearerAuth + resolveTenancy (AGENCY_ROUTERS)',
@@ -195,7 +195,7 @@ test('test_no_builtin_primary_url: PRIMARY_URL has no default and nothing host-s
   assert.ok(m, 'config.primaryUrl exists');
   assert.match(m[1], /process\.env\.PRIMARY_URL/);
   assert.match(m[1], /\|\|\s*null/, 'unset means null, never a host');
-  const HOSTNAME = /(screentinker\.com|relay\.|\.amazonaws\.|\.cloudfront\.|https?:\/\/[a-z0-9-]+\.[a-z]{2,})/i;
+  const HOSTNAME = /(luminascreen\.com|relay\.|\.amazonaws\.|\.cloudfront\.|https?:\/\/[a-z0-9-]+\.[a-z]{2,})/i;
   for (const f of ['lib/replica-proxy.js', 'lib/mesh/replica.js', 'lib/mesh/replication.js', 'lib/mesh/content-cache.js']) {
     const src = read(f).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
     assert.doesNotMatch(src, HOSTNAME, `${f} names a host; the primary address is operator-typed only`);

@@ -1,6 +1,6 @@
 import os
 from playwright.sync_api import sync_playwright
-BASE="/home/owner/screentinker-video"
+BASE="/home/owner/luminascreen-video"
 
 # ---- shared brand frame (1920x1080) ----
 FRAME_CSS = """
@@ -94,9 +94,9 @@ def imager_scene():
 
 jobs=[
   ("03", imager_scene()),
-  ("08", browser_scene("08","07 · Pair it","app.screentinker.com/app","cap-add-display.png",
+  ("08", browser_scene("08","07 · Pair it","app.luminascreen.ru/app","cap-add-display.png",
         "Click <b>Add Display</b>, enter the pairing code — it's yours.")),
-  ("09", browser_scene("09","08 · It's live","app.screentinker.com/app","cap-displays.png",
+  ("09", browser_scene("09","08 · It's live","app.luminascreen.ru/app","cap-displays.png",
         "Your fleet, online and under control — content live in seconds.")),
 ]
 os.makedirs(f"{BASE}/scenes",exist_ok=True)

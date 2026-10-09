@@ -3,7 +3,7 @@
 #   docker compose -f docker/studio-dev/docker-compose.yml up -d --build
 #   open http://localhost:5174/studio/
 #
-# Proxies /api to the running Herald CMS (screentinker on herald_default).
+# Proxies /api to the running Herald CMS (luminascreen on herald_default).
 # Mounts source for live reload.
 
 FROM node:20-bookworm
@@ -17,7 +17,7 @@ RUN npm ci
 COPY frontend-studio/ ./
 COPY server/fonts /server/fonts
 
-ENV STUDIO_API_PROXY=http://screentinker:3001
+ENV STUDIO_API_PROXY=http://luminascreen:3001
 EXPOSE 5174
 
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5174"]

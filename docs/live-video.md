@@ -1,6 +1,6 @@
 # Live video (go2rtc)
 
-ScreenTinker's built-in live view is a **screenshot stream**: the player captures its screen about
+LuminaScreen's built-in live view is a **screenshot stream**: the player captures its screen about
 once a second and relays it over the dashboard socket. That is the right transport for a snapshot
 and for input injection, and it is the wrong one for continuous video — it is a slideshow, not a
 picture of what is playing.
@@ -15,7 +15,7 @@ Devices page works exactly as before.
 > the opposite direction from a screen *playing* a live channel. To play a live TV/IPTV channel
 > *on* a screen, add a **live stream** in the content library: a `video/hls` item whose URL is an
 > `.m3u8` the player opens on its own LAN, or a `video/rtsp` item pointed at an `rtsp://` camera.
-> ScreenTinker never ingests or restreams either — the screen opens the URL itself.
+> LuminaScreen never ingests or restreams either — the screen opens the URL itself.
 >
 > - **HLS (`video/hls`)** plays on every player (web/BrightSign/webOS, Tizen, Android, single-zone
 >   e-ink skips it). Cross-platform, and one on-site bridge fans out to many screens.
@@ -25,7 +25,7 @@ Devices page works exactly as before.
 >
 > For many screens off one camera, or for non-Android players, run an on-site **RTSP-to-HLS bridge**
 > (for example a go2rtc instance of your own) and point a `video/hls` item at its HLS output.
-> ScreenTinker does not run that sidecar for you and never fetches the stream.
+> LuminaScreen does not run that sidecar for you and never fetches the stream.
 >
 > Full setup and the transport comparison: [`live-playback.md`](live-playback.md).
 
@@ -34,11 +34,11 @@ Devices page works exactly as before.
 ```
 player ──publish──▶ go2rtc ──restream──▶ dashboard
                       ▲                      │
-                      └── ScreenTinker ◀─────┘  (signaling proxied + workspace-authorised)
+                      └── LuminaScreen ◀─────┘  (signaling proxied + workspace-authorised)
 ```
 
-- **go2rtc** does the restreaming. ScreenTinker never becomes an SFU.
-- **ScreenTinker's server** is the only thing that talks to go2rtc's admin API (register streams,
+- **go2rtc** does the restreaming. LuminaScreen never becomes an SFU.
+- **LuminaScreen's server** is the only thing that talks to go2rtc's admin API (register streams,
   proxy SDP). The browser never receives the go2rtc URL or a token.
 - **The dashboard** plays WebRTC first, then falls back to MSE/HLS, then to the screenshot stream.
 - Everything is **workspace-scoped**: a stream is named from its workspace *and* device, so one
@@ -48,21 +48,21 @@ player ──publish──▶ go2rtc ──restream──▶ dashboard
 
 | Port | What | Expose it? |
 |------|------|-----------|
-| **1984** | go2rtc HTTP API | **No.** Only the ScreenTinker container reaches it, over the compose network. The dashboard signals through ScreenTinker, which keeps this private. Never publish it to the host or the internet. |
+| **1984** | go2rtc HTTP API | **No.** Only the LuminaScreen container reaches it, over the compose network. The dashboard signals through LuminaScreen, which keeps this private. Never publish it to the host or the internet. |
 | **8555/tcp** | WebRTC over TCP | Works behind a reverse proxy and on plain-HTTP LANs. The safe default. |
 | **8555/udp** | WebRTC over UDP | Lower latency, but must be open end to end. |
 
 ## Enabling it
 
 1. **Run the sidecar.** Uncomment the `go2rtc` service in `docker-compose.example.yml`, and the
-   `LIVE_VIDEO_*` / `GO2RTC_*` environment on the `screentinker` service.
+   `LIVE_VIDEO_*` / `GO2RTC_*` environment on the `luminascreen` service.
 
 2. **Drop a `go2rtc.yaml`** beside your compose file. A minimal one:
 
    ```yaml
    api:
      listen: ":1984"
-     # Protect the API and set the same value as GO2RTC_API_TOKEN on the ScreenTinker service.
+     # Protect the API and set the same value as GO2RTC_API_TOKEN on the LuminaScreen service.
      # token: "a-long-random-string"
 
    webrtc:
@@ -73,7 +73,7 @@ player ──publish──▶ go2rtc ──restream──▶ dashboard
        # - "203.0.113.10:8555"
        # - "stun:8555"   # ask a STUN server what our public address is
 
-   # Streams are created by ScreenTinker at runtime via the API; none need listing here.
+   # Streams are created by LuminaScreen at runtime via the API; none need listing here.
    streams: {}
    ```
 
@@ -143,11 +143,11 @@ remotely, this is almost always the cause.
 
 go2rtc's WHIP publish endpoint is `POST /api/webrtc?dst=<stream>`, and it **404s on a stream that
 does not exist yet**. The streams API cannot create a truly empty stream (PUT requires a source),
-so ScreenTinker creates the stream with go2rtc's inert `webrtc:` source (an "expects an inbound
+so LuminaScreen creates the stream with go2rtc's inert `webrtc:` source (an "expects an inbound
 WebRTC producer" placeholder) the moment a player publishes, then runs the `dst=` exchange. This is
 `ensureStream()` in `lib/go2rtc.js`, called by `POST /api/devices/:id/live/publish`.
 
-Because ScreenTinker creates streams at runtime, mounting `go2rtc.yaml` read-only (`:ro`, as in the
+Because LuminaScreen creates streams at runtime, mounting `go2rtc.yaml` read-only (`:ro`, as in the
 compose sample) is fine and slightly preferable: go2rtc still creates the stream in memory (it just
 logs that it could not persist the definition), so per-device `st_<hash>` entries stay ephemeral and
 never accumulate in the config. They vanish on a go2rtc restart and are recreated on the next
@@ -177,7 +177,7 @@ player's `device:live-publish` stop tears the stream down immediately; a hard ta
 go2rtc's ICE-consent timeout (~30s) before the producer drops.
 
 Verified end to end against go2rtc 1.9.14 with a real headless Chromium: a WHEP viewer decodes
-frames straight from go2rtc and through the ScreenTinker signaling proxy, and a browser publisher
+frames straight from go2rtc and through the LuminaScreen signaling proxy, and a browser publisher
 pushes a track that a viewer then watches back through the proxy.
 
 ## Talk (voice intercom + group PA)

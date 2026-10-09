@@ -408,7 +408,7 @@ function renderGroupSection(group, devices, playlists) {
           ${group.sync_enabled ? `
           <select class="input group-backend-select" data-group-id="${group.id}" style="width:130px;padding:4px 8px;font-size:12px;background:var(--bg-input)" title="${esc(t('dashboard.group_sync.backend_hint'))}">
             <option value="auto" ${(group.sync_backend || 'auto') === 'auto' ? 'selected' : ''}>${t('dashboard.group_sync.backend_auto')}</option>
-            <option value="screentinker" ${group.sync_backend === 'screentinker' ? 'selected' : ''}>${t('dashboard.group_sync.backend_screentinker')}</option>
+            <option value="luminascreen" ${group.sync_backend === 'luminascreen' ? 'selected' : ''}>${t('dashboard.group_sync.backend_luminascreen')}</option>
             <option value="brightsign" ${group.sync_backend === 'brightsign' ? 'selected' : ''}>${t('dashboard.group_sync.backend_brightsign')}</option>
           </select>
           ${group.sync_effective ? `
@@ -508,7 +508,7 @@ async function renderStatsPrompt(container) {
   el.style.cssText = 'margin-bottom:16px;display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap';
   el.innerHTML = `
     <div style="flex:1;min-width:260px">
-      <strong>Help show how widely ScreenTinker is deployed?</strong>
+      <strong>Help show how widely LuminaScreen is deployed?</strong>
       <p style="color:var(--text-muted);font-size:13px;margin:6px 0 0">
         Because most installs are private, we can't tell how many screens are out there. Sharing
         sends a random ID, the version, and how many screens you run — nothing else, ever.

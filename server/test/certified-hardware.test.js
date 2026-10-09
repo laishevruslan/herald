@@ -53,7 +53,7 @@ test('every device carries every field, so a missing value is a decision and not
 test('a photo is a complete, credited, local claim or it is null', () => {
   /*
    * ⚠️ A PHOTO ON THIS PAGE IS A CLAIM, like every other field. It shows the hardware actually running
-   * ScreenTinker, published with the owner's permission and credited to them. A stock product shot
+   * LuminaScreen, published with the owner's permission and credited to them. A stock product shot
    * would quietly turn a compatibility record into an advert, on the page reseller agreements point at
    * — so the credit is mandatory, and the file must be ours rather than hotlinked from a supplier who
    * can change or remove it.
@@ -97,15 +97,15 @@ test('ids are unique, url-safe, and every one is a real anchor on the page', () 
 
 test('⚠️ nothing claims certification without the evidence certification means', () => {
   for (const d of devices.filter((x) => CERTIFIED.includes(x.status))) {
-    assert.equal(d.validated_by, 'ScreenTinker',
-      `${d.id} is ${d.status} but validated_by is "${d.validated_by}" — certification is a ScreenTinker test`);
+    assert.equal(d.validated_by, 'LuminaScreen',
+      `${d.id} is ${d.status} but validated_by is "${d.validated_by}" — certification is a LuminaScreen test`);
   }
   // The inverse is the one that would actually mislead someone: a community report must never be
-  // dressed as a ScreenTinker validation, because the page says Certified Hardware is what ScreenTinker
+  // dressed as a LuminaScreen validation, because the page says Certified Hardware is what LuminaScreen
   // tested and holds in the lab.
   for (const d of devices.filter((x) => x.status === 'community-reported')) {
-    assert.notEqual(d.validated_by, 'ScreenTinker',
-      `${d.id} is community-reported but claims ScreenTinker validated it`);
+    assert.notEqual(d.validated_by, 'LuminaScreen',
+      `${d.id} is community-reported but claims LuminaScreen validated it`);
   }
 });
 
@@ -181,7 +181,7 @@ test('the page states the contract meaning of the list, and renders its date fro
   const html = fs.readFileSync(PAGE, 'utf8');
   // The distinction the agreements rest on has to be ON the page, near the top, not implied by
   // the grouping. If this ever gets edited away, the page stops doing the job it exists for.
-  assert.match(html, /are Certified Hardware\s+under ScreenTinker agreements/,
+  assert.match(html, /are Certified Hardware\s+under LuminaScreen agreements/,
     'the page no longer states which statuses are Certified Hardware');
   assert.match(html, /<strong>Certified<\/strong>[\s\S]{0,80}<strong>Certified with limits<\/strong>/,
     'the page no longer names BOTH certified statuses as the ones that count');
@@ -207,9 +207,9 @@ test('the URL named in contracts is actually routed and advertised', () => {
   assert.match(route, /sendFile\(OUT\)/,
     'the page must fall back to the committed file rather than erroring');
   const sitemap = fs.readFileSync(path.join(ROOT, 'frontend', 'sitemap.xml'), 'utf8');
-  assert.ok(sitemap.includes('https://screentinker.com/certified-hardware'),
+  assert.ok(sitemap.includes('https://luminascreen.ru/certified-hardware'),
     'the page is not in the sitemap');
   const html = fs.readFileSync(PAGE, 'utf8');
-  assert.ok(html.includes('<link rel="canonical" href="https://screentinker.com/certified-hardware">'),
+  assert.ok(html.includes('<link rel="canonical" href="https://luminascreen.ru/certified-hardware">'),
     'the canonical URL must be the extension-less one that contracts name');
 });

@@ -8,7 +8,7 @@ import pytest
 
 QtCore = pytest.importorskip("PySide6.QtCore")
 
-from screentinker_native.logic import kiosk as K  # noqa: E402
+from luminascreen_native.logic import kiosk as K  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -22,7 +22,7 @@ def _assign(i, wid=None):
 
 
 def _controller(qapp, played):
-    from screentinker_native.player.controller import PlaylistController
+    from luminascreen_native.player.controller import PlaylistController
     c = PlaylistController(on_item_changed=lambda it: played.append(it.widget_id), on_playlist_empty=lambda: played.append("EMPTY"))
     return c
 
@@ -91,7 +91,7 @@ class FakeStage:
 
 
 def _session(tmp_path, ua="Mozilla/5.0 Chrome/120.0.0.0 Safari/537.36"):
-    from screentinker_native.ui import kiosk as ui_kiosk
+    from luminascreen_native.ui import kiosk as ui_kiosk
     ev = {"hold": 0, "release": 0, "skip": 0, "errors": [], "sessions": []}
     stage = FakeStage()
     s = ui_kiosk.KioskSession(stage, str(tmp_path), hold=lambda: ev.__setitem__("hold", ev["hold"] + 1),
@@ -108,7 +108,7 @@ CFG = K.parse("webpage", {"url": "https://shop.example/menu", "interactive": Tru
 
 
 def test_first_touch_holds_idle_reset_releases_and_records(qapp, tmp_path, monkeypatch):
-    from screentinker_native.ui import kiosk as ui_kiosk
+    from luminascreen_native.ui import kiosk as ui_kiosk
     now = [1_000_000]
     monkeypatch.setattr(ui_kiosk, "_now_ms", lambda: now[0])
     s, stage, ev = _session(tmp_path)
@@ -207,7 +207,7 @@ class _FakeApp:
 
 def _bind(fake):
     pytest.importorskip("PySide6.QtGui")
-    from screentinker_native.app import App
+    from luminascreen_native.app import App
     for n in ("send_kiosk_error", "_flush_kiosk_errors", "_emit_web_error", "flush_kiosk_sessions", "_on_kiosk_ack",
               "_kiosk_session_end"):
         setattr(fake, n, getattr(App, n).__get__(fake))
@@ -276,7 +276,7 @@ class _FakeKiosk:
 
 def _engine(tmp_path):
     import types
-    from screentinker_native.player.engine import PlaybackEngine
+    from luminascreen_native.player.engine import PlaybackEngine
 
     class Cfg(dict):
         device_id = "dev1"
@@ -324,7 +324,7 @@ def test_interactive_item_is_passive_in_a_group(qapp, tmp_path):
 def test_remote_input_never_starts_a_visitor_session(qapp, tmp_path):
     from PySide6.QtCore import QEvent, QPointF, Qt
     from PySide6.QtGui import QMouseEvent
-    from screentinker_native.ui.stage import Stage
+    from luminascreen_native.ui.stage import Stage
     stage = Stage(object())
     s, _, ev = _session(tmp_path)
     s.stage = stage

@@ -342,12 +342,12 @@ test('⚠️ the published server card cannot disagree with the handshake', () =
   // cut the window off before the half of the handler worth asserting on.
   const body = routeSrc.slice(start, routeSrc.indexOf('app.get(', start + 10));
   assert.match(body, /mcpProtocol\.identity\(/, 'the card must be built from the shared identity');
-  assert.ok(!/name: 'screentinker'/.test(body), 'the card must not restate serverInfo by hand');
+  assert.ok(!/name: 'luminascreen'/.test(body), 'the card must not restate serverInfo by hand');
   assert.ok(!/listChanged/.test(body), 'the card must not restate capabilities by hand');
 
   // What the spec requires of the document itself.
   const id = protocol.identity({ version: '9.9.9' });
-  assert.equal(id.serverInfo.name, 'screentinker');
+  assert.equal(id.serverInfo.name, 'luminascreen');
   assert.equal(id.serverInfo.version, '9.9.9');
   assert.ok(id.capabilities.tools, 'the card must list the tools capability');
   assert.match(body, /endpoint: `\$\{base\}\/mcp`/, 'it must name the transport endpoint');
@@ -486,9 +486,9 @@ test('tool calls cannot hang the request forever', () => {
 
 test('the MCP endpoint is advertised where an agent will look', () => {
   const ai = require('../lib/ai-surface');
-  const cat = ai.apiCatalog('https://screentinker.com');
-  assert.match(JSON.stringify(cat), /https:\/\/screentinker\.com\/mcp/);
-  assert.match(ai.authMarkdown('https://screentinker.com'), /Model Context Protocol/);
+  const cat = ai.apiCatalog('https://luminascreen.ru');
+  assert.match(JSON.stringify(cat), /https:\/\/luminascreen\.com\/mcp/);
+  assert.match(ai.authMarkdown('https://luminascreen.ru'), /Model Context Protocol/);
 });
 
 test('get_playlist: a head office playlist says it is locked, and a local slot is a slot (spec §6.5)', () => {

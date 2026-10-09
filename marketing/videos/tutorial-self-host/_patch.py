@@ -8,29 +8,29 @@ NEW = '''SCENES = {
         "<h1 class='a' style='animation-delay:.15s'>Free signage. Self-hosted.<br><span class='hl'>$0 forever.</span></h1>"
         "<div class='sub a' style='animation-delay:.35s;margin-bottom:40px'>Your server, your data — running in one command.</div>"
         "<div class='term a' style='animation-delay:.55s;margin:0'>"
-        "<div class='tbar'><span class='dot r'></span><span class='dot y'></span><span class='dot g'></span><span class='ttl'>your-server: ~/screentinker</span></div>"
+        "<div class='tbar'><span class='dot r'></span><span class='dot y'></span><span class='dot g'></span><span class='ttl'>your-server: ~/luminascreen</span></div>"
         "<div class='tbody' style='min-height:auto;padding:26px 40px'>"
         "<div class='tl'><span class='pmt'>$</span> <span class='cmd'>docker compose up -d</span></div>"
-        "<div class='tl'><span class='st'>[+] Pulling screentinker</span> <span class='ok'>done ✓</span></div>"
-        "<div class='tl'><span class='ok'>✔ ScreenTinker listening on :3001</span></div>"
+        "<div class='tl'><span class='st'>[+] Pulling luminascreen</span> <span class='ok'>done ✓</span></div>"
+        "<div class='tl'><span class='ok'>✔ LuminaScreen listening on :3001</span></div>"
         "</div></div></div></div>"),
  "02": slate("01 · What you need", "What you <span class='hl'>need</span>", bullets=[
         "A small <b>Linux server</b> <span class='k'>— even a $5 VPS</span>",
         "<b>Docker</b> installed <span class='k'>— the only dependency</span>",
         "A <b>domain</b> <span class='k'>— optional, for clean HTTPS</span>",
         "<b>One container</b> <span class='k'>— dashboard + player + API</span>"]),
- "03": terminal("02 · Get the compose", "your-server: ~/screentinker", [
+ "03": terminal("02 · Get the compose", "your-server: ~/luminascreen", [
         "<span class='dim'># clone the repo (or just grab the compose file)</span>",
-        "<span class='pmt'>$</span> <span class='cmd'>git clone https://github.com/screentinker/screentinker.git</span>",
+        "<span class='pmt'>$</span> <span class='cmd'>git clone https://github.com/luminascreen/luminascreen.git</span>",
         "<span class='pmt'>$</span> <span class='cmd'>cp docker-compose.example.yml docker-compose.yml</span>",
         "",
-        "<span class='dim'>#  image:  </span><span class='hdr'>ghcr.io/screentinker/screentinker:latest</span>",
+        "<span class='dim'>#  image:  </span><span class='hdr'>ghcr.io/luminascreen/luminascreen:latest</span>",
         "<span class='dim'>#  SELF_HOSTED=true   ·   volume  st-data:/data  (db + uploads)</span>"], caret=False),
  "04": terminal("03 · One command", "your-server: docker compose up", [
         "<span class='pmt'>$</span> <span class='cmd'>docker compose up -d</span>",
-        "<span class='st'>[+] Pulling screentinker</span> <span class='ok'>… done ✓</span>",
+        "<span class='st'>[+] Pulling luminascreen</span> <span class='ok'>… done ✓</span>",
         "<span class='st'>[+] Running database migrations</span> <span class='ok'>done ✓</span>",
-        "<span class='ok'>✔ ScreenTinker listening on :3001</span>",
+        "<span class='ok'>✔ LuminaScreen listening on :3001</span>",
         "",
         "<span class='dim'># no build step, no dependencies to chase</span>"], caret=False),
  "05": slate("04 · First run", "Register the <span class='hl'>first admin</span>",
@@ -60,7 +60,7 @@ NEW = '''SCENES = {
         "<div class='logo' style='position:static;font:800 40px sans-serif;color:#8aa'>Screen<b>Tinker</b></div>"
         "<div class='big a' style='animation-delay:.15s'>Free digital signage.<br><b>On hardware you control.</b></div>"
         "<div class='links a' style='animation-delay:.5s'>"
-        "<span class='pill'><span class='u'>github.com/screentinker</span></span>"
+        "<span class='pill'><span class='u'>github.com/luminascreen</span></span>"
         "<span class='pill'>Docs</span>"
         "<span class='pill'>Discord</span></div>"
         "<div class='sub a' style='animation-delay:.8s;color:#7b8aa0;text-align:center'>Open source · Self-hostable · No per-screen fees</div>"

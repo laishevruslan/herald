@@ -6,7 +6,7 @@
 import os, time, datetime
 from playwright.sync_api import sync_playwright
 
-ALPHA="https://alpha.screentinker.com"
+ALPHA="https://alpha.luminascreen.ru"
 RENDER=f"{ALPHA}/api/widgets/vid21-hist/render"
 DASH="file://"+os.path.abspath("caps/cap-dashboard.png")
 

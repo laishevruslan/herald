@@ -6,7 +6,7 @@ inbound (part 3).
 ## Why the server cannot do any of this
 
 Signage sits on the customer's LAN, in a rack, next to the things worth talking to: a PLC, a door
-sensor, an occupancy counter, a Crestron or AMX processor, a local Home Assistant. The ScreenTinker
+sensor, an occupancy counter, a Crestron or AMX processor, a local Home Assistant. The LuminaScreen
 server is frequently in another country, reached through an outbound-only firewall, and has no route
 to that `192.168.x.x` at all.
 
@@ -133,7 +133,7 @@ one. It is written down here so the next person finds it stated rather than disc
 
 ## Status body
 
-`GET /api/status` answers: `device_id`, `name`, `app_version`, `connected` (to the ScreenTinker
+`GET /api/status` answers: `device_id`, `name`, `app_version`, `connected` (to the LuminaScreen
 server), `screen` (`on` / `scheduled_off`), `uptime_ms`.
 
 ⚠️ Nothing secret, and the exclusions are deliberate: not the device token, not the trigger secret,

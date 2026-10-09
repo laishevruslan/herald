@@ -117,7 +117,7 @@ warning at boot rather than failing quietly.
    MICROSOFT_CLIENT_SECRET=…
    ```
 
-> **Entra never sends `email_verified`.** ScreenTinker treats a tenant-pinned Microsoft provider as
+> **Entra never sends `email_verified`.** LuminaScreen treats a tenant-pinned Microsoft provider as
 > vouching for the address rather than demanding a claim Microsoft does not emit — safe because the
 > operator chose that provider and it is pinned to one directory. An explicit `email_verified: false`
 > is still refused.
@@ -158,7 +158,7 @@ No environment variables, no restart, no operator involvement.
    generated slug, so two customers can neither collide on nor guess each other's.
 3. **Verify each domain.** Publish the TXT record shown:
    ```
-   _screentinker-verify.<your-domain>   TXT   st-verify=<token>
+   _luminascreen-verify.<your-domain>   TXT   st-verify=<token>
    ```
    Then press Verify. An unverified claim lapses after 8 hours and releases the domain.
 
@@ -202,7 +202,7 @@ deliberately instead:
   the provider only.
 - **Unlink** asks for a new password and applies both changes together, so the account is never left
   without a way in.
-- The provider account must use the **same email address** as the ScreenTinker account.
+- The provider account must use the **same email address** as the LuminaScreen account.
 - Only the providers this server offers can be linked — an organization's own provider cannot attach
   itself to an account.
 

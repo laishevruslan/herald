@@ -1,7 +1,7 @@
-# ScreenTinker server image: serves the dashboard, the web player, and the
+# LuminaScreen server image: serves the dashboard, the web player, and the
 # device API. All mutable state (db, uploads, jwt secret) lives under /data so it
-# survives container restarts - mount a volume there. A built ScreenTinker.apk
-# can be mounted at /data/ScreenTinker.apk to enable OTA APK downloads.
+# survives container restarts - mount a volume there. A built LuminaScreen.apk
+# can be mounted at /data/LuminaScreen.apk to enable OTA APK downloads.
 #
 # No TLS in the image: it listens on plain HTTP :3001. Front it with a
 # TLS-terminating reverse proxy / Cloudflare in production.

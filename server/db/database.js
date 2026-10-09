@@ -213,7 +213,7 @@ const migrations = [
   // or offline the server auto-elects the first online member on the matching playlist.
   "ALTER TABLE device_groups ADD COLUMN sync_enabled INTEGER NOT NULL DEFAULT 0",
   "ALTER TABLE device_groups ADD COLUMN leader_device_id TEXT REFERENCES devices(id) ON DELETE SET NULL",
-  // Which synchronisation protocol the group runs: 'auto' | 'screentinker' | 'brightsign'.
+  // Which synchronisation protocol the group runs: 'auto' | 'luminascreen' | 'brightsign'.
   // BrightSign's native SyncManager is frame-accurate but exists only between BrightSign players
   // on one L2 network, so it cannot be the default — 'auto' picks it only when the group can
   // actually run it. See server/lib/sync-backend.js; the resolver is the single source of that
@@ -1831,7 +1831,7 @@ const migrations = [
    *
    * ⚠️ THE INDEX TREATS A SYMPTOM. That device has 377k rows and another has 21,115 rows still
    * OPEN, which means plays are being started and never closed; the open set grows forever and any
-   * scan over it gets slower forever. See [[project_screentinker_fk_orphans]] and the #299 backfill
+   * scan over it gets slower forever. See [[project_luminascreen_fk_orphans]] and the #299 backfill
    * work — the leak is a separate fix, and this index stops it costing the whole fleet meanwhile.
    */
   'CREATE INDEX IF NOT EXISTS idx_play_logs_open ON play_logs(device_id, started_at DESC, id DESC) WHERE ended_at IS NULL',

@@ -1,6 +1,6 @@
 # Plugins
 
-A self-hosted ScreenTinker node can load **trusted local plugins**: extra widget types,
+A self-hosted LuminaScreen node can load **trusted local plugins**: extra widget types,
 data-source resolvers, optional API routes, and a small set of named hooks, without forking
 `routes/widgets.js`.
 
@@ -31,7 +31,7 @@ Each invariant names the test that holds it up (`server/test/plugins-invariants.
 | **P1** | **Off by default and invisible.** Plugins do not load unless `PLUGINS_ENABLED=true`. When off, there is no Admin → Plugins section (the endpoint 404s), no `/plugins/:id` static mount, no `/api/plugin-submissions`, and no `require()` of plugin code. | `test_plugins_off_by_default` |
 | **P2** | **Trusted local code only.** Plugins load from two directories, never from the content library, the inbox, URLs, or npm. (1) bundled `plugins/` at the repo root. (2) `$DATA_DIR/plugins/` (survives `git pull`). Path traversal and a `main` that realpath-escapes the plugin root are refused. | `test_path_traversal_refused`, `test_content_dir_is_not_a_plugin_root`, `loader never scans the inbox directory` |
 | **P3** | **Failure isolation.** A missing `plugin.json`, thrown `activate()`, or broken render must not prevent boot or blank a screen. The plugin is marked `error` and the rest continue. An unknown widget type still renders the existing placeholder page, HTTP 200. Hook handlers run on their own turn; a throw is logged, not propagated. | `test_broken_activate_does_not_prevent_load`, `test_unknown_type_is_degraded_not_thrown` |
-| **P4** | **No phone home.** The loader never fetches a registry, checks a licence, or phones screentinker.com. | `test_no_phone_home` |
+| **P4** | **No phone home.** The loader never fetches a registry, checks a licence, or phones luminascreen.ru. | `test_no_phone_home` |
 | **P5** | **Plugins cannot clobber core.** A widget type of `clock` / `weather` / `rss` / `text` / `webpage` / `social` / `directory-board` / `directory-search` / `diag-smoothness` / `slide` / `transition`, or a data-source type of `ical`, is refused. Plugin ids match `/^[a-z][a-z0-9-]{1,63}$/`. | `test_collision_with_clock_is_refused` |
 | **P6** | **Same tenancy and auth as everything else.** `/api/admin/plugins` is JWT-only and `requirePlatformAdmin`. Plugin-contributed routers mount at `/api/plugins/:id` behind `requireAuth` + `resolveTenancy`. Widget *instances* stay workspace-scoped. Uploading a zip is `canWrite`; approving it is platform admin. | `test_admin_plugins_is_platform_admin_gated` |
 | **P7** | **No build step.** Server is CommonJS `require`. Dashboard is vanilla JS. Plugins do not introduce a bundler. | (review) |
@@ -39,7 +39,7 @@ Each invariant names the test that holds it up (`server/test/plugins-invariants.
 | **P9** | **Uploaded bytes never execute without an explicit approval of that exact tree.** A dashboard zip lands in `$DATA_DIR/plugin-inbox`, is inspected against a file allowlist, and waits. The loader never scans the inbox. Approve copies the inspected tree into `$DATA_DIR/plugins/<id>` and pins its sha256. Enable + restart still required to `require()`. | `submit stores pending and never copies onto a plugin root`, `approve copies onto the data-dir plugin root and pins the hash; it does not enable` |
 | **P10** | **An allowlisted tree is loadable only at the approved hash.** After approval (or a manual pin), a subsequent edit on disk is a load error, not a new payload. Revoking an upload-sourced pin does not fall back to drop-folder trust. | `loader refuses an allowlisted plugin whose files changed` |
 
-Hosted screentinker.com keeps `PLUGINS_ENABLED` unset.
+Hosted luminascreen.ru keeps `PLUGINS_ENABLED` unset.
 
 ---
 
@@ -113,7 +113,7 @@ Same id in both roots: **data-dir wins**.
 the load is refused and anything it registered is rolled back — boot cannot wait on a plugin that
 never settles. Kick off background work from a hook or from `resolve()`, not from `activate()`.
 
-`plugin.json` may set `"screentinker": ">=2.0.0"`. Only `>=x.y.z` is understood; any other string
+`plugin.json` may set `"luminascreen": ">=2.0.0"`. Only `>=x.y.z` is understood; any other string
 is a warning and a pass.
 
 ### Network egress (optional)

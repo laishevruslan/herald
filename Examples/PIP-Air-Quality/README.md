@@ -1,12 +1,12 @@
 # PiP Air-Quality Widget
 
-A persistent corner **air-quality widget** for ScreenTinker screens, driven by the
+A persistent corner **air-quality widget** for LuminaScreen screens, driven by the
 **[Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api)** — no API key,
 no signup. Shows the current **US AQI** (color-coded by EPA band) plus the component
 pollutants (PM2.5 / PM10 / O₃ / NO₂) and refreshes itself in place.
 
 ```
-Open-Meteo Air Quality  ──poll──▶  aqi.js  ──POST /api/pip──▶  ScreenTinker  ──ws──▶  player
+Open-Meteo Air Quality  ──poll──▶  aqi.js  ──POST /api/pip──▶  LuminaScreen  ──ws──▶  player
    (us_aqi, pm2.5, …)              (normalise + color)         (web overlay)        (corner widget)
 ```
 
@@ -43,7 +43,7 @@ On `Ctrl-C` it clears the overlay.
 2. **Get a `full`-scope API token** (`st_…`) from the dashboard.
 
 3. **Configure.** Copy `config.example.json` → `config.json` and fill in:
-   - `api_base` — your ScreenTinker server, e.g. `https://signage.example.com`
+   - `api_base` — your LuminaScreen server, e.g. `https://signage.example.com`
    - `api_token` — the `st_…` token
    - `overlay_base_url` — `https://<your-server>/aqi-overlay.html`
    - `device_id` — a device **or** group id

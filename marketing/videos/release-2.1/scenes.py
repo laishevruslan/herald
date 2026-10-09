@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Scene renderer for "ScreenTinker 2.0".
+# Scene renderer for "LuminaScreen 2.0".
 #
 # Same brand system and Playwright frame technique as the Pi / Android TV / alternative videos:
 # every scene renders its FULL duration as frames with a CSS Ken Burns push-in baked in, so no
@@ -314,7 +314,7 @@ def player_server_diagram(eyebrow, title):
       "<div class='bt' style='margin-bottom:26px'>One BrightSign player</div>"
       "<div style='display:flex;gap:26px;justify-content:center'>"
       "<div class='box p' style='animation-delay:.8s;min-width:340px;background:#111a28'>"
-      "<div class='bt' style='font-size:30px;color:#34d399'>ScreenTinker server</div><div class='bs'>a real Node process</div></div>"
+      "<div class='bt' style='font-size:30px;color:#34d399'>LuminaScreen server</div><div class='bs'>a real Node process</div></div>"
       "<div class='box p' style='animation-delay:1.0s;min-width:340px;background:#111a28'>"
       "<div class='bt' style='font-size:30px;color:#5aa0ff'>the player</div><div class='bs'>in the widget beside it</div></div>"
       "</div></div></div>"
@@ -352,8 +352,8 @@ def cta_scene():
       "<div class='sub a' style='animation-delay:.45s;text-align:center;max-width:1200px'>"
       "Open source · MIT licensed · run the whole thing on your own hardware</div>"
       "<div class='links a' style='animation-delay:.7s'>"
-      "<span class='pill'>github.com/screentinker/<span class='u'>screentinker</span></span><br>"
-      "<span class='pill'><span class='u'>screentinker.com</span></span></div>"
+      "<span class='pill'>github.com/luminascreen/<span class='u'>luminascreen</span></span><br>"
+      "<span class='pill'><span class='u'>luminascreen.ru</span></span></div>"
       "<div class='sub a' style='animation-delay:1.0s;font-size:30px'>A star on the repository genuinely helps.</div>"
       "</div></div>")
 
@@ -381,11 +381,11 @@ def room_sign_diagram(eyebrow, title):
       f"<div class='rsrow' style='top:auto;bottom:120px;height:360px'>{cards}</div></div></div>")
 
 SCENES = {
- "01": cap_frame("ScreenTinker 2.1", "cap-dashboard.png", "screentinker.com/app#/dashboard",
+ "01": cap_frame("LuminaScreen 2.1", "cap-dashboard.png", "luminascreen.ru/app#/dashboard",
         "Since <b>2.0</b>: live video, voice, live data on your slides, and a plugin system.",
         chips=[("Live video",),("Talk",),("Data sources",),("Plugins","alt")], version=True),
 
- "02": cap_frame("What's new · Live view", "cap-dashboard.png", "screentinker.com/app#/displays",
+ "02": cap_frame("What's new · Live view", "cap-dashboard.png", "luminascreen.ru/app#/displays",
         "Watch what a screen is <b>actually showing</b> — live, sub-second.",
         chips=[("WebRTC",),("real output, not a thumbnail",),("off until you enable it","alt")]),
 
@@ -395,17 +395,17 @@ SCENES = {
                  "<b>Off by default</b> <span class='k'>— enabled per organization</span>",
                  "<b>Your own relay</b> <span class='k'>— per-org TURN / STUN</span>"]),
 
- "04": cap_frame("What's new · Data sources", "cap-data-sources.png", "screentinker.com/app#/data-sources",
+ "04": cap_frame("What's new · Data sources", "cap-data-sources.png", "luminascreen.ru/app#/data-sources",
         "Bind live data straight into a slide or widget with <b>{{ds:slug.field}}</b>.",
         chips=[("calendar feed",),("any JSON over HTTP",),("refreshes on schedule","alt")]),
 
  "05": room_sign_diagram("What's new · Meeting-room signs", "Busy or <span class='hl'>Available</span>, in every language"),
 
- "06": cap_frame("2.1 · Plugins", "cap-plugins.png", "screentinker.com/app#/admin",
+ "06": cap_frame("2.1 · Plugins", "cap-plugins.png", "luminascreen.ru/app#/admin",
         "Add widget types, data connectors and hooks — <b>without forking the code</b>.",
         chips=[("widgets",),("data sources",),("hooks",),("off by default","alt")]),
 
- "07": cap_frame("2.1 · Plugins", "cap-plugins.png", "screentinker.com/app#/admin",
+ "07": cap_frame("2.1 · Plugins", "cap-plugins.png", "luminascreen.ru/app#/admin",
         "A zip sits in quarantine until an admin approves <b>that exact tree</b>. No marketplace, no phone-home.",
         chips=[("approve the exact bytes",),("enable + restart to run","alt")], pos="center"),
 
@@ -415,11 +415,11 @@ SCENES = {
                  "<b>No conversion step</b> <span class='k'>— and no server dependency</span>",
                  "<b>A deck exported to PDF</b> <span class='k'>— comes out ready to play</span>"]),
 
- "09": cap_frame("What's new · Teams", "cap-reviews.png", "screentinker.com/app#/reviews",
+ "09": cap_frame("What's new · Teams", "cap-reviews.png", "luminascreen.ru/app#/reviews",
         "Require a <b>review</b> before a change goes live — and keep every past version.",
         chips=[("approval workflow",),("version history",),("roll back","alt")]),
 
- "10": cap_frame("What's new · More screens", "cap-certified.png", "screentinker.com/certified-hardware",
+ "10": cap_frame("What's new · More screens", "cap-certified.png", "luminascreen.ru/certified-hardware",
         "webOS, e-paper and microcontrollers — plus a <b>certified-hardware</b> list.",
         chips=[("LG webOS",),("e-paper",),("what's tested, what to avoid","alt")], pos="top center"),
 

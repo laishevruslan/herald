@@ -29,5 +29,5 @@ vf.append(f"{prev_v}fade=t=in:st=0:d=0.6,fade=t=out:st={round(length-0.9,3)}:d=0
 fc=";".join(vf+af)
 subprocess.run(["ffmpeg","-y","-loglevel","error", *inputs,"-filter_complex",fc,
     "-map","[vout]","-map",prev_a,"-c:v","libx264","-preset","medium","-crf","20","-pix_fmt","yuv420p",
-    "-c:a","aac","-b:a","192k","-movflags","+faststart","screentinker-pi-tutorial-v2.mp4"],check=True)
+    "-c:a","aac","-b:a","192k","-movflags","+faststart","luminascreen-pi-tutorial-v2.mp4"],check=True)
 print(f"DONE total ~{length:.1f}s")

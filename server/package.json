@@ -1,8 +1,8 @@
 {
-  "name": "screentinker",
+  "name": "luminascreen",
   "version": "2.4.3",
   "license": "MIT",
-  "description": "ScreenTinker - Digital Signage Management Server",
+  "description": "LuminaScreen - Digital Signage Management Server",
   "main": "server.js",
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",

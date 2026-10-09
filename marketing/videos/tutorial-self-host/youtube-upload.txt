@@ -1,7 +1,7 @@
 ========================================================================
 YOUTUBE UPLOAD PACKAGE
 Video: Self-Host Free Digital Signage on a $5 VPS (Docker, 5 min)
-File:  screentinker-selfhost.mp4  (2:13 · 1080p30)
+File:  luminascreen-selfhost.mp4  (2:13 · 1080p30)
 ========================================================================
 
 
@@ -41,10 +41,10 @@ workspaces, and a scoped REST API.
 1:59  Get started
 
 🔗 Links
-• Source + Docker image (MIT) — a star helps! https://github.com/screentinker/screentinker
-• Self-hosting guide: https://screentinker.com/guides/self-hosted-digital-signage.html
-• Open-source guide: https://screentinker.com/guides/open-source-digital-signage.html
-• Try the cloud version first: https://screentinker.com
+• Source + Docker image (MIT) — a star helps! https://github.com/luminascreen/luminascreen
+• Self-hosting guide: https://luminascreen.ru/guides/self-hosted-digital-signage.html
+• Open-source guide: https://luminascreen.ru/guides/open-source-digital-signage.html
+• Try the cloud version first: https://luminascreen.ru
 • Community & support (Discord): https://discord.gg/utTdsrqq4Z
 
 No credit card, no license keys, no device caps. Run one screen or a thousand.
@@ -57,7 +57,7 @@ Open source · Self-hostable · No per-screen fees · Your data on your hardware
 ------------------------------- TAGS -----------------------------------
 self hosted digital signage, digital signage docker, docker compose, self host,
 homelab, selfhosted, free digital signage, open source digital signage,
-digital signage software, digital signage server, screentinker, vps signage,
+digital signage software, digital signage server, luminascreen, vps signage,
 yodeck alternative, screencloud alternative, optisigns alternative, xibo alternative,
 raspberry pi signage server, kiosk software, self hosted, open source, r/selfhosted
 
@@ -68,5 +68,5 @@ raspberry pi signage server, kiosk software, self hosted, open source, r/selfhos
   communities on launch (drives GitHub stars + Discord).
 • No burned-in captions — enable YouTube auto-captions.
 • All commands verified against the repo (Dockerfile + docker-compose.example.yml):
-  ghcr.io/screentinker/screentinker:latest, SELF_HOSTED=true, st-data:/data volume,
+  ghcr.io/luminascreen/luminascreen:latest, SELF_HOSTED=true, st-data:/data volume,
   serves :3001, first user = admin.

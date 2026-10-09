@@ -3,7 +3,7 @@ import itertools
 import json
 import os
 
-from screentinker_native.logic.offline_play_queue import (BATCH, MAX_ENTRIES, WIRE_KEYS, OfflinePlayQueue,
+from luminascreen_native.logic.offline_play_queue import (BATCH, MAX_ENTRIES, WIRE_KEYS, OfflinePlayQueue,
                                                       make_play, new_id)
 
 _n = itertools.count()

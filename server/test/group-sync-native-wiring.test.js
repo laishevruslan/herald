@@ -142,7 +142,7 @@ test('THE PROMOTED LEADER: leadership moving must re-enter sync, not be ignored'
 
   const base = { group_id: 'g1', backend: 'brightsign', is_leader: false };
   assert.notEqual(groupKey(base), groupKey({ ...base, is_leader: true }), 'promotion must re-enter');
-  assert.notEqual(groupKey(base), groupKey({ ...base, backend: 'screentinker' }), 'protocol switch must re-enter');
+  assert.notEqual(groupKey(base), groupKey({ ...base, backend: 'luminascreen' }), 'protocol switch must re-enter');
   assert.equal(groupKey(base), groupKey({ ...base }), 'an unchanged group must NOT churn on every push');
   assert.equal(groupKey(null), '');
 });

@@ -119,7 +119,7 @@ for n, e, o, w in stale:
     account(n, e, o, created=last - random.randint(1, 20) * DAY, last_login=last, plan="free", warned=w)
 
 # ---- the demo organization: a second workspace and teammates (Members -> Whole organization)
-demo = c.execute("SELECT id FROM users WHERE email='demo@screentinker.test'").fetchone()[0]
+demo = c.execute("SELECT id FROM users WHERE email='demo@luminascreen.test'").fetchone()[0]
 org = c.execute("SELECT id FROM organizations WHERE owner_user_id=?", (demo,)).fetchone()[0]
 c.execute("UPDATE organizations SET name='Fairview Medical Center' WHERE id=?", (org,))
 ws_default = c.execute("SELECT id FROM workspaces WHERE organization_id=? ORDER BY created_at LIMIT 1", (org,)).fetchone()[0]

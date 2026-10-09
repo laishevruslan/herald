@@ -13,7 +13,7 @@
  * the one written to /data. The pairing is never in the package — it is learned from the server.
  */
 
-const FILE = '/data/screentinker.json';
+const FILE = '/data/luminascreen.json';
 const PACKAGED = '/pkg/assets/config.json';
 
 type Stored = { serverUrl?: string; deviceId?: string; deviceToken?: string };

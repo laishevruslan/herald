@@ -1,11 +1,11 @@
-' ScreenTinker — BrightSign player host
+' LuminaScreen — BrightSign player host
 '
-' The ScreenTinker player itself is the ordinary web player (server/player/index.html) running
+' The LuminaScreen player itself is the ordinary web player (server/player/index.html) running
 ' in an roHtmlWidget. This script is the HOST around it, and it exists for the things a page
 ' cannot do for itself:
 '
 '   1. OWN THE WIDGET LIFECYCLE. A page that calls location.reload() on a BrightSign does not
-'      reliably come back — observed in the field on 2026-07-28, where a ScreenTinker deploy
+'      reliably come back — observed in the field on 2026-07-28, where a LuminaScreen deploy
 '      reloaded every connected player and the BrightSign was the only one that never returned.
 '      So the page NEVER reloads itself here: it posts {type:"restart"} and this script tears the
 '      widget down and builds a new one. That is a restart the OS actually performs.
@@ -18,7 +18,7 @@
 '
 ' Pair it with st-bridge.js, which is the JavaScript half of the same contract.
 '
-' SD card layout:  autorun.brs  st-bridge.js  offline.html  [screentinker.json]
+' SD card layout:  autorun.brs  st-bridge.js  offline.html  [luminascreen.json]
 
 '=== storage volume ==========================================================================
 ' WHERE we are running from is not a given. The obvious answer is the SD card, and every
@@ -54,14 +54,14 @@ Function StorageRoot() As String
 End Function
 
 '=== configuration ==========================================================================
-' Provisioning order: screentinker.json on the card (imaging a batch) > registry (set once at
+' Provisioning order: luminascreen.json on the card (imaging a batch) > registry (set once at
 ' pairing, survives content updates) > the built-in default.
 
 Function LoadConfig() As Object
     cfg = {
-        server_url: "https://screentinker.com"
+        server_url: "https://luminascreen.ru"
         device_id: ""
-        sync_backend: "auto"      ' auto | screentinker | brightsign
+        sync_backend: "auto"      ' auto | luminascreen | brightsign
         output_mode: "single"     ' single | dual | clone
         inspector: false
         ' Self-update of the host package. Defaults ON: a fleet that cannot be updated remotely is
@@ -74,12 +74,12 @@ Function LoadConfig() As Object
         ' #473 interactive web pages TOP-LEVEL (a second widget over the player). OFF until the wipe
         ' has been proven on a bench unit (README, "Interactive web pages"): without it the host does
         ' not announce kiosk_toplevel and the player uses its framed mode. Opt in with
-        ' "kiosk_toplevel": true in screentinker.json, or registry screentinker/kiosk_toplevel = "1".
+        ' "kiosk_toplevel": true in luminascreen.json, or registry luminascreen/kiosk_toplevel = "1".
         kiosk_toplevel: false
     }
 
     ' 1) registry
-    reg = CreateObject("roRegistrySection", "screentinker")
+    reg = CreateObject("roRegistrySection", "luminascreen")
     if reg.Exists("server_url") then cfg.server_url = reg.Read("server_url")
     if reg.Exists("device_id") then cfg.device_id = reg.Read("device_id")
     if reg.Exists("sync_backend") then cfg.sync_backend = reg.Read("sync_backend")
@@ -90,7 +90,7 @@ Function LoadConfig() As Object
 
     ' 2) a JSON file on the card wins — that is how a batch gets imaged without touching each box
     ba = CreateObject("roByteArray")
-    if ba.ReadFile(StorageRoot() + "/screentinker.json") then
+    if ba.ReadFile(StorageRoot() + "/luminascreen.json") then
         json = ParseJson(ba.ToAsciiString())
         if json <> invalid then
             if json.server_url <> invalid then cfg.server_url = json.server_url
@@ -146,14 +146,14 @@ Function DwsPort() As String
 End Function
 
 Sub SaveRegistry(key As String, value As String)
-    reg = CreateObject("roRegistrySection", "screentinker")
+    reg = CreateObject("roRegistrySection", "luminascreen")
     reg.Write(key, value)
     reg.Flush()
 End Sub
 
 '=== player URL =============================================================================
 ' Identity is carried in the URL so the page knows who it is before it has any storage of its
-' own. serial is the stable hardware id; device_id is what ScreenTinker assigned at pairing.
+' own. serial is the stable hardware id; device_id is what LuminaScreen assigned at pairing.
 
 Function PlayerUrl(cfg As Object, screen As Integer) As String
     di = CreateObject("roDeviceInfo")
@@ -679,13 +679,13 @@ Sub ApplyPendingPackage(root As String, buf As Object)
         return
     end if
 
-    ' screentinker.json is deliberately NOT copied over: it carries THIS player's provisioning
+    ' luminascreen.json is deliberately NOT copied over: it carries THIS player's provisioning
     ' (server URL, device id), and the copy inside a package carries the build's defaults. Letting
     ' an update overwrite it would re-point or unpair the display as a side effect of a routine
     ' upgrade — silently, and on every player at once.
     moved% = 0
     for each name in MatchFiles(stage$, "*")
-        if name <> "screentinker.json" then
+        if name <> "luminascreen.json" then
             if MoveFile(stage$ + "/" + name, root + "/" + name) then moved% = moved% + 1
         end if
     end for
@@ -718,7 +718,7 @@ Sub CheckPackageUpdate(cfg As Object, root As String)
     end if
 
     partPath$ = root + "/autorun.zip.part"
-    reg = CreateObject("roRegistrySection", "screentinker")
+    reg = CreateObject("roRegistrySection", "luminascreen")
     attempts% = 0
     if reg.Exists("pkg_attempts") then attempts% = Val(reg.Read("pkg_attempts"))
 

@@ -30,7 +30,7 @@ cd frontend-studio && npm ci && npm run dev
 
 ## Local (Docker Desktop)
 
-Requires Herald already running (`docker compose up -d` → `screentinker` on `herald_default`):
+Requires Herald already running (`docker compose up -d` → `luminascreen` on `herald_default`):
 
 ```bash
 docker compose -f docker/studio-dev/docker-compose.yml up -d --build
@@ -38,7 +38,7 @@ docker compose -f docker/studio-dev/docker-compose.yml up -d --build
 # Stop: docker compose -f docker/studio-dev/docker-compose.yml down
 ```
 
-The island proxies `/api` to `http://screentinker:3001` on the compose network. Source under `frontend-studio/` is bind-mounted for live reload.
+The island proxies `/api` to `http://luminascreen:3001` on the compose network. Source under `frontend-studio/` is bind-mounted for live reload.
 
 Production / release image: `scripts/build-studio.sh` or the `studio-builder` stage in the root `Dockerfile` copies the island to `frontend/studio/`.
 

@@ -37,7 +37,7 @@ html,body{{width:1280px;height:720px;overflow:hidden}}
   <div class=text>
     <div class=eyebrow>Open source &middot; What's new</div>
     <div class=ver>2.1</div>
-    <div class=name>ScreenTinker</div>
+    <div class=name>LuminaScreen</div>
     <div class=tag>Live video, <b>plugins</b>, live data &amp; <b>room signs</b> in every language</div>
   </div>
   <div class=pills>

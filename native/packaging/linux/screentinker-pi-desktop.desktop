@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=ScreenTinker Player
-Comment=Starts the ScreenTinker player when this desktop is configured for it (screentinker-pi setup --mode desktop)
-Exec=/usr/bin/screentinker-pi autostart
+Name=LuminaScreen Player
+Comment=Starts the LuminaScreen player when this desktop is configured for it (luminascreen-pi setup --mode desktop)
+Exec=/usr/bin/luminascreen-pi autostart
 NoDisplay=true
 X-GNOME-Autostart-enabled=true

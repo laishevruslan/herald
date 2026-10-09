@@ -88,7 +88,7 @@ function render(device, telemetry) {
       || /^(linux|windows)\//.test(String(d.platform || '').toLowerCase())),
     terminalPresets: (d) => {
       const p = String((d && d.platform) || '').toLowerCase();
-      if (d && (d.client_type === 'win' || p.startsWith('windows/'))) return [{ label: 'Helper service', cmd: 'Get-Service ScreenTinkerHelper' }];
+      if (d && (d.client_type === 'win' || p.startsWith('windows/'))) return [{ label: 'Helper service', cmd: 'Get-Service LuminaScreenHelper' }];
       if (d && (d.client_type === 'pi' || p.startsWith('linux/'))) return [{ label: 'SoC temp', cmd: 'vcgencmd measure_temp' }];
       return [];
     },
@@ -691,7 +691,7 @@ test('a Windows player gets the Terminal tab with PowerShell presets, both modes
   assert.ok(html.includes('data-tab="terminal"') && has(html, 'tab-terminal'));
   assert.ok(has(html, 'termModeOneshot') && has(html, 'termModeInteractive'));
   assert.ok(has(html, 'ptyHost'), 'PowerShell over ConPTY rides the same system.pty relay');
-  assert.ok(html.includes('Get-Service ScreenTinkerHelper'), 'PowerShell presets');
+  assert.ok(html.includes('Get-Service LuminaScreenHelper'), 'PowerShell presets');
   assert.equal(html.includes('vcgencmd'), false, 'not the Pi presets');
   assert.ok(html.includes('device.terminal.welcome_windows'));
   assert.ok(html.includes('device.terminal.placeholder_windows'));
@@ -795,7 +795,7 @@ test('the shipped isWindowsDevice / terminalPresets agree with the harness stubs
   assert.deepEqual(ctx.p(ANDROID_FULL), ['A']);
   // And the real Windows presets are PowerShell, including the helper-service check.
   const presets = SRC.slice(SRC.indexOf('const WINDOWS_TERMINAL_PRESETS'), SRC.indexOf('];', SRC.indexOf('const WINDOWS_TERMINAL_PRESETS')));
-  for (const cmd of ['Get-ComputerInfo', 'Get-PSDrive C', 'Get-Service ScreenTinkerHelper', 'Get-WinEvent']) assert.ok(presets.includes(cmd), cmd);
+  for (const cmd of ['Get-ComputerInfo', 'Get-PSDrive C', 'Get-Service LuminaScreenHelper', 'Get-WinEvent']) assert.ok(presets.includes(cmd), cmd);
 });
 
 /*

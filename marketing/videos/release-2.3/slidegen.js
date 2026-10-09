@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * Build the 12 video scenes AS REAL SCREENTINKER SLIDES, with every element's entrance timed to
+ * Build the 12 video scenes AS REAL LUMINASCREEN SLIDES, with every element's entrance timed to
  * WHEN IT IS SPOKEN (cue -> word timestamp from timings.json), and each slide carrying its own
  * voiceover + a shared music bed so the alpha PLAYER narrates the real slides.
  *
@@ -97,7 +97,7 @@ function cards(s,items,accent=GREEN,y0=52){
 const S={};
 // ---- 01 opener
 { const s=Slide('01'), c=mkcue('01');
-  eyebrow(s,'SCREENTINKER  ·  2.1'); verchip(s); accentbar(s);
+  eyebrow(s,'LUMINASCREEN  ·  2.1'); verchip(s); accentbar(s);
   headL(s,'Everything new','since 2.0', c('Since'), c('two point oh'));
   subL(s,'The open-source signage platform picked up live video, voice, live data and a plugin system.', c('open-source'));
   shot(s,'vid21-cap-dashboard', c('signage platform'));
@@ -199,7 +199,7 @@ const S={};
   S.s11=s.build(); }
 // ---- 12 CTA: hosted FIRST, then self-host
 { const s=Slide('12'), c=mkcue('12');
-  s.txt('head','ScreenTinker 2.1',{x:6,y:9,w:88},{color:INK,font:FDISP,size_cqw:5.2,weight:800,align:'center'},M.up(0.2));
+  s.txt('head','LuminaScreen 2.1',{x:6,y:9,w:88},{color:INK,font:FDISP,size_cqw:5.2,weight:800,align:'center'},M.up(0.2));
   s.box({x:36,y:20.5,w:28,h:0.55},GREEN,0.3,M.wipe(c('open source')));
   const dh=c('hosted option');
   s.box({x:9,y:27,w:38,h:34},CARD,1.4,M.up(dh));
@@ -207,14 +207,14 @@ const S={};
   s.txt('body','HOSTED',{x:11,y:30,w:34},{color:GREEN,font:FMONO,size_cqw:1.1,weight:700,align:'left'},M.up(dh+0.06));
   s.txt('body','We run it for you',{x:11,y:34,w:34},{color:INK,font:FDISP,size_cqw:2.4,weight:800,align:'left'},M.up(dh+0.1));
   s.txt('body','Fully managed. Sign up and start putting things on screens — no server to keep.',{x:11,y:42,w:34},{color:SUB,font:FTEXT,size_cqw:1.2,weight:400,align:'left'},M.up(dh+0.16));
-  s.txt('body','screentinker.com',{x:11,y:55,w:34},{color:GREEN,font:FMONO,size_cqw:1.25,weight:700,align:'left'},M.up(dh+0.22));
+  s.txt('body','luminascreen.ru',{x:11,y:55,w:34},{color:GREEN,font:FMONO,size_cqw:1.25,weight:700,align:'left'},M.up(dh+0.22));
   const ds=c('host it yourself');
   s.box({x:53,y:27,w:38,h:34},CARD,1.4,M.up(ds));
   s.box({x:53,y:27,w:38,h:0.6},BLUE,0.3,M.wipe(ds+0.12));
   s.txt('body','SELF-HOST',{x:55,y:30,w:34},{color:BLUE,font:FMONO,size_cqw:1.1,weight:700,align:'left'},M.up(ds+0.06));
   s.txt('body','Run it yourself',{x:55,y:34,w:34},{color:INK,font:FDISP,size_cqw:2.4,weight:800,align:'left'},M.up(ds+0.1));
   s.txt('body','Open source, MIT. Upgrading is a pull and a restart, and your screens keep playing.',{x:55,y:42,w:34},{color:SUB,font:FTEXT,size_cqw:1.2,weight:400,align:'left'},M.up(ds+0.16));
-  s.txt('body','github.com/screentinker/screentinker',{x:55,y:55,w:36},{color:BLUE,font:FMONO,size_cqw:1.1,weight:700,align:'left'},M.up(ds+0.22));
+  s.txt('body','github.com/luminascreen/luminascreen',{x:55,y:55,w:36},{color:BLUE,font:FMONO,size_cqw:1.1,weight:700,align:'left'},M.up(ds+0.22));
   s.txt('body','A star on the repository genuinely helps.',{x:6,y:66,w:88},{color:SUB,font:FTEXT,size_cqw:1.25,weight:400,align:'center'},M.fade(c('Links below')));
   S.s12=s.build(); }
 // ---- 13 dogfood closer, with the deck running "on a screen" (browser bezel).
@@ -222,17 +222,17 @@ const S={};
 // overlaid onto the screen rect (25%,23.5% .. 50%x50% => px 480,254,960,540). The text flies in.
 { const s=Slide('13'), c=mkcue('13');
   s.txt('body','DOGFOOD',{x:6,y:5.5,w:88},{color:GREEN,font:FMONO,size_cqw:1.2,weight:700,align:'center'},M.fade(c('One more')));
-  s.txt('head','Built & tested in ScreenTinker',{x:4,y:9,w:92},{color:INK,font:FDISP,size_cqw:3.4,weight:800,align:'center'},M.up(c('built and')));
+  s.txt('head','Built & tested in LuminaScreen',{x:4,y:9,w:92},{color:INK,font:FDISP,size_cqw:3.4,weight:800,align:'center'},M.up(c('built and')));
   // browser bezel (static)
   s.box({x:24,y:17.5,w:52,h:59},'#0a1017',1.3);
   s.box({x:24,y:17.5,w:52,h:5},'#141d2b',1.3);
   s.box({x:26,y:19.4,w:0.75,h:1.3},'#f2565b',0.6);
   s.box({x:27.3,y:19.4,w:0.75,h:1.3},'#f5b23c',0.6);
   s.box({x:28.6,y:19.4,w:0.75,h:1.3},'#34d399',0.6);
-  s.txt('body','alpha.screentinker.com/player',{x:31,y:19.3,w:44},{color:'#6b7889',font:FMONO,size_cqw:0.95,weight:400,align:'left'});
+  s.txt('body','alpha.luminascreen.ru/player',{x:31,y:19.3,w:44},{color:'#6b7889',font:FMONO,size_cqw:0.95,weight:400,align:'left'});
   s.img('vid21-cap-console',{x:25,y:23.5,w:50,h:50},0.6);
   // sub
-  s.txt('body','Every slide here is a real ScreenTinker slide, playing live on a ScreenTinker screen.',{x:10,y:79,w:80},{color:SUB,font:FTEXT,size_cqw:1.35,weight:400,align:'center'},M.fade(c('Every slide')));
+  s.txt('body','Every slide here is a real LuminaScreen slide, playing live on a LuminaScreen screen.',{x:10,y:79,w:80},{color:SUB,font:FTEXT,size_cqw:1.35,weight:400,align:'center'},M.fade(c('Every slide')));
   S.s13=s.build(); }
 
 fs.writeFileSync('slides.json', JSON.stringify(S, null, 1));

@@ -51,7 +51,7 @@ def terminal(eyebrow,title,lines):
 SCENES={
 "s02":slate("01 · What you need",'What you <span class="hl">need</span>',bullets=[
   'A <b>Raspberry Pi</b> <span class="k">— 4 or 5</span>','A <b>microSD card</b> <span class="k">— 8GB+</span>',
-  'Any screen with <b>HDMI</b>','A <b>ScreenTinker</b> server <span class="k">— free or self-host</span>']),
+  'Any screen with <b>HDMI</b>','A <b>LuminaScreen</b> server <span class="k">— free or self-host</span>']),
 "s03":slate("02 · Flash the card",'Flash <span class="hl">Raspberry Pi OS</span>',bullets=[
   'Open <b>Raspberry Pi Imager</b>','Choose <b>Pi OS Lite</b> <span class="k">(no desktop)</span>','Select your <b>SD card</b>','Click <b>Write</b> <span class="k">— ~2 min</span>']),
 "s04":terminal("03 · First boot","Raspberry Pi 4 Model B — console",[
@@ -60,10 +60,10 @@ SCENES={
   '<span class="dim">[ 2.38]</span> Run /sbin/init as init process','<span class="dim">[ 6.95]</span> systemd[1]: systemd running','',
   'Raspberry Pi OS Lite','raspberrypi login: <span class="pmt">pi</span>']),
 "s05":terminal("04 · One command","pi@raspberrypi: ~",[
-  '<span class="pmt">pi@raspberrypi</span>:~ $ <span class="cmd">curl -sSL screentinker.com/scripts/\\</span>','<span class="cmd">    raspberry-pi-setup.sh | sudo bash</span>','',
-  '<span class="st">[ScreenTinker]</span> Detected: Pi OS Lite (headless)','<span class="st">[ScreenTinker]</span> Installing kiosk packages...',
-  '<span class="st">[ScreenTinker]</span> Creating kiosk service...','<span class="ok">Created symlink screentinker-kiosk.service</span>',
-  '<span class="st">[ScreenTinker]</span> Configuring auto-login...','<span class="st">[ScreenTinker]</span> <span class="ok">Setup Complete!</span>']),
+  '<span class="pmt">pi@raspberrypi</span>:~ $ <span class="cmd">curl -sSL luminascreen.ru/scripts/\\</span>','<span class="cmd">    raspberry-pi-setup.sh | sudo bash</span>','',
+  '<span class="st">[LuminaScreen]</span> Detected: Pi OS Lite (headless)','<span class="st">[LuminaScreen]</span> Installing kiosk packages...',
+  '<span class="st">[LuminaScreen]</span> Creating kiosk service...','<span class="ok">Created symlink luminascreen-kiosk.service</span>',
+  '<span class="st">[LuminaScreen]</span> Configuring auto-login...','<span class="st">[LuminaScreen]</span> <span class="ok">Setup Complete!</span>']),
 "s06":slate("05 · Zero config",'The installer <span class="hl">does it all</span>',bullets=[
   '<b>Chromium kiosk</b> — full-screen player','<b>Auto-login</b> on boot','<b>Auto-restart</b> service','<b>No screen blanking</b>']),
 "s08":slate("07 · Pair it",'Enter the code, <span class="hl">claim the screen</span>',bullets=[
@@ -71,7 +71,7 @@ SCENES={
 "s09":slate("08 · Push content",'Publish, and it\'s <span class="hl">live</span>',bullets=[
   'Upload media, build a <b>playlist</b>, <b>Publish</b>','Updates on the Pi <span class="k">in seconds</span>','<b>Schedule</b> by time of day','<b>Multi-zone</b> &amp; <b>video walls</b>']),
 "s10":slate("",'<span class="hl">Free</span> digital signage,<br>on your own hardware.',sub="Open source · Self-hosted · No per-screen fees",
-  extra='<div class="links a" style="animation-delay:.5s">🌐 <span class="u">screentinker.com</span><br>⭐ <span class="u">github.com/screentinker/screentinker</span></div>'),
+  extra='<div class="links a" style="animation-delay:.5s">🌐 <span class="u">luminascreen.ru</span><br>⭐ <span class="u">github.com/luminascreen/luminascreen</span></div>'),
 }
 with sync_playwright() as p:
     br=p.chromium.launch(args=["--force-color-profile=srgb"])

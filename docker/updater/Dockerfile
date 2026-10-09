@@ -1,5 +1,5 @@
 # The instance-updater sidecar (docs/instance-updater.md). Build from the repo root:
-#   docker build -f docker/updater/Dockerfile -t screentinker-updater .
+#   docker build -f docker/updater/Dockerfile -t luminascreen-updater .
 #
 # docker:cli is alpine + busybox + the docker CLI with the compose plugin — everything
 # scripts/updater/st-updater.sh needs in docker mode. It holds docker.sock, so it does nothing but

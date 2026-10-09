@@ -2,7 +2,7 @@ const R='/home/owner/Downloads/remote_display';
 const Database=require(R+'/server/node_modules/better-sqlite3');
 const io=require(R+'/server/node_modules/socket.io-client');
 const db=new Database(R+'/server/db/remote_display.db',{readonly:true});
-const ids=JSON.parse(require('fs').readFileSync('/home/owner/screentinker-video/fake_devices.json','utf8'));
+const ids=JSON.parse(require('fs').readFileSync('/home/owner/luminascreen-video/fake_devices.json','utf8'));
 const rows=ids.map(id=>db.prepare("SELECT id,device_token name FROM devices WHERE id=?").get(id)).filter(Boolean);
 const full=ids.map((id,i)=>{const r=db.prepare("SELECT device_token FROM devices WHERE id=?").get(id);return{id,token:r&&r.device_token,i};}).filter(x=>x.token);
 const T=[{rssi:-38,ssid:'Corp-WiFi',free:52400},{rssi:-46,ssid:'Corp-WiFi',free:41200},{rssi:-41,ssid:'Corp-WiFi',free:48600},{rssi:-53,ssid:'Warehouse-5G',free:37800},{rssi:-35,ssid:'Corp-WiFi',free:55100}];

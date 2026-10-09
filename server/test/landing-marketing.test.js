@@ -153,7 +153,7 @@ test('every table row has a cell for all four vendors', () => {
   // is a false claim about a named company.
   const table = LANDING.slice(LANDING.indexOf('<table class="compare-table">'), LANDING.indexOf('</table>'));
   const headers = (table.match(/<th[^>]*>(.*?)<\/th>/g) || []).map(textOf);
-  assert.deepEqual(headers, ['', 'ScreenTinker', 'Yodeck', 'OptiSigns', 'ScreenCloud']);
+  assert.deepEqual(headers, ['', 'LuminaScreen', 'Yodeck', 'OptiSigns', 'ScreenCloud']);
   const bodyRows = table.slice(table.indexOf('<tbody>')).match(/<tr>[\s\S]*?<\/tr>/g) || [];
   assert.ok(bodyRows.length >= 15, `expected the full table, found ${bodyRows.length} rows`);
   for (const r of bodyRows) {
@@ -286,7 +286,7 @@ test('the live deployed count sits in the trust strip and degrades to three colu
   const fetchBlock = LANDING.slice(LANDING.indexOf("fetch('/api/public/stats')"));
   assert.match(fetchBlock.slice(0, 900), /classList\.remove\('cols-3'\)/);
   // The old standalone paragraph is gone, so the count is not rendered twice.
-  assert.ok(!LANDING.includes('screens deployed with ScreenTinker'));
+  assert.ok(!LANDING.includes('screens deployed with LuminaScreen'));
 });
 
 /* ─────────────── sales (lib/promotions.js): the page shows what checkout charges ─────────────── */

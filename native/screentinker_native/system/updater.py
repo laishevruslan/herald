@@ -9,7 +9,7 @@ The attempt budget is logic/ota_throttle.py (Android OtaThrottle): a check never
 launched install does, "manual update required" is flagged once at 3, daily retry after 40.
 
 Only a PACKAGED install updates itself. A source checkout (version ends in -dev, or no
-/usr/lib/screentinker-pi) reports and never installs — a dev box must not overwrite itself with
+/usr/lib/luminascreen-pi) reports and never installs — a dev box must not overwrite itself with
 whatever the server calls latest.
 """
 
@@ -122,7 +122,7 @@ class Updater:
 
     async def install_url(self, url):
         """install_apk {url}: a .deb from anywhere the operator points. The helper decides whether a
-        package that is not screentinker-pi may be installed at all (allow_package_install)."""
+        package that is not luminascreen-pi may be installed at all (allow_package_install)."""
         if not re.match(r"^https?://", url or ""):
             self.log_remote("warn", "ota", "install_apk: not an http(s) URL")
             return

@@ -7,8 +7,8 @@
 # from the BASE branch, so a PR cannot weaken the checks it is judged by; a PR that edits
 # .github/ or tools/ needs a CODEOWNERS maintainer review before it can merge.
 #
-# The ScreenTinker CLI and server code come from screentinker/screentinker at a PINNED commit:
-# the rules a template is validated against must not move under a PR. Bump SCREENTINKER_REF
+# The LuminaScreen CLI and server code come from luminascreen/luminascreen at a PINNED commit:
+# the rules a template is validated against must not move under a PR. Bump LUMINASCREEN_REF
 # deliberately, in its own PR, to a released commit.
 name: validate
 
@@ -20,10 +20,10 @@ permissions:
   contents: read
 
 env:
-  # The screentinker/screentinker commit whose scripts/template-catalog.js and server/lib/templates
+  # The luminascreen/luminascreen commit whose scripts/template-catalog.js and server/lib/templates
   # validate and render templates. Must be a full 40-hex commit SHA of a release that ships
   # lib/templates (the first one that does). Placeholder until that release exists.
-  SCREENTINKER_REF: REPLACE_WITH_RELEASE_COMMIT_SHA
+  LUMINASCREEN_REF: REPLACE_WITH_RELEASE_COMMIT_SHA
 
 concurrency:
   group: validate-${{ github.event.pull_request.number }}
@@ -34,13 +34,13 @@ jobs:
     name: build (validate every template)
     runs-on: ubuntu-24.04
     steps:
-      - name: Check the pinned ScreenTinker ref
+      - name: Check the pinned LuminaScreen ref
         run: |
-          [[ "$SCREENTINKER_REF" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::SCREENTINKER_REF must be a full commit SHA"; exit 1; }
+          [[ "$LUMINASCREEN_REF" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::LUMINASCREEN_REF must be a full commit SHA"; exit 1; }
       - uses: actions/checkout@v4
         with: { path: catalog, persist-credentials: false }
       - uses: actions/checkout@v4
-        with: { repository: screentinker/screentinker, ref: '${{ env.SCREENTINKER_REF }}', path: st, persist-credentials: false }
+        with: { repository: luminascreen/luminascreen, ref: '${{ env.LUMINASCREEN_REF }}', path: st, persist-credentials: false }
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - name: Fetch the published catalog (for version-bump and history checks)
@@ -101,7 +101,7 @@ jobs:
       - uses: actions/checkout@v4
         with: { ref: '${{ github.event.pull_request.base.sha }}', path: base, persist-credentials: false }
       - uses: actions/checkout@v4
-        with: { repository: screentinker/screentinker, ref: '${{ env.SCREENTINKER_REF }}', path: st, persist-credentials: false }
+        with: { repository: luminascreen/luminascreen, ref: '${{ env.LUMINASCREEN_REF }}', path: st, persist-credentials: false }
       - uses: actions/setup-node@v4
         with: { node-version: '20', cache: npm, cache-dependency-path: st/server/package-lock.json }
       - name: Install the server's dependencies (for the real render path)

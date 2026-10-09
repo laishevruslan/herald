@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Scene renderer for "ScreenTinker 2.3 — Live Data, Templates & a Real Game".
+# Scene renderer for "LuminaScreen 2.3 — Live Data, Templates & a Real Game".
 #
 # Same brand system and Playwright frame technique as the Pi / Android TV / alternative videos:
 # every scene renders its FULL duration as frames with a CSS Ken Burns push-in baked in, so no
@@ -314,7 +314,7 @@ def player_server_diagram(eyebrow, title):
       "<div class='bt' style='margin-bottom:26px'>One BrightSign player</div>"
       "<div style='display:flex;gap:26px;justify-content:center'>"
       "<div class='box p' style='animation-delay:.8s;min-width:340px;background:#111a28'>"
-      "<div class='bt' style='font-size:30px;color:#34d399'>ScreenTinker server</div><div class='bs'>a real Node process</div></div>"
+      "<div class='bt' style='font-size:30px;color:#34d399'>LuminaScreen server</div><div class='bs'>a real Node process</div></div>"
       "<div class='box p' style='animation-delay:1.0s;min-width:340px;background:#111a28'>"
       "<div class='bt' style='font-size:30px;color:#5aa0ff'>the player</div><div class='bs'>in the widget beside it</div></div>"
       "</div></div></div>"
@@ -357,9 +357,9 @@ def cta_scene():
       "<div class='ver'>2.3</div>"
       "<div class='cta'>"
       "<div class='big a' style='animation-delay:.2s'>Screen<b>Tinker</b> <b>2.3</b></div>"
-      "<div class='trial p' style='animation-delay:.6s'>Start your 14-day free trial <small>→ screentinker.com</small></div>"
+      "<div class='trial p' style='animation-delay:.6s'>Start your 14-day free trial <small>→ luminascreen.ru</small></div>"
       "<div class='or a' style='animation-delay:1.9s'>or host it yourself — free &amp; open source</div>"
-      "<div class='selfhost a' style='animation-delay:2.1s'><span class='pill'>github.com/screentinker/<span class='u'>screentinker</span></span></div>"
+      "<div class='selfhost a' style='animation-delay:2.1s'><span class='pill'>github.com/luminascreen/<span class='u'>luminascreen</span></span></div>"
       "</div></div>")
 
 # ---------------------------------------------------------------- scenes
@@ -511,12 +511,12 @@ def game_scene():
 # Crossfade times are chosen against the VO durations (audio/vo-NN.wav) — re-check if a line changes.
 SCENES = {
  "01": hook_scene(),
- "02": cap_cycle("ScreenTinker 2.3", [("cap-dashboard.png",0,"top center")], "screentinker.com/app#/dashboard",
+ "02": cap_cycle("LuminaScreen 2.3", [("cap-dashboard.png",0,"top center")], "luminascreen.ru/app#/dashboard",
         "Open-source signage — now with <b>live data</b>, <b>templates</b> and <b>native players</b>.",
         chips=[("Live data sources",1.2),("Template library",1.6),("Raspberry Pi + Windows",2.0,"alt"),("Platform area",2.4,"alt")],
         version=True),
  "03": cap_cycle("Data sources", [("cap-ds-add.png",0,"center 40%"),("cap-ds-list.png",8.0,"top center")],
-        "screentinker.com/app#/data-sources", "Built in, on <b>every workspace</b> — no plugin, no switch.",
+        "luminascreen.ru/app#/data-sources", "Built in, on <b>every workspace</b> — no plugin, no switch.",
         chips=[("REST API",1.0),("Google Sheets",1.3),("CSV",1.6),("RSS / Atom",1.9),("Table",2.2),("+ Calendar · Weather",2.5,"alt")]),
  "04": key_column_diagram(),
  "05": slate("Careful by default", "Live data, <span class='hl'>without the surprises</span>",
@@ -525,7 +525,7 @@ SCENES = {
                  "<b>Scoped to the workspace</b> <span class='k'>— proven by a cross-org test</span>",
                  "<b>“Updated” means changed</b> <span class='k'>— players keep their render cache</span>"]),
  "06": cap_cycle("Template library", [("cap-templates-library.png",0,"top center"),("cap-template-detail.png",8.5,"center 35%")],
-        "screentinker.com/app#/templates", "Pick one, fill the fields — or <b>bind it to live data</b>.",
+        "luminascreen.ru/app#/templates", "Pick one, fill the fields — or <b>bind it to live data</b>.",
         chips=[("13 templates",1.0),("slide + code templates",1.4,"alt"),("one click to use",1.8)]),
  "07": slate("Signed catalog", "Every template is <span class='hl'>signed</span>",
         bullets=["<b>Ed25519</b> <span class='k'>— index and every package, a dedicated catalog key</span>",
@@ -534,24 +534,24 @@ SCENES = {
                  "<b>Code templates sandboxed</b> <span class='k'>— unsigned ones off until an admin allows them</span>"]),
  "08": template_wall(),
  "09": game_scene(),
- "10": cap_cycle("Native players", [("cap-download.png",0,"top center")], "screentinker.com/download",
+ "10": cap_cycle("Native players", [("cap-download.png",0,"top center")], "luminascreen.ru/download",
         "One engine for <b>Raspberry Pi</b> and <b>Windows</b> — served by your own server.",
         chips=[("Raspberry Pi · .deb",1.0),("Windows installer + helper service",1.4),("updates only on a sha256 match",1.8,"alt")]),
- "11": cap_cycle("Platform", [("cap-platform-overview.png",0,"top center")], "screentinker.com/app#/platform/overview",
+ "11": cap_cycle("Platform", [("cap-platform-overview.png",0,"top center")], "luminascreen.ru/app#/platform/overview",
         "The whole instance <b>at a glance</b> — including the quiet problems.",
         chips=[("screens online",1.2),("paying · trials",1.5),("no screens paired",1.8,"alt"),("inactive 30 days",2.1,"alt")]),
  "12": cap_cycle("Platform", [("cap-platform-attention-card.png",0,"top center"),("cap-platform-orgs.png",5.2,"top center"),
                               ("cap-org-members.png",9.8,"top center")],
-        "screentinker.com/app#/platform", "<b>Needs your attention</b> expands — with a link to the fix.",
+        "luminascreen.ru/app#/platform", "<b>Needs your attention</b> expands — with a link to the fix.",
         chips=[("expandable attention items",1.0),("search users + orgs",5.4),("members: whole organization",10.0,"alt")]),
- "13": cap_cycle("Cleanup", [("cap-platform-cleanup.png",0,"center 72%")], "screentinker.com/app#/platform/cleanup",
+ "13": cap_cycle("Cleanup", [("cap-platform-cleanup.png",0,"center 72%")], "luminascreen.ru/app#/platform/cleanup",
         "Stale accounts get a <b>notice first</b>. Signing in cancels it.",
         chips=[("not paying · no screens · sharing nothing",1.0),("email notice first",4.5),("only expired notices deleted",9.0,"alt")]),
  "14": cap_cycle("Limited-time sales", [("cap-platform-sales.png",0,"center 62%"),("cap-home-sale-top.png",4.0,"top center"),
                                         ("cap-home-pricing.png",7.4,"center 60%"),("cap-billing-sale.png",11.0,"center 88%")],
-        "screentinker.com", "Every sale is a <b>real Stripe coupon</b> — the struck price is what's charged.",
+        "luminascreen.ru", "Every sale is a <b>real Stripe coupon</b> — the struck price is what's charged.",
         chips=[("percent · plans · dates",1.0),("homepage banner + countdown",4.2),("struck-through prices",7.6),("billing page",11.2,"alt")]),
- "15": cap_cycle("Also in 2.3", [("cap-dashboard.png",0,"top left"),("cap-templates-installed.png",7.0,"top left")], "screentinker.com/app",
+ "15": cap_cycle("Also in 2.3", [("cap-dashboard.png",0,"top left"),("cap-templates-installed.png",7.0,"top left")], "luminascreen.ru/app",
         "A new look, the sidebar <b>grouped by job</b> — and a run of fixes.",
         chips=[("1 MiB upload chunks",3.5),("add-content folders fixed",6.0),("honest proof-of-play",8.5),
                ("4 security fixes",11.5,"alt")]),

@@ -24,12 +24,12 @@ const size = fs.statSync(ABS).size;
 D.prepare(`INSERT INTO content
   (id,user_id,filename,filepath,mime_type,file_size,duration_sec,width,height,workspace_id,is_active,unstable_connection,captions_enabled,created_at,updated_at)
   VALUES (@id,@u,@fn,@fp,'video/mp4',@sz,@dur,1920,1080,@ws,1,0,0,strftime('%s','now'),strftime('%s','now'))`)
-  .run({ id:CID, u:USER, fn:'ScreenTinker 2.1 launch.mp4', fp:FILE, sz:size, dur:DUR, ws:WS });
+  .run({ id:CID, u:USER, fn:'LuminaScreen 2.1 launch.mp4', fp:FILE, sz:size, dur:DUR, ws:WS });
 
 D.prepare(`INSERT INTO playlists
   (id,user_id,name,is_auto_generated,status,workspace_id,created_at,updated_at)
   VALUES (@id,@u,@name,0,'draft',@ws,strftime('%s','now'),strftime('%s','now'))`)
-  .run({ id:PID, u:USER, name:'ScreenTinker 2.1 Launch Video', ws:WS });
+  .run({ id:PID, u:USER, name:'LuminaScreen 2.1 Launch Video', ws:WS });
 
 D.prepare(`INSERT INTO playlist_items
   (playlist_id,content_id,sort_order,duration_sec,muted,created_at,updated_at)
@@ -50,4 +50,4 @@ D.prepare(`INSERT INTO devices (id,name,user_id,workspace_id,status,playlist_id,
 
 const enrol = require('/app/server/lib/enrol-key');
 const key = enrol.setEnrolKey(D, DID);
-console.log('WATCH_URL=https://alpha.screentinker.com/player?k=' + key);
+console.log('WATCH_URL=https://alpha.luminascreen.ru/player?k=' + key);

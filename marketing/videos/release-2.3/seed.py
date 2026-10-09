@@ -5,7 +5,7 @@ Seed the throwaway capture instance with clean demo data for the 2.0 video.
 Nothing here touches a real database — the server this talks to runs with
 DATA_DIR=<this folder>/instance on :3014.
 
-⚠️ EVERYTHING IS INVENTED. No customer names, no real URLs beyond screentinker.com,
+⚠️ EVERYTHING IS INVENTED. No customer names, no real URLs beyond luminascreen.ru,
    and no third-party media — the Rick Astley thumbnail that slipped into an early
    Android TV capture is exactly what this rule exists to prevent.
 """
@@ -73,7 +73,7 @@ slides = [
       el("qr", "qr",  62, 24, 26, style(INK, 4, 400),     motion("zoom", 0.5, 0.6),
          {"cfg": {"qr_ec": "M", "qr_fg": "#0E1420", "qr_bg": "#FFFFFF"}}),
    ]},
-   "fields": {"h": "Check in from your phone", "b": "Scan the code — no app, no queue.", "qr": "https://screentinker.com"}},
+   "fields": {"h": "Check in from your phone", "b": "Scan the code — no app, no queue.", "qr": "https://luminascreen.ru"}},
 
   {"id": "s4", "name": "Clock & date", "dwell_sec": 8, "widget_id": None,
    "template": {"background": "#0E1420", "elements": [

@@ -28,7 +28,7 @@ const providers = require('../lib/oidc-providers');
 // A pretend identity provider: one keypair, one JWKS, one discovery document.
 
 const ISSUER = 'https://idp.example.com';
-const CLIENT_ID = 'screentinker-test-client';
+const CLIENT_ID = 'luminascreen-test-client';
 const KID = 'test-key-1';
 
 const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -537,7 +537,7 @@ test('CONFINEMENT: an org provider may only assert inside its verified domains',
   const p = orgProvider('acme.test');
   assert.equal(emailAllowedForProvider(p, 'staff@acme.test'), true);
   assert.equal(emailAllowedForProvider(p, 'victim@other.test'), false, 'THE TAKEOVER');
-  assert.equal(emailAllowedForProvider(p, 'admin@screentinker.com'), false);
+  assert.equal(emailAllowedForProvider(p, 'admin@luminascreen.ru'), false);
 });
 
 test('CONFINEMENT: a provider with nothing verified may assert NOTHING', () => {
@@ -604,7 +604,7 @@ test('the DNS record is per-domain and per-claim, so an old record proves nothin
 
   const one = domainVerify.instructions('acme.test', a);
   const two = domainVerify.instructions('acme.test', b);
-  assert.equal(one.record_name, '_screentinker-verify.acme.test');
+  assert.equal(one.record_name, '_luminascreen-verify.acme.test');
   assert.notEqual(one.txt_value, two.txt_value, 'reissuing changes what must be published');
   // TXT is the only accepted form: a CNAME alternative would need a wildcard zone this project
   // does not operate, so offering one would document a check that could never pass.
@@ -626,7 +626,7 @@ test('a lapsed claim frees the domain for someone else', () => {
  * The proof name must not be delegated.
  *
  * A TXT lookup follows CNAMEs transparently, and RFC 4592 means a wildcard `*.victim.com`
- * synthesizes `_screentinker-verify.victim.com` as well. So a wildcard CNAME pointing at anything
+ * synthesizes `_luminascreen-verify.victim.com` as well. So a wildcard CNAME pointing at anything
  * the attacker controls lets them publish the token in THEIR zone and prove a domain they do not
  * own — turning an ordinary subdomain takeover into the whole company's sign-in. A review did
  * exactly this against a real authoritative zone.

@@ -1,5 +1,5 @@
 """The per-source token bucket (JS createRateLimiter tests + Kotlin TriggerRateLimiterTest)."""
-from screentinker_native.logic.rate_limiter import RateLimiter
+from luminascreen_native.logic.rate_limiter import RateLimiter
 
 # ---- JS trigger-resolve.test.js ----
 

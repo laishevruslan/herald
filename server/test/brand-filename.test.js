@@ -4,7 +4,7 @@
  * The brand name on its way into a Content-Disposition header (#292).
  *
  * Two things are being protected. The commercial one: a reseller's customer must not receive a file
- * called ScreenTinker.apk. The security one, which matters more: brand_name is arbitrary
+ * called LuminaScreen.apk. The security one, which matters more: brand_name is arbitrary
  * operator-supplied text, and a quote or a newline in it would break out of the header — so the
  * cases below are mostly hostile input, not brand names anyone would choose.
  */
@@ -21,14 +21,14 @@ test('an ordinary brand name comes through recognisably', () => {
 
 test('nothing configured falls back to the product name', () => {
   for (const empty of ['', '   ', null, undefined]) {
-    assert.equal(brandToFilenameStem(empty), 'ScreenTinker');
+    assert.equal(brandToFilenameStem(empty), 'LuminaScreen');
   }
 });
 
 test('a name that sanitises away entirely still yields a usable filename', () => {
   // Otherwise the download would be called ".apk", which some browsers refuse to save at all.
-  assert.equal(brandToFilenameStem('日本語'), 'ScreenTinker');
-  assert.equal(brandToFilenameStem('***'), 'ScreenTinker');
+  assert.equal(brandToFilenameStem('日本語'), 'LuminaScreen');
+  assert.equal(brandToFilenameStem('***'), 'LuminaScreen');
 });
 
 test('⚠️ a quote cannot break out of the header', () => {

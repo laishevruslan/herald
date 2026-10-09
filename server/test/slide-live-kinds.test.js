@@ -184,7 +184,7 @@ test('⚠️ an unusable target becomes null rather than a wrong date', () => {
 /* ============ QR ============ */
 
 test('a QR renders as an inline SVG with no script and no external request', () => {
-  const html = render([{ kind: 'qr', slot: 'q' }], { q: 'https://screentinker.com' });
+  const html = render([{ kind: 'qr', slot: 'q' }], { q: 'https://luminascreen.ru' });
   assert.ok(html.includes('<svg'), 'no svg emitted');
   assert.equal(liveScripts(html), 0, 'a QR must not need the ticker');
   assert.equal(scriptTags(html), FITTER_SCRIPTS, 'and must not add a script of its own');
@@ -211,7 +211,7 @@ test('⚠️ the quiet zone is present', () => {
    * correct in the editor and frequently will not decode against a real phone — a failure nobody
    * discovers until the poster is on a wall.
    */
-  const svg = R.qrSvg('https://screentinker.com', 'M', '#000000', '#FFFFFF');
+  const svg = R.qrSvg('https://luminascreen.ru', 'M', '#000000', '#FFFFFF');
   const dim = Number(svg.match(/viewBox="0 0 (\d+)/)[1]);
   const maxX = Math.max(...[...svg.matchAll(/M(\d+) (\d+)h(\d+)/g)].map((m) => +m[1] + +m[3]));
   const minX = Math.min(...[...svg.matchAll(/M(\d+) /g)].map((m) => +m[1]));
@@ -406,7 +406,7 @@ test('⚠️ a QR added with no styling is BLACK ON WHITE, not white on white', 
    * white square. Every assertion in this file still passed. The path data was all there, the quiet
    * zone was right, the payload encoded correctly. It only showed up as an image.
    */
-  const html = render([{ kind: 'qr', slot: 'q' }], { q: 'https://screentinker.com' });
+  const html = render([{ kind: 'qr', slot: 'q' }], { q: 'https://luminascreen.ru' });
   const fills = [...html.matchAll(/fill="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(fills, ['#FFFFFF', '#000000'], 'panel white, modules black');
   assert.notEqual(fills[0], fills[1], 'a QR whose modules match its panel is a blank square');

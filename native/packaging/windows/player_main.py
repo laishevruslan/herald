@@ -1,7 +1,7 @@
-"""PyInstaller entry point: ScreenTinker.exe (the player)."""
+"""PyInstaller entry point: LuminaScreen.exe (the player)."""
 import sys
 
-from screentinker_native.app import main
+from luminascreen_native.app import main
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -142,7 +142,7 @@ test('the message listener exists only in preview mode and only for our own orig
   const channel = PLAYER.slice(PLAYER.indexOf('function installPreviewControlChannel('));
   assert.match(channel.slice(0, 800), /ev\.origin !== window\.location\.origin/,
     'cross-origin messages must be rejected');
-  assert.match(channel.slice(0, 800), /d\.source !== 'screentinker-preview'/,
+  assert.match(channel.slice(0, 800), /d\.source !== 'luminascreen-preview'/,
     'unrelated postMessage traffic (extensions, embeds) must be ignored');
 });
 
@@ -156,7 +156,7 @@ test('preview state is posted to our origin only — never "*"', () => {
 test('the dashboard addresses the preview iframe, not a broadcast', () => {
   // Broadcasting would still not reach a display (they hold a server socket, not a window handle),
   // but addressing one contentWindow keeps the intent unambiguous and pins the target origin.
-  assert.match(DASHBOARD, /frame\.contentWindow\?\.postMessage\(\{ source: 'screentinker-preview', action \}, window\.location\.origin\)/);
+  assert.match(DASHBOARD, /frame\.contentWindow\?\.postMessage\(\{ source: 'luminascreen-preview', action \}, window\.location\.origin\)/);
   assert.match(DASHBOARD, /ev\.source !== frame\.contentWindow/);
   assert.match(DASHBOARD, /ev\.origin !== window\.location\.origin/);
 });

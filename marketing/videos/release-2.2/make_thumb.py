@@ -2,7 +2,7 @@ from playwright.sync_api import sync_playwright
 import os
 BASE = os.path.dirname(os.path.abspath(__file__))
 
-# Thumbnail for "ScreenTinker 2.2".
+# Thumbnail for "LuminaScreen 2.2".
 # Money shot = the version number, huge, with the REAL token list behind glass on the right: two
 # scopes, side by side, which is the whole claim of the release. Readable at 210px wide, which is
 # where most impressions are actually served.
@@ -43,7 +43,7 @@ html,body{{width:1280px;height:720px;overflow:hidden}}
   <div class='text'>
     <div class='eyebrow'>Open source · self-hosted</div>
     <div class='ver'>2.2</div>
-    <div class='name'>ScreenTinker</div>
+    <div class='name'>LuminaScreen</div>
     <div class='tag'>Point an <b>AI assistant</b><br>at your own screens</div>
   </div>
   <div class='pills'>

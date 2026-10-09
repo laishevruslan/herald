@@ -10,8 +10,8 @@ import re
 
 import pytest
 
-from screentinker_native.player import transitions
-from screentinker_native.player.items import Item, slot_ms
+from luminascreen_native.player import transitions
+from luminascreen_native.player.items import Item, slot_ms
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 KOTLIN = os.path.join(REPO, "android", "app", "src", "main", "java", "com", "remotedisplay", "player")
@@ -51,7 +51,7 @@ def test_tolerant_parse_of_widget_assignment_without_content_id():
 
 def _engine_helpers():
     pytest.importorskip("PySide6.QtCore")
-    from screentinker_native.player import engine
+    from luminascreen_native.player import engine
     return engine
 
 
@@ -101,7 +101,7 @@ def test_transition_parse_clamps_duration_and_drops_bad_effects():
 
 def test_power_decision_table_matches_android():
     pytest.importorskip("PySide6.QtCore")
-    from screentinker_native.system.power_schedule import decide
+    from luminascreen_native.system.power_schedule import decide
     assert decide(False, False) == (False, True)
     assert decide(False, True) == (False, True)
     assert decide(True, True) == (False, False)
@@ -111,7 +111,7 @@ def test_power_decision_table_matches_android():
 # --- local API allowlist parity --------------------------------------------------------------
 
 def test_local_api_allowlist_is_the_kotlin_list():
-    from screentinker_native.net.triggers import LOCAL_API_COMMANDS
+    from luminascreen_native.net.triggers import LOCAL_API_COMMANDS
     kt = open(os.path.join(KOTLIN, "net", "LocalApi.kt")).read()
     m = re.search(r"val COMMANDS: List<String> = listOf\(([^)]*)\)", kt, re.S)
     assert m, "LocalApi.kt COMMANDS not found"
@@ -121,7 +121,7 @@ def test_local_api_allowlist_is_the_kotlin_list():
 # --- PTY ordering ------------------------------------------------------------------------------
 
 def test_pty_exit_never_overtakes_the_last_output():
-    from screentinker_native.platform import shell as _shell
+    from luminascreen_native.platform import shell as _shell
     PtyManager = _shell.PtyManager
 
     async def run():
@@ -156,5 +156,5 @@ def test_pty_exit_never_overtakes_the_last_output():
     ("ST1 s3cret mytoken=X", "ST1 s3cret mytoken=X"),              # ⚠️ NOT a form: anchored regexes
 ])
 def test_trigger_post_body_shapes(body, line):
-    from screentinker_native.net.triggers import post_body_to_line
+    from luminascreen_native.net.triggers import post_body_to_line
     assert post_body_to_line(body) == line

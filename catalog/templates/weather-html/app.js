@@ -1,5 +1,5 @@
 /*
- * Weather — animated. ScreenTinker community template. MIT.
+ * Weather — animated. LuminaScreen community template. MIT.
  *
  * The server injects everything: ST.values (the operator's settings) and ST.data.weather (the flat
  * keys of the chosen Weather data source: temperature, condition, code, units, day1_high, ...).

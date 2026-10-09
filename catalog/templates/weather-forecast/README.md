@@ -4,7 +4,7 @@ Current conditions and a five-day forecast, laid out as a slide. The numbers com
 own **Weather data sources** — your server fetches the weather (Open-Meteo by default, no key
 needed) and the template only arranges it.
 
-**Kind:** slide (declarative — no code runs). Works on every ScreenTinker player that shows slides.
+**Kind:** slide (declarative — no code runs). Works on every LuminaScreen player that shows slides.
 
 ![preview](thumbnail.png)
 

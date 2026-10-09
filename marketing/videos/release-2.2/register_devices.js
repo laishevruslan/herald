@@ -10,7 +10,7 @@
  *    strays. On a second run we re-register with the stored device_id/device_token instead, so
  *    the same five screens come back online. Delete fleet.json when the DB is wiped.
  *
- * ⚠️ ALL FIVE ARE INVENTED. Talks only to :3011 (DATA_DIR=~/screentinker-video-2p2/instance).
+ * ⚠️ ALL FIVE ARE INVENTED. Talks only to :3011 (DATA_DIR=~/luminascreen-video-2p2/instance).
  */
 const ioClient = require('/home/owner/Downloads/remote_display/server/node_modules/socket.io-client');
 const crypto = require('crypto');
@@ -57,7 +57,7 @@ FLEET.forEach((d, i) => {
     const payload = {
       device_info: {
         name: d.name, location: d.loc, platform: 'linux',
-        user_agent: 'ScreenTinker Player/2.0.0 (capture)',
+        user_agent: 'LuminaScreen Player/2.0.0 (capture)',
         screen: { width: 1920, height: 1080 },
       },
     };

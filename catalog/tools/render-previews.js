@@ -16,7 +16,7 @@
  *     a template that needs a host it did not declare, or an inline handler the policy blocks,
  *     fails here the way it would fail on a screen.
  *
- *   node tools/render-previews.js --st <screentinker checkout> --bundle offline.zip --pubkey pub.pem \
+ *   node tools/render-previews.js --st <luminascreen checkout> --bundle offline.zip --pubkey pub.pem \
  *        --out screenshots/ [--thumbs templates/] [--sizes 1920x200,...] [--chrome /path/to/chrome]
  *
  * Weather templates are bound to a demo Weather data source with realistic cached values, and the

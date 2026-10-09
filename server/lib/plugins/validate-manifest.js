@@ -99,7 +99,7 @@ function validateManifest(raw, dirName) {
       dataSource,
       settings,
       network,
-      screentinker: typeof raw.screentinker === 'string' ? raw.screentinker : null,
+      luminascreen: typeof raw.luminascreen === 'string' ? raw.luminascreen : null,
     },
   };
 }

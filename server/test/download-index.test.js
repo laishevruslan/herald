@@ -131,7 +131,7 @@ test('the four new platform guides send people to this server for the player', (
     // One GitHub link is fine and expected — the footer's source link. What must not appear is a
     // release download: that is the copy stamped with the wrong server URL.
     assert.ok(
-      !/github\.com\/screentinker\/screentinker\/releases/.test(html),
+      !/github\.com\/luminascreen\/luminascreen\/releases/.test(html),
       `${name} must not link a release asset — the artifact is served by the instance`
     );
     assert.match(html, /href="\/download\//, `${name} should point at the instance's downloads`);
@@ -147,7 +147,7 @@ test('the new guides are indexable, canonical and in the sitemap', () => {
     assert.match(html, /name="robots" content="index, follow"/, `${name} robots`);
     assert.match(
       html,
-      new RegExp(`<link rel="canonical" href="https://screentinker\\.com/guides/${name.replace('.', '\\.')}">`),
+      new RegExp(`<link rel="canonical" href="https://luminascreen\\.com/guides/${name.replace('.', '\\.')}">`),
       `${name} canonical`
     );
     assert.ok(sitemap.includes(`/guides/${name}`), `${name} is missing from sitemap.xml`);
@@ -283,11 +283,11 @@ test('the native Pi package is offered only when a .deb is hosted, and names its
   assert.equal(bare.available, false, 'no .deb, no download button');
   assert.ok(bare.absent, 'and it says what to do instead');
   assert.equal(di.entries({}).find((x) => x.id === 'raspberry-pi').available, true, 'the kiosk-browser row is unaffected');
-  const hosted = di.entries({ deb: { exists: true, version: '1.2.0', size: 400_000, filename: 'screentinker-pi_1.2.0_all.deb' } })
+  const hosted = di.entries({ deb: { exists: true, version: '1.2.0', size: 400_000, filename: 'luminascreen-pi_1.2.0_all.deb' } })
     .find((x) => x.id === 'raspberry-pi-native');
   assert.equal(hosted.available, true);
   assert.equal(hosted.url, '/download/pi');
-  assert.equal(hosted.file, 'screentinker-pi_1.2.0_all.deb');
+  assert.equal(hosted.file, 'luminascreen-pi_1.2.0_all.deb');
   assert.equal(hosted.version, '1.2.0');
 });
 
@@ -303,11 +303,11 @@ test('the native Windows installer is offered only when an .exe is hosted, and t
   assert.equal(bare.available, false, 'no installer, no download button');
   assert.ok(bare.absent, 'and it says what to do instead');
   assert.equal(di.entries({}).find((x) => x.id === 'windows').available, true, 'the kiosk-script row is unaffected');
-  const hosted = di.entries({ exe: { exists: true, version: '1.2.0', size: 60_000_000, filename: 'ScreenTinker-Setup-1.2.0.exe' } })
+  const hosted = di.entries({ exe: { exists: true, version: '1.2.0', size: 60_000_000, filename: 'LuminaScreen-Setup-1.2.0.exe' } })
     .find((x) => x.id === 'windows-native');
   assert.equal(hosted.available, true);
   assert.equal(hosted.url, '/download/win');
-  assert.equal(hosted.file, 'ScreenTinker-Setup-1.2.0.exe');
+  assert.equal(hosted.file, 'LuminaScreen-Setup-1.2.0.exe');
   assert.equal(hosted.version, '1.2.0');
   assert.ok(!/github/i.test(JSON.stringify(hosted)), 'never a GitHub release link for a player');
 });

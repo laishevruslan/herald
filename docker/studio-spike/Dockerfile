@@ -1,6 +1,6 @@
 # Studio spike — isolated build + PNG export verify
 #
-# Does NOT replace the main ScreenTinker image. Phase 6.0 only:
+# Does NOT replace the main LuminaScreen image. Phase 6.0 only:
 #   docker compose -f docker/studio-spike/docker-compose.yml run --rm studio-spike
 #
 # Produces /tmp/studio-spike-export.png inside the container (copied to

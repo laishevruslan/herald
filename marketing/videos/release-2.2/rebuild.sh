@@ -6,10 +6,10 @@
 #    database ("disk image is malformed") and lost every seeded row. Big offline writes happen
 #    with the server STOPPED; only API calls happen while it is up.
 #
-# Only ever touches :3011 and DATA_DIR=~/screentinker-video-2p2/instance.
+# Only ever touches :3011 and DATA_DIR=~/luminascreen-video-2p2/instance.
 set -e
 cd "$(dirname "$0")"
-ROOT=/home/owner/screentinker-video-2p2
+ROOT=/home/owner/luminascreen-video-2p2
 SRV=/home/owner/Downloads/remote_display/server
 export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh" >/dev/null 2>&1; nvm use 20 >/dev/null 2>&1
 
@@ -42,7 +42,7 @@ echo "== 3. boot (creates schema) =="; start_server
 
 echo "== 4. bootstrap admin =="
 TOK=$(curl -s -X POST http://localhost:3011/api/auth/register -H 'Content-Type: application/json' \
-  -d '{"email":"demo@screentinker.test","password":"VideoCapture2026!","name":"Demo","createOrg":true}' \
+  -d '{"email":"demo@luminascreen.test","password":"VideoCapture2026!","name":"Demo","createOrg":true}' \
   | python3 -c "import sys,json;print(json.load(sys.stdin).get('token',''))")
 [ -n "$TOK" ] || { echo "  !! register failed"; exit 1; }
 echo "$TOK" > "$ROOT/.token"; echo "  token ok"
@@ -62,7 +62,7 @@ sed 's/^/  /' devices.log
 echo "== 8. pair the fleet =="
 python3 - <<'PY' | sed 's/^/  /'
 import json,urllib.request,urllib.error
-BASE="http://localhost:3011"; TOK=open("/home/owner/screentinker-video-2p2/.token").read().strip()
+BASE="http://localhost:3011"; TOK=open("/home/owner/luminascreen-video-2p2/.token").read().strip()
 def call(m,p,b=None):
     d=json.dumps(b).encode() if b is not None else None
     r=urllib.request.Request(BASE+"/api"+p,data=d,method=m,
@@ -91,7 +91,7 @@ python3 seed_previews.py | sed 's/^/  /'
 echo "== 13. integrity check =="
 python3 - <<'PY' | sed 's/^/  /'
 import sqlite3
-c=sqlite3.connect("/home/owner/screentinker-video-2p2/instance/db/remote_display.db")
+c=sqlite3.connect("/home/owner/luminascreen-video-2p2/instance/db/remote_display.db")
 print("integrity:", c.execute("PRAGMA integrity_check").fetchone()[0])
 for t in ["play_logs","screenshots","devices","triggers","slide_decks","playlists","content"]:
     print(f"{t:12s} {c.execute(f'SELECT COUNT(*) FROM {t}').fetchone()[0]}")

@@ -1,4 +1,4 @@
-# go2rtc-vp8 — VP8/VP9-capable go2rtc for ScreenTinker live video
+# go2rtc-vp8 — VP8/VP9-capable go2rtc for LuminaScreen live video
 
 Stock go2rtc accepts **only H264/H265** on WebRTC ingest (`RegisterDefaultCodecs` in
 `pkg/webrtc/api.go`). A publisher that offers VP8/VP9 gets its video m-line rejected
@@ -14,7 +14,7 @@ publishers work. The change is a single patch to one function — see `vp8-vp9-c
 ## Build
 
 ```sh
-docker build -t screentinker/go2rtc-vp8:1.9.14 docker/go2rtc-vp8
+docker build -t luminascreen/go2rtc-vp8:1.9.14 docker/go2rtc-vp8
 ```
 
 Pin a different upstream tag with `--build-arg GO2RTC_VERSION=v1.9.14` (keep it in sync with the
@@ -22,11 +22,11 @@ Pin a different upstream tag with `--build-arg GO2RTC_VERSION=v1.9.14` (keep it 
 
 ## Use
 
-Replace `alexxit/go2rtc:latest` with `screentinker/go2rtc-vp8:1.9.14` in your compose file / live
+Replace `alexxit/go2rtc:latest` with `luminascreen/go2rtc-vp8:1.9.14` in your compose file / live
 video sidecar (see `docs/live-video.md`). No config change is needed; the extra codecs are additive.
 
 ## Caveat
 
 A VP8/VP9 producer can be consumed only by go2rtc's **WebRTC** consumers — which is exactly what the
-ScreenTinker dashboard live view uses. go2rtc's RTSP / MP4 / HLS / MSE outputs still require H264 and
+LuminaScreen dashboard live view uses. go2rtc's RTSP / MP4 / HLS / MSE outputs still require H264 and
 will not see a VP8-only producer. If you depend on those, keep publishers on H264 instead.

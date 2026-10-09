@@ -144,11 +144,11 @@ SCENES = {
  "02": slate("01 · What you need", "What you <span class='hl'>need</span>", bullets=[
         "A <b>Samsung signage display</b> <span class='k'>— SSSP / URL Launcher</span>",
         "…or a <b>Samsung TV</b> <span class='k'>with a URL Launcher or web browser</span>",
-        "A <b>ScreenTinker</b> server <span class='k'>— free hosted or self-host</span>",
+        "A <b>LuminaScreen</b> server <span class='k'>— free hosted or self-host</span>",
         "<b>No streaming stick.</b> <span class='k'>Nothing to plug in.</span>"]),
  "03": (head() + brandchrome("02 · It's just a web page") +
         "<div class='pad'><h1 class='a' style='animation-delay:.16s'>The player is one <span class='hl'>web page</span></h1>"
-        "<div class='sub a' style='animation-delay:.32s'>Served by your ScreenTinker server — nothing to install.</div>"
+        "<div class='sub a' style='animation-delay:.32s'>Served by your LuminaScreen server — nothing to install.</div>"
         "<div class='a' style='animation-delay:.6s;margin-top:56px;display:inline-flex;align-items:center;gap:20px;background:#0a1017;border:1px solid #24314a;border-radius:16px;padding:24px 36px;font:600 48px ui-monospace,monospace;color:#cfd8e3;width:fit-content'>"
         "<span style='width:18px;height:18px;border-radius:50%;background:#34d399'></span>https://<b style='color:#fff'>your-server</b>/<span class='hl'>player</span></div>"
         "</div></div>"),
@@ -174,12 +174,12 @@ SCENES = {
  "06": (head("body{background:#080b11}") +
         "<div class='tvwrap'><div class='tv' style='animation:popIn .8s both cubic-bezier(.2,.8,.2,1)'>"
         "<div class='screen' style='display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0e1420'>"
-        "<div style='font:700 26px ui-monospace,monospace;color:#34d399;letter-spacing:.2em' class='a'>SCREENTINKER PLAYER</div>"
+        "<div style='font:700 26px ui-monospace,monospace;color:#34d399;letter-spacing:.2em' class='a'>LUMINASCREEN PLAYER</div>"
         "<div style='font:600 34px system-ui;color:#9aa7b8;margin:22px 0 6px' class='a' style='animation-delay:.3s'>Pair this screen</div>"
         "<div class='pair'>" + "".join(f"<div class='digit' style='animation:popIn .5s {(.5+i*.12):.2f}s both cubic-bezier(.2,.8,.2,1)'>{d}</div>" for i,d in enumerate("4 8 3 1 9 2".split())) + "</div>"
         "</div><div class='stand'></div></div></div>"
         "<div class='cap a' style='animation-delay:1.4s'>A freshly-deployed sign — just the <b>pairing code</b></div></div>"),
- "07": cap_frame("05 · Add the display", "caps/cap-add-display.png", "screentinker.com/app  ·  Add Display",
+ "07": cap_frame("05 · Add the display", "caps/cap-add-display.png", "luminascreen.ru/app  ·  Add Display",
         "Dashboard &gt; <b>Add Display</b> &gt; enter the code &gt; <b>online</b>"),
  "08": (head("body{background:#080b11}") + brandchrome("06 · Push content") +
         "<div class='tvwrap'><div class='tv' style='animation:popIn .8s both cubic-bezier(.2,.8,.2,1)'>" +
@@ -199,7 +199,7 @@ SCENES = {
         "<div class='logo' style='position:static;font:800 40px sans-serif;color:#8aa'>Screen<b>Tinker</b></div>"
         "<div class='big a' style='animation-delay:.15s'>Free digital signage.<br><b>On the TV you already own.</b></div>"
         "<div class='links a' style='animation-delay:.5s'>"
-        "<span class='pill'><span class='u'>screentinker.com</span></span>"
+        "<span class='pill'><span class='u'>luminascreen.ru</span></span>"
         "<span class='pill'>GitHub · <span class='u'>MIT</span></span>"
         "<span class='pill'>Discord</span></div>"
         "<div class='sub a' style='animation-delay:.8s;color:#7b8aa0;text-align:center'>Open source · Self-hostable · No per-screen fees</div>"

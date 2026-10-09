@@ -185,7 +185,7 @@ test('envelope: unknown keys, bad signature shapes, oversized input', () => {
 test('package signatures: verified by the right key only, and bound to the exact bytes', () => {
   const bytes = slideTemplate();
   const sig = signing.signPackage(bytes, official.privateKey);
-  const trusted = [{ id: 'official', label: 'ScreenTinker', key: official.publicKey }];
+  const trusted = [{ id: 'official', label: 'LuminaScreen', key: official.publicKey }];
   assert.equal(signing.verifyPackage(bytes, sig, trusted).id, 'official');
   // Different key.
   assert.equal(signing.verifyPackage(bytes, signing.signPackage(bytes, other.privateKey), trusted), null);
@@ -253,9 +253,9 @@ test('an index signed for another catalog is refused even under the same key', (
 });
 
 test('an index cannot point packages at another host or outside its directory', () => {
-  assert.throws(() => catalog.resolveUrl('https://screentinker.github.io/templates/', 'https://evil.example/x'), /outside/);
-  assert.throws(() => catalog.resolveUrl('https://screentinker.github.io/templates/', '//evil.example/x'), /outside/);
-  assert.throws(() => catalog.resolveUrl('https://screentinker.github.io/templates/', '../other-repo/x'), /outside/);
+  assert.throws(() => catalog.resolveUrl('https://luminascreen.github.io/templates/', 'https://evil.example/x'), /outside/);
+  assert.throws(() => catalog.resolveUrl('https://luminascreen.github.io/templates/', '//evil.example/x'), /outside/);
+  assert.throws(() => catalog.resolveUrl('https://luminascreen.github.io/templates/', '../other-repo/x'), /outside/);
   const v = catalog.validateIndex({ schema: 1, catalog: 'official', serial: 1, expires: new Date().toISOString(), templates: [
     { id: 'a-b', versions: [{ version: '1.0.0', sha256: 'a'.repeat(64), url: 'https://evil/x' }, { version: '1.0.1', sha256: 'b'.repeat(64), url: '../x' }] },
   ] });
@@ -281,7 +281,7 @@ async function installOfficial(bytesList, opts) {
     files[`packages/${manifest.id}-${manifest.version}.sttemplate`] = signedEnvelope(b);
   }
   catalog.setFetcher(async (url) => {
-    const rel = url.replace('https://screentinker.github.io/templates/', '');
+    const rel = url.replace('https://luminascreen.github.io/templates/', '');
     if (files[rel]) return files[rel];
     throw new Error('404 ' + rel);
   });

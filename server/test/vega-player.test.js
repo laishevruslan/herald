@@ -60,10 +60,10 @@ test('vega: the build targets the stick, not the simulator, and can actually bun
 
 test('vega: manifest, app.json and package.json name the same component', () => {
   assert.equal(pkg.version, VERSION);
-  assert.match(manifest, /^id = "com\.screentinker\.vega"$/m);
+  assert.match(manifest, /^id = "com\.luminascreen\.vega"$/m);
   assert.match(manifest, new RegExp(`^version = "${VERSION_RE}"$`, 'm'));
-  assert.match(manifest, /id = "com\.screentinker\.vega\.main"/);
-  assert.equal(app.name, 'com.screentinker.vega.main', 'AppRegistry name must be the interactive component id');
+  assert.match(manifest, /id = "com\.luminascreen\.vega\.main"/);
+  assert.equal(app.name, 'com.luminascreen.vega.main', 'AppRegistry name must be the interactive component id');
   assert.match(manifest, /com\.amazon\.webview\.renderer_service/);
   assert.match(manifest, /min = "1\.2"/);
   assert.match(manifest, /target = "1\.2"/);
@@ -94,7 +94,7 @@ test('vega: finalize-release.sh ships the .vpkg, and refuses a stale one', () =>
   // It must UPLOAD the package, not merely expect it: an EXPECTED entry nothing uploads turns
   // every future finalize into a failure AFTER the APK has already gone up.
   assert.match(fin, /gh release upload[^\n]*"\$VPKG"/, 'finalize must upload the .vpkg');
-  assert.match(fin, /screentinker-vega_armv7\.vpkg/);
+  assert.match(fin, /luminascreen-vega_armv7\.vpkg/);
   // vega/build/ is gitignored and nothing ever clears it, so the file sitting there may belong to
   // an older release. The version comes from vpkg-info.json, and a mismatch has to be fatal.
   assert.match(fin, /vpkg-info\.json/);
@@ -182,8 +182,8 @@ test('vega: the capability floor is the web player minus Android powers these st
 
 test('vega: the shell speaks the host protocol and does not announce a power it lacks', () => {
   const appSrc = fs.readFileSync(path.join(VEGA, 'src/App.tsx'), 'utf8');
-  assert.match(appSrc, /screentinker-player/);
-  assert.match(appSrc, /screentinker-host/);
+  assert.match(appSrc, /luminascreen-player/);
+  assert.match(appSrc, /luminascreen-host/);
   assert.match(appSrc, /host:hello/);
   assert.match(appSrc, /host:ready/);
   assert.match(appSrc, /action === 'restart'/);

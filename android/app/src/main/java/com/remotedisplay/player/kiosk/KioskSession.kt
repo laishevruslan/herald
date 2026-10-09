@@ -412,7 +412,7 @@ class KioskSession(
 
     companion object {
         private const val TAG = "Kiosk"
-        private const val PREFS = "screentinker"
+        private const val PREFS = "luminascreen"
         private const val DIRTY = "kiosk_session_dirty"
         private const val KEEP = "kiosk_keep_spec"
         private const val OPEN_SESSION = "kiosk_open_session"

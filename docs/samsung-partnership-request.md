@@ -1,30 +1,30 @@
 # Samsung Partnership Request (Seller Office > Membership > Partnership)
 
 ## Company
-ByteTinker LLC (byte​tinker) - developer of ScreenTinker
-Website: https://screentinker.com   Repo: https://github.com/screentinker/screentinker
-Support: support@screentinker.com
+ByteTinker LLC (byte​tinker) - developer of LuminaScreen
+Website: https://luminascreen.ru   Repo: https://github.com/luminascreen/luminascreen
+Support: support@luminascreen.ru
 
 ## Request (one line)
-Partner Seller membership so that ScreenTinker's Tizen signage application can be distributed to
+Partner Seller membership so that LuminaScreen's Tizen signage application can be distributed to
 Samsung Smart Signage Platform panels through URL Launcher with a partner-level distributor
 certificate.
 
 ## Who we are, in Samsung's terms
-ScreenTinker is a digital signage CMS that puts customers' content onto Samsung Smart Signage
+LuminaScreen is a digital signage CMS that puts customers' content onto Samsung Smart Signage
 Platform displays. It ships a native Tizen web application (HTML5 / ES6, Tizen 5.0 and later,
 SSSP v6) that pairs a panel to a management dashboard, plays scheduled playlists, video walls and
 layouts, and reports health and telemetry back to the operator.
 
 ## Already on Samsung panels
-ScreenTinker 2.0.8 is deployed today on Samsung OM55B (Tizen 5.0 / SSSP v6) panels operated by
+LuminaScreen 2.0.8 is deployed today on Samsung OM55B (Tizen 5.0 / SSSP v6) panels operated by
 Bold Media Group, installed by USB in Developer Mode because URL Launcher requires a
 partner-signed package. Bold Media Group have applied to the SSSP program and can confirm the
 deployment.
 
 ## Why partner distribution matters for Samsung customers
 Today each customer must enable Developer Mode and sideload the application by USB on every
-panel. A partner-signed package lets a panel pull and install ScreenTinker from a URL, and take
+panel. A partner-signed package lets a panel pull and install LuminaScreen from a URL, and take
 updates automatically when the version advances, which is the deployment model Samsung built
 URL Launcher for. It removes the per-panel manual step and keeps fleets current.
 

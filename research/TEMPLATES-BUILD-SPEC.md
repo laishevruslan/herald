@@ -12,7 +12,7 @@ with `node --test test/<file>.test.js`. Never start servers on the user's ports;
    - `html` — the author's HTML/CSS/JS, rendered on players in a sandboxed document. Code.
 2. **Package format** (no zip on the trusted path): a `.sttemplate` file is JSON:
    ```json
-   { "format": "screentinker-template/1",
+   { "format": "luminascreen-template/1",
      "package": "<base64 of the canonical package bytes>",
      "signature": { "key_id": "<16 hex>", "sig": "<base64 Ed25519>" } }
    ```
@@ -20,9 +20,9 @@ with `node --test test/<file>.test.js`. Never start servers on the user's ports;
    whitespace: `{ "manifest": {...}, "files": { "<path>": "<base64>" } }`. Deterministic, so CI can rebuild
    and compare hashes. Package sha256 = sha256 of the canonical package bytes (not the envelope), so
    re-signing never changes a package's identity.
-   Signature = Ed25519 over `"screentinker-template-package/1\n" + packageBytes` (domain separated).
+   Signature = Ed25519 over `"luminascreen-template-package/1\n" + packageBytes` (domain separated).
 3. **Catalog index**: `index.json` + `index.json.sig` (base64 Ed25519 over
-   `"screentinker-template-index/1\n" + indexBytes`). Index:
+   `"luminascreen-template-index/1\n" + indexBytes`). Index:
    ```json
    { "schema": 1, "catalog": "official", "serial": 1727600000, "generated": "ISO", "expires": "ISO",
      "revoked": [ { "id": "x", "versions": ["*"], "reason": "..." } ],
@@ -84,7 +84,7 @@ with `node --test test/<file>.test.js`. Never start servers on the user's ports;
 - `server/lib/templates/catalog.js` — catalogs, fetch, verify, serial/expiry, offline bundle import.
 - `server/routes/templates.js` — `/api/templates` (JWT only, tenancy).
 - `scripts/template-catalog.js` — keygen / pack / sign / build-index / verify / bundle (maintainer CLI).
-- `catalog/` — scaffold of the future `screentinker/templates` repo (templates/, CI, docs).
+- `catalog/` — scaffold of the future `luminascreen/templates` repo (templates/, CI, docs).
 - Built-in weather data source: `server/lib/data-sources/weather-resolver.js` (type `weather`, Open-Meteo, keyless).
 
 ## Weather data-source keys (contract for templates)

@@ -61,7 +61,7 @@ function loadBridge() {
   };
   vm.createContext(sandbox);
   vm.runInContext(bridge, sandbox);
-  return { api: sandbox.ScreenTinkerBS, deliver: (msg) => inbound.forEach((fn) => fn(msg)) };
+  return { api: sandbox.LuminaScreenBS, deliver: (msg) => inbound.forEach((fn) => fn(msg)) };
 }
 
 test('the host reports its boot story, which happens before there is a page to hear it', () => {

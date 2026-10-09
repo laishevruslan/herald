@@ -217,7 +217,7 @@ class DownloadCoordinator:
 
     async def _sess(self):
         if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession(headers={"User-Agent": "ScreenTinker-Pi"})
+            self._session = aiohttp.ClientSession(headers={"User-Agent": "LuminaScreen-Pi"})
         return self._session
 
     def ensure(self, cid, filename, mime, rev):

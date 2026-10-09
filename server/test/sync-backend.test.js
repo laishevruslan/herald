@@ -3,7 +3,7 @@
 // A group can only run the protocol its weakest member supports.
 //
 // BrightWall is BrightSign's native synchronisation: frame-accurate, and exclusive to BrightSign
-// hardware. ScreenTinker's own group sync derives every member's position from a shared clock, so it
+// hardware. LuminaScreen's own group sync derives every member's position from a shared clock, so it
 // spans Android, web, Tizen and BrightSign, survives a server outage, and syncs to the second rather
 // than the frame.
 //
@@ -30,13 +30,13 @@ test('auto picks native sync when every display is a BrightSign', () => {
 
 test('auto falls back to our protocol the moment one member is not a BrightSign', () => {
   const r = resolveSyncBackend('auto', [bs(1), bs(2), android]);
-  assert.equal(r.backend, 'screentinker');
+  assert.equal(r.backend, 'luminascreen');
   assert.equal(r.reason, 'mixed fleet');
 });
 
 test('THE TRAP: native sync explicitly selected for a mixed group downgrades and says why', () => {
   const r = resolveSyncBackend('brightsign', [bs(1), bs(2), android]);
-  assert.equal(r.backend, 'screentinker', 'BrightWall cannot include a non-BrightSign screen');
+  assert.equal(r.backend, 'luminascreen', 'BrightWall cannot include a non-BrightSign screen');
   assert.equal(r.downgraded, true);
   assert.match(r.reason, /1 non-BrightSign display$/, 'the operator must be told which way it broke');
 });
@@ -48,22 +48,22 @@ test('the downgrade message counts the offenders and pluralises', () => {
 
 test('our protocol is honoured on an all-BrightSign group — never overridden', () => {
   // A 100% BrightSign site still gets to choose ours, e.g. to stay consistent with other sites.
-  const r = resolveSyncBackend('screentinker', [bs(1), bs(2)]);
-  assert.equal(r.backend, 'screentinker');
+  const r = resolveSyncBackend('luminascreen', [bs(1), bs(2)]);
+  assert.equal(r.backend, 'luminascreen');
   assert.equal(r.downgraded, false);
 });
 
 test('an empty group never claims native sync', () => {
-  assert.equal(resolveSyncBackend('auto', []).backend, 'screentinker');
+  assert.equal(resolveSyncBackend('auto', []).backend, 'luminascreen');
   const forced = resolveSyncBackend('brightsign', []);
-  assert.equal(forced.backend, 'screentinker');
+  assert.equal(forced.backend, 'luminascreen');
   assert.equal(forced.downgraded, true);
 });
 
 test('unknown or missing settings read as auto rather than throwing', () => {
   assert.equal(resolveSyncBackend('nonsense', [bs(1)]).backend, 'brightsign');
-  assert.equal(resolveSyncBackend(undefined, [android]).backend, 'screentinker');
-  assert.equal(resolveSyncBackend('auto', null).backend, 'screentinker');
+  assert.equal(resolveSyncBackend(undefined, [android]).backend, 'luminascreen');
+  assert.equal(resolveSyncBackend('auto', null).backend, 'luminascreen');
 });
 
 test('a pre-port panel is NOT recognised until it re-registers — no phantom user-agent match', () => {
@@ -73,7 +73,7 @@ test('a pre-port panel is NOT recognised until it re-registers — no phantom us
   // only in tests that fabricated it, which is exactly how dead code survives.
   const legacy = { id: 'old', platform: 'Chrome 120', user_agent: 'BrightSign/9.1.92.2 (HD1026) Chrome/120' };
   assert.equal(isBrightSignDevice(legacy), false, 'a fabricated user_agent must not create a match');
-  assert.equal(resolveSyncBackend('auto', [legacy, bs(2)]).backend, 'screentinker',
+  assert.equal(resolveSyncBackend('auto', [legacy, bs(2)]).backend, 'luminascreen',
     'so a group containing one reads as mixed until that panel re-registers as brightsign');
 });
 
@@ -94,13 +94,13 @@ const bsAt = (n, ip) => ({ id: `bs${n}`, platform: 'brightsign', ip_address: ip 
 
 test('THE SILENT SPLIT: all-BrightSign but on different subnets does not get native sync', () => {
   const r = resolveSyncBackend('auto', [bsAt(1, '10.1.5.20'), bsAt(2, '10.9.5.20')]);
-  assert.equal(r.backend, 'screentinker');
+  assert.equal(r.backend, 'luminascreen');
   assert.match(r.reason, /different networks/);
 });
 
 test('explicitly selecting native across subnets downgrades and explains multicast', () => {
   const r = resolveSyncBackend('brightsign', [bsAt(1, '192.168.1.10'), bsAt(2, '192.168.2.10')]);
-  assert.equal(r.backend, 'screentinker');
+  assert.equal(r.backend, 'luminascreen');
   assert.equal(r.downgraded, true);
   assert.match(r.reason, /multicast/);
 });
@@ -121,5 +121,5 @@ test('IPv6 members are compared on their /64', () => {
   const b = { id: 'b', platform: 'brightsign', ip_address: '2600:4040:917a:2200::11' };
   const c = { id: 'c', platform: 'brightsign', ip_address: '2600:4040:9999:2200::12' };
   assert.equal(resolveSyncBackend('auto', [a, b]).backend, 'brightsign');
-  assert.equal(resolveSyncBackend('auto', [a, c]).backend, 'screentinker');
+  assert.equal(resolveSyncBackend('auto', [a, c]).backend, 'luminascreen');
 });

@@ -91,7 +91,7 @@ test('set_server_url to a Pi does not mint a web-player enrol key', () => {
 });
 
 /*
- * The Pi's own declaration, when it is in the tree. The expected shape (native/screentinker_native/capabilities.py):
+ * The Pi's own declaration, when it is in the tree. The expected shape (native/luminascreen_native/capabilities.py):
  *
  *   CAPABILITIES_ALWAYS = [
  *       'playback.video',
@@ -103,7 +103,7 @@ test('set_server_url to a Pi does not mint a web-player enrol key', () => {
  * file (conditional ones added by declared_capabilities) are collected separately as "may declare".
  * Skipped cleanly while the file does not exist yet.
  */
-const PI_CAPS = path.join(__dirname, '..', '..', 'native', 'screentinker_native', 'capabilities.py');
+const PI_CAPS = path.join(__dirname, '..', '..', 'native', 'luminascreen_native', 'capabilities.py');
 function readPiCaps() {
   const src = fs.readFileSync(PI_CAPS, 'utf8');
   const block = /CAPABILITIES_ALWAYS\s*(?::[^=]*)?=\s*[[(]([\s\S]*?)[\])]/.exec(src);
@@ -122,7 +122,7 @@ function readPiCaps() {
 }
 
 test('the Pi declares only vocabulary this server knows', (t) => {
-  if (!fs.existsSync(PI_CAPS)) return t.skip('native/screentinker_native/capabilities.py not in the tree yet');
+  if (!fs.existsSync(PI_CAPS)) return t.skip('native/luminascreen_native/capabilities.py not in the tree yet');
   const { always, anywhere } = readPiCaps();
   assert.ok(always && always.length, 'CAPABILITIES_ALWAYS = [...] not found (or empty) in capabilities.py');
   for (const c of anywhere) {
@@ -135,9 +135,9 @@ test('the Pi declares only vocabulary this server knows', (t) => {
 test('BASELINE.linux claims nothing the Pi player cannot declare', (t) => {
   // The over-claim direction, as for every device-artifact baseline: an undeclared row must never be
   // offered a control the player has no code for.
-  if (!fs.existsSync(PI_CAPS)) return t.skip('native/screentinker_native/capabilities.py not in the tree yet');
+  if (!fs.existsSync(PI_CAPS)) return t.skip('native/luminascreen_native/capabilities.py not in the tree yet');
   const { anywhere } = readPiCaps();
   for (const c of caps.BASELINE.linux) {
-    assert.ok(anywhere.has(c), `BASELINE.linux claims ${c}, which neither native/screentinker_native/capabilities.py nor platform/linux/ names`);
+    assert.ok(anywhere.has(c), `BASELINE.linux claims ${c}, which neither native/luminascreen_native/capabilities.py nor platform/linux/ names`);
   }
 });

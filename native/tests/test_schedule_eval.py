@@ -5,8 +5,8 @@ import os
 
 import pytest
 
-from screentinker_native.logic import schedule_eval as se
-from screentinker_native.logic import power_window as pw
+from luminascreen_native.logic import schedule_eval as se
+from luminascreen_native.logic import power_window as pw
 
 VECTORS_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "shared", "schedule-vectors.json")
 with open(VECTORS_PATH, encoding="utf-8") as f:
@@ -24,7 +24,7 @@ def test_conforms_to_shared_vector(v):
 
 
 def test_vectors_hold_for_epoch_ms_and_datetime_instants_too():
-    from screentinker_native.logic._jscompat import to_instant
+    from luminascreen_native.logic._jscompat import to_instant
     for v in VECTORS:
         dt = to_instant(v["utc_now"])
         ms = int(dt.timestamp() * 1000)

@@ -57,7 +57,7 @@ FLEET.forEach((d, i) => {
     const payload = {
       device_info: {
         name: d.name, location: d.loc, platform: 'linux',
-        user_agent: 'ScreenTinker Player/2.0.0 (capture)',
+        user_agent: 'LuminaScreen Player/2.0.0 (capture)',
         screen: { width: 1920, height: 1080 },
       },
     };

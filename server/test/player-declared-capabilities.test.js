@@ -45,7 +45,7 @@ function declare({ host = false, sync = false, transitions = false, canvas = tru
   };
   sandbox.swRegistrationFailed = swRefused;
   sandbox.window = sandbox;
-  if (sync) sandbox.ScreenTinkerBSSync = { available: () => true };
+  if (sync) sandbox.LuminaScreenBSSync = { available: () => true };
   // The real runtime globals the player's own transitionRuntimeReady() checks. An earlier draft
   // faked a global that does not exist, which passed a test while declaring nothing.
   if (transitions) {

@@ -1,16 +1,16 @@
 # План закрытия функциональных пробелов
 
 **Status: PLAN, not fully built.** GAP-01…GAP-04 и INT-01…INT-05 (Цикл 1) — **BUILT** (2026-09-08). GAP-05…GAP-15 (Цикл 2) — **BUILT** (2026-09-08). GAP-16 карта парка — **BUILT** (2026-09-08). GAP-17 периодический скриншот — **BUILT** (2026-09-08). GAP-18 импорт Canva/Pixabay — **BUILT** (2026-09-08). GAP-19 geo-расписание — **BUILT** (2026-09-08). GAP-20 нативный Windows/Linux player (kiosk shell) — **BUILT** (2026-09-08). GAP-21 SSP / programmatic ads — **BUILT** (2026-09-08). Цикл 3 (остальное) — план.
-Источник: сравнение ScreenTinker 2.0 с Xibo CMS 4.x (сентябрь 2026) и
+Источник: сравнение LuminaScreen 2.0 с Xibo CMS 4.x (сентябрь 2026) и
 внутренние документы (`docs/triggers-design.md`, `docs/playlist-nesting-design.md`,
 `docs/playlist-inheritance-design.md`, `docs/player-parity.md`, `docs/mesh-directive.md`,
 `docs/104-draft-preview-build-plan.md`).
 
-Это рабочий план для продукта, а не список «сделать как Xibo». ScreenTinker остаётся CMS вокруг
+Это рабочий план для продукта, а не список «сделать как Xibo». LuminaScreen остаётся CMS вокруг
 **плейлиста + Слайдов (template + fields)**. Layout-редактор Xibo не копируется. Designer
 помечается устаревающим и не расширяется.
 
-Связанный обзор: canvas `screentinker-vs-xibo` в Cursor (сравнение покрытия по областям).
+Связанный обзор: canvas `luminascreen-vs-xibo` в Cursor (сравнение покрытия по областям).
 
 ---
 
@@ -57,7 +57,7 @@ Xibo закрывает сценарии, которые у нас либо от
 | Adobe Flash, биржевые/валютные/карты-виджеты с чужими ключами | Один DataSet + шаблон покрывает это без вендорских API |
 | SAML / CAS | OIDC SSO уже есть; SAML — отдельный коннектор, не дыра в IAM |
 | PHP-модули, Twig, Xibo middleware | Другой стек |
-| Платные лицензии плееров | Позиционирование ScreenTinker |
+| Платные лицензии плееров | Позиционирование LuminaScreen |
 | Полное зеркалирование контента по mesh в 2.0 | `docs/mesh-directive.md` I2: вверх по умолчанию, вниз только request+grant |
 | Cursored nesting плейлистов в Цикле 1 | `docs/playlist-nesting-design.md`: фаза 2 сознательно отложена |
 | Проксирование чужих webpage (XFO) | `docs/104-draft-preview-build-plan.md`: клиентски неопределимо |
@@ -572,7 +572,7 @@ criteria-событие в `scheduled_playlist_id` (решение 10 / I6): ш�
 
 **Сейчас (сделано).** Вендорский коннектор VAST 2/3/4 Linear:
 
-- MIME `application/vnd.screentinker.ssp`. Capability `playback.ssp` **не в BASELINE** (I5):
+- MIME `application/vnd.luminascreen.ssp`. Capability `playback.ssp` **не в BASELINE** (I5):
   панель без декларации не получает слот в snapshot (как HLS).
 - Workspace tag URL в `ssp_settings` (secretbox, JWT-only `/api/ssp`). Env `SSP_TAG_URL` —
   fallback. Per-slot URL в `ssp_slot_tags`, не в `content.remote_url`.

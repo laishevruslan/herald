@@ -13,7 +13,7 @@ import glob, os, subprocess, sys
 OV, TAIL = 0.5, 0.6   # must match assemble.py
 TITLES = {
  "01": "Change the table, the wall changes",
- "02": "What's new in ScreenTinker 2.3",
+ "02": "What's new in LuminaScreen 2.3",
  "03": "Built-in data sources: REST, Sheets, CSV, RSS, Table",
  "04": "Key columns survive a sorted sheet",
  "05": "Careful by default",
@@ -27,7 +27,7 @@ TITLES = {
  "13": "Stale-account cleanup, notice first",
  "14": "Limited-time sales",
  "15": "New look, fixes and security",
- "16": "Get ScreenTinker 2.3",
+ "16": "Get LuminaScreen 2.3",
 }
 
 def dur(f):

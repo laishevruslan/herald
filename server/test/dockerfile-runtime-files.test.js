@@ -59,7 +59,7 @@ function runtimeRootPaths() {
 
       /*
        * ⚠️ THE WHOLE JOIN, not the first segment after the root. `'..', '..', 'webos',
-       * 'ScreenTinker.ipk'` is a probe for a BUILD OUTPUT that is not committed — ipk-cache treats its
+       * 'LuminaScreen.ipk'` is a probe for a BUILD OUTPUT that is not committed — ipk-cache treats its
        * absence as "not hosted on this instance", a supported state with its own page. Matching only
        * `webos` would flag the directory and demand it be copied, which is the wrong answer. Resolve
        * the full path and let the existence check below decide.
@@ -92,7 +92,7 @@ test('every repo-root path the server resolves is copied into the image', () => 
     // (a built .ipk, a mounted .wgt) that is supplied by the deployment, not by the build — those are
     // checked separately below.
     /*
-     * ⚠️ TRACKED BY GIT, not merely present on disk. tizen/ScreenTinker.wgt sits in a working tree as
+     * ⚠️ TRACKED BY GIT, not merely present on disk. tizen/LuminaScreen.wgt sits in a working tree as
      * a local build output and is not committed — the Dockerfile could not copy it if it wanted to,
      * and it should not: the in-repo build is unsigned and inspection-only, while a retail Samsung
      * panel needs a partner-signed one the operator mounts at /data. Testing for existence alone
@@ -122,12 +122,12 @@ test('the three known instances are each covered', () => {
 
 test('⚠️ an artifact the DEPLOYMENT supplies is not expected in the image', () => {
   /*
-   * ScreenTinker.ipk and ScreenTinker.wgt are read from the repo root too, but they are built by CI or
+   * LuminaScreen.ipk and LuminaScreen.wgt are read from the repo root too, but they are built by CI or
    * mounted by the operator — lib/ipk-cache.js and lib/wgt-cache.js both try /data first and treat
    * absence as "not hosted on this instance", which is a supported state with its own page. Copying
    * them would be wrong, so the test above skips what is not in the tree, and this records why.
    */
-  for (const f of ['ScreenTinker.ipk', 'ScreenTinker.wgt']) {
+  for (const f of ['LuminaScreen.ipk', 'LuminaScreen.wgt']) {
     assert.ok(!fs.existsSync(path.join(REPO, f)) || DOCKERFILE.includes(`COPY ${f} `),
       `${f} is in the tree now, so decide deliberately whether it belongs in the image`);
   }

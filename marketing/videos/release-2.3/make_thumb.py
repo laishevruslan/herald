@@ -2,7 +2,7 @@ from playwright.sync_api import sync_playwright
 import os
 BASE = os.path.dirname(os.path.abspath(__file__))
 
-# Thumbnail for "ScreenTinker 2.3".
+# Thumbnail for "LuminaScreen 2.3".
 # Money shot = the version number, huge, with two REAL renders on the right: the menu board that the
 # live-data hook changes, and UPTIME 3036 overlapping it (the game is the surprise of the release).
 # The bottom line leads with the hosted TRIAL — "we want people to buy it" — self-hosting second.
@@ -44,7 +44,7 @@ html,body{{width:1280px;height:720px;overflow:hidden}}
   <div class='text'>
     <div class='eyebrow'>Open-source digital signage</div>
     <div class='ver'>2.3</div>
-    <div class='name'>ScreenTinker</div>
+    <div class='name'>LuminaScreen</div>
     <div class='tag'>Live data, <b>templates</b><br>&amp; a real game</div>
   </div>
   <div class='sub'><b>14-day free trial</b><span>or self-host free</span></div>

@@ -1,9 +1,9 @@
 {
-  "name": "screentinker-vega",
+  "name": "luminascreen-vega",
   "version": "2.4.3",
   "private": true,
   "license": "MIT",
-  "description": "ScreenTinker player for Amazon Vega OS (Fire TV Stick 4K Select and Fire TV Stick HD 2026)",
+  "description": "LuminaScreen player for Amazon Vega OS (Fire TV Stick 4K Select and Fire TV Stick HD 2026)",
   "scripts": {
     "start": "react-native start",
     "build:debug": "react-native build-vega --build-type Debug --target armv7 --build-number 20403",
@@ -34,7 +34,7 @@
   },
   "kepler": {
     "projectType": "application",
-    "appName": "ScreenTinker",
+    "appName": "LuminaScreen",
     "targets": [
       "tv"
     ]

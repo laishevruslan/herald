@@ -24,7 +24,7 @@ const vm = require('node:vm');
 const SRC = fs.readFileSync(path.join(__dirname, '..', '..', 'frontend', 'js', 'error-reporter.js'), 'utf8');
 
 // Minimal browser surface: enough for the reporter, nothing more.
-function sandbox({ reportingMeta = null, href = 'https://screentinker.com/app' } = {}) {
+function sandbox({ reportingMeta = null, href = 'https://luminascreen.ru/app' } = {}) {
   const posts = [];
   const listeners = {};
   const timers = [];
@@ -84,12 +84,12 @@ test('an unhandled promise rejection is captured', () => {
 test('⚠️ SECRETS ARE STRIPPED: the query string never leaves the browser', () => {
   // This endpoint is unauthenticated and its rows are readable by a platform admin. ?k= is a
   // single-use enrol key and ?reset= is a password-reset token; both live on this origin.
-  const s = sandbox({ href: 'https://screentinker.com/app?reset=SECRET-TOKEN#/billing?k=ENROL-KEY' });
+  const s = sandbox({ href: 'https://luminascreen.ru/app?reset=SECRET-TOKEN#/billing?k=ENROL-KEY' });
   s.fire('error', { error: new Error('x'), message: 'x' });
   const url = s.posts[0].body.url;
   assert.ok(!/SECRET-TOKEN/.test(url), 'reset token must not be reported');
   assert.ok(!/ENROL-KEY/.test(url), 'hash query params must not be reported either');
-  assert.equal(url, 'https://screentinker.com/app#/billing', 'route is kept — that is what identifies the fault');
+  assert.equal(url, 'https://luminascreen.ru/app#/billing', 'route is kept — that is what identifies the fault');
 });
 
 test('the same fault is reported once, not on every repeat', () => {

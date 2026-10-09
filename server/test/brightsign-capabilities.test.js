@@ -98,7 +98,7 @@ function load(o = {}) {
 
   vm.createContext(sandbox);
   vm.runInContext(SRC, sandbox);
-  return { api: sandbox.ScreenTinkerBS, posted, caps: sandbox.ScreenTinkerBS.capabilities() };
+  return { api: sandbox.LuminaScreenBS, posted, caps: sandbox.LuminaScreenBS.capabilities() };
 }
 
 const WITH_DISK = { storage_present: true, storage_volume: 'SSD:', storage_free_mb: 90000, storage_total_mb: 120000, os_version: '9.0.189' };

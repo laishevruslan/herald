@@ -1,8 +1,8 @@
 # Windows native player — server contract
 
 The native Windows player is the **same engine** as the native Raspberry Pi player
-(`native/screentinker_native`, Python + Qt) with a Windows OS backend (`platform/windows`). It is
-shipped as an Inno Setup installer, `ScreenTinker-Setup-<ver>.exe`, and talks to the server exactly
+(`native/luminascreen_native`, Python + Qt) with a Windows OS backend (`platform/windows`). It is
+shipped as an Inno Setup installer, `LuminaScreen-Setup-<ver>.exe`, and talks to the server exactly
 like the Pi: Socket.IO on `<server>/device`, `device:register`, heartbeats, `device:command`, and the
 PTY relay. Read [`pi-native-player.md`](pi-native-player.md) first — everything there applies unless
 this page says otherwise. It is **not** the kiosk-browser shortcut that `scripts/windows-setup.bat`
@@ -56,8 +56,8 @@ Identical wire format and gating to the Pi. The differences are what runs on the
 | `set_system_brightness` | `system.brightness` | DDC/CI VCP `10` (dxva2) or WMI `WmiMonitorBrightness`; declared only when one is present |
 
 Dashboard: the Terminal tab uses PowerShell presets (`Get-ComputerInfo`, `Get-CimInstance
-Win32_OperatingSystem`, `Get-PSDrive C`, `Get-NetIPAddress`, `Get-Service ScreenTinkerHelper`,
-`Get-Process ScreenTinker*`, `Get-WinEvent … ScreenTinker`); the Info tab shows "Windows (native)",
+Win32_OperatingSystem`, `Get-PSDrive C`, `Get-NetIPAddress`, `Get-Service LuminaScreenHelper`,
+`Get-Process LuminaScreen*`, `Get-WinEvent … LuminaScreen`); the Info tab shows "Windows (native)",
 the OS and model cards and the settings PIN; no Android-only control (device-owner QR,
 MediaProjection, Recents, the Android settings activity) is ever rendered for it.
 
@@ -67,12 +67,12 @@ MediaProjection, Recents, the Android settings activity) is ever rendered for it
 GET /api/win/update/check?version=<current>[&device_id=<id>][&forced=1]
 → { update_available, latest_version, current_version, download_url: '/download/win',
     sha256, size, reason, retry_after_seconds? }
-GET /download/win  → the installer (Content-Disposition: attachment; filename="ScreenTinker-Setup-<ver>.exe";
+GET /download/win  → the installer (Content-Disposition: attachment; filename="LuminaScreen-Setup-<ver>.exe";
                      X-Package-Sha256, X-Package-Version; Content-Type application/octet-stream)
 ```
 
 - Package source (`server/lib/win-cache.js`, an instance of `lib/package-cache.js` — the same factory
-  as the Pi's `deb-cache.js`): the newest `ScreenTinker-Setup-<ver>.exe` in `DATA_DIR`, else
+  as the Pi's `deb-cache.js`): the newest `LuminaScreen-Setup-<ver>.exe` in `DATA_DIR`, else
   `WIN_DIST_DIR` if set, else `<repo>/native/dist/`. First directory with any match wins. `<ver>` is
   `X.Y.Z` or `X.Y.Z~rcN` / `X.Y.Z-rcN`; `~` is normalised to `-` for comparison and in
   `latest_version`.
@@ -96,8 +96,8 @@ GET /download/win  → the installer (Content-Disposition: attachment; filename=
 ## 4. The helper service and its trust model
 
 The Windows player runs as the signed-in (kiosk) user. Everything that needs SYSTEM goes to
-**ScreenTinkerHelper**, a Windows service running as `LocalSystem`, over the named pipe
-`\\.\pipe\screentinker-helper`: one JSON request `{"verb": "...", "args": ["..."]}` + newline, one
+**LuminaScreenHelper**, a Windows service running as `LocalSystem`, over the named pipe
+`\\.\pipe\luminascreen-helper`: one JSON request `{"verb": "...", "args": ["..."]}` + newline, one
 JSON reply `{"ok": bool, "out": "..."}`, per connection. The verb list is **fixed**, and every
 argument is re-validated in the service:
 
@@ -116,7 +116,7 @@ run as the player user. That must not become SYSTEM through the helper. So:
 
 - **The helper never trusts the player for what to install.** Before `install`, it hashes the file
   itself and compares with the `sha256` that `/api/win/update/check` returns from the server named in
-  the **admin-only** `%ProgramData%\ScreenTinker\config.json` (installer ACL: Administrators/SYSTEM
+  the **admin-only** `%ProgramData%\LuminaScreen\config.json` (installer ACL: Administrators/SYSTEM
   write). It never uses a server URL, hash, or version supplied by the player or by the player
   user's own state files, which that user can rewrite.
 - That is why the check endpoint answers **without a device token or `device_id`**: the helper has no
@@ -128,9 +128,9 @@ run as the player user. That must not become SYSTEM through the helper. So:
 - **Who may call the pipe: the installed player binary, nothing else.** The DACL (well-known SIDs —
   SYSTEM, Administrators, INTERACTIVE — never account names, which are translated on non-English
   Windows) only decides who may *open* it; every connection is then authorised by the client's image
-  path, which must be `ScreenTinker.exe` beside the helper in admin-only Program Files
+  path, which must be `LuminaScreen.exe` beside the helper in admin-only Program Files
   (`_client_allowed` in `winhelper/service.py`). `PIPE_REJECT_REMOTE_CLIENTS` is set.
-  - Not a "ScreenTinker Players" group (the first design): a logon token never gains a group added
+  - Not a "LuminaScreen Players" group (the first design): a logon token never gains a group added
     after logon, and the installer runs while the kiosk user is logged on — the player was locked out
     of its own helper until the next logon. The executable check is also *tighter*: another program
     running as the same kiosk user (the dashboard's own remote shell) is refused.

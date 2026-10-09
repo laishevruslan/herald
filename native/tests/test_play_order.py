@@ -1,5 +1,5 @@
 """Port of server/test/play-order.test.js (seeded RNG so the bag is deterministic)."""
-from screentinker_native.logic.play_order import PlayOrderState, first_index, next_index, weight_of
+from luminascreen_native.logic.play_order import PlayOrderState, first_index, next_index, weight_of
 
 
 def items(n):

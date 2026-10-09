@@ -24,11 +24,11 @@ const SRC = fs.readFileSync(SCRIPT, 'utf8');
 
 // The kiosk launcher as the installer will write it, with the install-time expansions applied.
 function generatedKioskScript() {
-  const m = SRC.match(/cat > "\$PI_HOME\/screentinker-kiosk\.sh" << KIOSKEOF\n([\s\S]*?)\nKIOSKEOF/);
+  const m = SRC.match(/cat > "\$PI_HOME\/luminascreen-kiosk\.sh" << KIOSKEOF\n([\s\S]*?)\nKIOSKEOF/);
   assert.ok(m, 'kiosk heredoc not found — did the installer restructure?');
   return m[1]
     .replace(/\$\{KIOSK_URL\}/g, 'http://localhost:3001/player')
-    .replace(/\$\{SCREENTINKER_PORT\}/g, '3001')
+    .replace(/\$\{LUMINASCREEN_PORT\}/g, '3001')
     .replace(/\$\{CHROMIUM_BIN\}/g, '/usr/bin/chromium-browser')
     .replace(/\\\$/g, '$')
     .replace(/\\\\/g, '\\');
@@ -132,16 +132,16 @@ function motdFor(playerOnly) {
 
 // Which management commands the installer actually creates in a given mode.
 function commandsCreated(playerOnly) {
-  const all = [...SRC.matchAll(/cat > \/usr\/local\/bin\/(screentinker-[a-z]+)/g)].map((m) => m[1]);
+  const all = [...SRC.matchAll(/cat > \/usr\/local\/bin\/(luminascreen-[a-z]+)/g)].map((m) => m[1]);
   // Section 11 is an if/else: the all-in-one arm creates update, the player arm does not.
-  return playerOnly ? all.filter((c) => c !== 'screentinker-update') : all;
+  return playerOnly ? all.filter((c) => c !== 'luminascreen-update') : all;
 }
 
 test('#245: the MOTD never advertises a command that mode did not install', () => {
   for (const playerOnly of [false, true]) {
     const motd = motdFor(playerOnly);
     const created = commandsCreated(playerOnly);
-    const advertised = [...motd.matchAll(/(screentinker-[a-z]+)/g)].map((m) => m[1]);
+    const advertised = [...motd.matchAll(/(luminascreen-[a-z]+)/g)].map((m) => m[1]);
     assert.ok(advertised.length > 0, `${playerOnly ? 'player' : 'all-in-one'} MOTD lists no commands at all`);
     for (const cmd of advertised) {
       assert.ok(created.includes(cmd),
@@ -154,9 +154,9 @@ test('#245: a Player-Only Pi is not left with no diagnostics at all', () => {
   // The cheap fix would have been to print nothing on a player. That trades a wrong banner for a
   // machine an operator cannot inspect over SSH, which is the harder support call.
   const motd = motdFor(true);
-  assert.match(motd, /screentinker-status/, 'a player still needs to answer "is it running?"');
-  assert.match(motd, /screentinker-logs/, 'and "why did it stop?"');
-  assert.doesNotMatch(motd, /screentinker-update/,
+  assert.match(motd, /luminascreen-status/, 'a player still needs to answer "is it running?"');
+  assert.match(motd, /luminascreen-logs/, 'and "why did it stop?"');
+  assert.doesNotMatch(motd, /luminascreen-update/,
     'there is no local server to update on a player-only install, so it must not be offered');
 });
 
@@ -168,7 +168,7 @@ test('#245: the Wayland cursor claim is backed by something that runs', () => {
   assert.match(code, /\[hide-cursor\]/, 'the hide-cursor section is never written');
   assert.match(code, /hide_delay/, 'the plugin is configured without a delay');
   // Non-destructive: a Pi whose owner already tuned wayfire must not silently lose it.
-  assert.match(code, /screentinker-bak/, 'wayfire.ini is edited without a backup');
+  assert.match(code, /luminascreen-bak/, 'wayfire.ini is edited without a backup');
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -180,7 +180,7 @@ test('#245: the Wayland cursor claim is backed by something that runs', () => {
 // ~10s; each retry found the autostart's browser holding SingletonLock, forwarded its URL into it
 // as a NEW TAB, and exited again. One more tab and one more renderer per cycle, forever. A six-Pi
 // headless deployment reported it as "a major memory leak in the renderers", and fixed it in the
-// field with `systemctl disable --now screentinker-kiosk.service` -- which also removed the only
+// field with `systemctl disable --now luminascreen-kiosk.service` -- which also removed the only
 // crash recovery those Pis had. So: Desktop gets the autostart only, the launcher supervises
 // Chromium itself, and it refuses to start against a profile another instance already holds.
 
@@ -197,18 +197,18 @@ function kioskLaunchArms() {
 
 test('one launcher: a Desktop install writes the autostart entry and NO systemd unit', () => {
   const { lite, desktop } = kioskLaunchArms();
-  assert.match(lite, /cat > \/etc\/systemd\/system\/screentinker-kiosk\.service/,
+  assert.match(lite, /cat > \/etc\/systemd\/system\/luminascreen-kiosk\.service/,
     'Lite has no session to autostart from; it still needs the unit that starts X');
-  assert.doesNotMatch(desktop, /cat > \/etc\/systemd\/system\/screentinker-kiosk\.service/,
+  assert.doesNotMatch(desktop, /cat > \/etc\/systemd\/system\/luminascreen-kiosk\.service/,
     'Desktop must not get a second launcher racing the autostart for the profile lock');
-  assert.match(desktop, /\.config\/autostart"\n[\s\S]*?screentinker\.desktop/, 'the autostart entry is THE launcher on Desktop');
-  assert.doesNotMatch(lite, /screentinker\.desktop/);
+  assert.match(desktop, /\.config\/autostart"\n[\s\S]*?luminascreen\.desktop/, 'the autostart entry is THE launcher on Desktop');
+  assert.doesNotMatch(lite, /luminascreen\.desktop/);
 });
 
 test('one launcher: re-running the installer removes the unit an earlier install left on a Desktop Pi', () => {
   const { desktop } = kioskLaunchArms();
-  assert.match(desktop, /systemctl disable --now screentinker-kiosk\.service/);
-  assert.match(desktop, /rm -f \/etc\/systemd\/system\/screentinker-kiosk\.service/);
+  assert.match(desktop, /systemctl disable --now luminascreen-kiosk\.service/);
+  assert.match(desktop, /rm -f \/etc\/systemd\/system\/luminascreen-kiosk\.service/);
 });
 
 test('one launcher: the launcher refuses to start against a profile another Chromium already holds', () => {
@@ -232,20 +232,20 @@ test('one launcher: the launcher supervises Chromium itself instead of exec-ing 
 });
 
 test('one launcher: the management scripts no longer assume the kiosk unit exists', () => {
-  // screentinker-status / -logs / -update used to query the unit unconditionally; on a Desktop
+  // luminascreen-status / -logs / -update used to query the unit unconditionally; on a Desktop
   // Pi that now reads "STOPPED" forever and follows an empty journal.
   // Each use must be guarded somewhere between the start of ITS management script and the use.
   const guarded = (idx) => {
     const scriptStart = SRC.lastIndexOf('cat > /usr/local/bin/', idx);
     assert.ok(scriptStart > 0, `kiosk-unit use at offset ${idx} is outside any management script`);
-    return /list-unit-files[^\n]*screentinker-kiosk\.service|KIOSK_UNIT/.test(SRC.slice(scriptStart, idx));
+    return /list-unit-files[^\n]*luminascreen-kiosk\.service|KIOSK_UNIT/.test(SRC.slice(scriptStart, idx));
   };
-  for (const m of SRC.matchAll(/systemctl (?:is-active|start|stop) screentinker-kiosk\.service/g)) {
+  for (const m of SRC.matchAll(/systemctl (?:is-active|start|stop) luminascreen-kiosk\.service/g)) {
     // Section 8 itself may reference the unit; only the generated management scripts are in scope.
     if (m.index < SRC.indexOf('# 11. Management scripts')) continue;
     assert.ok(guarded(m.index), `'${m[0]}' at offset ${m.index} assumes the unit exists`);
   }
-  for (const m of SRC.matchAll(/journalctl -u screentinker-kiosk\.service/g)) {
+  for (const m of SRC.matchAll(/journalctl -u luminascreen-kiosk\.service/g)) {
     assert.ok(guarded(m.index), `journalctl on the kiosk unit at offset ${m.index} assumes the unit exists`);
   }
 });
@@ -263,7 +263,7 @@ test('#409: the labwc cursor config cannot abort the install', () => {
   assert.match(block, /mkdir -p "\$LABWC_DIR"/, 'the directory must exist before the redirect');
   assert.ok(block.indexOf('mkdir -p') < block.indexOf('cat > "$LABWC_RC"'),
     'and it must be created BEFORE the write, not after');
-  assert.match(block, /screentinker-bak/, 'an existing rc.xml must be backed up before any change');
+  assert.match(block, /luminascreen-bak/, 'an existing rc.xml must be backed up before any change');
   assert.match(block, /chown -R "\$PI_USER"/, 'the pi user must own its own config');
 });
 
@@ -354,17 +354,17 @@ test('native: Desktop vs Lite is decided by what BOOTS, not by which packages ar
 
 test('native: an earlier browser-kiosk install cannot keep the screen', () => {
   const arm = nativeArm();
-  assert.match(arm, /systemctl disable --now screentinker-kiosk\.service/);
-  assert.match(arm, /rm -f \/etc\/systemd\/system\/screentinker-kiosk\.service/);
-  assert.match(arm, /\.config\/autostart\/screentinker\.desktop/);
-  assert.match(arm, /grep -q 'screentinker-kiosk\\\.sh'/, 'only remove an autostart entry that is the kiosk one');
-  assert.doesNotMatch(arm, /screentinker-server\.service/, 'the All-in-One server must keep running');
+  assert.match(arm, /systemctl disable --now luminascreen-kiosk\.service/);
+  assert.match(arm, /rm -f \/etc\/systemd\/system\/luminascreen-kiosk\.service/);
+  assert.match(arm, /\.config\/autostart\/luminascreen\.desktop/);
+  assert.match(arm, /grep -q 'luminascreen-kiosk\\\.sh'/, 'only remove an autostart entry that is the kiosk one');
+  assert.doesNotMatch(arm, /luminascreen-server\.service/, 'the All-in-One server must keep running');
   // The cleanup runs before either mode is set up, so both modes get it.
-  assert.ok(arm.indexOf('screentinker-kiosk.service') < arm.indexOf('screentinker-pi setup'));
+  assert.ok(arm.indexOf('luminascreen-kiosk.service') < arm.indexOf('luminascreen-pi setup'));
 });
 
 test('native: the desktop autostart writes a log file (an autostart entry has no journal)', () => {
-  const launcher = fs.readFileSync(path.join(ROOT, 'native', 'packaging', 'linux', 'screentinker-pi'), 'utf8');
+  const launcher = fs.readFileSync(path.join(ROOT, 'native', 'packaging', 'linux', 'luminascreen-pi'), 'utf8');
   const fn = launcher.match(/def cmd_autostart\(args\):\n([\s\S]*?)\n\ndef /);
   assert.ok(fn);
   assert.match(fn[1], /player\.log/);
@@ -377,7 +377,7 @@ test('native: the desktop autostart writes a log file (an autostart entry has no
 function runNativeDetect({ files = {}, defaultTarget = 'multi-user.target', mode = '' }) {
   const arm = nativeArm();
   const start = arm.indexOf('    if [ -z "$NATIVE_MODE" ]; then');
-  const end = arm.indexOf('    if [ "$NATIVE_MODE" = desktop ]; then\n        screentinker-pi setup');
+  const end = arm.indexOf('    if [ "$NATIVE_MODE" = desktop ]; then\n        luminascreen-pi setup');
   assert.ok(start > 0 && end > start, 'detection block not found');
   const fake = fs.mkdtempSync(path.join(os.tmpdir(), 'st-native-'));
   for (const [p, body] of Object.entries(files)) {
@@ -405,8 +405,8 @@ function runNativeDetect({ files = {}, defaultTarget = 'multi-user.target', mode
   }
 }
 
-const KIOSK_UNIT = 'etc/systemd/system/screentinker-kiosk.service';
-const KIOSK_ENTRY = 'home/pi/.config/autostart/screentinker.desktop';
+const KIOSK_UNIT = 'etc/systemd/system/luminascreen-kiosk.service';
+const KIOSK_ENTRY = 'home/pi/.config/autostart/luminascreen.desktop';
 
 test('native (run): Lite after a browser-kiosk install → lite, and the kiosk unit is gone', () => {
   // xserver-xorg is installed (the kiosk put it there) but no display manager boots.
@@ -414,7 +414,7 @@ test('native (run): Lite after a browser-kiosk install → lite, and the kiosk u
   assert.match(r.out, /^MODE=lite /);
   assert.equal(r.exists('etc/keep'), true, 'snapshot sanity');
   assert.equal(r.exists(KIOSK_UNIT), false);
-  assert.match(r.calls, /disable --now screentinker-kiosk\.service/);
+  assert.match(r.calls, /disable --now luminascreen-kiosk\.service/);
 });
 
 test('native (run): a desktop that boots → desktop, user from the autologin, kiosk entry removed', () => {
@@ -423,7 +423,7 @@ test('native (run): a desktop that boots → desktop, user from the autologin, k
     files: {
       'etc/systemd/system/display-manager.service': '',
       'etc/lightdm/lightdm.conf': '[Seat:*]\nautologin-user=kioskuser\n',
-      [KIOSK_ENTRY]: '[Desktop Entry]\nExec=/home/pi/screentinker-kiosk.sh\n',
+      [KIOSK_ENTRY]: '[Desktop Entry]\nExec=/home/pi/luminascreen-kiosk.sh\n',
       'home/pi/.config/autostart/other.desktop': 'Exec=/usr/bin/other\n',
     },
   });
@@ -432,7 +432,7 @@ test('native (run): a desktop that boots → desktop, user from the autologin, k
   assert.equal(r.exists('home/pi/.config/autostart/other.desktop'), true, 'only the kiosk entry goes');
 });
 
-test('native (run): a desktop image set to boot to console → lite; an unrelated screentinker.desktop is kept', () => {
+test('native (run): a desktop image set to boot to console → lite; an unrelated luminascreen.desktop is kept', () => {
   const r = runNativeDetect({
     files: {
       'etc/systemd/system/display-manager.service': '',

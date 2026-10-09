@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 env:
-  SCREENTINKER_REF: REPLACE_WITH_RELEASE_COMMIT_SHA   # keep in step with validate.yml
+  LUMINASCREEN_REF: REPLACE_WITH_RELEASE_COMMIT_SHA   # keep in step with validate.yml
 
 concurrency:
   group: build-main
@@ -25,13 +25,13 @@ jobs:
   dist:
     runs-on: ubuntu-24.04
     steps:
-      - name: Check the pinned ScreenTinker ref
+      - name: Check the pinned LuminaScreen ref
         run: |
-          [[ "$SCREENTINKER_REF" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::SCREENTINKER_REF must be a full commit SHA"; exit 1; }
+          [[ "$LUMINASCREEN_REF" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::LUMINASCREEN_REF must be a full commit SHA"; exit 1; }
       - uses: actions/checkout@v4
         with: { path: catalog, persist-credentials: false }
       - uses: actions/checkout@v4
-        with: { repository: screentinker/screentinker, ref: '${{ env.SCREENTINKER_REF }}', path: st, persist-credentials: false }
+        with: { repository: luminascreen/luminascreen, ref: '${{ env.LUMINASCREEN_REF }}', path: st, persist-credentials: false }
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - name: Fetch the currently published catalog (keeps history, signatures and a rising serial)
@@ -45,7 +45,7 @@ jobs:
           node st/scripts/template-catalog.js build catalog/templates -o dist $PREV
           test ! -e dist/index.json.sig
           echo "commit ${GITHUB_SHA}" > dist/BUILT_FROM
-          echo "screentinker ${SCREENTINKER_REF}" >> dist/BUILT_FROM
+          echo "luminascreen ${LUMINASCREEN_REF}" >> dist/BUILT_FROM
           jq -r '.templates[] | .id as $id | .versions[] | "\($id)@\(.version)  \(.sha256)"' dist/index.json | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:

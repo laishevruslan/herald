@@ -10,7 +10,7 @@ to run on the server by hand.
 
 ## How it works
 
-The ScreenTinker server never upgrades itself. It couldn't: a process that recreates its own
+The LuminaScreen server never upgrades itself. It couldn't: a process that recreates its own
 container or restarts its own systemd unit is killed partway through. Giving it the rights to try
 (`docker.sock`, `sudo`) would also turn every app bug into a root-on-the-host bug.
 
@@ -48,14 +48,14 @@ The updater refuses, changing nothing, if:
 - there is no such release;
 - the database cannot be found or backed up;
 - the git checkout has local changes;
-- the compose file does not run `ghcr.io/screentinker/screentinker:<version>` exactly once.
+- the compose file does not run `ghcr.io/luminascreen/luminascreen:<version>` exactly once.
 
 ## Install: git + systemd
 
 Run from the checkout, as root:
 
 ```bash
-sudo scripts/updater/install-systemd.sh                    # unit "screentinker"
+sudo scripts/updater/install-systemd.sh                    # unit "luminascreen"
 sudo SERVICE_NAME=remotedisplay scripts/updater/install-systemd.sh
 ```
 
@@ -64,10 +64,10 @@ It reads the running unit to find the checkout, the service user, the node binar
 
 | Path | What |
 |---|---|
-| `/usr/local/lib/screentinker-updater/st-updater.sh` | a root-owned **copy** of the script. Root never runs the repo file, which the app user could edit. |
-| `/etc/screentinker-updater.env` | the updater's settings. **Review this after installing.** |
-| `/etc/systemd/system/screentinker-updater.{path,service}` | the path unit starts the oneshot service when a request appears |
-| `/var/lib/screentinker-updater/` | status and log (root-owned, readable by the app) |
+| `/usr/local/lib/luminascreen-updater/st-updater.sh` | a root-owned **copy** of the script. Root never runs the repo file, which the app user could edit. |
+| `/etc/luminascreen-updater.env` | the updater's settings. **Review this after installing.** |
+| `/etc/systemd/system/luminascreen-updater.{path,service}` | the path unit starts the oneshot service when a request appears |
+| `/var/lib/luminascreen-updater/` | status and log (root-owned, readable by the app) |
 | `$DATA_DIR/updater/` | root-owned, so the app cannot swap `requests/` for a symlink |
 | `$DATA_DIR/updater/requests/` | the only directory the app writes. The updater works only inside its real path and never removes a file that is not a request. |
 
@@ -79,15 +79,15 @@ When `scripts/updater/st-updater.sh` changes in a release, re-run the installer 
 Uninstall:
 
 ```bash
-systemctl disable --now screentinker-updater.path
-rm -rf /usr/local/lib/screentinker-updater /etc/screentinker-updater.env \
-  /etc/systemd/system/screentinker-updater.* /var/lib/screentinker-updater
+systemctl disable --now luminascreen-updater.path
+rm -rf /usr/local/lib/luminascreen-updater /etc/luminascreen-updater.env \
+  /etc/systemd/system/luminascreen-updater.* /var/lib/luminascreen-updater
 ```
 
 ## Install: Docker
 
 Add the `updater` service from `docker-compose.example.yml` and the `st-updater` volume, mounted
-read-only on `screentinker` at `/updater`. Then:
+read-only on `luminascreen` at `/updater`. Then:
 
 ```bash
 docker compose build updater && docker compose up -d
@@ -100,12 +100,12 @@ docker compose build updater && docker compose up -d
   for you.
 - If you start the stack with `-p <name>` or `COMPOSE_PROJECT_NAME`, give the updater the same
   `COMPOSE_PROJECT_NAME`. Otherwise it works out the project name from the folder, finds no
-  `screentinker` container and refuses.
+  `luminascreen` container and refuses.
 - On an upgrade it rewrites the `image:` line to the pinned release (`:latest` becomes `:2.3.3`),
   keeps the previous file as `docker-compose.yml.bak-pre-v<version>`, and recreates only the
-  `screentinker` service (`--no-deps`).
+  `luminascreen` service (`--no-deps`).
 - It backs up the database inside the app container to `/data/db/pre-v<version>-<stamp>.db`.
-- A compose file that runs a locally built image (`image: screentinker:local-…`) is refused.
+- A compose file that runs a locally built image (`image: luminascreen:local-…`) is refused.
 
 The dashboard shows **Installed, not running** if the updater container has stopped. It
 heartbeats every few seconds.
@@ -118,13 +118,13 @@ The updater is configured through the environment (the `.env` file or the compos
 |---|---|---|
 | `UPDATER_MODE` | both | `git` or `docker` (required) |
 | `UPDATER_REQUEST_DIR` / `UPDATER_STATUS_DIR` | both | set by the installer / image |
-| `STATUS_URL` | both | `http://localhost:3001/api/status` (git), `http://screentinker:3001/api/status` (docker) |
+| `STATUS_URL` | both | `http://localhost:3001/api/status` (git), `http://luminascreen:3001/api/status` (docker) |
 | `VERIFY_TIMEOUT` | both | `240` seconds before rolling back |
 | `APP_DIR`, `APP_USER`, `SERVICE_NAME`, `DB`, `BACKUP_DIR`, `NODE_BIN_DIR` | git | from the installer |
-| `COMPOSE_FILE`, `APP_SERVICE`, `IMAGE_REPO`, `DB_IN_CONTAINER` | docker | `COMPOSE_FILE` required; `screentinker`, `ghcr.io/screentinker/screentinker`, `/data/db/remote_display.db` |
+| `COMPOSE_FILE`, `APP_SERVICE`, `IMAGE_REPO`, `DB_IN_CONTAINER` | docker | `COMPOSE_FILE` required; `luminascreen`, `ghcr.io/luminascreen/luminascreen`, `/data/db/remote_display.db` |
 
 The app reads `UPDATER_STATUS_DIR` and `UPDATER_REQUEST_DIR` too. You only need to set them to move
-those directories from their defaults: `/updater` or `/var/lib/screentinker-updater`, and
+those directories from their defaults: `/updater` or `/var/lib/luminascreen-updater`, and
 `$DATA_DIR/updater/requests`.
 
 ## Rolling back by hand

@@ -1,7 +1,7 @@
-# Masterplan & Technical Specification: Universal Data Sources & Integrations Engine for ScreenTinker
+# Masterplan & Technical Specification: Universal Data Sources & Integrations Engine for LuminaScreen
 
 **Version:** 1.0  
-**Target Repository:** `screentinker/screentinker`  
+**Target Repository:** `luminascreen/luminascreen`  
 **Branch:** `feat-data-sources`  
 **Status:** Architectural RFC & Implementation Plan  
 
@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary & Core Concept
 
-Currently, ScreenTinker displays static images/videos or isolated widgets (Weather, Clock, RSS) where configuration is tightly bound to the widget itself.
+Currently, LuminaScreen displays static images/videos or isolated widgets (Weather, Clock, RSS) where configuration is tightly bound to the widget itself.
 
 This specification introduces a **Universal Data Sources & Integrations Engine** inspired by modern workflow and dashboard architectures (n8n, Grafana, Appsmith). It cleanly decouples **external data ingestion & authentication** from **visual presentation (Slides & Widgets)**.
 
@@ -30,7 +30,7 @@ This specification introduces a **Universal Data Sources & Integrations Engine**
 └──────────────────────────────────────┬──────────────────────────────────────┘
                                        │ Polled per configured interval (ETag)
 ┌──────────────────────────────────────▼──────────────────────────────────────┐
-│                   SCREENTINKER SERVER: DATA SOURCE ENGINE                   │
+│                   LUMINASCREEN SERVER: DATA SOURCE ENGINE                   │
 │                                                                             │
 │  1. Ingestion & Resolvers (server/lib/data-sources/):                       │
 │     - ical-resolver.js: Parses VEVENTs, RRULE series, calculates state      │
@@ -113,7 +113,7 @@ When an iCal feed is ingested by `server/lib/data-sources/ical-resolver.js`, it 
 
 ## 5. Slide Integration & Variable Syntax
 
-In ScreenTinker Slides, fields in `config.fields` can reference any data source field using the standard notation:
+In LuminaScreen Slides, fields in `config.fields` can reference any data source field using the standard notation:
 
 ```json
 {
@@ -138,7 +138,7 @@ In ScreenTinker Slides, fields in `config.fields` can reference any data source 
 ## 6. User Experience & UI Design
 
 ### 6.1 Sidebar Navigation
-Add a dedicated item in the sidebar ([`frontend/index.html`](file:///Users/rene/Documents/github/screentinker/frontend/index.html)):
+Add a dedicated item in the sidebar ([`frontend/index.html`](file:///Users/rene/Documents/github/luminascreen/frontend/index.html)):
 - Positioned above `Widgets` & `Slides`.
 - Icon: `database` / `cable`.
 - Label: **Data Sources** / **Datenquellen**.

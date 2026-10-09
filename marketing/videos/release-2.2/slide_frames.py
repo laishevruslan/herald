@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# Frame-step the 12 scenes, which are REAL ScreenTinker slides rendered by ALPHA.
+# Frame-step the 12 scenes, which are REAL LuminaScreen slides rendered by ALPHA.
 #
-# Each scene is GET https://alpha.screentinker.com/api/widgets/vid21-sNN/render — alpha's own
+# Each scene is GET https://alpha.luminascreen.ru/api/widgets/vid21-sNN/render — alpha's own
 # lib/slide-render.js output, with the screenshots and fonts served from alpha over HTTPS. The
 # slide's per-element entrance animations (fade/slideL/slideU/zoom/wipe) are what "flies in"; we
 # add only a gentle Ken Burns push on the .stage so no frame is ever frozen (the retention rule
@@ -16,7 +16,7 @@ W, H, FPS = 1920, 1080, 30
 # Render straight from the DECK's own published slide widgets (ordered), so the mp4 comes from the
 # real alpha slide deck. deck_widgets.json = ordered list of widget ids (scene 1..N).
 WIDGETS = json.load(open("deck_widgets.json"))
-BASE = "https://alpha.screentinker.com/api/widgets/{wid}/render"
+BASE = "https://alpha.luminascreen.ru/api/widgets/{wid}/render"
 OUT = "scenes_anim"; os.makedirs(OUT, exist_ok=True); os.makedirs("caps", exist_ok=True)
 TAIL = 0.6
 

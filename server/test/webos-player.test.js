@@ -87,11 +87,11 @@ test('webos: the shell scripts parse, and device-control degrades to nothing wit
 test('webos: the server serves the artifact and the version the shell polls', () => {
   const ipk = require('../lib/ipk-cache');
   const v = ipk.versionJson({ version: '2.1.0', exists: true, size: 12345 });
-  assert.deepEqual(v, { version: '2.1.0', available: true, size: 12345, url: '/webos/ScreenTinker.ipk' });
+  assert.deepEqual(v, { version: '2.1.0', available: true, size: 12345, url: '/webos/LuminaScreen.ipk' });
   assert.equal(ipk.versionJson({ version: '2.1.0', exists: false, size: 0 }).available, false,
     'a version with no file behind it must not send a panel to download nothing');
   const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
-  for (const route of ["'/webos/version.json'", "'/webos/ScreenTinker.ipk'", "['/webos', '/webos/']"]) {
+  for (const route of ["'/webos/version.json'", "'/webos/LuminaScreen.ipk'", "['/webos', '/webos/']"]) {
     assert.ok(server.includes(`app.get(${route}`), `server.js registers ${route}`);
   }
   assert.match(server, /ipkCache\.start\(\)/, 'the cache is started at boot like the .wgt one');
@@ -100,9 +100,9 @@ test('webos: the server serves the artifact and the version the shell polls', ()
 test('webos: the release pipeline builds and ships the .ipk, and finalize refuses a release without it', () => {
   const rel = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'release.yml'), 'utf8');
   assert.match(rel, /webos\/build-ipk\.sh/);
-  assert.match(rel, /ScreenTinker\.ipk brightsign/, 'bundled into the source tarball');
+  assert.match(rel, /LuminaScreen\.ipk brightsign/, 'bundled into the source tarball');
   const fin = fs.readFileSync(path.join(ROOT, 'scripts', 'finalize-release.sh'), 'utf8');
-  assert.match(fin, /^ScreenTinker\.ipk$/m, 'in the explicit EXPECTED list');
+  assert.match(fin, /^LuminaScreen\.ipk$/m, 'in the explicit EXPECTED list');
 });
 
 test('webos: the player only forms a host bridge when a shell asks for one', () => {
@@ -113,7 +113,7 @@ test('webos: the player only forms a host bridge when a shell asks for one', () 
   assert.match(bridge, /window\.parent === window && !topLevelVega\)\) return null/, 'and only inside a frame, unless this is the Vega top window');
   assert.match(bridge, /platform === 'vega' && window\.parent === window/, 'the top-window exception is Vega-only');
   assert.match(bridge, /ev\.source !== window\.parent\) return/, 'it listens to the embedding window and nobody else');
-  assert.match(bridge, /d\.source !== 'screentinker-host'\) return/);
+  assert.match(bridge, /d\.source !== 'luminascreen-host'\) return/);
 });
 
 test('webos: old browser engines keep the shell and load the legacy player in its iframe', () => {

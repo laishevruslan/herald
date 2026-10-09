@@ -1,6 +1,6 @@
 # Android Player — Troubleshooting & Recovery
 
-Practical runbook for the RemoteDisplay / ScreenTinker Android player
+Practical runbook for the RemoteDisplay / LuminaScreen Android player
 (package `com.remotedisplay.player`, shown on the device as **RemoteDisplay**).
 
 ---
@@ -27,12 +27,12 @@ Most common causes, in order:
    on a different network now.
 2. **Local dev server is down.** `remotedisplay.service` isn't running.
 3. **No internet route.** The device's Wi-Fi genuinely can't reach the
-   internet (only relevant if it points at `https://screentinker.com`).
+   internet (only relevant if it points at `https://luminascreen.ru`).
 
 ### Quick triage (no device access needed)
 ```bash
 # Is the intended server even up?
-curl -s -m 8 -o /dev/null -w "%{http_code}\n" https://screentinker.com/   # expect 200
+curl -s -m 8 -o /dev/null -w "%{http_code}\n" https://luminascreen.ru/   # expect 200
 
 # Local dev server running?
 systemctl is-active remotedisplay.service
@@ -69,9 +69,9 @@ show a banner: **"Can't reach the server — Press BACK twice for settings."**
    This wipes the stale server URL and pairing. (Cached content is cleared too;
    it re-downloads after pairing — no harm.)
 2. Reopen **RemoteDisplay** → the setup screen appears.
-3. Enter the server URL, e.g. **`https://screentinker.com`** → tap **Connect**.
+3. Enter the server URL, e.g. **`https://luminascreen.ru`** → tap **Connect**.
 4. It shows a **6-digit pairing code**.
-5. In the dashboard (e.g. screentinker.com), pair a device with that code.
+5. In the dashboard (e.g. luminascreen.ru), pair a device with that code.
    The phone flips to "Paired as: …" and starts playing.
 
 > After **Clear data**, the **Accessibility** permission the app uses for
@@ -152,7 +152,7 @@ the pairing port only exists while the pairing dialog is open.
 ## Scheduled screen off vs device off
 
 These are different things and the difference is the whole design. A **display power schedule** blanks
-the **panel** on a weekly clock. It does **not** power the device down, and ScreenTinker deliberately
+the **panel** on a weekly clock. It does **not** power the device down, and LuminaScreen deliberately
 offers no way to schedule that — see "Why there is no scheduled device power-off" below.
 
 During a scheduled-off window the player is still running:
@@ -178,7 +178,7 @@ consequence of locking. That is the same mechanism the dashboard's "screen off" 
 is deliberate: a second way to make a panel dark would drift from the one operators already press.
 
 What it needs is therefore what `screen_off` needs: **device owner, device admin with `FORCE_LOCK`,
-or the ScreenTinker accessibility service**. It does **not** use `WRITE_SETTINGS` — that one is for
+or the LuminaScreen accessibility service**. It does **not** use `WRITE_SETTINGS` — that one is for
 system brightness and the screen-off timeout, which are separate controls — and it never calls
 shutdown or reboot.
 
@@ -186,7 +186,7 @@ shutdown or reboot.
 (tablet, commercial display running Android) locking blanks the screen, which is what you want. On
 a **consumer HDMI stick or set-top box** the lock may simply show a keyguard rather than cut the
 video signal, so the attached TV keeps its backlight on and displays a lock screen instead of your
-content. That is a property of the box, not of the schedule — ScreenTinker has no way to cut HDMI
+content. That is a property of the box, not of the schedule — LuminaScreen has no way to cut HDMI
 from an app. If a stick behaves that way, drive the TV itself instead (its own on/off timer, or
 CEC), and leave this schedule off for those screens.
 
@@ -212,7 +212,7 @@ As above, the panel needs a way to lock itself — the same requirement `screen_
 
 - **device owner** (see the provisioning notes above), **or**
 - **device admin** with `FORCE_LOCK`, **or**
-- the ScreenTinker **accessibility service** enabled.
+- the LuminaScreen **accessibility service** enabled.
 
 With none of those the player declares neither `display.power` nor `display.power_schedule`, the server
 refuses `set_power_schedule` for that device, and the dashboard says so instead of saving a schedule
@@ -242,7 +242,7 @@ essentially the same backlight saving and is reversible from the dashboard at an
 ## Device-side REST (`http_request`)
 
 The **panel** performs the HTTP request, from its own network. That is the whole point: the
-ScreenTinker server is frequently in another country and has no route to the shop's `192.168.x.x`,
+LuminaScreen server is frequently in another country and has no route to the shop's `192.168.x.x`,
 so a LAN target — a PLC, a sensor, a local Home Assistant — is only reachable from the screen
 standing next to it. Nothing is proxied through the server.
 

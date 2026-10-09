@@ -1,4 +1,4 @@
-# Интеграция Suika (`frontend-studio_v3`) с Herald / ScreenTinker
+# Интеграция Suika (`frontend-studio_v3`) с Herald / LuminaScreen
 
 **Статус: ПЛАН + Фаза 0–3 выполнены (2026-09-24).**  
 Код: остров `/suika/`, Save-to-Herald, re-edit, пресет-модалка, slide-bg (`suika.slideBgReturn`),
@@ -43,7 +43,7 @@ Suika (`apps/suika`) сегодня умеет PNG / SVG / `.suika` JSON, но *
 
 ## 1. Что есть сейчас
 
-### 1.1. Herald (ScreenTinker)
+### 1.1. Herald (LuminaScreen)
 
 | Кусок | Путь | Состояние |
 |-------|------|-----------|

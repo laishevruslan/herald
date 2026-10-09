@@ -1,5 +1,5 @@
 /*
- * News ticker — ScreenTinker community template. MIT.
+ * News ticker — LuminaScreen community template. MIT.
  *
  * Everything this reads comes from window.ST (the server injects the operator's values). It writes
  * with textContent only, fetches nothing, and uses no eval — the catalog's review rules.

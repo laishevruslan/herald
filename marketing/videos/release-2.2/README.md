@@ -1,4 +1,4 @@
-# ScreenTinker 2.0 — release video
+# LuminaScreen 2.0 — release video
 
 17 scenes, ~5:10, 1080p30. Same pipeline as the Pi / Android TV / Samsung / self-host /
 alternative videos, with one addition: **this one captures a real 2.0 server**, so there is a
@@ -13,7 +13,7 @@ live instance to stand up before anything can be rendered.
 ~/tts-venv/bin/python scenes.py stills   # 4. review: montage caps/preview-s*.png FIRST
 ~/tts-venv/bin/python scenes.py frames 1 17   # 5. ~9,600 frames, several minutes
 python3 assemble.py               # 6. draft-nomusic.mp4
-python3 assemble.py final         # 7. screentinker-2p0.mp4  (music ducked under VO)
+python3 assemble.py final         # 7. luminascreen-2p0.mp4  (music ducked under VO)
 ~/tts-venv/bin/python make_thumb.py   # 8. thumbnail.png
 ```
 

@@ -324,8 +324,8 @@ const LINUX_TERMINAL_PRESETS = [
   { label: 'Memory', cmd: 'free -m' },
   { label: 'Network', cmd: 'ip -br a' },
   { label: 'Uptime', cmd: 'uptime' },
-  { label: 'Player status', cmd: 'systemctl status screentinker-pi --no-pager' },
-  { label: 'Player log', cmd: 'journalctl -u screentinker-pi -n 50 --no-pager' },
+  { label: 'Player status', cmd: 'systemctl status luminascreen-pi --no-pager' },
+  { label: 'Player log', cmd: 'journalctl -u luminascreen-pi -n 50 --no-pager' },
   { label: 'Whoami', cmd: 'id' },
 ];
 
@@ -337,9 +337,9 @@ const WINDOWS_TERMINAL_PRESETS = [
   { label: 'Memory', cmd: 'Get-CimInstance Win32_OperatingSystem | Select FreePhysicalMemory,TotalVisibleMemorySize' },
   { label: 'Storage', cmd: 'Get-PSDrive C' },
   { label: 'Network', cmd: 'Get-NetIPAddress -AddressFamily IPv4 | Select InterfaceAlias,IPAddress' },
-  { label: 'Helper service', cmd: 'Get-Service ScreenTinkerHelper' },
-  { label: 'Player process', cmd: 'Get-Process ScreenTinker*' },
-  { label: 'Player events', cmd: "Get-WinEvent -LogName Application -MaxEvents 30 | ? ProviderName -like '*ScreenTinker*'" },
+  { label: 'Helper service', cmd: 'Get-Service LuminaScreenHelper' },
+  { label: 'Player process', cmd: 'Get-Process LuminaScreen*' },
+  { label: 'Player events', cmd: "Get-WinEvent -LogName Application -MaxEvents 30 | ? ProviderName -like '*LuminaScreen*'" },
   { label: 'Whoami', cmd: 'whoami /all' },
 ];
 

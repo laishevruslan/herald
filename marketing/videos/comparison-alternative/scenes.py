@@ -189,7 +189,7 @@ def versus_cards():
       "</div>")
 
 def cmp_table(eyebrow, title, rows, foot):
-    head_row = "<thead><tr><th>Feature</th><th class='st'>ScreenTinker</th><th>Yodeck</th><th>ScreenCloud</th><th>OptiSigns</th></tr></thead>"
+    head_row = "<thead><tr><th>Feature</th><th class='st'>LuminaScreen</th><th>Yodeck</th><th>ScreenCloud</th><th>OptiSigns</th></tr></thead>"
     def cell(v):
         if v == 1:   return "<td class='c yes'>✓</td>"
         if v == 0:   return "<td class='c no'>—</td>"
@@ -226,7 +226,7 @@ SCENES = {
         "<b>Priced per screen</b> <span class='k'>— the bill grows with every display</span>"]),
  # 03 meet the alternative
  "03": slate("02 · The alternative", "The <span class='hl'>open-source</span> option",
-        sub="ScreenTinker is MIT licensed, you host it yourself, and it runs on hardware you already own.",
+        sub="LuminaScreen is MIT licensed, you host it yourself, and it runs on hardware you already own.",
         extra="<div style='display:flex;gap:18px;flex-wrap:wrap;margin-top:48px'>"
               + "".join(f"<div class='a' style='animation-delay:{.6+i*.12:.2f}s;font:700 34px system-ui;color:#cfd8e3;background:#0a1017;border:1px solid #24314a;border-radius:14px;padding:18px 30px'>{t}</div>"
                         for i,t in enumerate(["Android&nbsp;TV","Fire&nbsp;Stick","Raspberry&nbsp;Pi","Any&nbsp;browser","Windows&nbsp;/&nbsp;ChromeOS"]))
@@ -252,8 +252,8 @@ SCENES = {
         ("ScreenCloud","enterprise plan", 100, "$300+/mo", "paid"),
         ("OptiSigns","~$11/screen",        55, "~$165/mo", "paid"),
         ("Yodeck","~$8/screen",            40, "~$120/mo", "paid"),
-        ("ScreenTinker hosted","flat rate — 15 devices", 33, "$99/mo", "st"),
-        ("ScreenTinker self hosted","free — your server only", 4, "$0", "st"),
+        ("LuminaScreen hosted","flat rate — 15 devices", 33, "$99/mo", "st"),
+        ("LuminaScreen self hosted","free — your server only", 4, "$0", "st"),
        ], "Publicly listed pricing, mid-2026 &nbsp;·&nbsp; <b>self hosted is free for any number of screens — you just pay for the server (~$5/mo)</b>"),
  # 07 data sovereignty
  "07": slate("06 · Your data", "It stays on <span class='hl'>your</span> infrastructure", bullets=[
@@ -276,7 +276,7 @@ SCENES = {
         "<div class='logo' style='position:static;font:800 40px sans-serif;color:#8aa'>Screen<b>Tinker</b></div>"
         "<div class='big a' style='animation-delay:.15s'>The honest, open-source<br><b>alternative.</b></div>"
         "<div class='links a' style='animation-delay:.5s'>"
-        "<span class='pill'><span class='u'>github.com/screentinker</span></span>"
+        "<span class='pill'><span class='u'>github.com/luminascreen</span></span>"
         "<span class='pill'>Compare</span>"
         "<span class='pill'>Discord</span></div>"
         "<div class='sub a' style='animation-delay:.8s;color:#7b8aa0;text-align:center'>Open source · Self-hostable · No per-screen fees</div>"

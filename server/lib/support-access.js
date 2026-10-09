@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * Support access: how ScreenTinker staff get into a customer's self-hosted instance — with the
+ * Support access: how LuminaScreen staff get into a customer's self-hosted instance — with the
  * customer's say-so, for a bounded time, revocably, and on the record.
  *
  * The login page has had a "Support Access — paste support token" field, and Settings a token
@@ -12,7 +12,7 @@
  *
  * The obvious design — we sign a token with our private key, every install carries the public
  * key and lets the bearer in — is a vendor backdoor. Anyone holding (or stealing) that one key
- * could log into every self-hosted ScreenTinker on the internet, and nothing on the customer's
+ * could log into every self-hosted LuminaScreen on the internet, and nothing on the customer's
  * side would have to happen first. For a product whose whole pitch to self-hosters is that they
  * own their data, that is disqualifying, however convenient.
  *
@@ -46,9 +46,9 @@ const fs = require('fs');
 const { db } = require('../db/database');
 
 const TOKEN_PREFIX = 'STSUP1';
-const ISSUER = 'screentinker-support';
+const ISSUER = 'luminascreen-support';
 
-/** The ScreenTinker support desk's Ed25519 public key. Overridable, see module comment. */
+/** The LuminaScreen support desk's Ed25519 public key. Overridable, see module comment. */
 const SUPPORT_PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
 MCowBQYDK2VwAyEA1LKETrhl1hnim3ODTBeEh4kzmYSO6egfcYJnsr9rVO0=
 -----END PUBLIC KEY-----
@@ -284,8 +284,8 @@ function isSupportSession(user) {
 function supportUser(decoded) {
   return {
     id: decoded.id,
-    email: 'support@screentinker.com',
-    name: `ScreenTinker Support${decoded.by ? ` (${decoded.by})` : ''}`,
+    email: 'support@luminascreen.ru',
+    name: `LuminaScreen Support${decoded.by ? ` (${decoded.by})` : ''}`,
     role: 'platform_operator',
     auth_provider: 'support',
     avatar_url: null,

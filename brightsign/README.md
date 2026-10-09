@@ -1,4 +1,4 @@
-# ScreenTinker on BrightSign
+# LuminaScreen on BrightSign
 
 The player is the ordinary web player (`server/player/index.html`) running in an `roHtmlWidget`.
 It already runs unmodified on real hardware — a Series 5 (HD1026, BOS 9.1, Chromium 120) played
@@ -26,7 +26,7 @@ the four things a page cannot do for itself.
 ## The four things the host exists for
 
 **1. It owns the widget lifecycle.** A page-initiated `location.reload()` does not reliably bring
-an `roHtmlWidget` back. On 2026-07-28 a ScreenTinker deploy reloaded every connected player;
+an `roHtmlWidget` back. On 2026-07-28 a LuminaScreen deploy reloaded every connected player;
 the BrightSign was the only one that never returned, and a browser on the same deploy reloaded and
 was heartbeating minutes later. So the page never reloads itself here — it posts
 `{type:"restart"}` and the host tears the widget down and builds a new one. Without this, every
@@ -51,7 +51,7 @@ BrightWall sync — on the page's behalf, over `@brightsign/messageport`.
 ```
 autorun.brs          the host
 offline.html         local fallback, used after three failed loads
-screentinker.json    optional — server URL, sync backend, output mode
+luminascreen.json    optional — server URL, sync backend, output mode
 ```
 
 **A player will boot `autorun.brs` from internal flash, not just from a card.** Confirmed on real
@@ -59,7 +59,7 @@ hardware (XT245, BOS 9.0.189) whose microSD interface is physically dead:
 
 ```
 Loading 'FLASH:/autorun.brs'
-BSPLAY: https://screentinker.com/player?platform=brightsign&serial=…&model=XT245
+BSPLAY: https://luminascreen.ru/player?platform=brightsign&serial=…&model=XT245
 ```
 
 That matters far beyond one broken unit — it means a player with no card, or a failed card slot,
@@ -104,11 +104,11 @@ Requires BrightSignOS 7.0.60+ (`roUnzip`).
 
 ## Provisioning
 
-Config resolves `screentinker.json` on the card **>** registry **>** built-in default. The JSON
+Config resolves `luminascreen.json` on the card **>** registry **>** built-in default. The JSON
 file is how a batch gets imaged without touching each box:
 
 ```json
-{ "server_url": "https://screentinker.com", "sync_backend": "auto", "output_mode": "single" }
+{ "server_url": "https://luminascreen.ru", "sync_backend": "auto", "output_mode": "single" }
 ```
 
 ## Dual output
@@ -136,7 +136,7 @@ so the decision is tested without a fleet (`server/test/sync-backend.test.js`).
 
 | backend | reach | accuracy |
 |---|---|---|
-| `screentinker` | Android, web, Tizen, BrightSign — any mix | to the second; clock-derived, no leader, survives a server outage |
+| `luminascreen` | Android, web, Tizen, BrightSign — any mix | to the second; clock-derived, no leader, survives a server outage |
 | `brightsign` | BrightSign only | frame-accurate (BrightWall) |
 
 `auto` picks native sync when **every** member is a BrightSign and ours otherwise. Explicit
@@ -149,7 +149,7 @@ A player paired before this port is still recognised, by its BrightSign user age
 
 ### How the choice reaches a screen
 
-`device_groups.sync_backend` (`auto` | `screentinker` | `brightsign`) is the operator's **request**.
+`device_groups.sync_backend` (`auto` | `luminascreen` | `brightsign`) is the operator's **request**.
 The server resolves it per push through `resolveSyncBackend()` and sends the answer — plus the
 reason and a `downgraded` flag — in the `group_sync` payload, so the players, the dashboard and the
 stored setting can never disagree about which protocol is running.
@@ -322,7 +322,7 @@ default** until the wipe has been proven on a bench unit (the test plan below is
 { "kiosk_toplevel": true }
 ```
 
-in `screentinker.json` (only a JSON `true` counts), or registry `screentinker/kiosk_toplevel = "1"`.
+in `luminascreen.json` (only a JSON `true` counts), or registry `luminascreen/kiosk_toplevel = "1"`.
 Without it the host does not announce `kiosk_toplevel`, and the player uses the framed mode and
 declares `playback.web_interactive_framed`.
 
@@ -376,7 +376,7 @@ ignores `javascript_injection`).
 Written against docs.brightsign.biz and checked with a BrightScript parser and an interpreter run
 of the relay logic, **not on a player**. On a bench unit (never one in service):
 
-1. Deploy `autorun.brs` with `screentinker.self_update = "0"` first, or the package update
+1. Deploy `autorun.brs` with `luminascreen.self_update = "0"` first, or the package update
    replaces it within minutes, and opt in with `"kiosk_toplevel": true`. Assign a playlist with an interactive webpage widget (idle 15 s,
    warning 5 s, a page with a link to a second page of the same site and one to another site).
 2. The player log should show `[Kiosk] kiosk page opened top-level by the host`, NOT `falling
@@ -500,7 +500,7 @@ Stated plainly so nobody reads this as finished:
 
   ```js
   const SyncManager = require('@brightsign/syncmanager');          // BrightSignOS 8.2.10+
-  const sync = new SyncManager('', 'ScreenTinkerSync', '224.0.126.10', 1539);
+  const sync = new SyncManager('', 'LuminaScreenSync', '224.0.126.10', 1539);
   sync.leader = true;                                              // followers just omit this
   sync.addEventListener('syncevent', (e) => {                      // BOTH roles listen
     if (e.id === lastId) return;                                   // 1Hz rebroadcast — dedupe!

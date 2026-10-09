@@ -1,6 +1,6 @@
 # Bundled plugins
 
-Trusted local plugins shipped with ScreenTinker. They do **not** load unless
+Trusted local plugins shipped with LuminaScreen. They do **not** load unless
 `PLUGINS_ENABLED=true`, and even then each one stays disabled until a platform
 admin enables it and the process restarts.
 

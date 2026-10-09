@@ -2,7 +2,7 @@ from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     br=p.chromium.launch()
     pg=br.new_page(viewport={"width":1920,"height":1080})
-    pg.goto("https://alpha.screentinker.com/player", wait_until="networkidle")
+    pg.goto("https://alpha.luminascreen.ru/player", wait_until="networkidle")
     # wait for the pairing code to appear
     try: pg.wait_for_selector("text=Pairing Code", timeout=20000)
     except: pass

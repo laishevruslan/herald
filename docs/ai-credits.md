@@ -1,4 +1,4 @@
-# AI credits — ScreenTinker-hosted images
+# AI credits — LuminaScreen-hosted images
 
 The slide editor can generate images in two ways. **You pick the path and the model every
 time.**
@@ -6,7 +6,7 @@ time.**
 | Path | Who pays the provider | Uses credits? |
 |---|---|---|
 | **My endpoint** (bring your own: OpenAI key, Ollama, sd.cpp — see [local-ai-setup.md](local-ai-setup.md)) | You, directly | **Never** |
-| **ScreenTinker credits** (platform keys run by the operator) | ScreenTinker | Yes |
+| **LuminaScreen credits** (platform keys run by the operator) | LuminaScreen | Yes |
 
 BYO is unchanged. It never touches platform keys and never spends credits.
 

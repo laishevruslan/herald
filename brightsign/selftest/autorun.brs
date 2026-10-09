@@ -1,4 +1,4 @@
-' ScreenTinker — storage self-test.
+' LuminaScreen — storage self-test.
 '
 ' NOT the player. This is the smallest known-good BrightScript that proves the player is reading
 ' the card at all, copied from the dev-cookbook html-starter example so the script itself is not

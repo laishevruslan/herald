@@ -14,23 +14,23 @@ from . import display, privileged
 CLIENT_TYPE = "pi"
 UPDATE_CHECK_PATH = "/api/pi/update/check"
 DOWNLOAD_PATH = "/download/pi"
-PACKAGE_NAME = "screentinker-pi_{version}_all.deb"
+PACKAGE_NAME = "luminascreen-pi_{version}_all.deb"
 PACKAGE_EXT = ".deb"
-INSTALL_ROOT = "/usr/lib/screentinker-pi"
+INSTALL_ROOT = "/usr/lib/luminascreen-pi"
 
 
 def default_state_dir():
     env = os.environ.get("ST_STATE_DIR")
     if env:
         return env
-    if os.geteuid() == 0 or os.access("/var/lib/screentinker-pi", os.W_OK):
-        return "/var/lib/screentinker-pi"
+    if os.geteuid() == 0 or os.access("/var/lib/luminascreen-pi", os.W_OK):
+        return "/var/lib/luminascreen-pi"
     base = os.environ.get("XDG_STATE_HOME") or os.path.join(os.path.expanduser("~"), ".local", "state")
-    return os.path.join(base, "screentinker-pi")
+    return os.path.join(base, "luminascreen-pi")
 
 
 def system_config_path():
-    return os.environ.get("ST_SYSTEM_CONFIG", "/etc/screentinker-pi/config.json")
+    return os.environ.get("ST_SYSTEM_CONFIG", "/etc/luminascreen-pi/config.json")
 
 
 def packaged():

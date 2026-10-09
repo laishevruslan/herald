@@ -13,7 +13,7 @@ import glob, os, subprocess, sys
 OV, TAIL = 0.5, 0.6   # must match assemble.py
 TITLES = {
  "01": "Just ask it",
- "02": "What ScreenTinker 2.2 is",
+ "02": "What LuminaScreen 2.2 is",
  "03": "The MCP endpoint, and 21 tools",
  "04": "Scoped: read-only sees ten",
  "05": "Asking for work, not just answers",

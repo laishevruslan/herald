@@ -15,7 +15,7 @@
 | GAP-05 Named dayparts | BUILT | **Нет** — есть только `playlist_item_schedules` |
 | Directory Board | есть | Есть (категории/записи **без** цены/калорий) |
 
-В `Work/screentinker-main/` лежит прототип GAP-03 (`server/lib/menu-board.js`, пресет `menu.v1`, тесты). Его **нельзя** считать продуктом, пока не смержен в HEAD. План ниже: сначала закрыть baseline из прототипа, затем нарастить enterprise-слой, которого у конкурентов QSR уже ждут как «минимум сети».
+В `Work/luminascreen-main/` лежит прототип GAP-03 (`server/lib/menu-board.js`, пресет `menu.v1`, тесты). Его **нельзя** считать продуктом, пока не смержен в HEAD. План ниже: сначала закрыть baseline из прототипа, затем нарастить enterprise-слой, которого у конкурентов QSR уже ждут как «минимум сети».
 
 Маркетинг (README, landing) уже обещает QSR menu boards — разрыв с кодом = отказ на пилоте.
 
@@ -165,7 +165,7 @@ Poppulo — governance, live data, retail integrations. BrightSign — желе�
 ### Фаза 0 — Правда в документах и инвентарь (S, 1–2 дня)
 
 - [ ] В `feature-gap-plan.md`: GAP-01 / GAP-03 / GAP-05 пометить **NOT IN HEAD** (или «прототип в Work/»), чтобы планы не врали (уже отмечено в enterprise-slide-editor-plan).
-- [ ] Решить: merge `Work/screentinker-main` кусков DataSets+menu **или** перенос чистым PR в herald. Рекомендация: перенос выборочно (`datasets.js`, `menu-board.js`, тесты, i18n), не весь Work tree.
+- [ ] Решить: merge `Work/luminascreen-main` кусков DataSets+menu **или** перенос чистым PR в herald. Рекомендация: перенос выборочно (`datasets.js`, `menu-board.js`, тесты, i18n), не весь Work tree.
 - [ ] Чеклист паритета плееров: web HTML slide path обязателен; Android/Tizen/BrightSign = тот же HTML в WebView — отдельный native kind не нужен.
 
 ### Фаза 1 — DataSets foundation (GAP-01) (L, блокер)

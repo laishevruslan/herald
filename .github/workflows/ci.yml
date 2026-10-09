@@ -206,7 +206,7 @@ jobs:
         run: npm ci --omit=dev
 
       - name: Licence gate
-        run: node scripts/license-check.js --sbom sbom/screentinker-server.cdx.json
+        run: node scripts/license-check.js --sbom sbom/luminascreen-server.cdx.json
 
       - name: Studio island licence gate
         working-directory: frontend-studio

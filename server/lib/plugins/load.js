@@ -181,8 +181,8 @@ function activatePlugin(entry, db) {
     error: null,
   });
 
-  if (manifest.screentinker && !satisfies(manifest.screentinker, VERSION)) {
-    const error = `requires ScreenTinker ${manifest.screentinker} (running ${VERSION})`;
+  if (manifest.luminascreen && !satisfies(manifest.luminascreen, VERSION)) {
+    const error = `requires LuminaScreen ${manifest.luminascreen} (running ${VERSION})`;
     info.error = error;
     persistError(db, manifest.id, error);
     console.warn(`[plugins] ${manifest.id}: ${error}`);

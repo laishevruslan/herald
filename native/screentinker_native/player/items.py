@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 from . import transitions
 
-BUNDLE_MIME = "application/vnd.screentinker.bundle+zip"
+BUNDLE_MIME = "application/vnd.luminascreen.bundle+zip"
 LIVE_MIMES = ("video/hls", "video/rtsp")
 
 

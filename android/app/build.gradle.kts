@@ -13,7 +13,7 @@ android {
      * entries uncompressed so they can be mmap'd straight out of the APK — the right default when
      * Play delivers a per-ABI split and the APK therefore carries exactly ONE .so.
      *
-     * We are the other case. ScreenTinker sideloads a universal APK over its own OTA, so every
+     * We are the other case. LuminaScreen sideloads a universal APK over its own OTA, so every
      * device carries all four ABIs and executes exactly one. #340's WebRTC publisher made that
      * costly: libjingle_peerconnection_so.so is ~43MB of the APK across arm64-v8a, armeabi-v7a,
      * x86 and x86_64, stored at 0% compression.

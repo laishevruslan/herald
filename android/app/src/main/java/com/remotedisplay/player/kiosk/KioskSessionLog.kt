@@ -81,7 +81,7 @@ class KioskSessionQueue(private val cap: Int = MAX) {
 
 /** The queue, persisted. Shared by KioskSession (writer) and WebSocketService (sender). */
 object KioskSessionLog {
-    private const val PREFS = "screentinker"
+    private const val PREFS = "luminascreen"
     private const val KEY = "kiosk_session_queue"
     private val lock = Any()
 

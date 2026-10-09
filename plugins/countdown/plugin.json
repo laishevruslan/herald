@@ -3,7 +3,7 @@
   "name": "Countdown",
   "version": "1.0.0",
   "description": "Count down to a date on a sign.",
-  "screentinker": ">=2.0.0",
+  "luminascreen": ">=2.0.0",
   "main": "index.js",
   "capabilities": ["widget"],
   "widget": {

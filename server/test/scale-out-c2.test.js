@@ -309,7 +309,7 @@ test('test_no_automatic_player_failover_to_primary: a replica waits or refuses, 
   assert.doesNotMatch(ptSrc, /set_server_url|primaryUrl|PRIMARY_URL/, 'the termination module does not even know the primary\'s address');
   // I9 for players: nothing host-shaped compiled in anywhere on this path.
   for (const f of ['lib/mesh/player-termination.js', 'lib/mesh/command-relay.js']) {
-    assert.doesNotMatch(read(f).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, ''), /(screentinker\.com|https?:\/\/[a-z0-9-]+\.[a-z]{2,})/i, `${f} names a host`);
+    assert.doesNotMatch(read(f).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, ''), /(luminascreen\.com|https?:\/\/[a-z0-9-]+\.[a-z]{2,})/i, `${f} names a host`);
   }
 });
 

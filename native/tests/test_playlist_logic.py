@@ -2,8 +2,8 @@
 PlaybackStallTest and PlaybackFaultTest (pure logic only)."""
 import pytest
 
-from screentinker_native.logic import playlist_logic as pl
-from screentinker_native.logic.playlist_logic import (Claim, NonePlayable, PlaybackFault, PlaybackStall,
+from luminascreen_native.logic import playlist_logic as pl
+from luminascreen_native.logic.playlist_logic import (Claim, NonePlayable, PlaybackFault, PlaybackStall,
                                                   PreloadSlot, Recovery)
 
 
@@ -141,7 +141,7 @@ def test_youtube_images_widgets_and_bundles_end_on_a_timer():
     assert pl.ends_on_timer("image/png", False)
     assert pl.ends_on_timer("text/html", True)
     assert pl.ends_on_timer(pl.BUNDLE_MIME, False)
-    assert pl.BUNDLE_MIME == "application/vnd.screentinker.bundle+zip"
+    assert pl.BUNDLE_MIME == "application/vnd.luminascreen.bundle+zip"
 
 
 def test_unknown_types_and_real_video_are_not_timed():

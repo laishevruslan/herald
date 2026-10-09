@@ -3,7 +3,7 @@
 /*
  * Opt-in install statistics.
  *
- * WHY THIS EXISTS: there is no way to answer "how many screens run ScreenTinker?" — the product is
+ * WHY THIS EXISTS: there is no way to answer "how many screens run LuminaScreen?" — the product is
  * self-hostable by design, so most installs are invisible to us on purpose. This asks, once, and
  * only reports if the operator says yes.
  *
@@ -41,7 +41,7 @@ const KEY_LAST_ERROR = 'telemetry_last_error';// last FAILED attempt — see get
 /*
  * Where reports go. TWO independent destinations, deliberately:
  *
- *   SCREENTINKER_ENDPOINT  hard-wired, and reached only when the operator has switched sharing on.
+ *   LUMINASCREEN_ENDPOINT  hard-wired, and reached only when the operator has switched sharing on.
  *                          Not overridable — an "override" that silently redirected the shared
  *                          report would make the opt-in mean something different from what it says.
  *
@@ -52,7 +52,7 @@ const KEY_LAST_ERROR = 'telemetry_last_error';// last FAILED attempt — see get
  *                          wants internal statistics and nothing leaving for us sets this and
  *                          leaves sharing off — that combination is supported on purpose.
  */
-const SCREENTINKER_ENDPOINT = 'https://stats.screentinker.com/api/telemetry/report';
+const LUMINASCREEN_ENDPOINT = 'https://stats.luminascreen.ru/api/telemetry/report';
 const REPORT_INTERVAL_MS = 24 * 60 * 60 * 1000;   // daily; this is a count, not a metric
 const FIRST_REPORT_DELAY_MS = 5 * 60 * 1000;      // let boot settle before any outbound call
 
@@ -104,7 +104,7 @@ function countScreens(db) {
 }
 
 /* The address an operator may need to allowlist for the shared report. Hard-wired. */
-function endpoint() { return SCREENTINKER_ENDPOINT; }
+function endpoint() { return LUMINASCREEN_ENDPOINT; }
 
 /* The operator's own collector, if they configured one. Null when they have not. */
 function extraEndpoint() { return process.env.TELEMETRY_EXTRA_ENDPOINT || null; }
@@ -115,7 +115,7 @@ function extraEndpoint() { return process.env.TELEMETRY_EXTRA_ENDPOINT || null; 
  */
 function destinations() {
   const out = [];
-  if (state() === 'on') out.push({ url: endpoint(), kind: 'screentinker' });
+  if (state() === 'on') out.push({ url: endpoint(), kind: 'luminascreen' });
   const extra = extraEndpoint();
   if (extra) out.push({ url: extra, kind: 'extra' });
   return out;

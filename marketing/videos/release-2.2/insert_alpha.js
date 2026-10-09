@@ -24,6 +24,6 @@ for (const id of caps) {
 }
 // audio: 13 VO + music (mp3 bytes)
 for (let i=1;i<=13;i++){ const sid=`${i}`.padStart(2,'0'); const id=`vid21-vo-${sid}`; const fp=id+'.mp3';
-  cContent.run({ id, u:USER, fn:`ScreenTinker 2.1 VO ${sid}.mp3`, fp, mime:'audio/mpeg', sz:fs.statSync(CDIR+fp).size, w:null, h:null, ws:WS, t:now() }); }
+  cContent.run({ id, u:USER, fn:`LuminaScreen 2.1 VO ${sid}.mp3`, fp, mime:'audio/mpeg', sz:fs.statSync(CDIR+fp).size, w:null, h:null, ws:WS, t:now() }); }
 cContent.run({ id:'vid21-music', u:USER, fn:'Quiet Tech Pulse.mp3', fp:'vid21-music.mp3', mime:'audio/mpeg', sz:fs.statSync(CDIR+'vid21-music.mp3').size, w:null, h:null, ws:WS, t:now() });
 console.log('content:', caps.size, 'img + 13 audio + music');

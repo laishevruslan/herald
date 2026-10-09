@@ -1,4 +1,4 @@
-' ScreenTinker — autorun.zip unpacker.
+' LuminaScreen — autorun.zip unpacker.
 '
 ' Ships INSIDE autorun.zip, at its root. The card (or internal flash) carries a single file —
 ' autorun.zip — and this script unpacks it in place, marks it done so it never re-extracts, and

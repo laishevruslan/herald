@@ -14,7 +14,7 @@ D.prepare('DELETE FROM playlist_items WHERE playlist_id = ?').run(PID);
 D.prepare('DELETE FROM playlists WHERE id = ?').run(PID);
 
 D.prepare(`INSERT INTO playlists (id,user_id,name,is_auto_generated,status,workspace_id,created_at,updated_at)
-  VALUES (?,?,?,0,'draft',?,?,?)`).run(PID, USER, 'ScreenTinker 2.1 — Slides (narrated)', WS, now, now);
+  VALUES (?,?,?,0,'draft',?,?,?)`).run(PID, USER, 'LuminaScreen 2.1 — Slides (narrated)', WS, now, now);
 
 const it = D.prepare(`INSERT INTO playlist_items (playlist_id,widget_id,sort_order,duration_sec,muted,created_at,updated_at)
   VALUES (?,?,?,?,0,?,?)`);
@@ -30,4 +30,4 @@ catch(e){ console.log('publish push warned (snapshot written):', e.message); }
 // point the existing watch display at the slides playlist
 D.prepare("UPDATE devices SET playlist_id = ?, updated_at = ? WHERE id = ?").run(PID, now, DID);
 const key = D.prepare('SELECT enrol_key FROM devices WHERE id = ?').get(DID).enrol_key;
-console.log('WATCH_URL=https://alpha.screentinker.com/player?k=' + key);
+console.log('WATCH_URL=https://alpha.luminascreen.ru/player?k=' + key);

@@ -1,6 +1,6 @@
 # Marketing
 
-Sources for ScreenTinker's marketing material: the YouTube videos, their thumbnails and upload
+Sources for LuminaScreen's marketing material: the YouTube videos, their thumbnails and upload
 text. Only sources are tracked. Everything a pipeline generates (captures, frames, voice-over,
 MP4s, the throwaway capture server's data) is ignored by `marketing/.gitignore`.
 
@@ -8,10 +8,10 @@ MP4s, the throwaway capture server's data) is ignored by `marketing/.gitignore`.
 
 | Folder | Video |
 |---|---|
-| `videos/release-2.3/` | **ScreenTinker 2.3 — Live Data, Templates & a Real Game** (16 scenes, 4:13) — the base for the next release video |
-| `videos/release-2.2/` | ScreenTinker 2.2 — Point an AI at Your Screens (MCP-led, 3:02) |
-| `videos/release-2.1/` | ScreenTinker 2.1 — Plugins, Live Video & Room Signs (3:04) |
-| `videos/release-2.0/` | ScreenTinker 2.0 (17 scenes, 5:10) |
+| `videos/release-2.3/` | **LuminaScreen 2.3 — Live Data, Templates & a Real Game** (16 scenes, 4:13) — the base for the next release video |
+| `videos/release-2.2/` | LuminaScreen 2.2 — Point an AI at Your Screens (MCP-led, 3:02) |
+| `videos/release-2.1/` | LuminaScreen 2.1 — Plugins, Live Video & Room Signs (3:04) |
+| `videos/release-2.0/` | LuminaScreen 2.0 (17 scenes, 5:10) |
 | `videos/tutorial-raspberry-pi/` | Raspberry Pi setup tutorial |
 | `videos/tutorial-android-tv/` | Android TV / Fire TV tutorial (hook-first rebuild) |
 | `videos/tutorial-samsung-tizen/` | Samsung Tizen tutorial |

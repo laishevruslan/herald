@@ -4,8 +4,8 @@
   "version": "1.0.1",
   "kind": "html",
   "description": "An original first-person arcade shooter about the worst on-call shift of the year 3036: every server is down and the datacenter is crawling with bugs. Nobody playing? It plays itself in autopilot demo mode. Click or press a key to take over; walk away and the demo takes back over.",
-  "author": "ScreenTinker",
-  "homepage": "https://github.com/screentinker/templates/tree/main/templates/uptime-3036",
+  "author": "LuminaScreen",
+  "homepage": "https://github.com/luminascreen/templates/tree/main/templates/uptime-3036",
   "license": "MIT",
   "tags": [
     "game",

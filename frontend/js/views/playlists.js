@@ -363,13 +363,13 @@ function showPlaylistPreview(playlist) {
   // reachable from this page at all, and the preview player itself ignores the message unless it
   // booted with ?preview=1.
   const send = (action) => {
-    try { frame.contentWindow?.postMessage({ source: 'screentinker-preview', action }, window.location.origin); } catch (e) {}
+    try { frame.contentWindow?.postMessage({ source: 'luminascreen-preview', action }, window.location.origin); } catch (e) {}
   };
   const onPlayerMessage = (ev) => {
     if (ev.origin !== window.location.origin) return;
     if (ev.source !== frame.contentWindow) return;   // ignore any other frame on the page
     const d = ev.data;
-    if (!d || d.source !== 'screentinker-player' || d.type !== 'preview:state') return;
+    if (!d || d.source !== 'luminascreen-player' || d.type !== 'preview:state') return;
     // A multi-zone playlist plays all zones at once, so there is no single item to step through —
     // showing a counter there would be a lie and the buttons would appear dead.
     if (d.zoned || !d.total) {

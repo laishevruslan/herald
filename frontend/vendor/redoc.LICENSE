@@ -3,7 +3,7 @@ Version vendored here: 2.3.9 (see redoc.standalone.js)
 
 The bundle in this directory is minified and its license headers were stripped upstream, so
 the notice is kept alongside it instead. MIT requires this notice to accompany the software
-wherever it is distributed, and redoc.standalone.js is included in the ScreenTinker release
+wherever it is distributed, and redoc.standalone.js is included in the LuminaScreen release
 tarball.
 
 --------------------------------------------------------------------------------

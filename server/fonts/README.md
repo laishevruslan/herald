@@ -1,6 +1,6 @@
 # Bundled slide fonts
 
-These five families are shipped with ScreenTinker and served from `/fonts`. They are what the
+These five families are shipped with LuminaScreen and served from `/fonts`. They are what the
 **Slides** editor and **Studio** offer, and what a slide renders in on every player — a browser,
 Android, Tizen and BrightSign alike.
 

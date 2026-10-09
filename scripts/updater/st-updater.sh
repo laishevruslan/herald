@@ -1,5 +1,5 @@
 #!/bin/sh
-# ScreenTinker instance updater — the host-side half of Platform → System → "Update Now".
+# LuminaScreen instance updater — the host-side half of Platform → System → "Update Now".
 # See docs/instance-updater.md.
 #
 # The server never upgrades itself. It drops a request file into a spool it can write, and THIS
@@ -9,7 +9,7 @@
 # "latest" lookup of its own.
 #
 #   UPDATER_MODE=git    systemd install (prod / studiolab shape). Run once per request by
-#                       screentinker-updater.path -> screentinker-updater.service.
+#                       luminascreen-updater.path -> luminascreen-updater.service.
 #   UPDATER_MODE=docker the updater sidecar in docker-compose. `st-updater.sh watch` polls.
 #
 # ⚠️ THE REQUEST FILE IS UNTRUSTED. It is written by the (less privileged) app, so a compromised
@@ -46,14 +46,14 @@ mkdir -p "$OUT_DIR" || die "cannot create $OUT_DIR"
 
 if [ "$MODE" = docker ]; then
   COMPOSE_FILE="${COMPOSE_FILE:?COMPOSE_FILE is required in docker mode}"
-  APP_SERVICE="${APP_SERVICE:-screentinker}"
-  IMAGE_REPO="${IMAGE_REPO:-ghcr.io/screentinker/screentinker}"
+  APP_SERVICE="${APP_SERVICE:-luminascreen}"
+  IMAGE_REPO="${IMAGE_REPO:-ghcr.io/luminascreen/luminascreen}"
   DB_IN_CONTAINER="${DB_IN_CONTAINER:-/data/db/remote_display.db}"
   BACKUP_DIR_IN_CONTAINER="${BACKUP_DIR_IN_CONTAINER:-/data/db}"
   STATUS_URL="${STATUS_URL:-http://$APP_SERVICE:3001/api/status}"
 else
   APP_DIR="${APP_DIR:?APP_DIR is required in git mode}"
-  SERVICE_NAME="${SERVICE_NAME:-screentinker}"
+  SERVICE_NAME="${SERVICE_NAME:-luminascreen}"
   DB="${DB:?DB is required in git mode}"
   BACKUP_DIR="${BACKUP_DIR:-$APP_DIR/backups}"
   APP_USER="${APP_USER:-$(stat -c %U "$APP_DIR" 2>/dev/null)}"

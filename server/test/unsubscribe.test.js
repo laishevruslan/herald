@@ -55,9 +55,9 @@ test('the token is domain-separated from anything else signed with the same secr
 test('unsubscribeUrl needs an absolute origin and refuses to invent one', () => {
   const prev = process.env.APP_URL;
   try {
-    process.env.APP_URL = 'https://screentinker.com/';   // trailing slash
+    process.env.APP_URL = 'https://luminascreen.ru/';   // trailing slash
     const url = tok.unsubscribeUrl('user-a');
-    assert.match(url, /^https:\/\/screentinker\.com\/unsubscribe\?u=user-a&t=[A-Za-z0-9_-]+$/,
+    assert.match(url, /^https:\/\/luminascreen\.com\/unsubscribe\?u=user-a&t=[A-Za-z0-9_-]+$/,
       'no doubled slash, and both params present');
     delete process.env.APP_URL;
     // A link to `undefined/unsubscribe` is worse than no link at all.
@@ -84,7 +84,7 @@ test('a user id with URL-significant characters is encoded', () => {
 
 test('the footer and headers appear only when a caller opts in', () => {
   const prev = process.env.APP_URL;
-  process.env.APP_URL = 'https://screentinker.com';
+  process.env.APP_URL = 'https://luminascreen.ru';
   try {
     const email = require('../services/email');
     const off = email.unsubscribeParts(null);
@@ -92,8 +92,8 @@ test('the footer and headers appear only when a caller opts in', () => {
     assert.equal(off.headers, null);
 
     const on = email.unsubscribeParts('u-1');
-    assert.match(on.footerHtml, /https:\/\/screentinker\.com\/unsubscribe\?u=u-1&t=/);
-    assert.match(on.footerText, /Unsubscribe: https:\/\/screentinker\.com\/unsubscribe/);
+    assert.match(on.footerHtml, /https:\/\/luminascreen\.com\/unsubscribe\?u=u-1&t=/);
+    assert.match(on.footerText, /Unsubscribe: https:\/\/luminascreen\.com\/unsubscribe/);
     // RFC 8058. Paired with the route refusing to act on GET, this is what makes a mail client's own
     // unsubscribe button safe to wire up.
     assert.equal(on.headers['List-Unsubscribe-Post'], 'List-Unsubscribe=One-Click');

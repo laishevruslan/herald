@@ -1,5 +1,5 @@
 from playwright.sync_api import sync_playwright
-BASE="/home/owner/screentinker-video"
+BASE="/home/owner/luminascreen-video"
 
 # Raspberry logo (from the Imager scene)
 RASP = """<svg width="88" height="96" viewBox="0 0 100 108">

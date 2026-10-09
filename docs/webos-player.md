@@ -8,11 +8,11 @@ its own updates.
 
 ## Install
 
-1. Get `ScreenTinker.ipk` from the release page or from `https://<your-instance>/webos`.
+1. Get `LuminaScreen.ipk` from the release page or from `https://<your-instance>/webos`.
 2. Copy it to a USB stick, plug it into the panel, and install it from the panel's settings
    (the menu path varies by webOS version; on most it is under General, Install App). An SI
    server can push the same file to a fleet.
-3. Launch ScreenTinker. Enter the server address with the remote and press Save. The pairing
+3. Launch LuminaScreen. Enter the server address with the remote and press Save. The pairing
    code appears; claim it in the dashboard.
 4. Press Back on the remote at any time to return to the server screen.
 
@@ -22,7 +22,7 @@ with `{ "serverUrl": "https://signage.example.com" }` is used when nothing has b
 ## Self-update
 
 The app fetches `/webos/version.json` on start and every six hours. When the server publishes a
-newer version and the panel has the SCAP library, it downloads `/webos/ScreenTinker.ipk` and asks
+newer version and the panel has the SCAP library, it downloads `/webos/LuminaScreen.ipk` and asks
 the panel to upgrade itself. One attempt is made per published version. Without SCAP the app
 stays at its installed version and a new `.ipk` is installed the way the first one was.
 

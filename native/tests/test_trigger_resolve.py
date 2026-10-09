@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from screentinker_native.logic import trigger_resolve as tr
+from luminascreen_native.logic import trigger_resolve as tr
 
 VECTORS_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "shared", "trigger-vectors.json")
 with open(VECTORS_PATH, encoding="utf-8") as f:

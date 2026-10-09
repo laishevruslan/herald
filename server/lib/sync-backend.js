@@ -3,14 +3,14 @@
 /*
  * Which synchronisation protocol a group runs.
  *
- * ScreenTinker has its own group sync: every member derives its position from a shared clock,
+ * LuminaScreen has its own group sync: every member derives its position from a shared clock,
  * so it needs no leader, survives a server outage, and works across Android, web, Tizen and
  * BrightSign alike. BrightSign has its own — BrightWall — which is native, frame-accurate, and
  * only exists between BrightSign players.
  *
  * The choice is therefore not "which is better" but "what is in this group":
  *
- *   screentinker  works everywhere, mixed fleets included; sync is to the second, not the frame
+ *   luminascreen  works everywhere, mixed fleets included; sync is to the second, not the frame
  *   brightsign    frame-accurate video walls; requires EVERY member to be a BrightSign
  *
  * `auto` picks the strongest protocol the group can actually run, which is what an operator
@@ -21,7 +21,7 @@
  * Kept pure so the decision is testable without a fleet: callers pass plain device rows.
  */
 
-const BACKENDS = ['auto', 'screentinker', 'brightsign'];
+const BACKENDS = ['auto', 'luminascreen', 'brightsign'];
 
 /*
  * A device is a BrightSign if it said so: the player sends ?platform=brightsign (autorun.brs puts
@@ -72,9 +72,9 @@ function networksDiffer(members) {
 }
 
 /**
- * @param {string} setting  'auto' | 'screentinker' | 'brightsign' (unknown values read as auto)
+ * @param {string} setting  'auto' | 'luminascreen' | 'brightsign' (unknown values read as auto)
  * @param {Array}  members  device rows in the group
- * @returns {{backend: 'screentinker'|'brightsign', reason: string, downgraded: boolean}}
+ * @returns {{backend: 'luminascreen'|'brightsign', reason: string, downgraded: boolean}}
  */
 function resolveSyncBackend(setting, members) {
   const list = Array.isArray(members) ? members.filter(Boolean) : [];
@@ -84,8 +84,8 @@ function resolveSyncBackend(setting, members) {
   const allBrightSign = list.length > 0 && brightsignCount === list.length;
   const split = networksDiffer(list);
 
-  if (requested === 'screentinker') {
-    return { backend: 'screentinker', reason: 'explicitly selected', downgraded: false };
+  if (requested === 'luminascreen') {
+    return { backend: 'luminascreen', reason: 'explicitly selected', downgraded: false };
   }
 
   if (requested === 'brightsign') {
@@ -96,7 +96,7 @@ function resolveSyncBackend(setting, members) {
       // Every member is a BrightSign, but they are not on one network. Native sync would appear
       // to work inside each subnet while the subnets drifted apart — worse than not using it.
       return {
-        backend: 'screentinker',
+        backend: 'luminascreen',
         reason: 'displays are on different networks — native sync is multicast and cannot cross them',
         downgraded: true
       };
@@ -105,7 +105,7 @@ function resolveSyncBackend(setting, members) {
     // half-syncs is worse than one that syncs to the second everywhere.
     const others = list.length - brightsignCount;
     return {
-      backend: 'screentinker',
+      backend: 'luminascreen',
       reason: list.length === 0
         ? 'group is empty — native sync needs BrightSign members'
         : `group has ${others} non-BrightSign display${others === 1 ? '' : 's'}`,
@@ -119,13 +119,13 @@ function resolveSyncBackend(setting, members) {
   }
   if (allBrightSign && split) {
     return {
-      backend: 'screentinker',
+      backend: 'luminascreen',
       reason: 'displays are on different networks',
       downgraded: false
     };
   }
   return {
-    backend: 'screentinker',
+    backend: 'luminascreen',
     reason: list.length === 0 ? 'no displays in the group' : 'mixed fleet',
     downgraded: false
   };

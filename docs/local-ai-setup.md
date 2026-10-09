@@ -2,7 +2,7 @@
 
 The **Content Designer → ✨ AI generate** feature turns a text prompt into a finished
 sign: the layout and copy come from an LLM, and (optionally) the background /
-foreground imagery comes from an image model. ScreenTinker is **bring-your-own**:
+foreground imagery comes from an image model. LuminaScreen is **bring-your-own**:
 you point each workspace at an **OpenAI-compatible** text endpoint and an image
 endpoint of your choice. Nothing is sent to us, and the operator pays no AI costs.
 
@@ -14,13 +14,13 @@ This guide sets up a fully **local, free** stack:
 Prefer the cloud? Skip to [Using OpenAI instead](#using-openai-instead).
 
 > [!NOTE]
-> On ScreenTinker-hosted servers there is also a second path, **ScreenTinker credits**: images
+> On LuminaScreen-hosted servers there is also a second path, **LuminaScreen credits**: images
 > generated with platform keys and paid in organization credits. The bring-your-own setup on this
 > page never uses credits. See [ai-credits.md](ai-credits.md).
 
 > [!IMPORTANT]
 > To use **localhost / LAN** AI endpoints, your instance must run with
-> **`SELF_HOSTED=true`**. ScreenTinker blocks private/internal addresses for the
+> **`SELF_HOSTED=true`**. LuminaScreen blocks private/internal addresses for the
 > AI endpoints (SSRF protection) unless it is in self-hosted mode. See
 > [Enable self-hosted mode](#1-enable-self-hosted-mode).
 
@@ -33,9 +33,9 @@ is relaxed so you can point at `localhost`. Set the env var:
 
 ```bash
 # systemd: drop-in (recommended)
-sudo mkdir -p /etc/systemd/system/screentinker.service.d
-printf '[Service]\nEnvironment=SELF_HOSTED=true\n' | sudo tee /etc/systemd/system/screentinker.service.d/selfhosted.conf
-sudo systemctl daemon-reload && sudo systemctl restart screentinker
+sudo mkdir -p /etc/systemd/system/luminascreen.service.d
+printf '[Service]\nEnvironment=SELF_HOSTED=true\n' | sudo tee /etc/systemd/system/luminascreen.service.d/selfhosted.conf
+sudo systemctl daemon-reload && sudo systemctl restart luminascreen
 ```
 
 (Or `SELF_HOSTED=true npm start` for a manual run.)

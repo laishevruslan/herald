@@ -99,7 +99,7 @@ async function seedAttackerBundle() {
   const file = contentId + '.zip';
   fs.writeFileSync(path.join(contentDir, file), zip({ 'index.html': EVIL }));
   db.prepare(`INSERT INTO content (id, user_id, filename, filepath, mime_type, file_size, workspace_id, bundle_entry)
-              VALUES (?, ?, 'evil.zip', ?, 'application/vnd.screentinker.bundle+zip', 1, ?, 'index.html')`)
+              VALUES (?, ?, 'evil.zip', ?, 'application/vnd.luminascreen.bundle+zip', 1, ?, 'index.html')`)
     .run(contentId, userId, file, wsId);
   const plId = crypto.randomUUID();
   db.prepare("INSERT INTO playlists (id, user_id, name, workspace_id) VALUES (?, ?, 'p', ?)").run(plId, userId, wsId);

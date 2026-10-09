@@ -8,13 +8,13 @@ takes a dwell time like any other content.
 > watching a screen* (go2rtc + WebRTC). This page is a *screen playing a live source*. They share
 > nothing but the word "live".
 
-**The server never touches the stream.** ScreenTinker validates the URL's shape and hands it to the
+**The server never touches the stream.** LuminaScreen validates the URL's shape and hands it to the
 player; the player opens it directly. So:
 
 - The URL can be a **LAN address** (`http://10.0.0.9/live.m3u8`, `rtsp://192.168.1.20:554/stream`) that
   the server itself could never reach.
 - A 5 Mbps channel on 40 screens is 40 screens pulling from your source, **not** 40 streams through
-  ScreenTinker's WAN link.
+  LuminaScreen's WAN link.
 - Nothing is uploaded, transcoded, or cached server-side. If the source is down, the item skips on the
   player; the rest of the playlist keeps going.
 
@@ -40,7 +40,7 @@ latency. If you have a camera but need it on many screens or on non-Android play
    - HLS: `https://…/channel.m3u8`
    - RTSP: `rtsp://user:pass@10.0.0.5/stream`
 
-   ScreenTinker classifies it automatically: an `http(s)` `.m3u8` becomes `video/hls`, an `rtsp://`
+   LuminaScreen classifies it automatically: an `http(s)` `.m3u8` becomes `video/hls`, an `rtsp://`
    URL becomes `video/rtsp`. Give it a channel name (optional) and add it. It appears in the library's
    **Live** filter.
 2. **Add it to a playlist** like any other item.
@@ -73,7 +73,7 @@ RTSP item).
 
 An RTSP camera limits its own concurrent sessions, and RTSP only plays on Android. For **many screens
 off one camera**, or for **non-Android screens**, run an on-site **RTSP-to-HLS bridge** and point a
-`video/hls` item at its HLS output. ScreenTinker does not run this for you and still never fetches the
+`video/hls` item at its HLS output. LuminaScreen does not run this for you and still never fetches the
 stream — the bridge is yours, on your LAN.
 
 [go2rtc](https://github.com/AlexxIT/go2rtc) is a good fit (it is the same sidecar used for live
@@ -87,7 +87,7 @@ streams:
 # go2rtc serves HLS at http://<bridge-host>:1984/api/stream.m3u8?src=lobby_cam
 ```
 
-Then add a live stream in ScreenTinker pointed at
+Then add a live stream in LuminaScreen pointed at
 `http://<bridge-host>:1984/api/stream.m3u8?src=lobby_cam`. Now every player type can show the camera,
 and the camera only ever sees the single pull from the bridge.
 
@@ -101,8 +101,8 @@ and the camera only ever sees the single pull from the bridge.
   like any other remote URL; treat the library accordingly. Prefer a dedicated view-only camera
   account.
 - **LAN sources stay on the LAN.** Because the player opens the URL, a `rtsp://192.168.x.x` or
-  `http://10.x.x.x` source never has to be exposed to the internet or to the ScreenTinker server.
-- ScreenTinker validates only the **shape** of the URL (is it an `.m3u8` / an `rtsp://`), not its
+  `http://10.x.x.x` source never has to be exposed to the internet or to the LuminaScreen server.
+- LuminaScreen validates only the **shape** of the URL (is it an `.m3u8` / an `rtsp://`), not its
   contents. A bad or offline stream fails to a skip on the player.
 
 ## Troubleshooting

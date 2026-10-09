@@ -173,7 +173,7 @@ test('status/export: pre-TOTP token refused, full session accepted, recovery ref
 // 3. POST /api/status/import  (Authorization header)
 // ---------------------------------------------------------------------------
 test('status/import: pre-TOTP token refused, full session reaches the handler, recovery refused', async () => {
-  const mfa = await jfetch('/api/status/import', post(S.mfaToken, { format: 'screentinker-export-v2' }));
+  const mfa = await jfetch('/api/status/import', post(S.mfaToken, { format: 'luminascreen-export-v2' }));
   assert.equal(mfa.status, 401, 'pre-TOTP token must not import into a workspace');
   assert.equal(mfa.body.error, 'mfa_required');
 

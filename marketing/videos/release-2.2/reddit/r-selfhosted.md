@@ -1,8 +1,8 @@
 TITLE:
-ScreenTinker 2.2 — self-hosted digital signage that now speaks MCP, so you can point an AI assistant at your own screens
+LuminaScreen 2.2 — self-hosted digital signage that now speaks MCP, so you can point an AI assistant at your own screens
 
 BODY:
-I maintain ScreenTinker, an MIT-licensed digital signage server you run yourself. Turn any TV, Pi,
+I maintain LuminaScreen, an MIT-licensed digital signage server you run yourself. Turn any TV, Pi,
 old Android box or browser into a managed screen. No per-screen fees, no cloud dependency — the
 players talk to *your* server.
 
@@ -55,7 +55,7 @@ all for a valid date range, which turned out to be a date-parsing bug that had b
 reports by the server's UTC offset on every self-hosted instance outside UTC. All fixed in 2.2.1,
 which is out now. Reading the payload instead of the status code is the whole lesson.
 
-GitHub: https://github.com/screentinker/screentinker
-Docs / demo: https://screentinker.com
+GitHub: https://github.com/luminascreen/luminascreen
+Docs / demo: https://luminascreen.ru
 
 Disclosure: I'm the developer. Happy to answer anything, including what it doesn't do.

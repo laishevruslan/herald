@@ -5,7 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const DEMO = process.argv[2];
 const BASE = 'http://127.0.0.1:3098';
-const EMAIL = 'demo@screentinker.local';
+const EMAIL = 'demo@luminascreen.local';
 const PASSWORD = 'Demo-' + crypto.randomBytes(6).toString('base64url');
 
 async function call(token, method, url, body, raw) {

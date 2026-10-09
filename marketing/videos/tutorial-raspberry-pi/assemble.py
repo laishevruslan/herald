@@ -3,7 +3,7 @@ V="audio"; S="scenes"; W="work"; os.makedirs(W,exist_ok=True)
 scenes=[f"{i:02d}" for i in range(1,11)]
 TEXT={
 "01":"Free digital signage, running on a Raspberry Pi. No monthly fees, no per-screen charges. It's open source, you host it yourself.",
-"02":"Everything you need: a Raspberry Pi, a microSD card, and any HDMI screen. Then point it at a ScreenTinker server — free plan or self-hosted.",
+"02":"Everything you need: a Raspberry Pi, a microSD card, and any HDMI screen. Then point it at a LuminaScreen server — free plan or self-hosted.",
 "03":"Flash Raspberry Pi OS onto the card with the Raspberry Pi Imager. Choose Pi OS Lite, pick your card, and write.",
 "04":"Boot the Pi. It comes straight up into Raspberry Pi OS, ready to go.",
 "05":"Log in and run one command. It installs Chromium, sets up a kiosk service, and points it at your server.",
@@ -58,5 +58,5 @@ total=sum(durs.values())
 subprocess.run(["ffmpeg","-y","-loglevel","error","-i",f"{W}/joined.mp4",
     "-vf",f"subtitles={W}/caps.srt:force_style='{style}',fade=t=in:st=0:d=0.6,fade=t=out:st={total-0.8:.2f}:d=0.8",
     "-c:v","libx264","-preset","medium","-crf","20","-pix_fmt","yuv420p","-c:a","copy",
-    "screentinker-pi-tutorial-v1.mp4"],check=True)
-print(f"\nDONE: screentinker-pi-tutorial-v1.mp4  ({total:.0f}s / {total/60:.1f} min)")
+    "luminascreen-pi-tutorial-v1.mp4"],check=True)
+print(f"\nDONE: luminascreen-pi-tutorial-v1.mp4  ({total:.0f}s / {total/60:.1f} min)")

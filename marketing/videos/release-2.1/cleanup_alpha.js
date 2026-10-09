@@ -1,14 +1,14 @@
 /* Runs INSIDE the alpha container. Removes ONLY the 2.1 video demo objects, scoped to workspace
- * 4fd37c57 and the vid21-/"ScreenTinker 2.1" naming. Protects the pre-existing 2.0 deck. Reports
+ * 4fd37c57 and the vid21-/"LuminaScreen 2.1" naming. Protects the pre-existing 2.0 deck. Reports
  * counts. */
 const m = require('/app/server/db/database'); const D = m.db || m;
 const WS = '4fd37c57-d8ce-4c30-b944-97d296d8b2d0';
 const rep = {};
 
 // --- collect deck-published playlists + widgets (uuid ids), by the deck's own name
-const DECK_NAME = 'ScreenTinker 2.1 — What’s New';
+const DECK_NAME = 'LuminaScreen 2.1 — What’s New';
 const plRows = D.prepare(
-  "SELECT id FROM playlists WHERE workspace_id=? AND (id LIKE 'vid21-%' OR name=? OR name='ScreenTinker 2.1 — Slides (narrated)' OR name='ScreenTinker 2.1 Launch Video')"
+  "SELECT id FROM playlists WHERE workspace_id=? AND (id LIKE 'vid21-%' OR name=? OR name='LuminaScreen 2.1 — Slides (narrated)' OR name='LuminaScreen 2.1 Launch Video')"
 ).all(WS, DECK_NAME).map(r=>r.id);
 
 const wRows = D.prepare(
@@ -30,7 +30,7 @@ console.log('DELETED ' + JSON.stringify(rep));
 // leftover check
 const left = {
   widgets: D.prepare("SELECT COUNT(*) c FROM widgets WHERE id LIKE 'vid21-%' OR name LIKE ?").get(DECK_NAME+' — %').c,
-  playlists: D.prepare("SELECT COUNT(*) c FROM playlists WHERE id LIKE 'vid21-%' OR name=? OR name LIKE 'ScreenTinker 2.1 —%' OR name='ScreenTinker 2.1 Launch Video'").get(DECK_NAME).c,
+  playlists: D.prepare("SELECT COUNT(*) c FROM playlists WHERE id LIKE 'vid21-%' OR name=? OR name LIKE 'LuminaScreen 2.1 —%' OR name='LuminaScreen 2.1 Launch Video'").get(DECK_NAME).c,
   content: D.prepare("SELECT COUNT(*) c FROM content WHERE id LIKE 'vid21-%'").get().c,
   decks: D.prepare("SELECT COUNT(*) c FROM slide_decks WHERE id LIKE 'vid21-%'").get().c,
   devices: D.prepare("SELECT COUNT(*) c FROM devices WHERE id LIKE 'vid21-%'").get().c,

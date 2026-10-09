@@ -6,7 +6,7 @@ import socket
 
 import pytest
 
-from screentinker_native.logic import http_target_guard as g
+from luminascreen_native.logic import http_target_guard as g
 
 VECTORS_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "shared", "http-target-vectors.json")
 with open(VECTORS_PATH, encoding="utf-8") as f:

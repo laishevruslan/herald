@@ -1,10 +1,10 @@
-# Example docker-compose for self-hosting ScreenTinker.
+# Example docker-compose for self-hosting LuminaScreen.
 #   cp docker-compose.example.yml docker-compose.yml   # then edit to taste
 # The container serves plain HTTP on 3001 - front it with a TLS-terminating
 # reverse proxy or Cloudflare in production.
 services:
-  screentinker:
-    image: ghcr.io/laishevruslan/herald:latest
+  luminascreen:
+    image: ghcr.io/laishevruslan/herald:2.4.3
     # ...or build from source instead of pulling:
     # build: .
     # build: .
@@ -33,7 +33,7 @@ services:
     volumes:
       - st-data:/data               # db, uploads, and the jwt secret persist here
       # To enable OTA APK downloads, mount a built APK read-only:
-      # - ./ScreenTinker.apk:/data/ScreenTinker.apk:ro
+      # - ./LuminaScreen.apk:/data/LuminaScreen.apk:ro
     healthcheck:
       # image is node:20-slim (no curl) - use node's built-in fetch
       test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -42,10 +42,10 @@ services:
       retries: 3
       start_period: 30s             # first boot runs db migrations
 
-# go2rtc sidecar: WebRTC live view + Talk (Opus). ScreenTinker stays fail-soft if this is down.
+# go2rtc sidecar: WebRTC live view + Talk (Opus). LuminaScreen stays fail-soft if this is down.
 #
 #   1984  go2rtc HTTP API. Bound to loopback only so a host-run `npm start` can reach it;
-#         never published on the LAN or internet. The screentinker container uses http://go2rtc:1984
+#         never published on the LAN or internet. The luminascreen container uses http://go2rtc:1984
 #         on the compose network and does not need this mapping.
 #   8555  WebRTC. tcp works behind a reverse proxy and on plain-HTTP LANs; udp is lower latency but
 #         needs the port open end to end (a Cloudflare orange-cloud proxy drops UDP - see the docs).
@@ -57,7 +57,7 @@ services:
     image: alexxit/go2rtc:1.9.14
     # Publishing from a device with NO H264 encoder (e.g. the Android emulator)? Stock go2rtc
     # accepts only H264/H265 on WebRTC ingest and rejects VP8. Build docker/go2rtc-vp8 and use
-    # `image: screentinker/go2rtc-vp8:1.9.14` instead. See docs/live-video.md ("Codecs"). Talk
+    # `image: luminascreen/go2rtc-vp8:1.9.14` instead. See docs/live-video.md ("Codecs"). Talk
     # (Opus) does not need the patch.
     restart: unless-stopped
     volumes:
@@ -68,7 +68,7 @@ services:
       - "8555:8555/udp"
 
 # Locked out of the admin account? Reset it with:
-#   docker exec -it screentinker node scripts/reset-admin.js
+#   docker exec -it luminascreen node scripts/reset-admin.js
 
 volumes:
   st-data:

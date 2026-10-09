@@ -1,21 +1,21 @@
 ========================================================================
 YOUTUBE UPLOAD PACKAGE
-Video: ScreenTinker 2.2 - Point an AI at Your Screens
-File:  screentinker-2p2.mp4  (3:02 - 1080p30)
+Video: LuminaScreen 2.2 - Point an AI at Your Screens
+File:  luminascreen-2p2.mp4  (3:02 - 1080p30)
 Thumb: thumbnail.png
 ========================================================================
 
 ------------------------------- TITLE ----------------------------------
 RECOMMENDED:
-ScreenTinker 2.2: Point an AI at Your Screens (Open-Source Digital Signage)
+LuminaScreen 2.2: Point an AI at Your Screens (Open-Source Digital Signage)
 
 Alternates:
 I Gave an AI Assistant Control of My Digital Signage (Open Source)
-What's New in ScreenTinker 2.2: MCP, E-Paper Signs & Eleven Platforms
+What's New in LuminaScreen 2.2: MCP, E-Paper Signs & Eleven Platforms
 
 ---------------------------- DESCRIPTION -------------------------------
 
-ScreenTinker 2.2 serves a Model Context Protocol endpoint, so you can point
+LuminaScreen 2.2 serves a Model Context Protocol endpoint, so you can point
 Claude - or anything else that speaks MCP - at your own signage server and ask
 for things in plain English. "Which screens are offline?" "Put the autumn
 campaign on the lobby screen." We don't know of another digital signage
@@ -28,7 +28,7 @@ is filtered by that token's scope - a read-only token is shown ten tools, a
 full one twenty-one, and the read-only one is never even told the write tools
 exist.
 
-ScreenTinker is open source. Host it yourself, or let us run it for you.
+LuminaScreen is open source. Host it yourself, or let us run it for you.
 
 In this video:
 - MCP: 21 tools, chosen rather than generated, filtered by your token's scope.
@@ -43,17 +43,17 @@ In this video:
   dashboard notices its own updates, and reports stopped returning nothing for
   valid date ranges.
 
-Every screen in this video is a real ScreenTinker instance with invented demo
+Every screen in this video is a real LuminaScreen instance with invented demo
 data. The MCP exchanges are real: the questions were asked against that server
 and the answers are what it returned.
 
-Download / docs: https://screentinker.com
-Source: https://github.com/screentinker/screentinker
+Download / docs: https://luminascreen.ru
+Source: https://github.com/luminascreen/luminascreen
 Discord: https://discord.gg/utTdsrqq4Z
 
 ------------------------------ CHAPTERS --------------------------------
 0:00 Just ask it
-0:11 What ScreenTinker 2.2 is
+0:11 What LuminaScreen 2.2 is
 0:23 The MCP endpoint, and 21 tools
 0:38 Scoped: read-only sees ten
 0:54 Asking for work, not just answers
@@ -66,6 +66,6 @@ Discord: https://discord.gg/utTdsrqq4Z
 
 -------------------------------- TAGS ----------------------------------
 digital signage, open source digital signage, self hosted digital signage,
-MCP, model context protocol, claude mcp, AI digital signage, screentinker,
+MCP, model context protocol, claude mcp, AI digital signage, luminascreen,
 digital signage software, free digital signage, raspberry pi digital signage,
 e-paper display, esp32 display, brightsign, android tv signage, signage API

@@ -76,15 +76,15 @@ jobs:
         run: |
           chmod +x tizen/build-wgt.sh
           ( cd tizen && ./build-wgt.sh )   # no Tizen CLI on the runner => unsigned zip
-          cp tizen/ScreenTinker.wgt ScreenTinker.wgt
-          ls -la ScreenTinker.wgt
+          cp tizen/LuminaScreen.wgt LuminaScreen.wgt
+          ls -la LuminaScreen.wgt
 
       - name: Build LG webOS .ipk (no SCAP library in CI; see webos/vendor/README.md)
         run: |
           chmod +x webos/build-ipk.sh
           ( cd webos && ./build-ipk.sh )
-          cp webos/ScreenTinker.ipk ScreenTinker.ipk
-          ls -la ScreenTinker.ipk
+          cp webos/LuminaScreen.ipk LuminaScreen.ipk
+          ls -la LuminaScreen.ipk
 
       - name: Build BrightSign autorun.zip (single-file player installer)
         run: |
@@ -98,12 +98,12 @@ jobs:
       - name: Generate SBOM (production dependencies)
         run: |
           ( cd server && npm ci --omit=dev )
-          node scripts/license-check.js --sbom "screentinker-sbom-${{ steps.ver.outputs.version }}.cdx.json"
-          ls -la screentinker-sbom-*.cdx.json
+          node scripts/license-check.js --sbom "luminascreen-sbom-${{ steps.ver.outputs.version }}.cdx.json"
+          ls -la luminascreen-sbom-*.cdx.json
 
       - name: Build source tarball (bundles the .wgt; the signed apk is added by scripts/finalize-release.sh)
         run: |
-          OUT="screentinker-${{ steps.ver.outputs.version }}.tar.gz"
+          OUT="luminascreen-${{ steps.ver.outputs.version }}.tar.gz"
           tar czf "$OUT" \
             --exclude='node_modules' --exclude='.git' --exclude='.github' \
             --exclude='*.db' --exclude='*.db-wal' --exclude='*.db-shm' --exclude='*.db.*' \
@@ -111,7 +111,7 @@ jobs:
             --exclude='*.apk' \
             --exclude='brightsign/*.zip' --exclude='brightsign/server-payload.json' \
             --exclude='.claude' --exclude='.cc-writes' \
-            server frontend scripts docs VERSION README.md LICENSE .env.example ScreenTinker.wgt ScreenTinker.ipk brightsign
+            server frontend scripts docs VERSION README.md LICENSE .env.example LuminaScreen.wgt LuminaScreen.ipk brightsign
           echo "TARBALL=$OUT" >> "$GITHUB_ENV"
           ls -la "$OUT"
 
@@ -166,7 +166,7 @@ jobs:
           ' CHANGELOG.md)"
 
           {
-            echo "## ScreenTinker ${{ steps.ver.outputs.tag }}"
+            echo "## LuminaScreen ${{ steps.ver.outputs.tag }}"
             echo
             if [ -n "$(printf '%s' "$CHANGELOG_BODY" | tr -d '[:space:]')" ]; then
               echo "$CHANGELOG_BODY"
@@ -187,20 +187,20 @@ jobs:
             echo
             echo "### Artifacts"
             echo "- \`${TARBALL}\` - bundle: server + frontend source + the Tizen .wgt (the signed Android APK is added at the root during release finalization)."
-            echo "- \`ScreenTinker.wgt\` - Tizen TV web app, **unsigned - for inspection only**."
+            echo "- \`LuminaScreen.wgt\` - Tizen TV web app, **unsigned - for inspection only**."
             echo "  Sign it with your own Samsung certificate (Tizen Studio + a profile that includes"
             echo "  your TV's DUID) to install, or - easiest - point a Tizen TV browser / URL Launcher"
             echo "  at \`https://<your-instance>/player\` (no signing needed)."
-            echo "- \`ScreenTinker.ipk\` - LG webOS Signage app. Install from USB or an SI server; it then"
+            echo "- \`LuminaScreen.ipk\` - LG webOS Signage app. Install from USB or an SI server; it then"
             echo "  updates itself from your instance. Built without LG's SCAP library (not redistributable),"
             echo "  so power and self-update controls need a build from \`webos/build-ipk.sh\` with the SDK"
             echo "  files in \`webos/vendor/\`; see \`docs/webos-player.md\`."
               echo "- \`autorun.zip\` - BrightSign player installer. Drop it on the root of a player's"
               echo "  storage (microSD, USB, or internal flash) and power-cycle: it unpacks itself and"
-              echo "  reboots into the player. Edit \`screentinker.json\` inside the archive first to"
+              echo "  reboots into the player. Edit \`luminascreen.json\` inside the archive first to"
               echo "  point it at your own server."
               echo "- \`autorun-server.zip\` + \`server-payload.zip\` + \`server-payload.json\` - make a"
-              echo "  BrightSign run the ScreenTinker **server** rather than just a player. Drop the"
+              echo "  BrightSign run the LuminaScreen **server** rather than just a player. Drop the"
               echo "  first on the player's storage root with an \`st-config.json\` containing"
               echo "  \`{\"server\": 1}\`; it fetches the payload on boot. Point \`payloadUrl\` at your"
               echo "  own host - the default reaches ours, which is wrong for your site. The manifest"
@@ -211,8 +211,8 @@ jobs:
             else
               echo "- Docker image: \`ghcr.io/laishevruslan/herald:${{ steps.ver.outputs.version }}\` (also \`:latest\`)."
             fi
-            echo "- \`ScreenTinker.apk\` - signed Android player (attached during release finalization)."
-            echo "- \`screentinker-sbom-${{ steps.ver.outputs.version }}.cdx.json\` - CycloneDX 1.5 software bill of materials for the server's production dependencies, with the licence of every component."
+            echo "- \`LuminaScreen.apk\` - signed Android player (attached during release finalization)."
+            echo "- \`luminascreen-sbom-${{ steps.ver.outputs.version }}.cdx.json\` - CycloneDX 1.5 software bill of materials for the server's production dependencies, with the licence of every component."
           } > RELEASE_NOTES.md
           cat RELEASE_NOTES.md
 
@@ -226,16 +226,16 @@ jobs:
           [ "${{ steps.ver.outputs.prerelease }}" = "true" ] && PRERELEASE_FLAG="--prerelease"
           gh release create "${{ steps.ver.outputs.tag }}" \
             $PRERELEASE_FLAG \
-            --title "ScreenTinker ${{ steps.ver.outputs.tag }}" \
+            --title "LuminaScreen ${{ steps.ver.outputs.tag }}" \
             --notes-file RELEASE_NOTES.md \
             "${TARBALL}" \
             autorun.zip \
             autorun-server.zip \
             server-payload.zip \
             server-payload.json \
-            "screentinker-sbom-${{ steps.ver.outputs.version }}.cdx.json" \
-            tizen/ScreenTinker.wgt \
-            ScreenTinker.ipk
+            "luminascreen-sbom-${{ steps.ver.outputs.version }}.cdx.json" \
+            tizen/LuminaScreen.wgt \
+            LuminaScreen.ipk
 
   docker:
     name: Docker image (amd64 + arm64) -> ghcr
@@ -298,4 +298,4 @@ jobs:
   # TODO (deferred): build + sign the Android APK in CI. Requires the release
   # keystore + passwords as encrypted Actions secrets. For now the maintainer
   # attaches a signed APK out-of-band (and self-hosters mount one at
-  # /data/ScreenTinker.apk).
+  # /data/LuminaScreen.apk).

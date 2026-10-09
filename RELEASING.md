@@ -1,4 +1,4 @@
-# Releasing ScreenTinker
+# Releasing LuminaScreen
 
 `VERSION` (repo root) is the single source of truth the server reports at runtime.
 Cutting a release is three steps.
@@ -50,17 +50,17 @@ KEYSTORE_PASSWORD=... KEY_PASSWORD=... scripts/finalize-release.sh
 ```
 
 It builds the signed APK, pulls the CI-built unsigned `.wgt` back from the
-release, assembles a complete tarball (source + `ScreenTinker.apk` +
-`ScreenTinker.wgt` at the root, where `/download/apk` resolves the apk after
+release, assembles a complete tarball (source + `LuminaScreen.apk` +
+`LuminaScreen.wgt` at the root, where `/download/apk` resolves the apk after
 extraction), and uploads the apk + complete tarball.
 
 ## What a release contains
 
 Each release carries these as standalone assets AND bundled in the tarball:
 
-- `screentinker-X.Y.Z.tar.gz` - server + frontend source + apk + wgt at the root
-- `ScreenTinker.apk` - signed Android player
-- `ScreenTinker.wgt` - Tizen TV web app (unsigned; see [tizen/README.md](tizen/README.md))
+- `luminascreen-X.Y.Z.tar.gz` - server + frontend source + apk + wgt at the root
+- `LuminaScreen.apk` - signed Android player
+- `LuminaScreen.wgt` - Tizen TV web app (unsigned; see [tizen/README.md](tizen/README.md))
 - `ghcr.io/laishevruslan/herald:X.Y.Z` + `:latest` - Docker image
 
 ## One-time / occasional

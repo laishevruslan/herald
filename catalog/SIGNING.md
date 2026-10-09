@@ -1,6 +1,6 @@
 # Signing and publishing the catalog (maintainers)
 
-This is the procedure for turning merged source into a signed catalog that ScreenTinker servers
+This is the procedure for turning merged source into a signed catalog that LuminaScreen servers
 trust. It is deliberately manual at exactly one point: **the signature is made offline, by a
 maintainer, never by CI.**
 
@@ -11,20 +11,20 @@ maintainer, never by CI.**
 | Algorithm | Ed25519 |
 | key_id | `e800b0481ec538d0` (first 16 hex of sha256 of the raw 32-byte public key) |
 | Public key | compiled into every server: `OFFICIAL_PUBLIC_KEY_PEM` in `server/lib/templates/signing.js` |
-| Private key | `~/.config/screentinker/template-catalog-signing-key.pem`, mode `0600`, on the signing maintainer's machine only |
+| Private key | `~/.config/luminascreen/template-catalog-signing-key.pem`, mode `0600`, on the signing maintainer's machine only |
 | Cold backup | age-encrypted, printed as a QR sheet (below) |
 | Used by | `scripts/template-catalog.js sign` and nothing else |
 
 Check the key before every signing session (prints only public material):
 
 ```bash
-openssl pkey -in ~/.config/screentinker/template-catalog-signing-key.pem -pubout
+openssl pkey -in ~/.config/luminascreen/template-catalog-signing-key.pem -pubout
 # must match OFFICIAL_PUBLIC_KEY_PEM; `verify` below proves the key_id end to end
 ```
 
 ### Why it is not the support key
 
-ScreenTinker already has one Ed25519 key: the **support access** key (`lib/support-access.js`,
+LuminaScreen already has one Ed25519 key: the **support access** key (`lib/support-access.js`,
 `docs/support-access.md`). They are kept separate on purpose, because they have opposite shapes:
 
 - The **support key lives on the internet-facing hosted server**, because that is where support
@@ -37,7 +37,7 @@ ScreenTinker already has one Ed25519 key: the **support access** key (`lib/suppo
 
 Sharing one key would hand the internet-facing support signer the power to publish code to screens,
 and would mean rotating either one rotates both. Every signed message is also domain-separated
-(`screentinker-template-package/1\n`, `screentinker-template-index/1\n`, support tokens use
+(`luminascreen-template-package/1\n`, `luminascreen-template-index/1\n`, support tokens use
 `STSUP1`), so a signature made for one purpose can never verify as another — but separate keys are
 the real protection.
 
@@ -45,8 +45,8 @@ the real protection.
 
 - Never in a repository, a CI secret, a cloud drive, a chat, a ticket or a terminal transcript.
   Nothing in this procedure prints it.
-- Never copied to a ScreenTinker server — no server needs it.
-- Signing happens on the maintainer's own machine, from a clean checkout of the screentinker repo at
+- Never copied to a LuminaScreen server — no server needs it.
+- Signing happens on the maintainer's own machine, from a clean checkout of the luminascreen repo at
   a tagged release (the CLI is `scripts/template-catalog.js`).
 - If the machine is lost, stolen or compromised, follow **Compromise** below; do not wait.
 
@@ -58,10 +58,10 @@ Same procedure as the support key's backup:
    never written down next to the sheet, stored in a password manager shared with anyone, or seen by
    any script or assistant:
    ```bash
-   age -p -o ~/.config/screentinker/template-catalog-signing-key.pem.age \
-       ~/.config/screentinker/template-catalog-signing-key.pem
+   age -p -o ~/.config/luminascreen/template-catalog-signing-key.pem.age \
+       ~/.config/luminascreen/template-catalog-signing-key.pem
    ```
-2. Record the plain key's fingerprint: `sha256sum ~/.config/screentinker/template-catalog-signing-key.pem`.
+2. Record the plain key's fingerprint: `sha256sum ~/.config/luminascreen/template-catalog-signing-key.pem`.
 3. Turn the ciphertext into a QR sheet with the same `make-sheet.sh` recipe used for the support key
    (base64 → QR codes at error-correction level H, chunks prefixed `STTPL-BK-<n>-of-<N>:` → one
    self-contained HTML page carrying the plain key's sha256, the public key and the ciphertext's
@@ -81,7 +81,7 @@ A merge to `main` runs `.github/workflows/build.yml`, which checks out the curre
 catalog (`gh-pages`) as `previous/` and runs:
 
 ```bash
-node screentinker/scripts/template-catalog.js build templates -o dist --previous previous
+node luminascreen/scripts/template-catalog.js build templates -o dist --previous previous
 ```
 
 and uploads `dist/` as the workflow artifact `catalog-dist-<sha>`. A dist is:
@@ -105,7 +105,7 @@ tampered gh-pages cannot inject history.
 gh run download <run-id> -n catalog-dist-<sha> -D ~/catalog-release/dist
 cat ~/catalog-release/dist/BUILT_FROM                                    # commit + CLI ref
 git -C ~/src/templates fetch && git -C ~/src/templates checkout <sha>   # the merged commit
-git clone --depth 1 -b gh-pages https://github.com/screentinker/templates ~/catalog-release/previous
+git clone --depth 1 -b gh-pages https://github.com/luminascreen/templates ~/catalog-release/previous
 ```
 
 `sign` (step 3) is what enforces "the signed bytes are the reviewed bytes": it rebuilds every
@@ -115,7 +115,7 @@ also rebuild it and compare the **package hashes** (index bytes legitimately dif
 `generated` and `published` are timestamps):
 
 ```bash
-ST=~/src/screentinker        # clean checkout at a release tag
+ST=~/src/luminascreen        # clean checkout at a release tag
 node $ST/scripts/template-catalog.js build ~/src/templates/templates -o ~/catalog-release/rebuilt \
      --previous ~/catalog-release/previous
 node -e '
@@ -135,7 +135,7 @@ a second maintainer.
 
 ```bash
 node $ST/scripts/template-catalog.js sign ~/catalog-release/dist \
-     --key ~/.config/screentinker/template-catalog-signing-key.pem \
+     --key ~/.config/luminascreen/template-catalog-signing-key.pem \
      --source ~/src/templates/templates
 # signed N packages and index.json (key_id e800b0481ec538d0)
 ```
@@ -169,14 +169,14 @@ git add -A && git commit -s -m "catalog: serial $(jq .serial index.json)" && git
 Publish **all four** — `index.json`, `index.json.sig`, `packages/` and `thumbs/`. `packages/` and
 `thumbs/` only ever grow (file names carry the version), so copying over the old tree never removes
 a file an older index or an installed server still refers to. Then check the live
-site: `curl -s https://screentinker.github.io/templates/index.json | jq .serial` and
+site: `curl -s https://luminascreen.github.io/templates/index.json | jq .serial` and
 `node $ST/scripts/template-catalog.js verify <a wget -m copy of the site>`.
 
 ### 6. Offline bundle
 
 ```bash
 node $ST/scripts/template-catalog.js bundle ~/catalog-release/dist \
-     -o ~/catalog-release/screentinker-templates-$(date -u +%Y%m%d).zip
+     -o ~/catalog-release/luminascreen-templates-$(date -u +%Y%m%d).zip
 ```
 
 The bundle holds `index.json`, `index.json.sig` and every package (no thumbnails — offline servers
@@ -228,9 +228,9 @@ Use it when a published version is harmful, broken on screens, or infringing.
 
 Do it when a maintainer leaves, when the key's storage changes, or every few years.
 
-1. `node scripts/template-catalog.js keygen ~/.config/screentinker/template-catalog-signing-key-2.pem`
+1. `node scripts/template-catalog.js keygen ~/.config/luminascreen/template-catalog-signing-key-2.pem`
    and make its cold backup.
-2. Ship a **ScreenTinker server release** with the new public key in `OFFICIAL_PUBLIC_KEY_PEM`. When a
+2. Ship a **LuminaScreen server release** with the new public key in `OFFICIAL_PUBLIC_KEY_PEM`. When a
    server boots with a different official key it drops its cached index and resets its serial floor
    (the old index was verified under the old key).
 3. The server trusts exactly one official key, and `index.json.sig` carries one signature, so an
@@ -247,7 +247,7 @@ attacker can sign any index and any package that every server with the community
 will accept.
 
 1. **Stop**: do not sign anything else with it.
-2. **Rotate now**: new key (above), and a ScreenTinker **security release** with the new public key,
+2. **Rotate now**: new key (above), and a LuminaScreen **security release** with the new public key,
    announced as such. That is the only thing that removes the old key's power; nothing in the
    catalog can revoke the key that signs the catalog.
 3. The rollback floor works against us here: a stolen key can publish an index with a huge `serial`

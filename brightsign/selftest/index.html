@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>ScreenTinker storage self-test</title>
+<html><head><meta charset="utf-8"><title>LuminaScreen storage self-test</title>
 <style>
  html,body{margin:0;height:100%;background:#0b3d1f;color:#eaffea;
    font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center}
@@ -26,7 +26,7 @@
     document.getElementById('mods').textContent = 'BrightSign JS modules: require() unavailable';
   }
 
-  fetch('https://screentinker.com/api/status', { cache: 'no-store' })
+  fetch('https://luminascreen.ru/api/status', { cache: 'no-store' })
     .then(function (r) { document.getElementById('net').textContent = 'Server reachable: YES (HTTP ' + r.status + ')'; })
     .catch(function (e) { document.getElementById('net').textContent = 'Server reachable: NO — ' + e.message; });
 </script>

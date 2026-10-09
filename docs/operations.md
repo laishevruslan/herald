@@ -78,7 +78,7 @@ report the running version. It defaults to the newest **stable** tag, deliberate
 `-rc`/`-beta`/`-alpha` prereleases:
 
 ```bash
-cd /opt/screentinker
+cd /opt/luminascreen
 scripts/upgrade.sh              # latest stable release
 scripts/upgrade.sh v1.2.3       # or pin one
 ```
@@ -98,15 +98,15 @@ that fails partway through leaves the worst possible state: `VERSION` updated wh
 still the old release, so the service reports a version it is not running and no migrations ran.
 
 ```bash
-sudo chown -R <service-user>:<service-user> /opt/screentinker
+sudo chown -R <service-user>:<service-user> /opt/luminascreen
 ```
 
 **A service user with no home directory breaks npm.** It writes logs and a cache to `$HOME`, which
 does not exist, and installs nothing while looking like it worked:
 
 ```bash
-cd server && sudo -u <service-user> env HOME=/opt/screentinker \
-  npm_config_cache=/opt/screentinker/.npm-cache npm ci --omit=dev
+cd server && sudo -u <service-user> env HOME=/opt/luminascreen \
+  npm_config_cache=/opt/luminascreen/.npm-cache npm ci --omit=dev
 ```
 
 **Prove the checkout is complete** — a version string alone will not tell you:
@@ -123,7 +123,7 @@ git diff <tag> -- server frontend              # want: empty
 ```bash
 # in the compose directory
 cp -a docker-compose.yml docker-compose.yml.bak-pre-<version>
-sed -i 's|screentinker:<old>|screentinker:<new>|' docker-compose.yml
+sed -i 's|luminascreen:<old>|luminascreen:<new>|' docker-compose.yml
 docker compose pull && docker compose up -d
 ```
 
@@ -145,9 +145,9 @@ It is a bind-mounted *file*, so the container holds the inode. Replacing the fil
 new inode and the container keeps serving the old bytes forever, with nothing in any log to say so.
 
 ```bash
-cat /tmp/new.apk > /opt/screentinker/ScreenTinker.apk     # correct — same inode
+cat /tmp/new.apk > /opt/luminascreen/LuminaScreen.apk     # correct — same inode
 # NOT: mv, cp, install, or anything that unlinks and recreates
-stat -c %i /opt/screentinker/ScreenTinker.apk             # confirm it did not change
+stat -c %i /opt/luminascreen/LuminaScreen.apk             # confirm it did not change
 ```
 
 **2. The advertised size must match the served bytes, or displays loop.**
@@ -158,7 +158,7 @@ a display downloads, rejects, and retries — forever. After swapping, restart t
 
 ```bash
 curl -s 'http://127.0.0.1:3001/api/update/check?version=<an-older-version>'
-stat -c %s /opt/screentinker/ScreenTinker.apk    # must equal the reported apk_size
+stat -c %s /opt/luminascreen/LuminaScreen.apk    # must equal the reported apk_size
 ```
 
 > ⚠️ The query parameter is **`version`**, not `current_version`. The wrong name yields
@@ -168,8 +168,8 @@ stat -c %s /opt/screentinker/ScreenTinker.apk    # must equal the reported apk_s
 **Verify the signature after any APK swap**, and use `jarsigner`:
 
 ```bash
-jarsigner -verify ScreenTinker.apk          # want: "jar verified."
-unzip -l ScreenTinker.apk | grep META-INF   # want: a .SF and a .RSA
+jarsigner -verify LuminaScreen.apk          # want: "jar verified."
+unzip -l LuminaScreen.apk | grep META-INF   # want: a .SF and a .RSA
 ```
 
 `apksigner verify -v` misreports `v1 scheme: false` on some build-tools versions even when the JAR
@@ -215,14 +215,14 @@ Because backups are taken per deploy, rollback is mechanical:
 ```bash
 sudo -u <service-user> git checkout -f <previous-tag>
 cd server && npm ci --omit=dev        # only if dependencies changed
-cat /path/to/ScreenTinker.apk.bak > /opt/screentinker/ScreenTinker.apk
+cat /path/to/LuminaScreen.apk.bak > /opt/luminascreen/LuminaScreen.apk
 sudo systemctl restart <service>
 ```
 
 **Docker**
 ```bash
 cp -a docker-compose.yml.bak-<version> docker-compose.yml
-cat /path/to/ScreenTinker.apk.bak > /opt/screentinker/ScreenTinker.apk
+cat /path/to/LuminaScreen.apk.bak > /opt/luminascreen/LuminaScreen.apk
 docker compose up -d
 ```
 
@@ -327,7 +327,7 @@ reconnect storm and the sweep competed for the event loop.
 
 Either of these avoids it:
 
-- **Set `SCREENTINKER_DEFER_PLAYERS=1`** for the first boot. Players are refused with a 503 (they
+- **Set `LUMINASCREEN_DEFER_PLAYERS=1`** for the first boot. Players are refused with a 503 (they
   back off and retry on their own) until the sweep reports idle, while `/api/status` keeps
   answering 200 and the dashboard stays usable so you can watch it happen. This is on by default
   for the first boot after a migration that touched `plays` (and only when there is actually a

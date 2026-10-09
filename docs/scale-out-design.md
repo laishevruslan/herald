@@ -1,6 +1,6 @@
 # Scale-out — Phase B: design (schema and interfaces, no behaviour)
 
-One logical ScreenTinker deployment as **one writer, many readers**. Follows
+One logical LuminaScreen deployment as **one writer, many readers**. Follows
 [`scale-out-inventory.md`](scale-out-inventory.md) (Phase A) and is written in the shape of
 [`mesh-phase0-design.md`](mesh-phase0-design.md): decisions, why, what they cost, and the judgement
 calls that deserve a second opinion. Nothing here runs until Phase C, and Phase C ships each piece

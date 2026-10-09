@@ -101,7 +101,7 @@ function freshCatalogState() {
 
 function serveFiles(files) {
   catalog.setFetcher(async (url) => {
-    const rel = url.replace('https://screentinker.github.io/templates/', '');
+    const rel = url.replace('https://luminascreen.github.io/templates/', '');
     if (files[rel]) return files[rel];
     throw new Error('404 ' + rel);
   });
@@ -401,19 +401,19 @@ test('[SAFE] index signature file: other key / other catalog / package-domain si
 });
 
 test('[SAFE] resolveUrl: backslashes, tabs, %2e%2e, userinfo, uppercase scheme and fullwidth dots never leave the catalog base', () => {
-  const base = 'https://screentinker.github.io/templates/';
+  const base = 'https://luminascreen.github.io/templates/';
   const attacks = ['\\\\evil.example\\x', '\t//evil.example/x', '\n//evil.example/x', '%2e%2e/%2e%2e/x', 'packages/%2E%2E/%2e%2E/other/x',
     '.%2e/x', '%2e./x', 'HTTPS://evil.example/x', '/\\evil.example/x', 'https:evil.example/x'];
   for (const rel of attacks) {
     let u = null;
     try { u = catalog.resolveUrl(base, rel); } catch { continue; }
     const p = new URL(u);
-    assert.equal(p.origin, 'https://screentinker.github.io', rel);
+    assert.equal(p.origin, 'https://luminascreen.github.io', rel);
     assert.ok(p.pathname.startsWith('/templates/'), `${JSON.stringify(rel)} -> ${u}`);
   }
   for (const rel of ['@evil.example/x', 'packages/\uFF0E\uFF0E/\uFF0E\uFF0E/x']) {
     const p = new URL(catalog.resolveUrl(base, rel));
-    assert.equal(p.origin, 'https://screentinker.github.io');
+    assert.equal(p.origin, 'https://luminascreen.github.io');
     assert.ok(p.pathname.startsWith('/templates/'));
   }
   // validateIndex also drops the obviously hostile ones before resolveUrl ever runs.

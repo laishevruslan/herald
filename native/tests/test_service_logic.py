@@ -2,12 +2,12 @@
 LivenessWatchdogTest and OtaThrottleTest."""
 import pytest
 
-from screentinker_native.logic import cache_validation as cv
-from screentinker_native.logic import connection_guard as cg
-from screentinker_native.logic import liveness_watchdog as lw
-from screentinker_native.logic import ota_throttle as ota
-from screentinker_native.logic import refresh_throttle as rt
-from screentinker_native.logic.ota_throttle import OtaState
+from luminascreen_native.logic import cache_validation as cv
+from luminascreen_native.logic import connection_guard as cg
+from luminascreen_native.logic import liveness_watchdog as lw
+from luminascreen_native.logic import ota_throttle as ota
+from luminascreen_native.logic import refresh_throttle as rt
+from luminascreen_native.logic.ota_throttle import OtaState
 
 # ================= CacheValidation =================
 

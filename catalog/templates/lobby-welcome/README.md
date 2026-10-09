@@ -3,7 +3,7 @@
 A calm welcome screen for a reception, lobby or meeting-room door: a logo, a headline and a line
 of detail on the left, and a live clock and date on a tinted panel on the right.
 
-**Kind:** slide (declarative — no code runs). Works on every ScreenTinker player that shows slides.
+**Kind:** slide (declarative — no code runs). Works on every LuminaScreen player that shows slides.
 
 ![preview](thumbnail.png)
 

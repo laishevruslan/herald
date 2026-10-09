@@ -52,9 +52,9 @@ test('the installed nodemailer accepts the options and messages we build', async
 
     // The object `from` form, used when a display name overrides the configured one.
     await transporter.sendMail({
-      from: { name: 'ScreenTinker', address: 'noreply@example.com' },
+      from: { name: 'LuminaScreen', address: 'noreply@example.com' },
       to: 'user@x.com',
-      subject: '[ScreenTinker] Hello',
+      subject: '[LuminaScreen] Hello',
       html: '<p>hi there</p>',
       text: 'hi there',
     });
@@ -63,13 +63,13 @@ test('the installed nodemailer accepts the options and messages we build', async
     assert.ok(seen.commands.some(c => /^MAIL FROM:<noreply@example\.com>/i.test(c)),
       'envelope sender is the configured address, not the display name');
     assert.ok(seen.commands.some(c => /^RCPT TO:<user@x\.com>/i.test(c)), 'envelope recipient');
-    assert.match(seen.data, /Subject: \[ScreenTinker\] Hello/, 'subject and its prefix survive encoding');
-    assert.match(seen.data, /From: ScreenTinker <noreply@example\.com>/, 'display-name form still renders');
+    assert.match(seen.data, /Subject: \[LuminaScreen\] Hello/, 'subject and its prefix survive encoding');
+    assert.match(seen.data, /From: LuminaScreen <noreply@example\.com>/, 'display-name form still renders');
     assert.match(seen.data, /Content-Type: multipart\/alternative/, 'text and html sent as alternatives');
 
     // The string `from` form, used when there is no override.
     await transporter.sendMail({
-      from: 'ScreenTinker <noreply@example.com>', to: 'user@x.com', subject: 'Welcome', html: '<p>x</p>',
+      from: 'LuminaScreen <noreply@example.com>', to: 'user@x.com', subject: 'Welcome', html: '<p>x</p>',
     });
     transporter.close();
   } finally {

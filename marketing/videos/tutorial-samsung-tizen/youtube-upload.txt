@@ -1,7 +1,7 @@
 ========================================================================
 YOUTUBE UPLOAD PACKAGE
 Video: Free Digital Signage on a Samsung TV (No App, Just a URL)
-File:  screentinker-samsung.mp4  (2:14 · 1080p30)
+File:  luminascreen-samsung.mp4  (2:14 · 1080p30)
 ========================================================================
 
 
@@ -16,7 +16,7 @@ Free Digital Signage on a Samsung TV (No App, No Box, No Monthly Fees)
 ---------------------------- DESCRIPTION -------------------------------
 
 Turn a Samsung TV into a fully managed digital signage display — with no
-extra box, no app to install, and no monthly fees. ScreenTinker is open
+extra box, no app to install, and no monthly fees. LuminaScreen is open
 source and self-hostable, so there are no per-screen fees and your content
 stays on your own server.
 
@@ -41,9 +41,9 @@ Samsung TVs with a built-in web browser. No MagicINFO, no license.
 1:58  Get started
 
 🔗 Links
-• Try it free (hosted): https://screentinker.com
-• Self-hosting guide: https://screentinker.com/guides/self-hosted-digital-signage.html
-• Source (MIT licensed) — a star helps! https://github.com/screentinker/screentinker
+• Try it free (hosted): https://luminascreen.ru
+• Self-hosting guide: https://luminascreen.ru/guides/self-hosted-digital-signage.html
+• Source (MIT licensed) — a star helps! https://github.com/luminascreen/luminascreen
 • Community & support (Discord): https://discord.gg/utTdsrqq4Z
 
 Free plan supports 1 device. Pro trial unlocks 15 devices for 14 days — no
@@ -58,7 +58,7 @@ Open source · Self-hostable · No per-screen fees · Your data on your hardware
 digital signage, samsung tv digital signage, samsung signage, tizen signage,
 tizen digital signage, url launcher, sssp signage, samsung smart signage,
 free digital signage, open source digital signage, self hosted digital signage,
-digital signage software, screentinker, yodeck alternative, screencloud alternative,
+digital signage software, luminascreen, yodeck alternative, screencloud alternative,
 optisigns alternative, magicinfo alternative, menu board software, kiosk software,
 digital menu board, no app digital signage, self hosted, open source
 

@@ -1,4 +1,4 @@
-// UPTIME 3036 — an original raycasting shooter for ScreenTinker. MIT licence (see LICENSE).
+// UPTIME 3036 — an original raycasting shooter for LuminaScreen. MIT licence (see LICENSE).
 //
 // Everything here is generated in code: wall textures, drones, pickups and the station itself.
 // The world is rendered into a small pixel buffer (#view) and scaled up; the HUD is drawn crisp on
@@ -905,11 +905,11 @@ ST.ready(function () {
 
   /* ============================================================== trailer intro */
 
-  // A cold open, like a film trailer: the ScreenTinker mark powers up, "presents", then the title
+  // A cold open, like a film trailer: the LuminaScreen mark powers up, "presents", then the title
   // smashes in. Drawn entirely in code (no image files) so it is crisp at any resolution. It plays
   // on load and every time the game goes back to attract mode; any key or click skips straight in.
   var INTRO_MS = 12200;
-  var BRAND = [59, 130, 246];   // ScreenTinker blue
+  var BRAND = [59, 130, 246];   // LuminaScreen blue
   var introStart = 0;
   var noiseRng = rng(42);
 
@@ -926,7 +926,7 @@ ST.ready(function () {
     ctx.closePath();
   }
 
-  // The ScreenTinker mark, from the app icon's geometry (a 512 box): screen, stand, play button.
+  // The LuminaScreen mark, from the app icon's geometry (a 512 box): screen, stand, play button.
   function drawMark(cx, cy, size, draw, play, alpha, jitter) {
     var k = size / 512;
     var ctx = hctx;
@@ -1022,7 +1022,7 @@ ST.ready(function () {
         hctx.fillRect(0, gy - u * 4, HW, u * 8);
       }
       // Wordmark types in, then "presents".
-      var word = 'SCREENTINKER';
+      var word = 'LUMINASCREEN';
       var shown = Math.floor(seg(t, 2.3, 3.1) * word.length);
       var wa = 1 - out;
       if (shown > 0) glowText(word.slice(0, shown) + (shown < word.length && ((now / 90) | 0) % 2 ? '_' : ''), cx, cy + size * 0.5, Math.min(u * 8, HW / 12), BRAND, wa, u * 1.2, 800);

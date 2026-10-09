@@ -9,11 +9,11 @@
 # a software OMX encoder that libwebrtc excludes) cannot publish to stock go2rtc. This image adds
 # VP8/VP9 to the receive codec set so those publishers work too. See ./vp8-vp9-codecs.patch.
 #
-# Build:  docker build -t screentinker/go2rtc-vp8:1.9.14 docker/go2rtc-vp8
+# Build:  docker build -t luminascreen/go2rtc-vp8:1.9.14 docker/go2rtc-vp8
 # Use it in place of `alexxit/go2rtc:latest` in your compose/live-video setup.
 #
 # NOTE: a VP8/VP9 producer can only be consumed by go2rtc's WebRTC consumers (which is exactly what
-# ScreenTinker's dashboard live view uses). go2rtc's RTSP/MP4/HLS/MSE outputs still require H264, so
+# LuminaScreen's dashboard live view uses). go2rtc's RTSP/MP4/HLS/MSE outputs still require H264, so
 # they will not see a VP8-only producer. If you rely on those, keep publishers on H264.
 
 ARG GO2RTC_VERSION=v1.9.14

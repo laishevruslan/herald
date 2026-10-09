@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
-  title: ScreenTinker Public API
+  title: LuminaScreen Public API
   version: 2.4.3
   description: |
-    Public, token-scoped REST API for ScreenTinker digital signage.
+    Public, token-scoped REST API for LuminaScreen digital signage.
 
     ## Authentication
     Every endpoint (except the two unauthenticated device-render endpoints) accepts a
@@ -345,7 +345,7 @@ components:
 
             Special value `"permission"` means the device is on Wi-Fi but the operating system
             withheld the name — on Android 10+ reading the SSID requires a location permission
-            that ScreenTinker only asks for if an operator opts in. Treat `"permission"` as
+            that LuminaScreen only asks for if an operator opts in. Treat `"permission"` as
             "connected, name unavailable", not as a network literally called that.
         wifi_rssi:
           type: [integer, "null"]
@@ -1953,7 +1953,7 @@ paths:
       description: |
         Which transports a player accepts (`accept_http`, `accept_udp`), which ports it binds, and
         the multicast group it joins. Ports must be 1024-65534 — below 1024 needs root on every
-        platform ScreenTinker runs on.
+        platform LuminaScreen runs on.
       x-required-scope: full
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }

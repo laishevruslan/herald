@@ -5,7 +5,7 @@ This is a decision record, not a plan. It exists so the question is answered onc
 ## The wall
 
 **tvOS ships no web view.** `WKWebView` is not in the public tvOS SDK and Apple's Human Interface
-Guidelines state plainly that web views are not supported on tvOS. Every other ScreenTinker player is
+Guidelines state plainly that web views are not supported on tvOS. Every other LuminaScreen player is
 `server/player/index.html` inside a shell — a WebView on Android, Fire TV and Vega, an iframe on webOS,
 a `.wgt` on Tizen, an `roHtmlWidget` on BrightSign, a kiosk browser on Pi, Windows and ChromeOS. None
 of that exists here.

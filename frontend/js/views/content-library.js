@@ -17,7 +17,7 @@ import {
 /* The mime lib/html-bundle.js stamps on an uploaded HTML bundle. Kept as a constant rather than
  * spelled out at each site: it is compared in three places here, and a typo in one of them is a
  * card that renders an <img> pointed at a zip. */
-const BUNDLE_MIME = 'application/vnd.screentinker.bundle+zip';
+const BUNDLE_MIME = 'application/vnd.luminascreen.bundle+zip';
 
 // #216: languages offered in the caption/subtitle pickers. Codes are BCP-47 primary tags —
 // enough for signage; extend as needed.
@@ -257,7 +257,7 @@ export function render(container) {
   });
 
   // IPTV: add a live HLS stream. The screen opens the URL itself (it may be a LAN
-  // address); ScreenTinker never pulls the video, so the private-URL error from the
+  // address); LuminaScreen never pulls the video, so the private-URL error from the
   // server-fetched remote path never applies here.
   document.getElementById('addHlsBtn').addEventListener('click', async () => {
     const url = document.getElementById('hlsUrlInput').value.trim();

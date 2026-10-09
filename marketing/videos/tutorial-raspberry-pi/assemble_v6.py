@@ -34,5 +34,5 @@ for k in range(1,10):
 vf.append(f"{pv}fade=t=in:st=0:d=0.6,fade=t=out:st={round(L-0.9,3)}:d=0.9[vout]")
 subprocess.run(["ffmpeg","-y","-loglevel","error", *inputs,"-filter_complex",";".join(vf+af),
     "-map","[vout]","-map",pa,"-c:v","libx264","-preset","medium","-crf","20","-pix_fmt","yuv420p",
-    "-c:a","aac","-b:a","192k","-movflags","+faststart","screentinker-pi-tutorial-v6.mp4"],check=True)
+    "-c:a","aac","-b:a","192k","-movflags","+faststart","luminascreen-pi-tutorial-v6.mp4"],check=True)
 print(f"\nDONE ~{L:.1f}s")

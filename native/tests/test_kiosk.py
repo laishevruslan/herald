@@ -7,7 +7,7 @@ import re
 
 import pytest
 
-from screentinker_native.logic import kiosk as K
+from luminascreen_native.logic import kiosk as K
 
 SHARED_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "shared")
 

@@ -1,6 +1,6 @@
 # Raspberry Pi native player — server contract
 
-The native Pi player (`native/`, Python + PySide6, shipped as `screentinker-pi_<ver>_all.deb`) talks to the
+The native Pi player (`native/`, Python + PySide6, shipped as `luminascreen-pi_<ver>_all.deb`) talks to the
 server exactly like the Android APK: Socket.IO on `<server>/device`, `device:register`, heartbeats,
 `device:command`. This page records only what is **new or different** for it. It is not the
 Chromium-kiosk install that `scripts/raspberry-pi-setup.sh` sets up — that one is a browser and
@@ -10,14 +10,14 @@ Install and run modes (`scripts/raspberry-pi-setup.sh --native URL [--native-mod
 
 | mode | chosen when | runs as | log |
 |---|---|---|---|
-| `lite` | no display manager boots (`display-manager.service` absent, or default target not `graphical.target`) | `screentinker-pi.service`, user `screentinker`, eglfs/KMS on the display; `getty@tty1` disabled | `journalctl -u screentinker-pi` |
-| `desktop` | a display manager is enabled **and** the default target is `graphical.target` | `/etc/xdg/autostart` in the login session of the lightdm autologin user (else the sudo user); the service is disabled | `~/.local/state/screentinker-pi/player.log` |
+| `lite` | no display manager boots (`display-manager.service` absent, or default target not `graphical.target`) | `luminascreen-pi.service`, user `luminascreen`, eglfs/KMS on the display; `getty@tty1` disabled | `journalctl -u luminascreen-pi` |
+| `desktop` | a display manager is enabled **and** the default target is `graphical.target` | `/etc/xdg/autostart` in the login session of the lightdm autologin user (else the sudo user); the service is disabled | `~/.local/state/luminascreen-pi/player.log` |
 
 ⚠️ The mode is NOT taken from installed packages: the Chromium-kiosk install puts `xserver-xorg` on
 Lite, and reading that as "desktop" left the service disabled while the kiosk's X server held the
 screen (`Could not set DRM mode … Permission denied`). The native install removes the kiosk's
-launchers (`screentinker-kiosk.service`, and `~/.config/autostart/screentinker.desktop` when it runs
-`screentinker-kiosk.sh`); the All-in-One server unit is left alone.
+launchers (`luminascreen-kiosk.service`, and `~/.config/autostart/luminascreen.desktop` when it runs
+`luminascreen-kiosk.sh`); the All-in-One server unit is left alone.
 
 Anything marked ❓ is a question for the device side.
 
@@ -41,7 +41,7 @@ offline cache. It grants **no** `system.shell`, `system.pty`, `system.kiosk`, `s
 `playback.rtsp`, `net.http_request`, `display.power_schedule`, `remote.set_server_url`). A Pi that can
 do those must declare them.
 
-The server tests read `native/screentinker_native/capabilities.py` when present (skipped otherwise):
+The server tests read `native/luminascreen_native/capabilities.py` when present (skipped otherwise):
 `CAPABILITIES_ALWAYS = [ '...', ... ]` must contain only names in `CAPABILITIES`
 (`server/lib/player-capabilities.js`), and every `BASELINE.linux` entry must be named somewhere in
 that file **or** in `platform/linux/*.py` (where the privilege/hardware-dependent names —
@@ -118,7 +118,7 @@ GET /api/pi/update/check?version=<current>&device_id=<id>[&forced=1]
 GET /download/pi   → the .deb (Content-Disposition carries the real filename; X-Package-Sha256, X-Package-Version)
 ```
 
-- Package source: the newest `screentinker-pi_<ver>_all.deb` in `DATA_DIR`, else `<repo>/native/dist/`
+- Package source: the newest `luminascreen-pi_<ver>_all.deb` in `DATA_DIR`, else `<repo>/native/dist/`
   (first directory with any match wins). `<ver>` is `X.Y.Z` or `X.Y.Z~pre` / `X.Y.Z-pre`; `~` is
   normalised to `-` in `latest_version`.
 - ⚠️ A release always beats a prerelease in the same directory (there is no Pi beta channel yet), so
@@ -148,13 +148,13 @@ GET /download/pi   → the .deb (Content-Disposition carries the real filename; 
 ## Self-update trust model (st-helper `install-deb`)
 
 The player downloads the .deb (size + sha256 checked against the update check), but the root helper
-does not trust that: it copies the file to a root-only directory, and installs a `screentinker-pi`
+does not trust that: it copies the file to a root-only directory, and installs a `luminascreen-pi`
 package only if its sha256 equals what `GET <server_url>/api/pi/update/check?version=0.0.0&forced=1`
-returns, with `server_url` read from the ROOT-owned `/etc/screentinker-pi/config.json` (written by
-`screentinker-pi setup`). The package name alone proves nothing — the player user can build a .deb
-called screentinker-pi. Any other package still needs `allow_package_install`. The check route answers
+returns, with `server_url` read from the ROOT-owned `/etc/luminascreen-pi/config.json` (written by
+`luminascreen-pi setup`). The package name alone proves nothing — the player user can build a .deb
+called luminascreen-pi. Any other package still needs `allow_package_install`. The check route answers
 a device-less lookup for this (`anonymousLookup` in routes/pi-update.js), never charged to the OTA
 breaker. A package held by `block_uninstall` is un-held for the upgrade and held again afterwards.
 
 ⚠️ After `set_server_url`, the helper still verifies against the server in `/etc` (by design — the
-player's own state is not trusted); re-run `screentinker-pi setup <new-url>` on panels that move.
+player's own state is not trusted); re-run `luminascreen-pi setup <new-url>` on panels that move.

@@ -1,7 +1,7 @@
 ========================================================================
 YOUTUBE UPLOAD PACKAGE
 Video: Free Alternative to Yodeck, ScreenCloud & OptiSigns (Open Source)
-File:  screentinker-alternative.mp4  (~2:31 · 1080p30)
+File:  luminascreen-alternative.mp4  (~2:31 · 1080p30)
 ========================================================================
 
 
@@ -16,12 +16,12 @@ Stop Paying Per Screen — Free Open-Source Alternative to Yodeck & OptiSigns
 ---------------------------- DESCRIPTION -------------------------------
 
 Yodeck, ScreenCloud, and OptiSigns are all solid digital signage products —
-and they all charge you per screen, every month. ScreenTinker is a free,
+and they all charge you per screen, every month. LuminaScreen is a free,
 open-source, self-hostable alternative that does the same job: playlists,
 scheduling, multi-zone layouts, synchronized video walls, widgets, and
 proof-of-play — on hardware you already own.
 
-Self hosting ScreenTinker is completely free, on any number of screens — you
+Self hosting LuminaScreen is completely free, on any number of screens — you
 only pay for the server. A hosted plan exists too, at a flat $99/mo for 15
 devices, if you would rather not run one.
 
@@ -44,17 +44,17 @@ per-screen cost at scale, data sovereignty, and no vendor lock-in.
 
 💲 Pricing shown is each vendor's publicly listed rate as of mid-2026 and can
 change — check current pricing before deciding. Full sourced comparison:
-• vs Yodeck:      https://screentinker.com/compare/yodeck-alternative.html
-• vs ScreenCloud: https://screentinker.com/compare/screencloud-alternative.html
-• vs OptiSigns:   https://screentinker.com/compare/optisigns-alternative.html
+• vs Yodeck:      https://luminascreen.ru/compare/yodeck-alternative.html
+• vs ScreenCloud: https://luminascreen.ru/compare/screencloud-alternative.html
+• vs OptiSigns:   https://luminascreen.ru/compare/optisigns-alternative.html
 
 🔗 Links
-• Source (MIT licensed) — a star helps! https://github.com/screentinker/screentinker
-• Try it free (hosted): https://screentinker.com
-• Self-hosting guide: https://screentinker.com/guides/self-hosted-digital-signage.html
+• Source (MIT licensed) — a star helps! https://github.com/luminascreen/luminascreen
+• Try it free (hosted): https://luminascreen.ru
+• Self-hosting guide: https://luminascreen.ru/guides/self-hosted-digital-signage.html
 • Community & support (Discord): https://discord.gg/utTdsrqq4Z
 
-ScreenTinker self hosted is free — for any number of screens. You only pay for
+LuminaScreen self hosted is free — for any number of screens. You only pay for
 the server it runs on, which starts around $5/mo. If you would rather not run
 one, the hosted plan is a flat $99/mo for 15 devices (free hosted plan = 1).
 
@@ -68,7 +68,7 @@ yodeck alternative, screencloud alternative, optisigns alternative,
 free digital signage, open source digital signage, self hosted digital signage,
 digital signage software, digital signage comparison, yodeck vs, screencloud vs,
 optisigns vs, xibo alternative, magicinfo alternative, cheap digital signage,
-digital signage pricing, screentinker, per screen pricing, signage without fees,
+digital signage pricing, luminascreen, per screen pricing, signage without fees,
 menu board software, kiosk software, self hosted, open source
 
 
@@ -77,7 +77,7 @@ menu board software, kiosk software, self hosted, open source
 • Commercial-intent / comparison keywords — highest-value of the batch for
   driving trials + GitHub stars. Ties directly to the compare/ pages.
 • FAIRNESS: no competitor logos or screenshots are shown (names as text only);
-  every price/feature claim is drawn from ScreenTinker's own published compare
+  every price/feature claim is drawn from LuminaScreen's own published compare
   pages ("publicly listed pricing, mid-2026"). Scene 06 carries an on-screen
   disclaimer; scene 08 credits where each paid tool genuinely wins.
 • No burned-in captions — enable YouTube auto-captions.

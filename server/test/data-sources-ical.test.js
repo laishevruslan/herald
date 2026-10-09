@@ -10,7 +10,7 @@ const { renderSlideHtml, interpolateDataSources } = require('../lib/slide-render
 
 const SAMPLE_ICS = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//ScreenTinker Test//DE
+PRODID:-//LuminaScreen Test//DE
 CALSCALE:GREGORIAN
 BEGIN:VEVENT
 UID:evt-today-1
@@ -40,7 +40,7 @@ END:VCALENDAR`;
 
 const RECURRING_ICS = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//ScreenTinker Test//DE
+PRODID:-//LuminaScreen Test//DE
 BEGIN:VEVENT
 UID:evt-daily-standup
 SUMMARY:Daily Standup
@@ -318,7 +318,7 @@ test('data-source values are HTML-escaped when rendered into slide HTML (XSS inv
 test('iCal resolver honours EXDATE for recurring RRULE events', async () => {
   const EXDATE_ICS = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//ScreenTinker Test//DE
+PRODID:-//LuminaScreen Test//DE
 BEGIN:VEVENT
 UID:evt-daily-standup-exdate
 SUMMARY:Daily Standup
@@ -356,7 +356,7 @@ test('background poller functions export cleanly', () => {
 test('iCal resolver honours RECURRENCE-ID time overrides', async () => {
   const RECURRENCE_OVERRIDE_ICS = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//ScreenTinker Test//DE
+PRODID:-//LuminaScreen Test//DE
 BEGIN:VEVENT
 UID:evt-recurring-override
 SUMMARY:Team Meeting
@@ -392,7 +392,7 @@ END:VCALENDAR`;
 test('all-day events format consistently without shifting days across timezones', async () => {
   const ALLDAY_ICS = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//ScreenTinker Test//DE
+PRODID:-//LuminaScreen Test//DE
 BEGIN:VEVENT
 UID:evt-allday-holiday
 SUMMARY:Tag der Arbeit
@@ -412,7 +412,7 @@ END:VCALENDAR`;
 test('status_detail reports "Ganztägig frei" when the next meeting is on a subsequent day', async () => {
   const MONDAY_ICS = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//ScreenTinker Test//DE
+PRODID:-//LuminaScreen Test//DE
 BEGIN:VEVENT
 UID:evt-monday-standup
 SUMMARY:Monday Standup
@@ -432,7 +432,7 @@ END:VCALENDAR`;
 test('iCal resolver bounds high-frequency RRULE series (e.g. FREQ=MINUTELY)', async () => {
   const HIGH_FREQ_ICS = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//ScreenTinker Test//DE
+PRODID:-//LuminaScreen Test//DE
 BEGIN:VEVENT
 UID:evt-high-freq
 SUMMARY:Minutely Pulse
@@ -584,7 +584,7 @@ test('interpolateDataSources handles object values safely via JSON.stringify wit
 test('all-day events in America/New_York timezone do not drop events_today_count or emit Free until midnight', async () => {
   const ALL_DAY_ICS = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//ScreenTinker Test//EN
+PRODID:-//LuminaScreen Test//EN
 BEGIN:VEVENT
 UID:evt-allday-recurr
 SUMMARY:All-Day Planning
@@ -684,7 +684,7 @@ test('data-sources routes reject basic-auth URLs, invalid timezones, and missing
 test('all-day events evaluated across multiple timezones (Europe/Berlin, America/Los_Angeles, Asia/Tokyo, UTC)', async () => {
   const ALL_DAY_ICS = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//ScreenTinker Test//EN
+PRODID:-//LuminaScreen Test//EN
 BEGIN:VEVENT
 UID:evt-allday-tz-matrix
 SUMMARY:Team Offsite
@@ -726,7 +726,7 @@ test('parseSafeUrl trims whitespace, normalizes webcal, and rejects blocked targ
 test('lookahead_days boundary: lookahead_days=1 lists only today and tomorrow', async () => {
   const THREE_DAY_ICS = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//ScreenTinker Test//EN
+PRODID:-//LuminaScreen Test//EN
 BEGIN:VEVENT
 UID:evt-day0
 SUMMARY:Today Event

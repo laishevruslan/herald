@@ -87,7 +87,7 @@ Item {
         visible: menu.stageNo === 2
         anchors.centerIn: parent
         spacing: 12
-        Text { color: "white"; font.pixelSize: 30; text: "ScreenTinker settings"; anchors.horizontalCenter: parent.horizontalCenter }
+        Text { color: "white"; font.pixelSize: 30; text: "LuminaScreen settings"; anchors.horizontalCenter: parent.horizontalCenter }
         Text { color: "#c7cede"; font.pixelSize: 18; text: stage.footer; anchors.horizontalCenter: parent.horizontalCenter }
         Repeater {
             model: stage.menuActions

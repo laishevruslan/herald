@@ -367,7 +367,7 @@
     ]
    },
    "fields": {
-    "t0": "SCREENTINKER  ·  2.1",
+    "t0": "LUMINASCREEN  ·  2.1",
     "t1": "2.1",
     "t2": "Everything new",
     "t3": "since 2.0",
@@ -4652,15 +4652,15 @@
     ]
    },
    "fields": {
-    "t0": "ScreenTinker 2.1",
+    "t0": "LuminaScreen 2.1",
     "t1": "HOSTED",
     "t2": "We run it for you",
     "t3": "Fully managed. Sign up and start putting things on screens — no server to keep.",
-    "t4": "screentinker.com",
+    "t4": "luminascreen.ru",
     "t5": "SELF-HOST",
     "t6": "Run it yourself",
     "t7": "Open source, MIT. Upgrading is a pull and a restart, and your screens keep playing.",
-    "t8": "github.com/screentinker/screentinker",
+    "t8": "github.com/luminascreen/luminascreen",
     "t9": "A star on the repository genuinely helps."
    }
   }
@@ -4844,9 +4844,9 @@
    },
    "fields": {
     "t0": "DOGFOOD",
-    "t1": "Built & tested in ScreenTinker",
-    "t2": "alpha.screentinker.com/player",
-    "t3": "Every slide here is a real ScreenTinker slide, playing live on a ScreenTinker screen."
+    "t1": "Built & tested in LuminaScreen",
+    "t2": "alpha.luminascreen.ru/player",
+    "t3": "Every slide here is a real LuminaScreen slide, playing live on a LuminaScreen screen."
    }
   }
  }

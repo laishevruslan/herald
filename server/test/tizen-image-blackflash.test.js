@@ -32,7 +32,7 @@
 // ---------------------------------------------------------------------------------------------
 // MANUAL ON-PANEL SIGN-OFF (Samsung OM55B / SSSP — headless proves the DOM invariant, but real
 // decode-HW timing needs the panel):
-//   1. Build + sideload the new .wgt onto the OM55B (Tizen CLI 6.1, ScreenTinker signing profile).
+//   1. Build + sideload the new .wgt onto the OM55B (Tizen CLI 6.1, LuminaScreen signing profile).
 //   2. Assign a playlist of SEVERAL LARGE PNG stills (e.g. 4-6 full-res 1080p+ PNGs, short dwell
 //      ~5-8s each so transitions come often).
 //   3. Watch 10+ consecutive image->image transitions closely for ANY black/blank frame between

@@ -243,7 +243,7 @@ export async function render(container) {
       <div id="whiteLabelForm">
         <p style="color:var(--text-muted);font-size:12px;margin-bottom:16px">${t('settings.white_label_desc')}</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="form-group"><label>${t('settings.brand_name')}</label><input type="text" id="wlBrandName" class="input" placeholder="ScreenTinker"></div>
+          <div class="form-group"><label>${t('settings.brand_name')}</label><input type="text" id="wlBrandName" class="input" placeholder="LuminaScreen"></div>
           <div class="form-group"><label>${t('settings.logo_url')}</label><input type="text" id="wlLogoUrl" class="input" placeholder="https://..."></div>
           <div class="form-group"><label>${t('settings.primary_color')}</label><input type="color" id="wlPrimaryColor" value="#3B82F6" style="width:100%;height:36px;border:none;cursor:pointer;border-radius:var(--radius)"></div>
           <div class="form-group"><label>${t('settings.bg_color')}</label><input type="color" id="wlBgColor" value="#111827" style="width:100%;height:36px;border:none;cursor:pointer;border-radius:var(--radius)"></div>
@@ -328,7 +328,7 @@ export async function render(container) {
     <div class="settings-section">
       <h3>${t('settings.about')}</h3>
       <div style="color:var(--text-secondary);font-size:13px">
-        <p><strong>${esc(window.__ST_BRAND_NAME || 'ScreenTinker')}</strong>${appVersion ? ` v${esc(appVersion)}` : ''}</p>
+        <p><strong>${esc(window.__ST_BRAND_NAME || 'LuminaScreen')}</strong>${appVersion ? ` v${esc(appVersion)}` : ''}</p>
         <p style="margin-top:4px">${t('settings.about_tagline')}</p>
         <!-- The permanent home for the release notes the dashboard panel links to. Populated
              after render because it is a fetch, and About must not wait on one. -->
@@ -379,7 +379,7 @@ export async function render(container) {
         : '<p style="font-size:12px;color:var(--text-muted);margin-top:12px">Online purchase is not set up on this server — contact your administrator to add credits.</p>')
       : '<p style="font-size:12px;color:var(--text-muted);margin-top:12px">An organization admin can buy more credits.</p>';
     body.innerHTML = `${banner}
-      <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px">ScreenTinker-hosted image generation. You choose the model for every image and pay 2× that model's provider cost (1 credit = $0.01). Each month includes credits worth 10% of your screen bill; included credits expire at month end, purchased credits never do. Your own AI endpoint never uses credits.</p>
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px">LuminaScreen-hosted image generation. You choose the model for every image and pay 2× that model's provider cost (1 credit = $0.01). Each month includes credits worth 10% of your screen bill; included credits expire at month end, purchased credits never do. Your own AI endpoint never uses credits.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:12px">
         <div><div style="font-size:11px;color:var(--text-muted)">Balance</div><div style="font-size:20px;font-weight:600">${esc(String(st.balance))}</div></div>
         <div><div style="font-size:11px;color:var(--text-muted)">Included remaining (${esc(st.period)})</div><div style="font-size:20px;font-weight:600">${esc(String(st.included_remaining))} <span style="font-size:12px;font-weight:400;color:var(--text-muted)">of ${esc(String(st.included_this_month))}</span></div></div>
@@ -497,12 +497,12 @@ export async function render(container) {
       let data;
       if (isZip) {
         // For ZIP, show basic info and skip preview parsing
-        data = { format: 'screentinker-export-v1', _isZip: true };
+        data = { format: 'luminascreen-export-v1', _isZip: true };
         statusEl.innerHTML = `${t('settings.import.zip_detected', { name: esc(file.name), size: (file.size / 1048576).toFixed(1) })}<br><br><button class="btn btn-primary btn-sm" id="confirmImportBtn">${t('settings.import.confirm')}</button> <button class="btn btn-secondary btn-sm" id="cancelImportBtn">${t('common.cancel')}</button>`;
       } else {
         const text = await file.text();
         data = JSON.parse(text);
-        if (!data.format || !data.format.startsWith('screentinker-export')) {
+        if (!data.format || !data.format.startsWith('luminascreen-export')) {
           statusEl.style.color = 'var(--danger)';
           statusEl.textContent = t('settings.import.invalid_file');
           return;
@@ -750,7 +750,7 @@ export async function render(container) {
 
     box.innerHTML = `
       <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px">
-        ScreenTinker can't see how widely it's deployed, because most installs are private by
+        LuminaScreen can't see how widely it's deployed, because most installs are private by
         design. Sharing lets us say how many screens are running — nothing more.
       </p>
       <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
@@ -963,7 +963,7 @@ export async function render(container) {
         const blob = new Blob([text + '\n'], { type: 'text/plain' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'screentinker-recovery-codes.txt';
+        a.download = 'luminascreen-recovery-codes.txt';
         a.click();
         URL.revokeObjectURL(a.href);
       });
@@ -1605,17 +1605,17 @@ function openWidgetSandboxDisableConfirmModal(confirmationPhrase) {
         <div class="modal-body" style="white-space:pre-wrap;line-height:1.45">
 Widget HTML currently runs in a null-origin sandbox. That means widget code
 cannot read your session, your cookies, or anything else stored by
-ScreenTinker in this browser.
+LuminaScreen in this browser.
 
 Turning this off re-enables allow-same-origin. Widget HTML will then run with
-the same privileges as ScreenTinker itself. Any script in any widget in this
+the same privileges as LuminaScreen itself. Any script in any widget in this
 organization will be able to:
 
   - Read the device token of every display that shows the widget, and act as
-    that display against the ScreenTinker API
+    that display against the LuminaScreen API
   - Read the session token of any logged-in user who opens a display in their
     own browser
-  - Call the ScreenTinker API as that user, including admin actions
+  - Call the LuminaScreen API as that user, including admin actions
   - Read and modify content on every other display in this organization
   - Silently exfiltrate all of the above to any server it likes
 

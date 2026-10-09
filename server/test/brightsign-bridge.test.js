@@ -136,7 +136,7 @@ function load({ search = '', mods = null, ua = 'Mozilla/5.0 Chrome/150', seed = 
 
   vm.createContext(sandbox);
   vm.runInContext(SRC, sandbox);
-  const api = sandbox.ScreenTinkerBS;
+  const api = sandbox.LuminaScreenBS;
   // onReady always fires, so this resolves off-platform too.
   const ready = new Promise((resolve) => api.onReady(resolve));
   return { api, sandbox, posted, registryStore, ready, cec, cecConnectors };
@@ -183,7 +183,7 @@ test('with the host present, restart() posts to BrightScript and reports success
 
 test('identity round-trips through the registry', () => {
   const { api } = load({ mods: true });
-  api.setIdentity('dev-123', 'https://screentinker.com');
+  api.setIdentity('dev-123', 'https://luminascreen.ru');
   assert.equal(api.deviceId(), 'dev-123');
 });
 
@@ -212,11 +212,11 @@ test('THE COLLISION: output 2 namespaces its registry key and storage away from 
   // and the underlying keys really are distinct
   assert.deepEqual(
     [...one.registryStore.keys()].sort(),
-    ['screentinker:device_id']
+    ['luminascreen:device_id']
   );
   assert.deepEqual(
     [...two.registryStore.keys()].sort(),
-    ['screentinker:device_id_s2']
+    ['luminascreen:device_id_s2']
   );
 });
 
@@ -235,15 +235,15 @@ test('sync backend comes from the URL, else the registry, else auto', () => {
   assert.equal(load({ mods: true, search: '?sync_backend=brightsign' }).api.syncBackend(), 'brightsign');
 
   const persisted = load({ mods: true });
-  persisted.api.setSyncBackend('screentinker');
-  assert.equal(persisted.api.syncBackend(), 'screentinker', 'a cold boot with no network still starts right');
+  persisted.api.setSyncBackend('luminascreen');
+  assert.equal(persisted.api.syncBackend(), 'luminascreen', 'a cold boot with no network still starts right');
 });
 
 test('THE ASYNC TRAP: a Promise from registry.read is never cached as the device id', async () => {
   // registry.read() resolves a Promise. Treating it as a value would make deviceId() return the
   // Promise object itself — truthy, non-empty — and the player would register a display called
   // "[object Promise]" while its real row sat unclaimed.
-  const { api, ready } = load({ mods: true, seed: { 'screentinker:device_id': 'existing-id' } });
+  const { api, ready } = load({ mods: true, seed: { 'luminascreen:device_id': 'existing-id' } });
   await ready;
   assert.equal(typeof api.deviceId(), 'string');
   assert.equal(api.deviceId(), 'existing-id', 'a provisioned panel must come back as itself');
@@ -275,7 +275,7 @@ test('THE DUPLICATE-ROW BUG: the token is persisted alongside the id', async () 
   // without one reads as a brand-new display. Found on an XT245, not in a test — hence this one.
   const { api, ready } = load({ mods: true });
   await ready;
-  api.setIdentity('dev-9', 'https://alpha.screentinker.com', 'tok-abc123');
+  api.setIdentity('dev-9', 'https://alpha.luminascreen.ru', 'tok-abc123');
   assert.equal(api.deviceId(), 'dev-9');
   assert.equal(api.deviceToken(), 'tok-abc123', 'without this the display re-pairs every boot');
 });

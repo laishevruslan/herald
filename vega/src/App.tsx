@@ -1,5 +1,5 @@
 /*
- * ScreenTinker shell for Vega OS.
+ * LuminaScreen shell for Vega OS.
  *
  * The web player (https://<server>/player) does the playing. This app is what a browser tab on
  * these sticks is not: an installed package, a server address and a pairing that survive a
@@ -7,10 +7,10 @@
  * 4K Select and Fire TV Stick HD (2026) are not Android — the APK cannot be installed here.
  *
  * Protocol, same as webos/ and documented on the player page:
- *   player -> shell:  { source:'screentinker-player', type:'host:hello' }
- *                     { source:'screentinker-player', type:'host:command', action, payload }
- *   shell -> player:  { source:'screentinker-host', type:'host:ready', platform, capabilities, info }
- *                     { source:'screentinker-host', type:'host:result', action, ok, error }
+ *   player -> shell:  { source:'luminascreen-player', type:'host:hello' }
+ *                     { source:'luminascreen-player', type:'host:command', action, payload }
+ *   shell -> player:  { source:'luminascreen-host', type:'host:ready', platform, capabilities, info }
+ *                     { source:'luminascreen-host', type:'host:result', action, ok, error }
  *
  * The WebView is the top window, so the player cannot postMessage a parent. It calls
  * window.ReactNativeWebView.postMessage, and we answer by injecting a MessageEvent.
@@ -108,7 +108,7 @@ export const App = () => {
   }, [serverUrl]);
 
   const deliver = useCallback((msg: Record<string, unknown>) => {
-    const payload = JSON.stringify(Object.assign({ source: 'screentinker-host' }, msg));
+    const payload = JSON.stringify(Object.assign({ source: 'luminascreen-host' }, msg));
     const js = `window.dispatchEvent(new MessageEvent('message',{data:${JSON.stringify(payload)}}));true;`;
     try { webRef.current && webRef.current.injectJavaScript(js); } catch (e) { /* page not up yet */ }
   }, []);
@@ -181,7 +181,7 @@ export const App = () => {
     let data: { source?: string; type?: string; action?: string; payload?: { deviceId?: unknown; deviceToken?: unknown } | null } | null = null;
     try { data = JSON.parse(String(event && event.nativeEvent && event.nativeEvent.data || '')); }
     catch (e) { return; }
-    if (!data || data.source !== 'screentinker-player') return;
+    if (!data || data.source !== 'luminascreen-player') return;
     if (data.type === 'host:hello') announce();
     else if (data.type === 'host:command' && typeof data.action === 'string') onCommand(data.action, data.payload || null);
   }, [announce, onCommand]);
@@ -247,10 +247,10 @@ export const App = () => {
       {setupOpen && !booting ? (
         <View style={styles.overlay}>
           <View style={styles.card}>
-            <Text style={styles.kicker}>ScreenTinker</Text>
+            <Text style={styles.kicker}>LuminaScreen</Text>
             <Text style={styles.title}>Vega player</Text>
             <Text style={styles.mut}>
-              Enter your ScreenTinker server. The screen then shows a pairing code to claim in the dashboard.
+              Enter your LuminaScreen server. The screen then shows a pairing code to claim in the dashboard.
             </Text>
             <Text style={styles.label}>Server URL</Text>
             <TextInput

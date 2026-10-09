@@ -1,6 +1,6 @@
 # Suika Phase 0 spike — isolated build + PNG 1920×1080 export verify
 #
-# Does NOT replace the main ScreenTinker image:
+# Does NOT replace the main LuminaScreen image:
 #   docker compose -f docker/suika-spike/docker-compose.yml run --rm suika-spike
 #
 # Produces /out/suika-spike-export.png on the host via the volume.

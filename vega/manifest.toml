@@ -1,12 +1,12 @@
-# ScreenTinker player for Amazon Vega OS.
+# LuminaScreen player for Amazon Vega OS.
 # Fire TV Stick 4K Select (AFTCA002) and Fire TV Stick HD (2026, AFTCL001).
 # schema-version is the manifest format, not the app version. Do not bump it in release scripts.
 schema-version = 1
 
 [package]
-title = "ScreenTinker"
+title = "LuminaScreen"
 version = "2.4.3"
-id = "com.screentinker.vega"
+id = "com.luminascreen.vega"
 icon = "@image/app_icon.png"
 
 # SDK 0.24 refuses to build without this. 1.2 is the only minted OS version, and
@@ -18,7 +18,7 @@ target = "1.2"
 [components]
 
 [[components.interactive]]
-id = "com.screentinker.vega.main"
+id = "com.luminascreen.vega.main"
 runtime-module = "/com.amazon.kepler.keplerscript.runtime.loader_2@IKeplerScript_2_0"
 launch-type = "singleton"
 categories = ["com.amazon.category.main"]
@@ -32,7 +32,7 @@ timeout-secs = 86400
 [processes]
 
 [[processes.group]]
-component-ids = ["com.screentinker.vega.main"]
+component-ids = ["com.luminascreen.vega.main"]
 
 # wants, not needs: a stick missing one of these must still install. Video, audio and the
 # on-screen keyboard are required for a useful player and are present on every Fire TV Stick

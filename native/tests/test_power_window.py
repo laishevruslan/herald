@@ -5,8 +5,8 @@ import os
 
 import pytest
 
-from screentinker_native.logic import power_window as pw
-from screentinker_native.logic import schedule_eval as se
+from luminascreen_native.logic import power_window as pw
+from luminascreen_native.logic import schedule_eval as se
 
 VECTORS_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "shared", "power-window-vectors.json")
 with open(VECTORS_PATH, encoding="utf-8") as f:

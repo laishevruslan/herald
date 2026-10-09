@@ -24,7 +24,7 @@ given) · 💀 **dead**: the capability is declared or baselined but the control
 **unverifiable from source** — needs hardware, and is marked as such rather than asserted.
 🔜 **in progress** — being brought up; the mechanism is named, the status is not yet a claim.
 
-**Raspberry Pi (native)** and **Windows (native)** are one engine (`native/screentinker_native`,
+**Raspberry Pi (native)** and **Windows (native)** are one engine (`native/luminascreen_native`,
 Python + Qt) with two OS backends (`platform/linux`, `platform/windows`). Where a row is the engine —
 playback, zones, transitions, sync, triggers, the remote view, shell and PTY — the Windows column
 reads "as Pi". Every row that is the OS (screen power, the mixer, the backlight, reboot, the clock,
@@ -124,7 +124,7 @@ describe content rendering. They are informational, and shown to the operator in
 | `playback.video` | ✅ ExoPlayer (`MediaPlayerManager`) | ✅ `<video>` | ✅ AVPlay | ✅ hardware plane | ✅ QtMultimedia `MediaPlayer` (GStreamer on Bookworm, FFmpeg on Trixie); needs `gstreamer1.0-libav` for H.264/AAC (a Depends) | ✅ as Pi — shared engine (QtMultimedia `MediaPlayer`, Qt's Windows media backend); ❓ codec coverage not yet run on Windows |
 | `playback.image` | ✅ `ImageLoader` | ✅ | ✅ | ✅ | ✅ QML `Image`, decoded at surface size (e2e) | ✅ as Pi — shared engine |
 | `playback.widget` | ✅ WebView | ✅ iframe | ✅ iframe | ✅ iframe | ✅ `WebEngineView`, same-URL reuse like Android (e2e: clock widget in a zone) | ✅ as Pi — shared engine (`WebEngineView`) |
-| `playback.youtube` | ✅ WebView embed | ✅ IFrame API | ✅ iframe embed | ✅ IFrame API | ✅ Android's embed wrapper byte-for-byte, `screentinker.com` base; live mute via the IFrame API | ✅ as Pi — shared engine |
+| `playback.youtube` | ✅ WebView embed | ✅ IFrame API | ✅ iframe embed | ✅ IFrame API | ✅ Android's embed wrapper byte-for-byte, `luminascreen.ru` base; live mute via the IFrame API | ✅ as Pi — shared engine |
 | `playback.zones` | ✅ `ZoneManager` | ✅ | ✅ | ✅ | ✅ `ZoneRunner` — Android's rules incl. orphan→largest-zone fallback (e2e) | ✅ as Pi — shared engine |
 | `playback.transitions` | ✅ `TransitionCompositor` | ⚠️ declared only when the bundle loads (`transitionRuntimeReady()`) — a failed load hard-cuts rather than breaking playback | ✅ `transitions.js` | ⚠️ composites DOM over video; with hwz it may be **invisible over video** and degrade to a hard cut | ✅ the shared GLSL wrapped for Qt 6 (GLSL-4.40 reserved words renamed) and baked with `qsb`: all 15 bake on Bookworm arm64, and VanEck ran on an OpenGL scene graph (e2e). On a **software** scene graph (no GPU) it crossfades instead — never the black frames ShaderEffect gives there. ❓ not yet seen on a Pi's V3D | ✅ as Pi — shared engine (the same baked shaders); ❓ not yet seen on a Windows GPU (D3D11 RHI) |
 | `playback.pip` | ✅ `PipOverlay` | ✅ `#pipContainer` | ✅ `pip-overlay.js` | ⚠️ same hwz caveat as transitions | ✅ `PipLayer.qml` (Android geometry) | ✅ as Pi — shared engine |
@@ -191,7 +191,7 @@ an un-updated one keeps via the baseline. See gap 2.
 |---|---|---|---|---|---|---|
 | `system.restart_player` | ✅ `launch` / `refresh` | ✅ `location.reload()` | ✅ `location.reload()` via `STDeviceControl` | ⚠️ needs `hasHost()` so the host rebuilds the widget. **A page-initiated reload does not reliably bring an roHtmlWidget back** — that darkened a customer's panel on 2026-07-28, which is why neither `st-bridge.js` nor the baseline offers this without a host | ✅ `refresh` reconnects and re-pulls; `launch` raises the window | ✅ as Pi — shared engine |
 | `system.reboot` | ⚠️ **device owner only** (`STPolicy.reboot()`). Off-owner it degrades to an accessibility power *dialog*, which needs someone at the screen | ❌ a browser tab cannot reboot its host | ⚠️ only on a **partner-signed** panel where `STDeviceControl.capabilities().reboot` is true | ⚠️ `RebootSystem()` via the host | ✅ via the root helper (`st-helper reboot/poweroff`), declared only when it is installed | ✅ helper verb `reboot` — verified in the Win11 VM: reboot, auto-logon, watchdog, back online unattended |
-| `system.self_update` | ✅ APK OTA (`UpdateChecker`), and `update` forces a check | ❌ the server deploys the player; there is nothing for it to update | ❌ a `.wgt` is installed by the panel, not the app | 💀 **for the dashboard button.** The host really does self-update — `autorun.brs` polls `CheckPackageUpdate` every `PKG_CHECK_MS` — but that is a host-side poll on a socket it is not listening to. The page declares `system.self_update` behind `hasHost()`, the dashboard renders "Force update", and `index.html` has **no `update` branch at all**. See gap 3 | ✅ 30-min poll + `update`; the root helper re-verifies the .deb's sha256 against the server in the root-owned `/etc` config before apt runs it (a forged `screentinker-pi` package is refused); a `block_uninstall` hold is lifted for the upgrade and restored. Verified 2.2.3→2.2.4 on Trixie arm64, automatic and dashboard-triggered | ✅ `update` + 30-min poll → download → helper re-verifies sha256 with the admin-configured server → silent install; 2.2.3→2.2.4 verified in the VM |
+| `system.self_update` | ✅ APK OTA (`UpdateChecker`), and `update` forces a check | ❌ the server deploys the player; there is nothing for it to update | ❌ a `.wgt` is installed by the panel, not the app | 💀 **for the dashboard button.** The host really does self-update — `autorun.brs` polls `CheckPackageUpdate` every `PKG_CHECK_MS` — but that is a host-side poll on a socket it is not listening to. The page declares `system.self_update` behind `hasHost()`, the dashboard renders "Force update", and `index.html` has **no `update` branch at all**. See gap 3 | ✅ 30-min poll + `update`; the root helper re-verifies the .deb's sha256 against the server in the root-owned `/etc` config before apt runs it (a forged `luminascreen-pi` package is refused); a `block_uninstall` hold is lifted for the upgrade and restored. Verified 2.2.3→2.2.4 on Trixie arm64, automatic and dashboard-triggered | ✅ `update` + 30-min poll → download → helper re-verifies sha256 with the admin-configured server → silent install; 2.2.3→2.2.4 verified in the VM |
 
 ## Device management
 
@@ -224,7 +224,7 @@ decline these explicitly and in writing in their own capability modules.
 
 | | Android | Web | Tizen | BrightSign | Raspberry Pi (native) | Windows (native) |
 |---|---|---|---|---|---|---|
-| declaration site | `telemetry/PlayerCapabilities.kt` | `declaredCapabilities()` in `index.html` | `js/capabilities.js` | **`index.html` again** | `native/screentinker_native/capabilities.py` (`CAPABILITIES_ALWAYS` + `declared_capabilities()`) | `capabilities.py` (`CAPABILITIES_ALWAYS`) + `platform/windows/ops.py` `extra_capabilities()` |
+| declaration site | `telemetry/PlayerCapabilities.kt` | `declaredCapabilities()` in `index.html` | `js/capabilities.js` | **`index.html` again** | `native/luminascreen_native/capabilities.py` (`CAPABILITIES_ALWAYS` + `declared_capabilities()`) | `capabilities.py` (`CAPABILITIES_ALWAYS`) + `platform/windows/ops.py` `extra_capabilities()` |
 
 ⚠️ **`brightsign/st-bridge.js` `computeCapabilities()` IS DEAD CODE.** It is exported as
 `BS.capabilities`, and nothing calls it: `grep -n "BS\.[a-zA-Z]*(" server/player/index.html` lists
@@ -241,7 +241,7 @@ from the web player's `declaredCapabilities()`, and the two disagree substantial
 | `display.power` | needs `CecClass` | needs `hasHost()` | roughly equivalent |
 | `display.resolution` | host **or** `VideoOutputClass` | needs `hasHost()` | the bridge |
 | `system.restart_player` | needs a host | unconditional | the bridge — see the 2026-07-28 incident |
-| `sync.native` | module **and** OS ≥ 8.2.10 | `ScreenTinkerBSSync.available()`, which is **module presence only** | the bridge. `index.html` skips the firmware floor |
+| `sync.native` | module **and** OS ≥ 8.2.10 | `LuminaScreenBSSync.available()`, which is **module presence only** | the bridge. `index.html` skips the firmware floor |
 
 **`server/test/brightsign-capabilities.test.js` is 199 lines of thorough tests for this dead
 function.** Every one passes, and none of them constrains what a BrightSign actually declares. That

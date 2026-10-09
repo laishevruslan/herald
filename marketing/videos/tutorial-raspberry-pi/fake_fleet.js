@@ -20,7 +20,7 @@ const devs=FLEET.map((f,i)=>{
   .run(id,f.name,now,USER,WS,PL,now-86400*40,now,i+10,token);
  return {...f,id,token,i};
 });
-fs.writeFileSync('/home/owner/screentinker-video/fake_devices.json',JSON.stringify(devs.map(d=>d.id)));
+fs.writeFileSync('/home/owner/luminascreen-video/fake_devices.json',JSON.stringify(devs.map(d=>d.id)));
 console.log('seeded',devs.length,'devices; playlist',PL);
 function tel(d){return{battery_level:100,battery_charging:true,storage_free_mb:d.free,storage_total_mb:64000,ram_free_mb:1380,ram_total_mb:2048,cpu_usage:9+d.i*3,wifi_ssid:d.ssid,wifi_rssi:d.rssi,uptime_seconds:86400*(3+d.i)};}
 devs.forEach(d=>{

@@ -3,7 +3,7 @@ SharedPreferences.
 
 One JSON file, written atomically (temp + fsync + rename). Two locations matter:
 
-  * /etc/screentinker-pi/config.json — what the INSTALLER wrote (server URL, optional name). Read
+  * /etc/luminascreen-pi/config.json — what the INSTALLER wrote (server URL, optional name). Read
     only. It seeds state on first run and is never written by the player, so a reinstall with a new
     URL is the operator's lever and cannot be silently overwritten by the device.
   * <state dir>/state.json — what the PLAYER owns: device_id, device_token, pairing code, the

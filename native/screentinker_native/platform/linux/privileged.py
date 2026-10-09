@@ -2,9 +2,9 @@
 
 The player runs as an ordinary user (it owns the display and the audio session, and a remote shell
 must not be root by default). The handful of things that need root — reboot, poweroff, the clock,
-the timezone, installing an update, the backlight — go through /usr/lib/screentinker-pi/st-helper,
+the timezone, installing an update, the backlight — go through /usr/lib/luminascreen-pi/st-helper,
 a root-owned script that accepts a FIXED verb list and validates every argument itself. The
-installer grants exactly that path in /etc/sudoers.d/screentinker-pi.
+installer grants exactly that path in /etc/sudoers.d/luminascreen-pi.
 
 ⚠️ Never widen this into "run this command as root". The helper is the security boundary: a
 dashboard compromise can reach `shell`, which runs as the player user, but it must not be able to
@@ -16,7 +16,7 @@ import asyncio
 import os
 import shutil
 
-HELPER = os.environ.get("ST_HELPER", "/usr/lib/screentinker-pi/st-helper")
+HELPER = os.environ.get("ST_HELPER", "/usr/lib/luminascreen-pi/st-helper")
 
 
 def available():

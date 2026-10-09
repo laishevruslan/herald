@@ -810,7 +810,7 @@ export const api = {
     method: 'POST', body: JSON.stringify({ prompt, ...(dims || {}), objects }),
   }),
   /*
-   * ScreenTinker-hosted images, paid in ORG credits (server/routes/ai-hosted.js). The caller always
+   * LuminaScreen-hosted images, paid in ORG credits (server/routes/ai-hosted.js). The caller always
    * names provider/model/resolution/quality — the server has no default — and sends a fresh
    * idempotency_key per click so a network retry cannot charge twice.
    */

@@ -1,31 +1,31 @@
-# ScreenTinker native player — Raspberry Pi and Windows
+# LuminaScreen native player — Raspberry Pi and Windows
 
 One native player with Android-app parity, two operating systems. It is not the web player in a
 browser: playback, zones, transitions, sync, triggers and device control are native Python/Qt code,
 and QtWebEngine is used only where Android uses a WebView (widgets, YouTube, HTML bundles, and the
 WebRTC intercom/live view).
 
-- **Engine** (`screentinker_native/`, OS-neutral): socket, playback, zones, transitions, sync,
-  triggers, cache, QML scene. **OS backends** (`screentinker_native/platform/linux`, `…/windows`):
+- **Engine** (`luminascreen_native/`, OS-neutral): socket, playback, zones, transitions, sync,
+  triggers, cache, QML scene. **OS backends** (`luminascreen_native/platform/linux`, `…/windows`):
   device info, screen power, mixer, brightness, shell/PTY, the privileged door, OS actions. Nothing
   above `platform/` may test the OS itself.
 - **Stack:** Python + **PySide6** (Qt for Python, **LGPL-3.0**). ⚠️ Never PyQt6 — it is GPL-3.0, and
-  ScreenTinker ships no GPL code. python-socketio, aiohttp.
+  LuminaScreen ships no GPL code. python-socketio, aiohttp.
 - **Raspberry Pi:** Pi 4 / Pi 5 / Pi 400 / CM4 on **Pi OS Trixie (Debian 13)**, 64-bit, Lite or
   Desktop — the first Debian that packages PySide6. A `.deb` (`Architecture: all`) whose dependencies
   all come from the distribution. Bookworm Pis: upgrade, or use the web-kiosk installer.
 - **Windows:** Windows 10 1809+ / 11, x64. An Inno Setup installer bundling everything (PyInstaller),
-  plus the `ScreenTinkerHelper` service.
+  plus the `LuminaScreenHelper` service.
 
 ## Install — Raspberry Pi
-On the Pi, pointing at your ScreenTinker server:
+On the Pi, pointing at your LuminaScreen server:
 
 ```sh
 curl -sSL https://your-server/scripts/raspberry-pi-setup.sh | sudo bash -s -- --native https://your-server
 ```
 
 That downloads the player from your server (`/download/pi`), installs it with apt (which pulls the
-Qt/GStreamer dependencies), and runs `screentinker-pi setup`. A pairing code appears on the display;
+Qt/GStreamer dependencies), and runs `luminascreen-pi setup`. A pairing code appears on the display;
 enter it in the dashboard under **Displays → Add display**.
 
 Manual equivalent:
@@ -33,8 +33,8 @@ Manual equivalent:
 ```sh
 curl -fLo /tmp/st.deb https://your-server/download/pi
 sudo apt install /tmp/st.deb
-sudo screentinker-pi setup https://your-server              # Lite: system service on the display
-sudo screentinker-pi setup https://your-server --mode desktop --user pi   # inside the desktop
+sudo luminascreen-pi setup https://your-server              # Lite: system service on the display
+sudo luminascreen-pi setup https://your-server --mode desktop --user pi   # inside the desktop
 ```
 
 ### Run modes
@@ -42,9 +42,9 @@ sudo screentinker-pi setup https://your-server --mode desktop --user pi   # insi
 | | Lite (recommended) | Desktop |
 |---|---|---|
 | Draws with | KMS/eglfs, no compositor | the desktop session (labwc, wayfire or X11) |
-| Runs as | dedicated `screentinker` user (no sudo) | the desktop user |
-| Started by | `screentinker-pi.service` | `/etc/xdg/autostart/screentinker-pi.desktop` |
-| State | `/var/lib/screentinker-pi` | `~/.local/state/screentinker-pi` |
+| Runs as | dedicated `luminascreen` user (no sudo) | the desktop user |
+| Started by | `luminascreen-pi.service` | `/etc/xdg/autostart/luminascreen-pi.desktop` |
+| State | `/var/lib/luminascreen-pi` | `~/.local/state/luminascreen-pi` |
 
 ⚠️ **Overlay filesystem:** the state directory holds the pairing. With Pi OS's read-only overlay on,
 it is discarded at every boot and the panel re-pairs. Point `ST_STATE_DIR` at a persistent partition,
@@ -52,15 +52,15 @@ or pair and then enable the overlay knowing a re-pair follows any wipe.
 
 ## Install — Windows
 
-Download `ScreenTinker-Setup-<version>.exe` from your server (`https://your-server/download/win`) and
+Download `LuminaScreen-Setup-<version>.exe` from your server (`https://your-server/download/win`) and
 run it, or roll it out silently:
 
 ```
-ScreenTinker-Setup-X.Y.Z.exe /VERYSILENT /SERVER=https://your-server [/NAME="Lobby"] [/ALLOWPACKAGES=1]
+LuminaScreen-Setup-X.Y.Z.exe /VERYSILENT /SERVER=https://your-server [/NAME="Lobby"] [/ALLOWPACKAGES=1]
 ```
 
-It installs the player to Program Files, the **ScreenTinkerHelper** service (LocalSystem), a firewall
-rule for the LAN trigger/control ports, and `%ProgramData%\ScreenTinker\config.json` (admin-only).
+It installs the player to Program Files, the **LuminaScreenHelper** service (LocalSystem), a firewall
+rule for the LAN trigger/control ports, and `%ProgramData%\LuminaScreen\config.json` (admin-only).
 The helper starts the player full screen in the signed-in user's session and restarts it if it dies,
 so a kiosk PC needs **automatic sign-in** (netplwiz / Autologon) and nothing else. An upgrade keeps
 the configuration and the pairing. "Exit player" on the on-screen menu stops the relaunching until the
@@ -88,14 +88,14 @@ Everything the Android player declares, plus `system.pty`. The authoritative, pe
 
 ## Security model
 
-- **Windows:** everything that needs SYSTEM goes to the ScreenTinkerHelper service over a named pipe
-  with a fixed verb list, and **only the installed `ScreenTinker.exe` may call it** — another program
+- **Windows:** everything that needs SYSTEM goes to the LuminaScreenHelper service over a named pipe
+  with a fixed verb list, and **only the installed `LuminaScreen.exe` may call it** — another program
   running as the same user (including the dashboard's own remote shell) is refused. An installer runs
   only if its sha256 matches what the ADMIN-configured server announces (the helper asks the server
   itself); anything else needs `/ALLOWPACKAGES=1`. See `docs/windows-native-player.md`.
-- **Pi:** the player runs **unprivileged**. Root-only actions go through `/usr/lib/screentinker-pi/st-helper`,
-  a fixed verb list with every argument re-validated, granted by `/etc/sudoers.d/screentinker-pi` to the
-  `screentinker` group and nothing else. There is no generic "run as root" verb, and there must never be.
+- **Pi:** the player runs **unprivileged**. Root-only actions go through `/usr/lib/luminascreen-pi/st-helper`,
+  a fixed verb list with every argument re-validated, granted by `/etc/sudoers.d/luminascreen-pi` to the
+  `luminascreen` group and nothing else. There is no generic "run as root" verb, and there must never be.
 - The remote shell and the interactive terminal run as the player's user. In Lite mode that is a
   system user without sudo. In Desktop mode it is the desktop user: **if that user has sudo, so does the
   dashboard's terminal** (`setup` says so).
@@ -112,26 +112,26 @@ pip install PySide6-Essentials PySide6-Addons 'python-socketio[asyncio_client]' 
 python3 -m pytest -q                               # logic ports (shared vectors) + player units
 # ⚠️ On a workstation, run players SILENT and away from the host mixer:
 export ST_TEST_NO_SYSTEM_AUDIO=1 PULSE_SERVER=unix:/nonexistent PIPEWIRE_REMOTE=/nonexistent
-QT_QPA_PLATFORM=offscreen python3 -m screentinker_native --server http://localhost:3001 \
+QT_QPA_PLATFORM=offscreen python3 -m luminascreen_native --server http://localhost:3001 \
     --state-dir /tmp/st-dev --windowed -v          # headless (software scene graph: transitions crossfade)
-packaging/linux/build-deb.sh                       # -> native/dist/screentinker-pi_<VERSION>_all.deb
+packaging/linux/build-deb.sh                       # -> native/dist/luminascreen-pi_<VERSION>_all.deb
 ```
 
 Windows (on a Windows machine with Python 3.12 x64 and Inno Setup 6):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File native\packaging\windows\build.ps1 [-Version X.Y.Z]
-# -> native\dist\ScreenTinker-Setup-<VERSION>.exe (served at /download/win, /api/win/update/check)
+# -> native\dist\LuminaScreen-Setup-<VERSION>.exe (served at /download/win, /api/win/update/check)
 ```
 
-A server serves the newest `screentinker-pi_<ver>_all.deb` it finds in `DATA_DIR`, then `native/dist/`,
+A server serves the newest `luminascreen-pi_<ver>_all.deb` it finds in `DATA_DIR`, then `native/dist/`,
 at `/download/pi` and to `/api/pi/update/check`. Versions are `X.Y.Z` or `X.Y.Z~rcN` — never a Debian
 revision (`X.Y.Z-1` would read as a prerelease and never be offered).
 
 Layout:
 
 ```
-screentinker_native/
+luminascreen_native/
   app.py            process wiring: Qt thread + network thread, the single command dispatch
   net/link.py       the device socket (Android WebSocketService discipline)
   net/triggers.py   LAN triggers + local API        net/device_http.py  http_request + endpoints

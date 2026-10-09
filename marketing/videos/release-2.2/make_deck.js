@@ -15,7 +15,7 @@ const slides = JSON.parse(fs.readFileSync('/tmp/slides.json','utf8'));
 
 const NAMES={s01:'Everything new',s02:'Live view',s03:'Talk',s04:'Data sources',s05:'Meeting-room signs',
  s06:'Plugins',s07:'Plugins — approve to run',s08:'PDF to playlist',s09:'Review & version history',
- s10:'More screens',s11:'Player polish',s12:'Hosted or self-host',s13:'Built & tested in ScreenTinker'};
+ s10:'More screens',s11:'Player polish',s12:'Hosted or self-host',s13:'Built & tested in LuminaScreen'};
 
 // deck document: slides carry their own VO; the bed + aspect are deck-level.
 const doc = { aspect:'16:9', music:'vid21-music', music_volume:0.28, slides:[] };
@@ -38,7 +38,7 @@ D.prepare("DELETE FROM widgets WHERE id LIKE 'vid21-s%'").run();
 // (re)create the deck row
 D.prepare("DELETE FROM slide_decks WHERE id = ?").run(DECK);
 D.prepare(`INSERT INTO slide_decks (id,workspace_id,user_id,name,doc,created_at,updated_at,published_widget_ids)
-  VALUES (?,?,?,?,?,?,?,?)`).run(DECK, WS, USER, 'ScreenTinker 2.1 — What’s New', JSON.stringify(doc), now, now, '[]');
+  VALUES (?,?,?,?,?,?,?,?)`).run(DECK, WS, USER, 'LuminaScreen 2.1 — What’s New', JSON.stringify(doc), now, now, '[]');
 
 const deck = D.prepare('SELECT * FROM slide_decks WHERE id = ?').get(DECK);
 const out = deckLib.publishDeck(D, { deck, doc, userId:USER, publishedWidgetIds:[] });
@@ -54,4 +54,4 @@ const ordered = D.prepare('SELECT widget_id FROM playlist_items WHERE playlist_i
 fs.writeFileSync('/tmp/deck_widgets.json', JSON.stringify(ordered));
 console.log('deck', DECK, '-> playlist', out.playlistId, 'widgets', out.publishedWidgetIds.length);
 console.log('ORDERED=' + JSON.stringify(ordered));
-console.log('WATCH_URL=https://alpha.screentinker.com/player?k=' + key);
+console.log('WATCH_URL=https://alpha.luminascreen.ru/player?k=' + key);

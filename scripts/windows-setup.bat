@@ -1,19 +1,19 @@
 @echo off
 setlocal EnableExtensions
-rem ScreenTinker — Windows kiosk-browser setup.
+rem LuminaScreen — Windows kiosk-browser setup.
 rem Creates an Edge or Chrome kiosk shortcut and starts the player at login.
 rem Usage: windows-setup.bat [https://your-server]
 
 set "SERVER=%~1"
-if "%SERVER%"=="" set /p SERVER=ScreenTinker server URL (example https://screentinker.example): 
+if "%SERVER%"=="" set /p SERVER=LuminaScreen server URL (example https://luminascreen.example): 
 if "%SERVER%"=="" (
   echo A server URL is required.
   exit /b 1
 )
 if "%SERVER:~-1%"=="/" set "SERVER=%SERVER:~0,-1%"
 set "PLAYER=%SERVER%/player"
-set "PROFILE=%LOCALAPPDATA%\ScreenTinker\kiosk"
-set "DIR=%LOCALAPPDATA%\ScreenTinker"
+set "PROFILE=%LOCALAPPDATA%\LuminaScreen\kiosk"
+set "DIR=%LOCALAPPDATA%\LuminaScreen"
 set "LAUNCH=%DIR%\start-kiosk.cmd"
 
 if not exist "%DIR%" mkdir "%DIR%"
@@ -34,7 +34,7 @@ if not defined BROWSER (
 >> "%LAUNCH%" echo start "" "%BROWSER%" --kiosk "%PLAYER%" --no-first-run --disable-session-crashed-bubble --user-data-dir="%PROFILE%"
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$w = New-Object -ComObject WScript.Shell; $s = $w.CreateShortcut([Environment]::GetFolderPath('Startup') + '\ScreenTinker Kiosk.lnk'); $s.TargetPath = '%LAUNCH%'; $s.WorkingDirectory = '%DIR%'; $s.Save()"
+  "$w = New-Object -ComObject WScript.Shell; $s = $w.CreateShortcut([Environment]::GetFolderPath('Startup') + '\LuminaScreen Kiosk.lnk'); $s.TargetPath = '%LAUNCH%'; $s.WorkingDirectory = '%DIR%'; $s.Save()"
 
 echo Player: %PLAYER%
 echo Launcher: %LAUNCH%

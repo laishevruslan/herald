@@ -96,7 +96,7 @@ test('when enabled it sends exactly the payload, and records what it sent', asyn
     return { ok: true, status: 200 };
   });
   try {
-    const r = await telemetry.report(db, { urls: [{ url: 'https://example.test/report', kind: 'screentinker' }] });
+    const r = await telemetry.report(db, { urls: [{ url: 'https://example.test/report', kind: 'luminascreen' }] });
     assert.equal(r.sent, true);
     assert.equal(seen.method, 'POST');
     assert.equal(seen.url, 'https://example.test/report');
@@ -118,7 +118,7 @@ test('a blocked outbound connection is recorded, with the address that was block
   telemetry.setEnabled(true);
   const spy = mock.method(globalThis, 'fetch', async () => { throw new Error('ECONNREFUSED'); });
   try {
-    await telemetry.report(db, { urls: [{ url: 'https://stats.example.test/report', kind: 'screentinker' }] });
+    await telemetry.report(db, { urls: [{ url: 'https://stats.example.test/report', kind: 'luminascreen' }] });
     const err = telemetry.getLastError();
     assert.ok(err, 'a failed attempt must be recorded, or the operator has nothing to act on');
     assert.equal(err.reason, 'network');
@@ -131,12 +131,12 @@ test('a later success clears the stale failure', async () => {
   reset();
   telemetry.setEnabled(true);
   const bad = mock.method(globalThis, 'fetch', async () => { throw new Error('ECONNREFUSED'); });
-  try { await telemetry.report(db, { urls: [{ url: 'https://example.test/report', kind: 'screentinker' }] }); } finally { bad.mock.restore(); }
+  try { await telemetry.report(db, { urls: [{ url: 'https://example.test/report', kind: 'luminascreen' }] }); } finally { bad.mock.restore(); }
   assert.ok(telemetry.getLastError(), 'precondition: a failure was recorded');
 
   const good = mock.method(globalThis, 'fetch', async () => ({ ok: true, status: 200 }));
   try {
-    await telemetry.report(db, { urls: [{ url: 'https://example.test/report', kind: 'screentinker' }] });
+    await telemetry.report(db, { urls: [{ url: 'https://example.test/report', kind: 'luminascreen' }] });
     assert.equal(telemetry.getLastError(), null,
       'a stale firewall warning must not outlive the problem it describes');
   } finally { good.mock.restore(); }
@@ -153,7 +153,7 @@ test('an operator collector is ADDITIONAL — it never replaces the shared repor
   try {
     const dests = telemetry.destinations();
     assert.equal(dests.length, 2, 'sharing on + own collector = both, never one');
-    assert.deepEqual(dests.map(d => d.kind).sort(), ['extra', 'screentinker']);
+    assert.deepEqual(dests.map(d => d.kind).sort(), ['extra', 'luminascreen']);
 
     const hits = [];
     const spy = mock.method(globalThis, 'fetch', async (url) => { hits.push(url); return { ok: true, status: 200 }; });
@@ -161,7 +161,7 @@ test('an operator collector is ADDITIONAL — it never replaces the shared repor
       await telemetry.report(db);
       assert.equal(hits.length, 2, 'both destinations must receive the report');
       assert.ok(hits.includes('https://mine.example.test/collect'));
-      assert.ok(hits.some(u => u.includes('screentinker.com')), 'the shared report must still be sent');
+      assert.ok(hits.some(u => u.includes('luminascreen.ru')), 'the shared report must still be sent');
     } finally { spy.mock.restore(); }
   } finally {
     if (original === undefined) delete process.env.TELEMETRY_EXTRA_ENDPOINT;
@@ -182,7 +182,7 @@ test('an operator can keep their own statistics while sharing nothing with us', 
     try {
       await telemetry.report(db);
       assert.deepEqual(hits, ['https://mine.example.test/collect']);
-      assert.ok(!hits.some(u => u.includes('screentinker.com')),
+      assert.ok(!hits.some(u => u.includes('luminascreen.ru')),
         'sharing is off — nothing may reach us, whatever else is configured');
     } finally { spy.mock.restore(); }
   } finally {
@@ -201,7 +201,7 @@ test('one unreachable destination does not stop the other', async () => {
   try {
     const r = await telemetry.report(db, { urls: [
       { url: 'https://broken.example.test/a', kind: 'extra' },
-      { url: 'https://working.example.test/b', kind: 'screentinker' },
+      { url: 'https://working.example.test/b', kind: 'luminascreen' },
     ] });
     assert.equal(r.results.filter(x => x.sent).length, 1, 'the reachable one still receives it');
     assert.equal(r.results.filter(x => !x.sent).length, 1);
@@ -215,7 +215,7 @@ test('a failed send is quiet and local — never throws, never records a phantom
   telemetry.setEnabled(true);
   const spy = mock.method(globalThis, 'fetch', async () => { throw new Error('ECONNREFUSED'); });
   try {
-    const r = await telemetry.report(db, { urls: [{ url: 'https://example.test/report', kind: 'screentinker' }] });
+    const r = await telemetry.report(db, { urls: [{ url: 'https://example.test/report', kind: 'luminascreen' }] });
     assert.equal(r.sent, false);
     assert.equal(r.reason, 'network');
     assert.equal(telemetry.getLastReport(), null, 'a failed send must not look like a successful one');
@@ -224,7 +224,7 @@ test('a failed send is quiet and local — never throws, never records a phantom
   // An HTTP error is likewise not a success.
   const spy2 = mock.method(globalThis, 'fetch', async () => ({ ok: false, status: 503 }));
   try {
-    const r = await telemetry.report(db, { urls: [{ url: 'https://example.test/report', kind: 'screentinker' }] });
+    const r = await telemetry.report(db, { urls: [{ url: 'https://example.test/report', kind: 'luminascreen' }] });
     assert.equal(r.sent, false);
     assert.equal(r.reason, 'http_503');
     assert.equal(telemetry.getLastReport(), null);

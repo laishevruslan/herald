@@ -98,11 +98,11 @@ test('identity preservation keeps client_type win across a register that omits i
 });
 
 /*
- * What the Windows build declares: the shared CAPABILITIES_ALWAYS (native/screentinker_native/
+ * What the Windows build declares: the shared CAPABILITIES_ALWAYS (native/luminascreen_native/
  * capabilities.py) plus whatever platform/windows/*.py can add (ops.extra_capabilities). Skipped
  * cleanly while the Windows backend is not in the tree.
  */
-const NATIVE = path.join(__dirname, '..', '..', 'native', 'screentinker_native');
+const NATIVE = path.join(__dirname, '..', '..', 'native', 'luminascreen_native');
 const WIN_OPS = path.join(NATIVE, 'platform', 'windows', 'ops.py');
 function readWinCaps() {
   const strings = (s) => [...s.matchAll(/['"]([a-z]+\.[a-z_]+)['"]/g)].map((m) => m[1]);
@@ -114,7 +114,7 @@ function readWinCaps() {
 }
 
 test('the Windows player declares only vocabulary this server knows', (t) => {
-  if (!fs.existsSync(WIN_OPS)) return t.skip('native/screentinker_native/platform/windows/ops.py not in the tree yet');
+  if (!fs.existsSync(WIN_OPS)) return t.skip('native/luminascreen_native/platform/windows/ops.py not in the tree yet');
   for (const c of readWinCaps()) {
     if (/^(playback|audio|display|remote|system|net|sync|offline)\./.test(c)) {
       assert.ok(caps.CAP_SET.has(c), `the Windows player names '${c}', which this server would silently drop (parseDeclared)`);
@@ -123,7 +123,7 @@ test('the Windows player declares only vocabulary this server knows', (t) => {
 });
 
 test('BASELINE.windows claims nothing the Windows player cannot declare', (t) => {
-  if (!fs.existsSync(WIN_OPS)) return t.skip('native/screentinker_native/platform/windows/ops.py not in the tree yet');
+  if (!fs.existsSync(WIN_OPS)) return t.skip('native/luminascreen_native/platform/windows/ops.py not in the tree yet');
   const anywhere = readWinCaps();
   for (const c of caps.BASELINE.windows) {
     assert.ok(anywhere.has(c), `BASELINE.windows claims ${c}, which neither capabilities.py nor platform/windows/ names`);

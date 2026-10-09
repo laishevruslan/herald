@@ -1823,7 +1823,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setKioskMode(enabled: Boolean) {
         try {
-            getSharedPreferences("screentinker", Context.MODE_PRIVATE)
+            getSharedPreferences("luminascreen", Context.MODE_PRIVATE)
                 .edit().putBoolean("kiosk_enabled", enabled).apply()
         } catch (e: Throwable) { Log.w("MainActivity", "kiosk pref: ${e.message}") }
 
@@ -1837,7 +1837,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun kioskModeEnabled(): Boolean = try {
-        getSharedPreferences("screentinker", Context.MODE_PRIVATE).getBoolean("kiosk_enabled", false)
+        getSharedPreferences("luminascreen", Context.MODE_PRIVATE).getBoolean("kiosk_enabled", false)
     } catch (e: Throwable) { false }
 
     /** Re-enter lock task after a restart, if that is the state the operator left it in. */
@@ -1896,7 +1896,7 @@ class MainActivity : AppCompatActivity() {
         val input = EditText(this).apply {
             setText(currentUrl)
             inputType = android.text.InputType.TYPE_TEXT_VARIATION_URI
-            hint = "https://screentinker.com"
+            hint = "https://luminascreen.ru"
             setSingleLine()
         }
         val container = FrameLayout(this).apply {

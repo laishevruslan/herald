@@ -279,7 +279,7 @@ esac`);
 
 describe('st-updater.sh, docker mode under busybox sh', { skip: !has('busybox') ? 'needs busybox' : false }, () => {
   let root, env, state, compose;
-  const IMAGE = 'ghcr.io/screentinker/screentinker';
+  const IMAGE = 'ghcr.io/luminascreen/luminascreen';
 
   before(() => {
     root = tmp('docker');
@@ -324,7 +324,7 @@ esac`);
     };
   });
 
-  const writeCompose = (image) => fs.writeFileSync(compose, `services:\n  screentinker:\n    image: ${image}\n    restart: unless-stopped\n  updater:\n    image: screentinker-updater\n`);
+  const writeCompose = (image) => fs.writeFileSync(compose, `services:\n  luminascreen:\n    image: ${image}\n    restart: unless-stopped\n  updater:\n    image: luminascreen-updater\n`);
 
   test('pins the compose file to the release, recreates the app, keeps the old file', () => {
     writeCompose(`${IMAGE}:latest`);
@@ -334,11 +334,11 @@ esac`);
     const r = run(env, 'busybox');
     assert.equal(r.status_json.state, 'done', `${r.status_json.message}\n${r.stderr}`);
     assert.match(fs.readFileSync(compose, 'utf8'), new RegExp(`image: ${IMAGE}:2\\.3\\.3\\n`));
-    assert.match(fs.readFileSync(compose, 'utf8'), /image: screentinker-updater\n/, 'the updater service is left alone');
+    assert.match(fs.readFileSync(compose, 'utf8'), /image: luminascreen-updater\n/, 'the updater service is left alone');
     assert.match(fs.readFileSync(`${compose}.bak-pre-v2.3.3`, 'utf8'), /:latest/);
     const calls = fs.readFileSync(path.join(state, 'calls'), 'utf8');
-    assert.match(calls, /up -d --no-deps --force-recreate screentinker/);
-    assert.match(calls, /pull ghcr\.io\/screentinker\/screentinker:2\.3\.3/);
+    assert.match(calls, /up -d --no-deps --force-recreate luminascreen/);
+    assert.match(calls, /pull ghcr\.io\/luminascreen\/luminascreen:2\.3\.3/);
   });
 
   test('a release that never gets healthy is rolled back, compose file restored', () => {
@@ -350,8 +350,8 @@ esac`);
     // The database comes back too: app stopped, then a one-off container of the OLD release swaps
     // the backup in, paths through -e only.
     const calls = fs.readFileSync(path.join(state, 'calls'), 'utf8');
-    assert.match(calls, /compose -f \S+ stop screentinker/);
-    assert.match(calls, /compose -f \S+ run --rm --no-deps -T -e SRC=\/data\/db\/pre-v9\.0\.0-\S+ -e DST=\/data\/db\/remote_display\.db -e TAG=v9\.0\.0-\S+ --entrypoint sh screentinker -c/);
+    assert.match(calls, /compose -f \S+ stop luminascreen/);
+    assert.match(calls, /compose -f \S+ run --rm --no-deps -T -e SRC=\/data\/db\/pre-v9\.0\.0-\S+ -e DST=\/data\/db\/remote_display\.db -e TAG=v9\.0\.0-\S+ --entrypoint sh luminascreen -c/);
     assert.match(r.status_json.message, /database was restored/);
   });
 
@@ -371,11 +371,11 @@ esac`);
     assert.match(r.status_json.message, /Could not pull/);
     assert.match(fs.readFileSync(compose, 'utf8'), /:2\.3\.3\n/);
 
-    writeCompose('screentinker:local-0f38baf');
+    writeCompose('luminascreen:local-0f38baf');
     request(env.UPDATER_REQUEST_DIR, '2.4.0');
     r = run(env, 'busybox');
     assert.equal(r.status_json.state, 'failed');
-    assert.match(r.status_json.message, /does not run ghcr\.io\/screentinker\/screentinker:<version> exactly once/);
-    assert.match(fs.readFileSync(compose, 'utf8'), /screentinker:local-0f38baf/);
+    assert.match(r.status_json.message, /does not run ghcr\.io\/luminascreen\/luminascreen:<version> exactly once/);
+    assert.match(fs.readFileSync(compose, 'utf8'), /luminascreen:local-0f38baf/);
   });
 });

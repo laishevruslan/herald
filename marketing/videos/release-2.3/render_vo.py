@@ -1,5 +1,5 @@
 import subprocess, os
-# Voiceover for "ScreenTinker 2.3 — Live Data, Templates & a Real Game".
+# Voiceover for "LuminaScreen 2.3 — Live Data, Templates & a Real Game".
 # Lead (user's call): live data + templates. Admin features get FULL coverage (user's call):
 # Platform overview, attention items, users/orgs/members, cleanup, sales. The user also asked
 # that the game (UPTIME 3036 — proof that code templates can be real custom games) be covered.
@@ -14,9 +14,9 @@ EDGE = os.path.expanduser("~/tts-venv/bin/edge-tts")
 VOICE = "en-US-AndrewNeural"
 SCENES = [
  # 01 hook — the price change is real (cap-menu-before/after, same instance, one API edit)
- ("01","Change one number in a table, and the menu board on the wall changes with it. No re-publish, no new slide. In ScreenTinker two point three, your screens can finally read live data."),
+ ("01","Change one number in a table, and the menu board on the wall changes with it. No re-publish, no new slide. In LuminaScreen two point three, your screens can finally read live data."),
  # 02 intro
- ("02","ScreenTinker is open-source digital signage. Host it yourself, or let us run it for you. Two point three brings live data sources, a signed template library, native players for Raspberry Pi and Windows, and a whole new area for the people who run the server."),
+ ("02","LuminaScreen is open-source digital signage. Host it yourself, or let us run it for you. Two point three brings live data sources, a signed template library, native players for Raspberry Pi and Windows, and a whole new area for the people who run the server."),
  # 03 data source types
  ("03","Five new data sources join calendar and weather: a REST A P I, Google Sheets, C S V, R S S, and a plain table you type into. They're built in, on every workspace, with no plugin to install and no switch to find."),
  # 04 key column
@@ -45,7 +45,7 @@ SCENES = [
  ("15","The dashboard got a new look, with the sidebar grouped by job. Uploads now move in small chunks, so a slow link can finish. Folders work again when adding content. A screen that fails no longer reports a perfect run of plays. And four security issues found while testing the template library are closed."),
  # 16 close
  # 16 close — the HOSTED trial is the primary ask (user: "we want people to buy it"); self-hosting is the alternative
- ("16","That's ScreenTinker two point three. Start your free fourteen-day trial today. Or, if you'd rather, host it yourself for free. Links are below."),
+ ("16","That's LuminaScreen two point three. Start your free fourteen-day trial today. Or, if you'd rather, host it yourself for free. Links are below."),
 ]
 if __name__=="__main__":
     import sys

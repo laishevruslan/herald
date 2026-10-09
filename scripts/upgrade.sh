@@ -1,5 +1,5 @@
 #!/bin/bash
-# Upgrade a self-hosted ScreenTinker to a tagged release (default: the latest).
+# Upgrade a self-hosted LuminaScreen to a tagged release (default: the latest).
 #
 #   scripts/upgrade.sh           # upgrade to the highest vX.Y.Z tag
 #   scripts/upgrade.sh v1.8.0    # upgrade to a specific tag
@@ -9,7 +9,7 @@
 # restarts the service, and reports the running version. Schema migrations run
 # automatically on the next boot.
 #
-# Env overrides: SERVICE_NAME (systemd unit, default screentinker), APP_DIR, DB,
+# Env overrides: SERVICE_NAME (systemd unit, default luminascreen), APP_DIR, DB,
 # BACKUP_DIR, STATUS_URL.
 set -euo pipefail
 # APP_DIR defaults to the checkout this script lives in, but is overridable like DB and BACKUP_DIR
@@ -27,9 +27,9 @@ else
   cd "$(dirname "$0")/.."
 fi
 APP_DIR="$(pwd)"
-SERVICE_NAME="${SERVICE_NAME:-screentinker}"
+SERVICE_NAME="${SERVICE_NAME:-luminascreen}"
 # ⚠️ THE DATABASE IS NOT ALWAYS IN THE CHECKOUT. An install with DATA_DIR elsewhere (studiolab:
-# /var/lib/screentinker, set in an EnvironmentFile) left this pointing at a file that does not
+# /var/lib/luminascreen, set in an EnvironmentFile) left this pointing at a file that does not
 # exist, so the backup step said "fresh install" and the upgrade ran with no way back. Ask the
 # running unit where its data is before falling back to the in-checkout default.
 unit_env() {

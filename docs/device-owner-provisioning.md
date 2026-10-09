@@ -1,4 +1,4 @@
-# Provisioning a panel as ScreenTinker device owner (#161)
+# Provisioning a panel as LuminaScreen device owner (#161)
 
 Device owner is an **optional power-up**. Without it the app runs fully at Tier 0/1
 (normal signage). With it, the panel unlocks Tier-2 controls that have no cheaper
@@ -10,7 +10,7 @@ reliable path on a non-rooted device:
 - **Set time / timezone**, block uninstall
 
 There is **one** device owner per device. If an MDM (e.g. Pivot) is already owner,
-ScreenTinker **cannot** also be owner — it degrades to Tier 0/1 and the MDM owns
+LuminaScreen **cannot** also be owner — it degrades to Tier 0/1 and the MDM owns
 updates/reboots. See #166 (self-OTA stands down under a foreign device owner).
 
 Component to enroll:
@@ -28,11 +28,11 @@ Fastest and most reliable. **Constraints — all must hold or `set-device-owner`
 - **No accounts on the device** (remove every Google/other account first).
 - Device is **freshly set up / factory-reset**, ideally right after first boot.
 - Done **before provisioning completes** (before other device-owner-capable apps enroll).
-- The ScreenTinker APK is already **installed**.
+- The LuminaScreen APK is already **installed**.
 
 ```bash
 # 1. Install the app (skip if already installed)
-adb install -r ScreenTinker.apk
+adb install -r LuminaScreen.apk
 
 # 2. Make it device owner
 adb shell dpm set-device-owner com.remotedisplay.player/.admin.STDeviceAdminReceiver
@@ -65,7 +65,7 @@ On the panel:
 2. On the setup-wizard **Welcome** screen, tap the screen **6 times** in the same spot.
 3. The device offers to scan a QR (it downloads a QR reader if needed). **Scan the
    dashboard QR.**
-4. It downloads + installs ScreenTinker and sets it as device owner, then finishes setup.
+4. It downloads + installs LuminaScreen and sets it as device owner, then finishes setup.
    The panel then **self-configures** (see "After enrollment" below) and lands on a pairing
    code — enter that code in the dashboard and you're done.
 
@@ -93,7 +93,7 @@ The QR payload (for reference / manual builds) is the standard AOSP provisioning
 >
 > **Compliance handler required.** Android 12+ aborts QR provisioning after install unless the
 > DPC answers `ADMIN_POLICY_COMPLIANCE` (symptom: *"something went wrong, contact your IT
-> admin"*). ScreenTinker ships that handler (`admin/ProvisioningActivity`); `adb set-device-owner`
+> admin"*). LuminaScreen ships that handler (`admin/ProvisioningActivity`); `adb set-device-owner`
 > skips this flow, which is why the ADB path never needed it.
 >
 > **`server_url`** in the admin-extras bundle is delivered to the player after enrollment; it
@@ -133,8 +133,8 @@ at provisioning**. Three ways to get the service on, best first:
   ```bash
   adb shell appops set com.remotedisplay.player ACCESS_RESTRICTED_SETTINGS allow
   ```
-- **Manual (once per panel, no ADB):** Settings → Apps → ScreenTinker → **⋮ → Allow restricted
-  settings**, then Settings → Accessibility → ScreenTinker → **On**. Persists across reboots/OTA.
+- **Manual (once per panel, no ADB):** Settings → Apps → LuminaScreen → **⋮ → Allow restricted
+  settings**, then Settings → Accessibility → LuminaScreen → **On**. Persists across reboots/OTA.
 - **ADB direct write (zero-UI, but must be redone if the service is ever cleared):**
   ```bash
   adb shell appops set com.remotedisplay.player ACCESS_RESTRICTED_SETTINGS allow   # clears the ECM gate

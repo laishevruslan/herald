@@ -66,7 +66,7 @@ const REVIEW = [/\bLGPL/i, /\bMPL/i, /\bEPL/i, /\bCDDL/i, /\bOSL/i, /\bEUPL/i, /
 const EXCEPTIONS = {
   'exif-parser': { license: 'MIT', evidence: 'LICENSE.md — "The MIT License"' },
   'thirty-two':  { license: 'MIT', evidence: 'LICENSE.txt — MIT, Copyright (c) 2011 Chris Umbel' },
-  'screentinker': { license: 'MIT', evidence: 'repository root LICENSE' },
+  'luminascreen': { license: 'MIT', evidence: 'repository root LICENSE' },
   // Suika workspace packages (frontend-studio_v3/LICENSE — MIT, Hao Huang 2025).
   '@suika/suika': { license: 'MIT', evidence: 'frontend-studio_v3/LICENSE' },
   '@suika/common': { license: 'MIT', evidence: 'frontend-studio_v3/LICENSE' },
@@ -158,14 +158,14 @@ if (SBOM_OUT) {
     metadata: {
       component: {
         type: 'application',
-        name: 'screentinker',
+        name: 'luminascreen',
         version: fs.readFileSync(path.join(__dirname, '..', 'VERSION'), 'utf8').trim(),
         licenses: [{ license: { id: 'MIT' } }],
       },
-      properties: [{ name: 'screentinker:scope', value: INCLUDE_DEV ? 'all' : 'production' }],
+      properties: [{ name: 'luminascreen:scope', value: INCLUDE_DEV ? 'all' : 'production' }],
     },
     components: pkgs
-      .filter(p => p.name !== 'screentinker')
+      .filter(p => p.name !== 'luminascreen')
       .sort((a, b) => a.name.localeCompare(b.name))
       .map(p => ({
         type: 'library',

@@ -1,6 +1,6 @@
 """Windows OS actions and identity — the twin of platform/linux/ops.py, same names and signatures.
 
-Everything privileged goes to the ScreenTinkerHelper service (privileged.py → winhelper/service.py).
+Everything privileged goes to the LuminaScreenHelper service (privileged.py → winhelper/service.py).
 """
 
 import os
@@ -11,21 +11,21 @@ from . import privileged
 CLIENT_TYPE = "win"
 UPDATE_CHECK_PATH = "/api/win/update/check"
 DOWNLOAD_PATH = "/download/win"
-PACKAGE_NAME = "ScreenTinker-Setup-{version}.exe"
+PACKAGE_NAME = "LuminaScreen-Setup-{version}.exe"
 PACKAGE_EXT = ".exe"
-PROGRAM_DATA = os.path.join(os.environ.get("ProgramData", r"C:\ProgramData"), "ScreenTinker")
+PROGRAM_DATA = os.path.join(os.environ.get("ProgramData", r"C:\ProgramData"), "LuminaScreen")
 
 
 def default_state_dir():
     env = os.environ.get("ST_STATE_DIR")
     if env:
         return env
-    # The installer creates ProgramData\ScreenTinker\state writable by the player's users, so the
+    # The installer creates ProgramData\LuminaScreen\state writable by the player's users, so the
     # pairing survives the kiosk account being swapped; a dev run falls back to the user profile.
     d = os.path.join(PROGRAM_DATA, "state")
     if os.path.isdir(d) and os.access(d, os.W_OK):
         return d
-    return os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "ScreenTinker")
+    return os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "LuminaScreen")
 
 
 def system_config_path():

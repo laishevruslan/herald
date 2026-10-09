@@ -1,4 +1,4 @@
-"""Put pi/ on sys.path so `import screentinker_native` works without installing the package."""
+"""Put pi/ on sys.path so `import luminascreen_native` works without installing the package."""
 import os
 import sys
 

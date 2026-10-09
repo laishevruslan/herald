@@ -151,7 +151,7 @@ test('test_replica_cache_never_invents_a_file: a miss with the primary down stor
   assert.match(cache.status(db, config)[0].last_error, /never-fetched|connection|ECONNREFUSED/i);
   // Source: the module knows exactly one origin and no fallback.
   const src = read('lib/mesh/content-cache.js').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-  assert.doesNotMatch(src, /(screentinker\.com|https?:\/\/[a-z0-9-]+\.[a-z]{2,})/i, 'no host compiled in');
+  assert.doesNotMatch(src, /(luminascreen\.com|https?:\/\/[a-z0-9-]+\.[a-z]{2,})/i, 'no host compiled in');
   assert.doesNotMatch(src, /fallback|alternate|peer_url|otherReplica/i, 'no second address');
   assert.match(src, /config\.primaryUrl/);
 });

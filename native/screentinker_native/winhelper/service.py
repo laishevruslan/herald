@@ -1,15 +1,15 @@
-"""ScreenTinkerHelper — the Windows service (LocalSystem) that is the player's only door to privilege,
+"""LuminaScreenHelper — the Windows service (LocalSystem) that is the player's only door to privilege,
 and its watchdog. The Windows twin of Linux's st-helper + `Restart=always`.
 
-1. PRIVILEGED VERBS over \\\\.\\pipe\\screentinker-helper, one JSON request and one JSON reply per
+1. PRIVILEGED VERBS over \\\\.\\pipe\\luminascreen-helper, one JSON request and one JSON reply per
    connection. A FIXED verb list; every argument re-validated here. Only the installed player binary
-   may call it (_client_allowed: the caller's image path must be ScreenTinker.exe beside this helper,
-   in admin-only Program Files) — tighter than the Linux sudoers grant to %screentinker.
+   may call it (_client_allowed: the caller's image path must be LuminaScreen.exe beside this helper,
+   in admin-only Program Files) — tighter than the Linux sudoers grant to %luminascreen.
 
    ⚠️ `install` is the dangerous one: running an installer as SYSTEM is the whole machine. The player
    user can write to its own OTA folder, so a path from it proves nothing. The helper therefore
    fetches the latest package's sha256 ITSELF from the server in the ADMIN-writable config
-   (ProgramData\\ScreenTinker\\config.json — never the player's state, which set_server_url rewrites
+   (ProgramData\\LuminaScreen\\config.json — never the player's state, which set_server_url rewrites
    and the player user can edit), and runs the file only on a match. Any other package runs only when
    the operator opted in at install time (allow_package_install), exactly as on the Pi.
 
@@ -32,8 +32,8 @@ import time
 import urllib.parse
 import urllib.request
 
-PIPE = r"\\.\pipe\screentinker-helper"
-PROGRAM_DATA = os.path.join(os.environ.get("ProgramData", r"C:\ProgramData"), "ScreenTinker")
+PIPE = r"\\.\pipe\luminascreen-helper"
+PROGRAM_DATA = os.path.join(os.environ.get("ProgramData", r"C:\ProgramData"), "LuminaScreen")
 CONFIG = os.path.join(PROGRAM_DATA, "config.json")
 UNINSTALL_KEY = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{7C2B3E3A-5D0B-4B5E-9F7A-5C1D2E3F4A5B}_is1"
 EXIT_BY_OPERATOR = 42
@@ -68,11 +68,11 @@ def run(argv, timeout=60):
 # --------------------------------------------------------------------------- verbs
 
 def v_reboot(args):
-    return run(["shutdown", "/r", "/t", "5", "/c", "ScreenTinker: remote reboot"])
+    return run(["shutdown", "/r", "/t", "5", "/c", "LuminaScreen: remote reboot"])
 
 
 def v_poweroff(args):
-    return run(["shutdown", "/s", "/t", "5", "/c", "ScreenTinker: remote shutdown"])
+    return run(["shutdown", "/s", "/t", "5", "/c", "LuminaScreen: remote shutdown"])
 
 
 def v_set_time(args):
@@ -168,7 +168,7 @@ def v_install(args):
         except Exception as e:
             log.warning("install: could not reach %s to verify: %s", server, e)
     if not trusted and not cfg.get("allow_package_install"):
-        return False, ("install refused: this file is not the ScreenTinker release %s announces, and "
+        return False, ("install refused: this file is not the LuminaScreen release %s announces, and "
                        "allow_package_install is off" % (server or "(no server configured)"))
     if path.lower().endswith(".msi"):
         argv = ["msiexec", "/i", path, "/qn", "/norestart"]
@@ -177,7 +177,7 @@ def v_install(args):
         argv = [path, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-"]
     else:
         argv = [path, "/S", "/quiet"]
-    # Detached: upgrading ScreenTinker stops THIS service, which must not take the installer down.
+    # Detached: upgrading LuminaScreen stops THIS service, which must not take the installer down.
     subprocess.Popen(argv, creationflags=DETACHED_PROCESS | CREATE_NO_WINDOW, close_fds=True)
     log.info("install started: %s (%s)", os.path.basename(path), "release" if trusted else "operator-allowed")
     return True, "install of %s started" % os.path.basename(path)
@@ -215,7 +215,7 @@ def _pipe_security():
     """Who may OPEN the pipe: SYSTEM, Administrators, INTERACTIVE users. Well-known SIDs, not names —
     "Administrators" is translated on non-English Windows and a name lookup would silently fail there.
 
-    ⚠️ Not the "ScreenTinker Players" group alone: a logon token never gains a group added after logon,
+    ⚠️ Not the "LuminaScreen Players" group alone: a logon token never gains a group added after logon,
     and the installer runs while the kiosk user is already logged on — the player was refused with
     "Permission denied" until the next logon (found in the Win11 VM). Opening is therefore broad, and
     the real check is per connection: _client_allowed()."""
@@ -233,7 +233,7 @@ def _pipe_security():
 
 
 def _client_allowed(h):
-    """The caller must BE the installed player: its image path equals ScreenTinker.exe next to this
+    """The caller must BE the installed player: its image path equals LuminaScreen.exe next to this
     helper, in Program Files, which only administrators can write. Tighter than a group — another
     program running as the same kiosk user (the remote shell, say) cannot use the helper at all."""
     import win32api
@@ -272,7 +272,7 @@ def pipe_server(stop):
             if stop.is_set():
                 continue                        # SvcStop's own unblocking pokes, not clients
             if not _client_allowed(h):
-                win32file.WriteFile(h, (json.dumps({"ok": False, "out": "not the ScreenTinker player"}) + "\n").encode())
+                win32file.WriteFile(h, (json.dumps({"ok": False, "out": "not the LuminaScreen player"}) + "\n").encode())
                 continue
             buf = b""
             while not buf.endswith(b"\n") and len(buf) < 65536:
@@ -298,7 +298,7 @@ def pipe_server(stop):
 
 def player_exe():
     base = os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else os.path.dirname(__file__)
-    return os.path.join(base, "ScreenTinker.exe")
+    return os.path.join(base, "LuminaScreen.exe")
 
 
 def watchdog(stop):
@@ -370,10 +370,10 @@ def _service_class():
     import win32service
     import win32serviceutil
 
-    class ScreenTinkerHelper(win32serviceutil.ServiceFramework):
-        _svc_name_ = "ScreenTinkerHelper"
-        _svc_display_name_ = "ScreenTinker Helper"
-        _svc_description_ = ("Privileged actions and watchdog for the ScreenTinker signage player "
+    class LuminaScreenHelper(win32serviceutil.ServiceFramework):
+        _svc_name_ = "LuminaScreenHelper"
+        _svc_display_name_ = "LuminaScreen Helper"
+        _svc_description_ = ("Privileged actions and watchdog for the LuminaScreen signage player "
                              "(reboot, clock, display timeout, updates). Fixed verb list only.")
 
         def __init__(self, args):
@@ -405,7 +405,7 @@ def _service_class():
             threading.Thread(target=watchdog, args=(self.stop_event,), daemon=True).start()
             win32event.WaitForSingleObject(self.hWaitStop, win32event.INFINITE)
             log.info("helper stopped")
-    return ScreenTinkerHelper
+    return LuminaScreenHelper
 
 
 def main():

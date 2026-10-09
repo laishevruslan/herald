@@ -130,7 +130,7 @@ test('openapi: a device documents its WAN and LAN addresses distinctly', () => {
 });
 
 // "permission" is a sentinel, not a network name: Android 10+ withholds the SSID without a
-// location permission ScreenTinker only requests if an operator opts in. An integrator who does
+// location permission LuminaScreen only requests if an operator opts in. An integrator who does
 // not know that will render it as the Wi-Fi name to an end user.
 test('openapi: the wifi_ssid permission sentinel is documented', () => {
   const ssid = spec.components.schemas.Device.properties.wifi_ssid;

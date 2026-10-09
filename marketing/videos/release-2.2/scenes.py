@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Scene renderer for "ScreenTinker 2.0".
+# Scene renderer for "LuminaScreen 2.0".
 #
 # Same brand system and Playwright frame technique as the Pi / Android TV / alternative videos:
 # every scene renders its FULL duration as frames with a CSS Ken Burns push-in baked in, so no
@@ -314,7 +314,7 @@ def player_server_diagram(eyebrow, title):
       "<div class='bt' style='margin-bottom:26px'>One BrightSign player</div>"
       "<div style='display:flex;gap:26px;justify-content:center'>"
       "<div class='box p' style='animation-delay:.8s;min-width:340px;background:#111a28'>"
-      "<div class='bt' style='font-size:30px;color:#34d399'>ScreenTinker server</div><div class='bs'>a real Node process</div></div>"
+      "<div class='bt' style='font-size:30px;color:#34d399'>LuminaScreen server</div><div class='bs'>a real Node process</div></div>"
       "<div class='box p' style='animation-delay:1.0s;min-width:340px;background:#111a28'>"
       "<div class='bt' style='font-size:30px;color:#5aa0ff'>the player</div><div class='bs'>in the widget beside it</div></div>"
       "</div></div></div>"
@@ -352,8 +352,8 @@ def cta_scene():
       "<div class='sub a' style='animation-delay:.45s;text-align:center;max-width:1200px'>"
       "Open source · MIT licensed · run the whole thing on your own hardware</div>"
       "<div class='links a' style='animation-delay:.7s'>"
-      "<span class='pill'>github.com/screentinker/<span class='u'>screentinker</span></span><br>"
-      "<span class='pill'><span class='u'>screentinker.com</span></span></div>"
+      "<span class='pill'>github.com/luminascreen/<span class='u'>luminascreen</span></span><br>"
+      "<span class='pill'><span class='u'>luminascreen.ru</span></span></div>"
       "<div class='sub a' style='animation-delay:1.0s;font-size:30px'>A star on the repository genuinely helps.</div>"
       "</div></div>")
 
@@ -390,7 +390,7 @@ def room_sign_diagram(eyebrow, title):
 # and the LAN control door have no dashboard page - saying so out loud is the scene).
 SCENES = {
  # 01 — hook. No logo, no title card: a question and the instance's own answer.
- "01": terminal("Ask it", "claude — screentinker mcp", [
+ "01": terminal("Ask it", "claude — luminascreen mcp", [
         "<span class='pmt'>&gt;</span> <span class='cmd'>Which of my screens are offline?</span>",
         "",
         "<span class='dim'>· calling</span> <span class='hdr'>fleet_status</span>",
@@ -400,13 +400,13 @@ SCENES = {
        ]),
 
  # 02 — what this is, and what the release is about.
- "02": cap_frame("ScreenTinker 2.2", "cap-dashboard.png", "screentinker.com/app#/dashboard",
+ "02": cap_frame("LuminaScreen 2.2", "cap-dashboard.png", "luminascreen.ru/app#/dashboard",
         "Open-source signage — and the release that opens it up to <b>AI assistants</b>.",
         chips=[("Model Context Protocol",),("21 tools",),("your own API underneath","alt")],
         version=True),
 
  # 03 — the endpoint itself.
- "03": terminal("The endpoint", "$ claude mcp add --transport http screentinker", [
+ "03": terminal("The endpoint", "$ claude mcp add --transport http luminascreen", [
         "<span class='pmt'>$</span> <span class='cmd'>curl -s $SERVER/mcp -H \"Authorization: Bearer $ST_TOKEN\" &bsol;</span>",
         "<span class='cmd'>    -d '{\"method\":\"tools/list\"}' | jq '.result.tools | length'</span>",
         "<span class='st'>21</span>",
@@ -419,13 +419,13 @@ SCENES = {
  # 04 — the scope filter, shown against the real token list.
  # The CARD, not the page: at 1080p the scopes have to be readable, because they are the claim.
  # `contain` because the element shot is wide and short - `cover` would crop the rows off.
- "04": cap_frame("Scoped", "cap-tokens-card.png", "screentinker.com/app#/settings",
+ "04": cap_frame("Scoped", "cap-tokens-card.png", "luminascreen.ru/app#/settings",
         "The tool list is filtered by the token. <b>Read-only sees ten.</b>",
         chips=[("Full → 21 tools",),("Read only → 10 tools","alt"),("never shown what it may not do",)],
         pos="center", size="contain"),
 
  # 05 — asking for work.
- "05": terminal("Ask for work", "claude — screentinker mcp", [
+ "05": terminal("Ask for work", "claude — luminascreen mcp", [
         "<span class='pmt'>&gt;</span> <span class='cmd'>Put the autumn campaign on the lobby screen.</span>",
         "",
         "<span class='dim'>· </span><span class='hdr'>list_displays</span><span class='dim'> → Main Lobby (online)</span>",
@@ -438,9 +438,9 @@ SCENES = {
 
  # 06 — it is your own API, and the limit that saves an agent its retries.
  "06": terminal("No second door", "$ cat /.well-known/auth.md", [
-        "<span class='hdr'># Authenticating with the ScreenTinker API</span>",
+        "<span class='hdr'># Authenticating with the LuminaScreen API</span>",
         "",
-        "<span class='cmd'>ScreenTinker uses scoped personal access tokens. There is</span>",
+        "<span class='cmd'>LuminaScreen uses scoped personal access tokens. There is</span>",
         "<span class='cmd'>no OAuth flow, no client registration, and </span><span class='st'>no way for an</span>",
         "<span class='st'>agent to obtain a token on its own</span><span class='cmd'> — a human creates one</span>",
         "<span class='cmd'>in the dashboard and gives it to you.</span>",
@@ -479,15 +479,15 @@ SCENES = {
                  "<b>Ten panel presets</b> <span class='k'>— and no browser on the device</span>"]),
 
  # 10 — platforms, and the downloads page built from what the instance really has.
- "10": cap_frame("Eleven platforms", "cap-download.png", "screentinker.com/download",
+ "10": cap_frame("Eleven platforms", "cap-download.png", "luminascreen.ru/download",
         "Built from the players <b>this instance actually has</b> — and it says when it hasn't.",
         chips=[("a guide for each",),("Apple TV: not supported, with reasons","alt")]),
 
  # 11 — what changed for someone already running it, then the close.
- "11": cap_frame("Also in 2.2", "cap-reports.png", "screentinker.com/app#/reports",
+ "11": cap_frame("Also in 2.2", "cap-reports.png", "luminascreen.ru/app#/reports",
         "Reports returned <b>nothing</b> for a valid date range — found by asking the assistant.",
         chips=[("Esc now wants the settings PIN",),("the dashboard notices its own updates",),
-               ("screentinker.com","alt")]),
+               ("luminascreen.ru","alt")]),
 }
 
 # ---------------------------------------------------------------- render

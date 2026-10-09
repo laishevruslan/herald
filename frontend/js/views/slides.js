@@ -777,7 +777,7 @@ function renderEditor(container) {
         </button>
         <span id="aiStatus" style="font-size:12px;color:var(--text-muted);margin-left:4px"></span>
       </div>
-      <!-- Hosted AI (ScreenTinker credits). Stays hidden unless the server has a platform image
+      <!-- Hosted AI (LuminaScreen credits). Stays hidden unless the server has a platform image
            provider configured; then "Generate background" follows whichever path is picked here. -->
       <div id="aiHostedRow" style="display:none;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"></div>
     </div>
@@ -915,7 +915,7 @@ function renderEditor(container) {
     const e = newElement(b.dataset.add);
     s.template.elements.push(e);
     if (TEXT_KINDS.includes(e.kind)) {
-      s.fields[e.slot] = e.kind === 'qr' ? 'https://screentinker.com'
+      s.fields[e.slot] = e.kind === 'qr' ? 'https://luminascreen.ru'
         : e.kind === 'countdown' ? 'Now open'
         : KINDS[e.kind].label;
     }

@@ -4,7 +4,7 @@
   "version": "0.2.1",
   "kind": "html",
   "description": "The DOOM shareware title loop and demos, full screen. Click (or focus) and use the keyboard to play; after a while with no input it drops back to attract mode. Local test only: the engine is GPL-2.0, so this is never listed in the catalog.",
-  "author": "id Software, jacobenget/doom.wasm; host by ScreenTinker",
+  "author": "id Software, jacobenget/doom.wasm; host by LuminaScreen",
   "license": "GPL-2.0-only",
   "tags": [
     "game",

@@ -46,11 +46,11 @@ test('a validly signed token is REFUSED without an open request code from this i
 
 test('a token is single-use: the request code is consumed on first redemption', () => {
   const { code } = support.createRequest({ requestedBy: 'admin@customer' });
-  const { token } = support.issueToken({ requestCode: code, org: 'Acme', hours: 2, reason: 'ticket 42', issuedBy: 'me@screentinker.com' });
+  const { token } = support.issueToken({ requestCode: code, org: 'Acme', hours: 2, reason: 'ticket 42', issuedBy: 'me@luminascreen.ru' });
   const grant = support.redeemToken(token, { sourceIp: '203.0.113.5' });
   assert.equal(grant.org, 'Acme');
   assert.equal(grant.reason, 'ticket 42');
-  assert.equal(grant.issuedBy, 'me@screentinker.com');
+  assert.equal(grant.issuedBy, 'me@luminascreen.ru');
   assert.throws(() => support.redeemToken(token), /does not match an open support request/, 'same token again: the code is spent');
   assert.equal(support.listOpenRequests().find((r) => r.code === code), undefined, 'the request is no longer open');
   // A SECOND token minted against the same (now spent) code is refused too.
@@ -118,13 +118,13 @@ test('request codes survive being read out: any case, with or without dashes', (
 // ---------------------------------------------------------------------------
 test('a redeemed grant is a platform_operator session that lives exactly as long as the grant', () => {
   const { code } = support.createRequest();
-  const grant = support.redeemToken(support.issueToken({ requestCode: code, org: 'Acme', hours: 3, issuedBy: 'me@screentinker.com' }).token);
+  const grant = support.redeemToken(support.issueToken({ requestCode: code, org: 'Acme', hours: 3, issuedBy: 'me@luminascreen.ru' }).token);
   const jwt = generateSupportSessionToken(grant);
   const s = resolveSessionUser(jwt, { sourceIp: '198.51.100.7' });
   assert.equal(s.viaSupport, true);
   assert.equal(s.user.role, 'platform_operator', 'cross-org read/write, no owner powers (#13)');
   assert.equal(s.user.id, `support:${grant.jti}`);
-  assert.match(s.user.name, /me@screentinker\.com/);
+  assert.match(s.user.name, /me@luminascreen\.com/);
   const row = db.prepare('SELECT first_used_at, source_ip FROM support_grants WHERE jti = ?').get(grant.jti);
   assert.ok(row.first_used_at, 'first use is stamped');
   // The JWT's own expiry matches the grant's, to the minute.

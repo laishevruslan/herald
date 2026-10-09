@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Scene renderer for "ScreenTinker 2.0".
+# Scene renderer for "LuminaScreen 2.0".
 #
 # Same brand system and Playwright frame technique as the Pi / Android TV / alternative videos:
 # every scene renders its FULL duration as frames with a CSS Ken Burns push-in baked in, so no
@@ -314,7 +314,7 @@ def player_server_diagram(eyebrow, title):
       "<div class='bt' style='margin-bottom:26px'>One BrightSign player</div>"
       "<div style='display:flex;gap:26px;justify-content:center'>"
       "<div class='box p' style='animation-delay:.8s;min-width:340px;background:#111a28'>"
-      "<div class='bt' style='font-size:30px;color:#34d399'>ScreenTinker server</div><div class='bs'>a real Node process</div></div>"
+      "<div class='bt' style='font-size:30px;color:#34d399'>LuminaScreen server</div><div class='bs'>a real Node process</div></div>"
       "<div class='box p' style='animation-delay:1.0s;min-width:340px;background:#111a28'>"
       "<div class='bt' style='font-size:30px;color:#5aa0ff'>the player</div><div class='bs'>in the widget beside it</div></div>"
       "</div></div></div>"
@@ -352,20 +352,20 @@ def cta_scene():
       "<div class='sub a' style='animation-delay:.45s;text-align:center;max-width:1200px'>"
       "Open source · MIT licensed · run the whole thing on your own hardware</div>"
       "<div class='links a' style='animation-delay:.7s'>"
-      "<span class='pill'>github.com/screentinker/<span class='u'>screentinker</span></span><br>"
-      "<span class='pill'><span class='u'>screentinker.com</span></span></div>"
+      "<span class='pill'>github.com/luminascreen/<span class='u'>luminascreen</span></span><br>"
+      "<span class='pill'><span class='u'>luminascreen.ru</span></span></div>"
       "<div class='sub a' style='animation-delay:1.0s;font-size:30px'>A star on the repository genuinely helps.</div>"
       "</div></div>")
 
 # ---------------------------------------------------------------- scenes
 SCENES = {
  # 01 HOOK — the real editor, cold open, no logo intro. Version stamp instead of the wordmark.
- "01": cap_frame("ScreenTinker 2.0", "cap-slides-editor.png", "screentinker.com/app#/slides",
+ "01": cap_frame("LuminaScreen 2.0", "cap-slides-editor.png", "luminascreen.ru/app#/slides",
         "The biggest release the project has had — and most of it is <b>one thing</b>.",
         chips=[("Slides",), ("Triggers",), ("Node mesh",)], version=True),
 
  # ---- SLIDES (02-08)
- "02": cap_frame("01 · Slides", "cap-slides-editor.png", "screentinker.com/app#/slides",
+ "02": cap_frame("01 · Slides", "cap-slides-editor.png", "luminascreen.ru/app#/slides",
         "A real authoring surface — not a text widget.",
         chips=[("headline",),("text",),("big number",),("photo",),("rule",),("panel",),
                ("clock","alt"),("date","alt"),("countdown","alt"),("QR","alt")]),
@@ -374,13 +374,13 @@ SCENES = {
 
  "04": edit_later_diagram("01 · Slides", "Come back in three months and <span class='hl'>change a name</span>"),
 
- "05": cap_frame("01 · Slides", "cap-slides-slide.png", "screentinker.com/app#/slides",
+ "05": cap_frame("01 · Slides", "cap-slides-slide.png", "luminascreen.ru/app#/slides",
         "Backgrounds: a picture or a video, with a scrim so white text stays readable.",
         chips=[("colour",),("photo",),("video","alt")], pos="top right"),
 
  "06": layers_diagram("01 · Slides", "Generated — and then <span class='hl'>layered</span>"),
 
- "07": cap_frame("01 · Slides", "cap-slides-motion.png", "screentinker.com/app#/slides",
+ "07": cap_frame("01 · Slides", "cap-slides-motion.png", "luminascreen.ru/app#/slides",
         "Motion is per element — and the editor tells you when the last one <b>settles</b>.",
         chips=[("bundled fonts",),("per-element motion",),("portrait","alt")], pos="top right"),
 
@@ -391,7 +391,7 @@ SCENES = {
                  "<b>New work</b> <span class='k'>— belongs in Slides</span>"]),
 
  # ---- TRIGGERS (09-10)
- "09": cap_frame("02 · Triggers", "cap-trigger-dialog.png", "screentinker.com/app#/triggers",
+ "09": cap_frame("02 · Triggers", "cap-trigger-dialog.png", "luminascreen.ru/app#/triggers",
         "An external system can put a playlist over whatever a screen is showing.",
         chips=[("HTTP",),("UDP",),("4 wire formats","alt"),("rebuilt as a real dialog","alt")],
         pos="center", size="contain"),
@@ -402,10 +402,10 @@ SCENES = {
  "11": mesh_diagram("03 · Node mesh", "Servers can now <span class='hl'>federate</span>"),
 
  # ---- BRIGHTSIGN
- "12": player_server_diagram("04 · On the player", "A BrightSign can run <span class='hl'>ScreenTinker itself</span>"),
+ "12": player_server_diagram("04 · On the player", "A BrightSign can run <span class='hl'>LuminaScreen itself</span>"),
 
  # ---- PROOF OF PLAY
- "13": cap_frame("05 · Proof of play", "cap-reports.png", "screentinker.com/app#/reports",
+ "13": cap_frame("05 · Proof of play", "cap-reports.png", "luminascreen.ru/app#/reports",
         "Players queue what they played offline, and flush it when they reconnect.",
         chips=[("de-duplicated",),("player-minted id","alt")], pos="top center"),
 
@@ -431,7 +431,7 @@ SCENES = {
         "<span class='dim'>[mesh]</span>  <span class='dim'>off — no server joins anything by default</span>",
         "<span class='dim'>[designer]</span> <span class='ok'>still available</span> (deprecating)",
         "",
-        "<span class='st'>ScreenTinker Server v2.0.0</span>",
+        "<span class='st'>LuminaScreen Server v2.0.0</span>",
         "<span class='dim'>content · playlists · schedules · pairings — all unchanged</span>",
        ]),
 

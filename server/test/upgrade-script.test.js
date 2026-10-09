@@ -78,7 +78,7 @@ test('⚠️ upgrade.sh can be run from outside the checkout', () => {
 });
 
 test('⚠️ a DATA_DIR outside the checkout is found, and a running service is never "a fresh install"', () => {
-  // studiolab: DATA_DIR=/var/lib/screentinker in an EnvironmentFile. The in-checkout default does
+  // studiolab: DATA_DIR=/var/lib/luminascreen in an EnvironmentFile. The in-checkout default does
   // not exist there, so the backup was skipped as "fresh install" and the upgrade ran without one.
   assert.match(SRC, /unit_env DB_PATH/, 'DB_PATH from the running unit');
   assert.match(SRC, /unit_env DATA_DIR/, 'DATA_DIR from the running unit');

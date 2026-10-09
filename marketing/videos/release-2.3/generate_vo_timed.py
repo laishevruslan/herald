@@ -2,7 +2,7 @@
 # Regenerate the VO AND capture per-word timings in the SAME stream, so element reveals can be
 # synced to exactly when each word is spoken ("show up as it's being said"). Writes:
 #   audio/vo-NN.wav        (same bytes edge-tts --write-media produced before)
-#   timings.json           { "01": [["Since",0.05],["ScreenTinker",0.38], ...], ... }
+#   timings.json           { "01": [["Since",0.05],["LuminaScreen",0.38], ...], ... }
 import asyncio, json, os
 import edge_tts
 

@@ -1,21 +1,21 @@
 ========================================================================
 YOUTUBE UPLOAD PACKAGE
-Video: ScreenTinker 2.0 — Slides, Triggers, Node Mesh
-File:  screentinker-2p0.mp4  (~5:10 · 1080p30)
+Video: LuminaScreen 2.0 — Slides, Triggers, Node Mesh
+File:  luminascreen-2p0.mp4  (~5:10 · 1080p30)
 ========================================================================
 
 
 ------------------------------- TITLE ----------------------------------
 (pick one — the first leads with the release, the second with the feature)
 
-ScreenTinker 2.0 — Design Slides, Fire Triggers, Federate Servers
+LuminaScreen 2.0 — Design Slides, Fire Triggers, Federate Servers
 
-ScreenTinker 2.0: A Real Slide Editor for Open-Source Digital Signage
+LuminaScreen 2.0: A Real Slide Editor for Open-Source Digital Signage
 
 
 ---------------------------- DESCRIPTION -------------------------------
 
-ScreenTinker 2.0 is out — the biggest release the project has had. Most of
+LuminaScreen 2.0 is out — the biggest release the project has had. Most of
 it is one thing: you can finally design a slide, properly, inside the
 product.
 
@@ -50,7 +50,7 @@ content, request a reboot and read diagnostics, each under its own grant,
 with the customer deciding what it accepts. Deliberately conservative for a
 first release: opt-in, capped at two tiers.
 
-RUNNING THE SERVER ON THE PLAYER — a BrightSign can now run ScreenTinker
+RUNNING THE SERVER ON THE PLAYER — a BrightSign can now run LuminaScreen
 itself, with the player in the widget beside it.
 
 PROOF OF PLAY THAT SURVIVES AN OUTAGE — players queue what they played
@@ -73,7 +73,7 @@ schedules and pairings all keep their meaning, and the mesh stays off until
 you turn it on.
 
 ▶ Chapters
-0:00  ScreenTinker 2.0 is here
+0:00  LuminaScreen 2.0 is here
 0:12  Slides — a real authoring surface
 0:32  Template and fields are separate
 0:49  Edit the words, not the layout
@@ -92,23 +92,23 @@ you turn it on.
 4:57  Get it
 
 🔗 Links
-• Source (MIT licensed) — a star helps! https://github.com/screentinker/screentinker
-• Try it free (hosted): https://screentinker.com
-• Self-hosting guide: https://screentinker.com/guides/self-hosted-digital-signage.html
-• Full 2.0 changelog: https://github.com/screentinker/screentinker/blob/main/CHANGELOG.md
+• Source (MIT licensed) — a star helps! https://github.com/luminascreen/luminascreen
+• Try it free (hosted): https://luminascreen.ru
+• Self-hosting guide: https://luminascreen.ru/guides/self-hosted-digital-signage.html
+• Full 2.0 changelog: https://github.com/luminascreen/luminascreen/blob/main/CHANGELOG.md
 • Community & support (Discord): https://discord.gg/utTdsrqq4Z
 
-ScreenTinker is free and open source. Self-host it on any number of screens —
+LuminaScreen is free and open source. Self-host it on any number of screens —
 you only pay for the server. A hosted plan exists at a flat $99/mo for 15
 devices if you would rather not run one.
 
 Open source · Self-hostable · No per-screen fees · Your data on your hardware
 
-#DigitalSignage #OpenSource #SelfHosted #ScreenTinker #BrightSign
+#DigitalSignage #OpenSource #SelfHosted #LuminaScreen #BrightSign
 
 
 ------------------------------- TAGS -----------------------------------
-screentinker, screentinker 2.0, digital signage software, open source digital
+luminascreen, luminascreen 2.0, digital signage software, open source digital
 signage, self hosted digital signage, digital signage slide editor, signage
 templates, digital signage triggers, crestron digital signage, extron trigger,
 brightsign, brightsign signage, proof of play, digital signage analytics,

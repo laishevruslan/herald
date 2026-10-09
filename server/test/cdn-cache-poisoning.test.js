@@ -4,7 +4,7 @@
 // so any response that changes with a request header, or that answers a missing file with a
 // success code, can be stored under a URL and served to everyone who asks for it afterwards.
 //
-// Reproduced on screentinker.com 2026-10-04: one `Accept: text/markdown` fetch of a guide page was
+// Reproduced on luminascreen.ru 2026-10-04: one `Accept: text/markdown` fetch of a guide page was
 // stored as `public, max-age=900`, and the next ordinary browser request for that URL got raw
 // markdown back as a cache HIT. These tests boot the real server and check that each URL has one
 // answer, and that a miss is never cached as a success.
@@ -78,7 +78,7 @@ test('the .md URL is its own URL, and is never cached', async () => {
 });
 
 test('⚠️ a missing asset is a 404 that is not cached, never the app shell with a 200', async () => {
-  for (const p of ['/js/views/does-not-exist.js', '/css/nope.css', '/js/nope.js.map', '/ScreenTinker-missing.apk', '/guides-nope/x.md']) {
+  for (const p of ['/js/views/does-not-exist.js', '/css/nope.css', '/js/nope.js.map', '/LuminaScreen-missing.apk', '/guides-nope/x.md']) {
     const r = await get(p, '*/*');
     const body = await r.text();
     assert.equal(r.status, 404, `${p} answered ${r.status}`);

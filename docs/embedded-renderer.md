@@ -1,8 +1,8 @@
 # Embedded Renderer for Digital Signage (E-Paper & MCU Displays)
 
-ScreenTinker includes a dedicated server-side embedded renderer designed for lightweight microcontrollers (MCUs) such as the **ESP32-S3**, **Raspberry Pi Pico W**, or **Seeed Studio reTerminal Sticky** (3.97" B/W E-Paper 800×480 with SSD1677).
+LuminaScreen includes a dedicated server-side embedded renderer designed for lightweight microcontrollers (MCUs) such as the **ESP32-S3**, **Raspberry Pi Pico W**, or **Seeed Studio reTerminal Sticky** (3.97" B/W E-Paper 800×480 with SSD1677).
 
-Instead of requiring the display hardware to run a full web browser or render HTML/CSS, the embedded system periodically makes an HTTP `GET` request to the ScreenTinker server and receives a **pre-rendered, pre-dithered binary image** formatted specifically for its display panel.
+Instead of requiring the display hardware to run a full web browser or render HTML/CSS, the embedded system periodically makes an HTTP `GET` request to the LuminaScreen server and receives a **pre-rendered, pre-dithered binary image** formatted specifically for its display panel.
 
 ---
 
@@ -10,7 +10,7 @@ Instead of requiring the display hardware to run a full web browser or render HT
 
 ```
 ┌─────────────────────────┐                         ┌────────────────────────────────────┐
-│   Embedded Device       │                         │   ScreenTinker Server              │
+│   Embedded Device       │                         │   LuminaScreen Server              │
 │  (e.g. reTerminal)      │                         │                                    │
 │                         │   GET /api/embedded/    │                                    │
 │ 1. Wake up from sleep   │ ──────────────────────> │ 1. Authenticate device token       │
@@ -37,7 +37,7 @@ Instead of requiring the display hardware to run a full web browser or render HT
 
 Once provisioned, the `device_id` and `device_token` pair acts as a long-lived device credential. The MCU stores both values once in non-volatile storage (**NVS / Flash / EEPROM**) and uses them on every HTTP request.
 
-The token remains valid indefinitely unless an administrator explicitly deletes the display from the ScreenTinker dashboard or re-pairs the device.
+The token remains valid indefinitely unless an administrator explicitly deletes the display from the LuminaScreen dashboard or re-pairs the device.
 
 ---
 
@@ -67,7 +67,7 @@ There are two supported onboarding methods for embedded firmware:
      ```
    - The MCU renders the server-assigned 6-digit code on its E-Paper display and keeps `claim_secret` in RAM.
 2. **Dashboard Claim:**
-   - The user opens the ScreenTinker Web UI, goes to **Displays → Add Display**, and enters the 6-digit code shown on the screen.
+   - The user opens the LuminaScreen Web UI, goes to **Displays → Add Display**, and enters the 6-digit code shown on the screen.
 3. **Credential Stamping:**
    - The MCU periodically checks `GET /api/embedded/pair/status?device_id=<UUID>` with header `Authorization: Bearer <claim_secret>`.
    - As soon as the user claims the display, the server verifies `claim_secret`, burns it in the database, and responds with:
@@ -80,7 +80,7 @@ There are two supported onboarding methods for embedded firmware:
 
 #### Method B: Pre-Provisioned Deployment (Batch Flashing / Fleet Setup)
 If flashing devices in bulk:
-1. Create or register the display row in ScreenTinker (via dashboard or REST API).
+1. Create or register the display row in LuminaScreen (via dashboard or REST API).
 2. Burn the assigned `device_id` and `device_token` directly into the firmware's NVS partition or config header.
 3. The MCU starts directly in **Regular Operation** without ever needing the pairing step.
 

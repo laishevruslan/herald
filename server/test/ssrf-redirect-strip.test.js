@@ -15,9 +15,9 @@ test('drops authorization / cookie / proxy-authorization, case-insensitively', (
     Cookie: 'session=abc',
     'Proxy-Authorization': 'x',
     'if-none-match': '"etag"',
-    'user-agent': 'ScreenTinker',
+    'user-agent': 'LuminaScreen',
   });
-  assert.deepEqual(out, { 'if-none-match': '"etag"', 'user-agent': 'ScreenTinker' });
+  assert.deepEqual(out, { 'if-none-match': '"etag"', 'user-agent': 'LuminaScreen' });
 });
 
 test('lowercase spellings are dropped too', () => {

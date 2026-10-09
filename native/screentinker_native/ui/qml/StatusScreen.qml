@@ -17,7 +17,7 @@ Rectangle {
             color: "#8aa4ff"
             font.pixelSize: Math.max(18, root.height * 0.035)
             font.weight: Font.DemiBold
-            text: "ScreenTinker"
+            text: "LuminaScreen"
         }
         Text {
             width: parent.width

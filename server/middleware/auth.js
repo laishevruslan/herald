@@ -167,7 +167,7 @@ function wwwAuthenticate(req) {
   const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim();
   const host = req.headers['x-forwarded-host'] || req.headers.host || '';
   const base = `${proto}://${host}`;
-  return `Bearer realm="ScreenTinker", resource_metadata="${base}/.well-known/oauth-protected-resource"`;
+  return `Bearer realm="LuminaScreen", resource_metadata="${base}/.well-known/oauth-protected-resource"`;
 }
 
 function requireAuth(req, res, next) {

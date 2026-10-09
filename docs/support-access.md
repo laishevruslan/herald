@@ -1,6 +1,6 @@
 # Support access
 
-How ScreenTinker support gets into a self-hosted instance: **only when you ask, for a few hours,
+How LuminaScreen support gets into a self-hosted instance: **only when you ask, for a few hours,
 visibly, and revocably.** Nothing about it is automatic, and there is no standing account.
 
 ## The rule it is built around
@@ -39,7 +39,7 @@ The session's own token expires exactly when the grant does; there is nothing to
 
 ## Trusting a different support desk (or none)
 
-The public key in `server/lib/support-access.js` is ScreenTinker's. If you run your own support
+The public key in `server/lib/support-access.js` is LuminaScreen's. If you run your own support
 organisation, or simply do not want ours to be able to redeem tokens even with your consent, set
 `SUPPORT_PUBLIC_KEY` to a key of your own (PEM, `\n` accepted for newlines) and our tokens verify
 nowhere on your install. `node scripts/support-keygen.js <private-key-path>` produces a pair.

@@ -30,7 +30,7 @@ from .items import BUNDLE_MIME, Item
 
 log = logging.getLogger("engine")
 
-EMBED_BASE = "https://screentinker.com"
+EMBED_BASE = "https://luminascreen.ru"
 YT_BASE = "https://www.youtube.com"
 PRELOAD_LEAD_SEC = 6.0
 SEEK_COOLDOWN_MS = 1200
@@ -48,7 +48,7 @@ def youtube_id(url):
 
 
 def youtube_html(url, muted):
-    """Android WebViewSupport.youtubeEmbedHtml, byte-compatible. Loaded with a screentinker.com base so
+    """Android WebViewSupport.youtubeEmbedHtml, byte-compatible. Loaded with a luminascreen.ru base so
     the iframe has a valid origin (a bare embed load gives YouTube's Error 153)."""
     vid = youtube_id(url)
     if not vid:

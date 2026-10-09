@@ -1,5 +1,5 @@
 import subprocess, os
-# Voiceover for "ScreenTinker 2.0". Same voice/pipeline as the other videos.
+# Voiceover for "LuminaScreen 2.0". Same voice/pipeline as the other videos.
 # Every claim traced to CHANGELOG.md 2.0.0 — nothing here is aspirational.
 #
 # TTS RULES LEARNED THE HARD WAY (see the Pi + alternative videos):
@@ -16,7 +16,7 @@ EDGE = os.path.expanduser("~/tts-venv/bin/edge-tts")
 VOICE = "en-US-AndrewNeural"
 SCENES = [
  # ---------------------------------------------------------------- hook (no logo intro)
- ("01","ScreenTinker two point oh is here. It's the biggest release the project has had — and most of it is one thing: you can finally design a slide, properly, inside the product. Let me show you what shipped."),
+ ("01","LuminaScreen two point oh is here. It's the biggest release the project has had — and most of it is one thing: you can finally design a slide, properly, inside the product. Let me show you what shipped."),
 
  # ---------------------------------------------------------------- SLIDES (6 scenes — the story)
  ("02","Slides is a real authoring surface. Headlines, body text, big numbers, photos, rules and panels — plus clock, date, countdown and Q R elements moved over from the designer. Q R codes are drawn on the server, so a code needs no network at the panel and no third-party service to render it."),
@@ -42,7 +42,7 @@ SCENES = [
  ("11","Third: servers can federate. A hub can see a customer's screens, send them content, ask them to reboot, and read diagnostics — each under its own separate grant. The customer decides what they accept, and sees everything done to them. It's deliberately conservative for a first release: nothing joins by default, depth is capped at two tiers, and content and schedules aren't mirrored yet."),
 
  # ---------------------------------------------------------------- BRIGHTSIGN
- ("12","A BrightSign player can now run ScreenTinker itself — the server as a real process, with the player in the widget right beside it. Screenshots, audio muting and local trigger input all work on that shape, and video backgrounds composite behind slide content there too. That last one took a session on real hardware to prove."),
+ ("12","A BrightSign player can now run LuminaScreen itself — the server as a real process, with the player in the widget right beside it. Screenshots, audio muting and local trigger input all work on that shape, and video backgrounds composite behind slide content there too. That last one took a session on real hardware to prove."),
 
  # ---------------------------------------------------------------- PROOF OF PLAY
  ("13","Proof of play now survives an outage. Players queue what they played while they were offline, and flush it when they reconnect — de-duplicated by an id the player mints itself, so a re-flush can't double count a play. What prompted this was a twenty thousand second hole in somebody's record."),
@@ -57,7 +57,7 @@ SCENES = [
  ("16","If you're already running one point nine, there is nothing to do by hand. Migrations run on first boot. Your content, playlists, schedules and pairings all keep their meaning. The mesh stays off until you turn it on. And the designer still works. Two point oh is a normal upgrade, not a migration project."),
 
  # ---------------------------------------------------------------- CTA
- ("17","That's ScreenTinker two point oh. It's open source, it's M I T licensed, and you can run the whole thing on your own hardware — links are below. If this was useful, a star on the repository genuinely helps. Thanks for watching."),
+ ("17","That's LuminaScreen two point oh. It's open source, it's M I T licensed, and you can run the whole thing on your own hardware — links are below. If this was useful, a star on the repository genuinely helps. Thanks for watching."),
 ]
 os.makedirs("audio", exist_ok=True)
 for sid, text in SCENES:

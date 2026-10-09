@@ -51,7 +51,7 @@ function runReset(search, store) {
 }
 
 const paired = () => ({
-  rd_config: JSON.stringify({ serverUrl: 'https://screentinker.com', deviceId: 'dev-1', deviceToken: 'tok-1', paired: true }),
+  rd_config: JSON.stringify({ serverUrl: 'https://luminascreen.ru', deviceId: 'dev-1', deviceToken: 'tok-1', paired: true }),
   st_install_id: 'install-aaaa',
   rd_playlist_cache: '[{"x":1}]',
   rd_layout_cache: '{"zones":1}',
@@ -69,7 +69,7 @@ test('THE POINT: ?reset= clears the identity so the panel pairs as a new device'
 
 test('the server URL survives — a panel with no keyboard must not be stranded', () => {
   const s = runReset('?reset=1', paired());
-  assert.equal(JSON.parse(s.rd_config).serverUrl, 'https://screentinker.com');
+  assert.equal(JSON.parse(s.rd_config).serverUrl, 'https://luminascreen.ru');
 });
 
 test('cached content is dropped so the new device does not show the old screen', () => {
@@ -83,7 +83,7 @@ test('THE TRAP: the same token left in the URL forever resets exactly ONCE', () 
   const s = paired();
   runReset('?reset=1', s);
   // Panel reboots. The configured URL still says ?reset=1 — it always will.
-  s.rd_config = JSON.stringify({ serverUrl: 'https://screentinker.com', deviceId: 'dev-2', deviceToken: 'tok-2', paired: true });
+  s.rd_config = JSON.stringify({ serverUrl: 'https://luminascreen.ru', deviceId: 'dev-2', deviceToken: 'tok-2', paired: true });
   s.st_install_id = 'install-bbbb';
   runReset('?reset=1', s);
   const cfg = JSON.parse(s.rd_config);
@@ -95,7 +95,7 @@ test('THE TRAP: the same token left in the URL forever resets exactly ONCE', () 
 test('a DIFFERENT token resets again, so the hatch is reusable', () => {
   const s = paired();
   runReset('?reset=1', s);
-  s.rd_config = JSON.stringify({ serverUrl: 'https://screentinker.com', deviceId: 'dev-2', paired: true });
+  s.rd_config = JSON.stringify({ serverUrl: 'https://luminascreen.ru', deviceId: 'dev-2', paired: true });
   runReset('?reset=2', s);
   assert.equal(JSON.parse(s.rd_config).deviceId, undefined, 'a new token means a new reset');
 });

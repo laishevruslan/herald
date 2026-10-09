@@ -1,6 +1,6 @@
-# ScreenTinker 2.3 — release video (capture half)
+# LuminaScreen 2.3 — release video (capture half)
 
-Cloned from `~/screentinker-video-2p2`. The capture instance runs **2.3.0** (server source
+Cloned from `~/luminascreen-video-2p2`. The capture instance runs **2.3.0** (server source
 `~/Downloads/st-admin-rework/server`, main 3696afd) on **:3014** with `DATA_DIR=./instance`.
 
 ## What is different for 2.3
@@ -12,7 +12,7 @@ Cloned from `~/screentinker-video-2p2`. The capture instance runs **2.3.0** (ser
   (envelope + subject logged to `smtp_sink.log`). That is what un-greys Cleanup's notice-first
   flow; nothing can leave the machine, and every recipient is @example.test anyway.
 - `seed23.py` (API, server up): table/REST/RSS/CSV data sources (REST/RSS/CSV point only at
-  ScreenTinker's OWN catalog, release feed and example CSV), the signed offline catalog bundle,
+  LuminaScreen's OWN catalog, release feed and example CSV), the signed offline catalog bundle,
   the community library switched on, six templates installed (all "verified"), a menu-board widget
   bound to the `menu` table and an UPTIME 3036 widget.
 - `seed_platform.py` (OFFLINE, server stopped): ~40 invented accounts (paying, trial, unverified,
@@ -37,7 +37,7 @@ Cloned from `~/screentinker-video-2p2`. The capture instance runs **2.3.0** (ser
 
 ---
 
-# ScreenTinker 2.0 — release video
+# LuminaScreen 2.0 — release video
 
 17 scenes, ~5:10, 1080p30. Same pipeline as the Pi / Android TV / Samsung / self-host /
 alternative videos, with one addition: **this one captures a real 2.0 server**, so there is a
@@ -52,7 +52,7 @@ live instance to stand up before anything can be rendered.
 ~/tts-venv/bin/python scenes.py stills   # 4. review: montage caps/preview-s*.png FIRST
 ~/tts-venv/bin/python scenes.py frames 1 17   # 5. ~9,600 frames, several minutes
 python3 assemble.py               # 6. draft-nomusic.mp4
-python3 assemble.py final         # 7. screentinker-2p0.mp4  (music ducked under VO)
+python3 assemble.py final         # 7. luminascreen-2p0.mp4  (music ducked under VO)
 ~/tts-venv/bin/python make_thumb.py   # 8. thumbnail.png
 ```
 

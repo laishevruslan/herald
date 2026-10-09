@@ -1,4 +1,4 @@
-# ScreenTinker — architectural invariants
+# LuminaScreen — architectural invariants
 
 Rules that cannot be inferred from reading any single file, and that erode quietly when they are not
 written down. If a change appears to require breaking one of these, **stop and raise it** — it is not
@@ -16,7 +16,7 @@ that deletes a feature.
 
 ## Node mesh (2.0)
 
-Every ScreenTinker instance is a **node**. Player, site server, hub, proxy, analytics sink are not
+Every LuminaScreen instance is a **node**. Player, site server, hub, proxy, analytics sink are not
 types — they are one node declaring different **capabilities**, connected by **edges**.
 
 | # | Invariant | Guarded by |
@@ -28,7 +28,7 @@ types — they are one node declaring different **capabilities**, connected by *
 | **I5** | **Opaque relay.** An intermediate node forwards payloads it cannot parse, unmodified. It may read the envelope only. | `test_unknown_payload_is_relayed_not_dropped` |
 | **I6** | **Failure isolation.** One child — unreachable, flooding, ancient, skewed — never stalls a sweep, blocks a dashboard, or throws into a shared handler. | `THE ISOLATION PROPERTY`, `THE I6 CASE`, `a dead child stops being attempted` |
 | **I7** | **No phone home.** Pairing codes and UUIDs minted locally. No licence check, no activation, no beacon, no registry. Air-gapped is first-class. | `test_no_phone_home` |
-| **I8** | **Cloud is a peer.** screentinker.com is a node with no special privileges. | `I8: the replica serves the primary's workspace identically whichever node is hosted-shaped` — run in both directions on two real processes, `scale-out-e2e.test.js` |
+| **I8** | **Cloud is a peer.** luminascreen.ru is a node with no special privileges. | `I8: the replica serves the primary's workspace identically whichever node is hosted-shaped` — run in both directions on two real processes, `scale-out-e2e.test.js` |
 | **I9** | **No built-in relay address, no automatic relay fallback.** Relay is a capability at an operator-supplied address. A failed direct connection never silently reroutes. | `test_no_builtin_relay_address`, `test_no_automatic_relay_fallback` |
 | **I10** | **Enforcement lives with the data owner.** The node that owns data enforces its grant — never the requesting node. Connection direction is irrelevant. | `test_grant_defaults_to_denied` |
 

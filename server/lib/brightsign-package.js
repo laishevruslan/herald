@@ -24,7 +24,7 @@ const archiver = require('archiver');
 // The payload, mirroring scripts/build-autorun-zip.sh. autozip.brs must be present or nothing
 // unpacks the archive on the player; autorun.brs must be INSIDE it and never beside it on the
 // storage root, or the player refuses to process the zip at all.
-const PACKAGE_FILES = ['autozip.brs', 'autorun.brs', 'offline.html', 'screentinker.json'];
+const PACKAGE_FILES = ['autozip.brs', 'autorun.brs', 'offline.html', 'luminascreen.json'];
 
 // sha256 rather than sha1 because that is the algorithm BrightScript's roMessageDigest is
 // documented against — the player has to be able to verify what we advertise, and an algorithm it
@@ -66,7 +66,7 @@ function packageServerUrl(req) {
 }
 
 /*
- * Rewrite server_url in screentinker.json.
+ * Rewrite server_url in luminascreen.json.
  *
  * Parsed and re-serialised rather than string-replaced so a malformed URL cannot inject structure
  * into the config the player reads. Returns the ORIGINAL text on any failure: shipping the
@@ -146,7 +146,7 @@ function buildZip(serverUrl) {
       // Point the package at the server it was fetched FROM, so a zip pulled from alpha provisions
       // against alpha. scripts/build-autorun-zip.sh --server does the same thing for the offline
       // path (an SD card written with no server in the loop); this covers the online one.
-      if (name === 'screentinker.json' && serverUrl) {
+      if (name === 'luminascreen.json' && serverUrl) {
         body = Buffer.from(stampServerUrl(body.toString('utf8'), serverUrl), 'utf8');
       }
       // date fixed for reproducibility; the player never reads it.

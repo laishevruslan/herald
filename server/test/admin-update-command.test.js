@@ -2,7 +2,7 @@
 /*
  * "Update Now" must hand back a command that works on THIS install.
  *
- * It used to emit `docker compose -f /opt/screentinker/docker-compose.yml ...` unconditionally,
+ * It used to emit `docker compose -f /opt/luminascreen/docker-compose.yml ...` unconditionally,
  * because composeFilePath has that default whether or not the file exists. Every self-hosted
  * git + systemd instance, which is the layout docs/operations.md documents, was told to run a
  * docker command against a compose file it does not have. Reported after a user upgraded 1.9.39

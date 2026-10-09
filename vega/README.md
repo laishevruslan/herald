@@ -1,4 +1,4 @@
-# ScreenTinker for Vega OS
+# LuminaScreen for Vega OS
 
 Installed player for the two Fire TV sticks that are not Android:
 

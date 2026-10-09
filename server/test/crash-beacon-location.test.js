@@ -37,15 +37,15 @@ const crashDetail = loadCrashDetail();
 
 test('THE POINT: the crash location survives instead of being discarded', () => {
   const d = crashDetail("Cannot set properties of null (setting 'textContent')",
-    'https://screentinker.com/player/index.html', 3087, 41);
+    'https://luminascreen.ru/player/index.html', 3087, 41);
   assert.match(d, /index\.html:3087:41/, 'file, line and column are all kept');
   assert.match(d, /textContent/, 'and the message is still there');
 });
 
 test('only the basename is sent — the origin is already known from the device', () => {
-  const d = crashDetail('boom', 'https://screentinker.com/player/transitions.js', 12, 3);
+  const d = crashDetail('boom', 'https://luminascreen.ru/player/transitions.js', 12, 3);
   assert.match(d, /transitions\.js:12:3/);
-  assert.doesNotMatch(d, /screentinker\.com/, 'no redundant origin eating the character budget');
+  assert.doesNotMatch(d, /luminascreen\.com/, 'no redundant origin eating the character budget');
 });
 
 test('a cache-busted asset URL does not smuggle a query string in', () => {

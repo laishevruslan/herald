@@ -10,10 +10,10 @@
         }
       },
       "serverInfo": {
-        "name": "screentinker",
+        "name": "luminascreen",
         "version": "2.2.0"
       },
-      "instructions": "ScreenTinker manages digital signage: screens (\"displays\"), the media library,\nplaylists and schedules.\n\nTypical flow to change what a screen shows: find the display with list_displays, add or find media\nwith list_content / add_youtube_video, build a playlist with create_playlist and add_to_playlist,\nthen assign_playlist_to_display.\n\n\u26a0\ufe0f Playlist edits are a DRAFT. Screens keep playing the last published version until publish_playlist\nis called, so a change that is not published has changed nothing anybody can see."
+      "instructions": "LuminaScreen manages digital signage: screens (\"displays\"), the media library,\nplaylists and schedules.\n\nTypical flow to change what a screen shows: find the display with list_displays, add or find media\nwith list_content / add_youtube_video, build a playlist with create_playlist and add_to_playlist,\nthen assign_playlist_to_display.\n\n\u26a0\ufe0f Playlist edits are a DRAFT. Screens keep playing the last published version until publish_playlist\nis called, so a change that is not published has changed nothing anybody can see."
     }
   },
   "tools_full": [

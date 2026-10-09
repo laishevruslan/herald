@@ -69,7 +69,7 @@ test('a refused request is saved but reported with what will actually run, and w
   const { status, body } = await put({ sync_backend: 'brightsign' });
   assert.equal(status, 200);
   assert.equal(body.sync_backend, 'brightsign', 'the operator\'s choice is remembered');
-  assert.equal(body.sync_effective, 'screentinker', 'but this is what the screens will run');
+  assert.equal(body.sync_effective, 'luminascreen', 'but this is what the screens will run');
   assert.equal(body.sync_downgraded, true);
   assert.match(body.sync_reason, /non-BrightSign/);
 });
@@ -81,12 +81,12 @@ test('the group list carries the same decision, so the UI never disagrees with t
   });
   const groups = await res.json();
   const g = groups.find(x => x.id === G);
-  assert.equal(g.sync_effective, 'screentinker');
+  assert.equal(g.sync_effective, 'luminascreen');
   assert.equal(g.sync_downgraded, true);
 });
 
 test('every accepted value round-trips', async () => {
-  for (const v of ['auto', 'screentinker', 'brightsign']) {
+  for (const v of ['auto', 'luminascreen', 'brightsign']) {
     const { status, body } = await put({ sync_backend: v });
     assert.equal(status, 200, v);
     assert.equal(body.sync_backend, v);

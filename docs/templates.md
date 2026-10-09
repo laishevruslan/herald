@@ -36,7 +36,7 @@ which hosts it connects to ("Makes no network requests" for most).
 Every installed template shows one of two badges:
 
 - **Verified · *catalog*** — the package is signed by a catalog key this server trusts (the built-in
-  ScreenTinker catalog, or one you added), and its bytes match the sha256 pinned by that catalog's
+  LuminaScreen catalog, or one you added), and its bytes match the sha256 pinned by that catalog's
   signed index. Catalog templates are reviewed by a second maintainer before they are signed.
 - **Unverified import** — imported by hand from a file that is unsigned, or signed by a key this
   server does not trust. Nobody has reviewed it on your behalf.
@@ -53,7 +53,7 @@ promise as plugins and update checks. The *Library* tab says so and, for a platf
 When it is on, the server downloads each enabled catalog's signed `index.json` five minutes after
 start-up and then once a day, plus whenever an admin presses **Check now**. It downloads a package
 only when you install it. Nothing is sent except the HTTP requests themselves (no identifiers, no
-telemetry). The built-in catalog is `https://screentinker.github.io/templates/`.
+telemetry). The built-in catalog is `https://luminascreen.github.io/templates/`.
 
 Each fetched index is verified before it is used:
 
@@ -64,7 +64,7 @@ Each fetched index is verified before it is used:
   ("you may be missing updates or withdrawals") — a frozen or blocked catalog is visible, not silent.
 
 Library badges: **New** (not seen by you yet), **Updated**, **Update available: vA → vB**, and
-"Needs server version X or later" when a template requires a newer ScreenTinker.
+"Needs server version X or later" when a template requires a newer LuminaScreen.
 
 Turning the library off stops all fetching. Installed templates keep working.
 
@@ -114,7 +114,7 @@ import — keep them current (below).
 
 Everything works without internet access, with the same verification as online.
 
-**Offline bundle.** Each catalog release publishes `screentinker-templates-YYYYMMDD.zip` (a zip of
+**Offline bundle.** Each catalog release publishes `luminascreen-templates-YYYYMMDD.zip` (a zip of
 `index.json`, `index.json.sig` and `packages/`). Carry it in and use **Templates → Import…**, tick
 **This is an offline catalog bundle**, and choose the file. (Through the API:
 `POST /api/templates/import?kind=bundle` with the zip as the request body.) The index goes through
@@ -127,7 +127,7 @@ revocations.
 server, then point the built-in catalog at it:
 
 ```bash
-TEMPLATE_CATALOG_URL=https://templates.intranet.example/   # replaces screentinker.github.io/templates/
+TEMPLATE_CATALOG_URL=https://templates.intranet.example/   # replaces luminascreen.github.io/templates/
 TEMPLATE_CATALOG_ALLOW_PRIVATE=1                            # the mirror has a private address
 ```
 
@@ -161,7 +161,7 @@ resets the serial floor, because the old index was verified under the old key.
 ## The public gallery (`/templates`)
 
 Every server with the marketing homepage on also serves a public template gallery at **`/templates`**
-(screentinker.com/templates on the hosted service), linked from the homepage nav.
+(luminascreen.ru/templates on the hosted service), linked from the homepage nav.
 
 - **It is the official catalog as this server last accepted it**, not a list in the page. A template
   published to the catalog appears here on the server's next catalog poll, with no release or
@@ -188,7 +188,7 @@ Every server with the marketing homepage on also serves a public template galler
 | --- | --- | --- |
 | Community library | Templates → Settings (platform admin) | **off** |
 | Allow unsigned code templates | Templates → Settings (platform admin) | **off** |
-| Catalogs | Templates → Settings → Catalogs | the built-in ScreenTinker catalog |
+| Catalogs | Templates → Settings → Catalogs | the built-in LuminaScreen catalog |
 
 **Allow unsigned code templates.** Code templates that no trusted catalog signed have not been
 reviewed by anyone. With this off (the default), importing one is refused and widgets of any that are
@@ -199,7 +199,7 @@ Unsigned **slide** templates do not need it — they contain no code.
 
 | Variable | Effect |
 | --- | --- |
-| `TEMPLATE_CATALOG_URL` | URL of the built-in catalog's directory (a mirror). Default `https://screentinker.github.io/templates/` |
+| `TEMPLATE_CATALOG_URL` | URL of the built-in catalog's directory (a mirror). Default `https://luminascreen.github.io/templates/` |
 | `TEMPLATE_CATALOG_ALLOW_PRIVATE=1` | allow catalog URLs on private/LAN addresses (bypasses the SSRF guard for catalog fetches only) |
 | `TEMPLATE_CATALOG_PUBLIC_KEY` | override the built-in catalog's public key (PEM) |
 | `TEMPLATES_DIR` | where packages are stored. Default `$DATA_DIR/templates` — include it in backups |
@@ -239,7 +239,7 @@ What it does **not** do — read this before entering anything into a code templ
   should also treat as readable by the template's author.
 - **WebRTC is not fenced.** WebRTC's STUN/TURN traffic is not governed by `connect-src`, and the
   `webrtc 'block'` directive that would cover it is not implemented by Chromium — which every
-  ScreenTinker player engine is built on — so the server does not send it. A code template could
+  LuminaScreen player engine is built on — so the server does not send it. A code template could
   therefore open a peer connection to an undeclared host. Review rejects any template that uses
   WebRTC, and the catalog's lint job fails on it — but for an unverified template, only you stand
   between it and your network.

@@ -1,4 +1,4 @@
-' ScreenTinker SERVER on a BrightSign player.
+' LuminaScreen SERVER on a BrightSign player.
 '
 ' TWO OBJECTS, TWO JOBS:
 '   roNodeJs      - runs the server. A real Node process.

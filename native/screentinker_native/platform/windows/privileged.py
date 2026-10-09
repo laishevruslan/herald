@@ -1,4 +1,4 @@
-"""The ONE door to SYSTEM on Windows: the ScreenTinkerHelper service, over a named pipe.
+"""The ONE door to SYSTEM on Windows: the LuminaScreenHelper service, over a named pipe.
 
 Same contract as Linux's st-helper (platform/linux/privileged.py): the player runs as the logged-in
 user, and the handful of things that need SYSTEM — reboot, the clock, the timezone, the display
@@ -17,7 +17,7 @@ import os
 import shutil
 import subprocess
 
-PIPE = r"\\.\pipe\screentinker-helper"
+PIPE = r"\\.\pipe\luminascreen-helper"
 CREATE_NO_WINDOW = 0x08000000
 
 
@@ -65,7 +65,7 @@ def _call(verb, args, timeout):
 async def run(verb, *args, timeout=120):
     """Run a helper verb. Returns (ok, output). Never raises."""
     if not available():
-        return False, "ScreenTinkerHelper service is not running"
+        return False, "LuminaScreenHelper service is not running"
     loop = asyncio.get_running_loop()
     try:
         return await asyncio.wait_for(loop.run_in_executor(None, _call, verb, args, timeout), timeout=timeout)

@@ -3,24 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>How to Set Up Digital Signage on Raspberry Pi | ScreenTinker</title>
-  <meta name="description" content="Step-by-step guide to building a Raspberry Pi digital signage player with ScreenTinker. Covers hardware, Pi OS setup, pairing, and content.">
+  <title>How to Set Up Digital Signage on Raspberry Pi | LuminaScreen</title>
+  <meta name="description" content="Step-by-step guide to building a Raspberry Pi digital signage player with LuminaScreen. Covers hardware, Pi OS setup, pairing, and content.">
   <meta name="keywords" content="raspberry pi digital signage, digital signage raspberry pi, pi signage, raspberry pi tv display, free pi signage software, open source pi signage">
   <meta name="robots" content="index, follow">
-  <link rel="canonical" href="https://screentinker.com/guides/raspberry-pi-digital-signage.html">
-  <link rel="alternate" type="text/markdown" href="https://screentinker.com/guides/raspberry-pi-digital-signage.md">
+  <link rel="canonical" href="https://luminascreen.ru/guides/raspberry-pi-digital-signage.html">
+  <link rel="alternate" type="text/markdown" href="https://luminascreen.ru/guides/raspberry-pi-digital-signage.md">
 
   <meta property="og:type" content="article">
-  <meta property="og:url" content="https://screentinker.com/guides/raspberry-pi-digital-signage.html">
+  <meta property="og:url" content="https://luminascreen.ru/guides/raspberry-pi-digital-signage.html">
   <meta property="og:title" content="How to Set Up Digital Signage on Raspberry Pi">
-  <meta property="og:description" content="Step-by-step guide to building a Raspberry Pi digital signage player with ScreenTinker. Covers hardware, Pi OS setup, pairing, and content.">
-  <meta property="og:image" content="https://screentinker.com/assets/dashboard-preview.png">
-  <meta property="og:site_name" content="ScreenTinker">
+  <meta property="og:description" content="Step-by-step guide to building a Raspberry Pi digital signage player with LuminaScreen. Covers hardware, Pi OS setup, pairing, and content.">
+  <meta property="og:image" content="https://luminascreen.ru/assets/dashboard-preview.png">
+  <meta property="og:site_name" content="LuminaScreen">
 
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="How to Set Up Digital Signage on Raspberry Pi">
-  <meta name="twitter:description" content="Step-by-step guide to building a Raspberry Pi digital signage player with ScreenTinker. Covers hardware, Pi OS setup, pairing, and content.">
-  <meta name="twitter:image" content="https://screentinker.com/assets/dashboard-preview.png">
+  <meta name="twitter:description" content="Step-by-step guide to building a Raspberry Pi digital signage player with LuminaScreen. Covers hardware, Pi OS setup, pairing, and content.">
+  <meta name="twitter:image" content="https://luminascreen.ru/assets/dashboard-preview.png">
 
   <meta name="theme-color" content="#111827">
   <link rel="icon" href="/assets/icon-192.png">
@@ -33,7 +33,7 @@
       <div class="nav-logo">
         <a href="/" style="display:flex;align-items:center;gap:10px">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          <span class="nav-logo-text">ScreenTinker</span>
+          <span class="nav-logo-text">LuminaScreen</span>
         </a>
       </div>
       <div class="nav-links">
@@ -57,7 +57,7 @@
     </nav>
 
     <h1>How to Set Up Digital Signage on a Raspberry Pi (2026)</h1>
-    <p class="lead">A step-by-step guide to turning a Raspberry Pi into a free, open-source digital signage player using ScreenTinker. Works on Pi 3, Pi 4, and Pi 5.</p>
+    <p class="lead">A step-by-step guide to turning a Raspberry Pi into a free, open-source digital signage player using LuminaScreen. Works on Pi 3, Pi 4, and Pi 5.</p>
 
     <h2>What you will need</h2>
     <ul>
@@ -66,7 +66,7 @@
       <li><strong>Power supply</strong> appropriate for your model (Pi 4 uses USB-C 15W; Pi 5 uses USB-C 27W).</li>
       <li><strong>HDMI cable</strong> to your TV or monitor (micro-HDMI on Pi 4/5).</li>
       <li><strong>Network connection</strong> - Ethernet preferred for reliability, Wi-Fi works fine.</li>
-      <li><strong>A ScreenTinker account.</strong> <a href="/app#/login">Sign up free</a> if you do not have one.</li>
+      <li><strong>A LuminaScreen account.</strong> <a href="/app#/login">Sign up free</a> if you do not have one.</li>
     </ul>
 
     <h2>Step 1: Install Raspberry Pi OS</h2>
@@ -84,15 +84,15 @@
     </ul>
     <p>Insert the SD card, plug in the Pi, and let it boot through first-time setup.</p>
 
-    <h2>Step 2: Run the ScreenTinker installer</h2>
+    <h2>Step 2: Run the LuminaScreen installer</h2>
     <p>Open a terminal on the Pi and run:</p>
-    <pre><code>curl -sL https://screentinker.com/scripts/raspberry-pi-setup.sh | sudo bash</code></pre>
+    <pre><code>curl -sL https://luminascreen.ru/scripts/raspberry-pi-setup.sh | sudo bash</code></pre>
     <p>The <code>sudo</code> is required — the installer writes systemd units, installs packages and
     configures autostart. Without it the script stops on its first line and prints the correct
     command, so nothing is half-installed.</p>
     <p>That gives you <strong>All-in-One</strong>: the server and the player on the same Pi. To use
-    the Pi as a player only, pointing at a ScreenTinker server you already run:</p>
-    <pre><code>curl -sL https://screentinker.com/scripts/raspberry-pi-setup.sh | sudo bash -s -- --player-only https://your-server</code></pre>
+    the Pi as a player only, pointing at a LuminaScreen server you already run:</p>
+    <pre><code>curl -sL https://luminascreen.ru/scripts/raspberry-pi-setup.sh | sudo bash -s -- --player-only https://your-server</code></pre>
     <p>The script will:</p>
     <ul>
       <li>Install Chromium (the kiosk browser used as the player)</li>
@@ -101,28 +101,28 @@
       <li>Configure HDMI to keep the display awake</li>
       <li>Reboot the Pi when finished</li>
     </ul>
-    <p>On reboot the Pi will launch directly into the ScreenTinker player and show a 6-digit pairing code.</p>
+    <p>On reboot the Pi will launch directly into the LuminaScreen player and show a 6-digit pairing code.</p>
 
     <h2 id="native-player">The native player (optional)</h2>
     <p>Besides the Chromium kiosk there is a native player: a small app that draws straight to the
     screen, with no browser and, on Lite, no desktop. It adds reboot, a remote terminal, screen
-    power control and self-update from the dashboard. It connects to an existing ScreenTinker
+    power control and self-update from the dashboard. It connects to an existing LuminaScreen
     server (the installer's option 3, or):</p>
-    <pre><code>curl -sL https://screentinker.com/scripts/raspberry-pi-setup.sh | sudo bash -s -- --native https://your-server</code></pre>
+    <pre><code>curl -sL https://luminascreen.ru/scripts/raspberry-pi-setup.sh | sudo bash -s -- --native https://your-server</code></pre>
     <ul>
       <li><strong>Needs</strong> Raspberry Pi OS 64-bit based on Debian 13 (Trixie). Older releases are refused with a message.</li>
-      <li><strong>On Lite</strong> it runs as a system service (<code>screentinker-pi.service</code>) that owns the display. Logs: <code>journalctl -u screentinker-pi -f</code>.</li>
-      <li><strong>On Desktop</strong> it starts full screen when the desktop user logs in. Do not start the service by hand there — the desktop owns the screen. Logs: <code>~/.local/state/screentinker-pi/player.log</code>.</li>
+      <li><strong>On Lite</strong> it runs as a system service (<code>luminascreen-pi.service</code>) that owns the display. Logs: <code>journalctl -u luminascreen-pi -f</code>.</li>
+      <li><strong>On Desktop</strong> it starts full screen when the desktop user logs in. Do not start the service by hand there — the desktop owns the screen. Logs: <code>~/.local/state/luminascreen-pi/player.log</code>.</li>
       <li>The installer picks the mode from whether a desktop actually boots. Force it with <code>--native-mode lite</code> or <code>--native-mode desktop</code>.</li>
       <li><strong>Switching from the browser player</strong> on the same Pi: run the installer with <code>--native</code>. It removes the browser kiosk's launcher (an All-in-One server on the Pi keeps running). Then reboot.</li>
     </ul>
     <p>The native player is newer than the browser player and has had less field time, especially on
     Lite. Known issue: a playlist can stop rotating on a website or HTML widget item
-    (<a href="https://github.com/screentinker/screentinker/issues/487" target="_blank" rel="noopener">#487</a>).
+    (<a href="https://github.com/luminascreen/luminascreen/issues/487" target="_blank" rel="noopener">#487</a>).
     Reports with your Pi model and OS version help.</p>
 
     <h2>Step 3: Pair the Pi to your dashboard</h2>
-    <p>Sign in to <a href="/app#/login">your ScreenTinker dashboard</a> and click <strong>+ Add Display</strong>. Enter the 6-digit code shown on the Pi and give the display a name (e.g. "Lobby TV"). The Pi will switch from the pairing screen to "Waiting for content".</p>
+    <p>Sign in to <a href="/app#/login">your LuminaScreen dashboard</a> and click <strong>+ Add Display</strong>. Enter the 6-digit code shown on the Pi and give the display a name (e.g. "Lobby TV"). The Pi will switch from the pairing screen to "Waiting for content".</p>
 
     <h2>Step 4: Push content</h2>
     <p>From the dashboard:</p>
@@ -144,14 +144,14 @@
 
     <h2>Troubleshooting</h2>
     <h3>The Pi reboots into the desktop, not the player</h3>
-    <p>Check that the autostart file <code>~/.config/autostart/screentinker.desktop</code> exists. The installer creates this; if it's missing, re-run the installer.</p>
+    <p>Check that the autostart file <code>~/.config/autostart/luminascreen.desktop</code> exists. The installer creates this; if it's missing, re-run the installer.</p>
 
     <h3>Native player: no pairing code after reboot, or "Could not set DRM mode … Permission denied"</h3>
     <p>Something else owns the screen — usually the browser kiosk from an earlier install, or the
     desktop. Re-run the installer with <code>--native</code> (it removes the old kiosk launcher), or on
-    Lite: <code>sudo systemctl disable --now screentinker-kiosk.service getty@tty1.service</code> then
-    <code>sudo screentinker-pi setup https://your-server --mode lite</code>. Check with
-    <code>screentinker-pi status</code>.</p>
+    Lite: <code>sudo systemctl disable --now luminascreen-kiosk.service getty@tty1.service</code> then
+    <code>sudo luminascreen-pi setup https://your-server --mode lite</code>. Check with
+    <code>luminascreen-pi status</code>.</p>
 
     <h3>The screen goes dark after a few minutes</h3>
     <p>The installer should disable screen blanking, but some monitors sleep based on their own timer. Disable sleep mode on the monitor itself, or use a dummy HDMI plug if the Pi negotiates a low-power mode.</p>
@@ -165,23 +165,23 @@
         <li><a href="/guides/samsung-tv-digital-signage.html">Digital signage on a Samsung TV (no app, no MagicINFO)</a></li>
         <li><a href="/guides/digital-signage-android-tv.html">Digital signage for Android TV and Fire TV</a></li>
         <li><a href="/guides/self-hosted-digital-signage.html">Self-hosted digital signage: complete guide</a></li>
-        <li><a href="/compare/yodeck-alternative.html">Compare: ScreenTinker vs Yodeck</a></li>
-        <li><a href="/compare/screencloud-alternative.html">Compare: ScreenTinker vs ScreenCloud</a></li>
+        <li><a href="/compare/yodeck-alternative.html">Compare: LuminaScreen vs Yodeck</a></li>
+        <li><a href="/compare/screencloud-alternative.html">Compare: LuminaScreen vs ScreenCloud</a></li>
       </ul>
     </div>
 
     <div class="cta">
       <h2>Ready to set up your Pi?</h2>
-      <p>Start a free ScreenTinker account in under a minute.</p>
+      <p>Start a free LuminaScreen account in under a minute.</p>
       <a href="/app#/login" class="btn btn-primary" style="padding:14px 28px;font-size:16px">Start Free</a>
-      <a href="https://github.com/screentinker/screentinker" target="_blank" rel="noopener" class="btn btn-outline" style="padding:14px 28px;font-size:16px;margin-left:12px">View on GitHub</a>
+      <a href="https://github.com/luminascreen/luminascreen" target="_blank" rel="noopener" class="btn btn-outline" style="padding:14px 28px;font-size:16px;margin-left:12px">View on GitHub</a>
     </div>
   </main>
 
   <footer>
-    <div style="color:var(--dim);font-size:13px">&copy; 2026 ScreenTinker. All rights reserved.</div>
+    <div style="color:var(--dim);font-size:13px">&copy; 2026 LuminaScreen. All rights reserved.</div>
     <div class="links">
-      <a href="https://github.com/screentinker/screentinker" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/luminascreen/luminascreen" target="_blank" rel="noopener">GitHub</a>
       <a href="https://discord.gg/utTdsrqq4Z" target="_blank" rel="noopener">Discord</a>
       <a href="/legal/terms.html">Terms</a>
       <a href="/legal/privacy.html">Privacy</a>
@@ -195,9 +195,9 @@
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://screentinker.com/" },
-      { "@type": "ListItem", "position": 2, "name": "Guides", "item": "https://screentinker.com/" },
-      { "@type": "ListItem", "position": 3, "name": "Raspberry Pi Digital Signage", "item": "https://screentinker.com/guides/raspberry-pi-digital-signage.html" }
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://luminascreen.ru/" },
+      { "@type": "ListItem", "position": 2, "name": "Guides", "item": "https://luminascreen.ru/" },
+      { "@type": "ListItem", "position": 3, "name": "Raspberry Pi Digital Signage", "item": "https://luminascreen.ru/guides/raspberry-pi-digital-signage.html" }
     ]
   }
   </script>

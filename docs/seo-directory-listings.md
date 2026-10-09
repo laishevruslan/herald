@@ -2,22 +2,22 @@
 
 These are the **off-repo** SEO actions that can't be done in code — they need an account, a
 form submission, or outreach. Every serious competitor (Yodeck, ScreenCloud, OptiSigns, Xibo,
-Anthias) is listed across these; ScreenTinker currently is not. Each listing is both a
+Anthias) is listed across these; LuminaScreen currently is not. Each listing is both a
 high-authority backlink and a surface that ranks for "best/free/open-source/alternative"
 queries. Ordered by ROI.
 
 ## Reusable submission kit (prepare once, paste everywhere)
 
-- **Name:** ScreenTinker
+- **Name:** LuminaScreen
 - **Category:** Digital Signage Software / Digital Signage CMS
 - **One-liner:** Free, open-source, self-hostable digital signage CMS. Runs on any screen — Android TV, Fire TV, Tizen, webOS, Raspberry Pi, Windows, browser — with no per-device player licence.
-- **Short desc (≈50 words):** ScreenTinker is an open-source (MIT) digital signage platform you can self-host or run in the cloud. Manage TVs, video walls, and kiosks from one dashboard with remote control, scheduling, playlists, multi-zone layouts, and analytics. Free plan; Pro from $39–99/mo; unlimited free when self-hosted.
+- **Short desc (≈50 words):** LuminaScreen is an open-source (MIT) digital signage platform you can self-host or run in the cloud. Manage TVs, video walls, and kiosks from one dashboard with remote control, scheduling, playlists, multi-zone layouts, and analytics. Free plan; Pro from $39–99/mo; unlimited free when self-hosted.
 - **Pricing:** Free (1 device) · Starter $39/mo (5) · Pro $99/mo (15) · Self-hosted free/unlimited
 - **Deployment:** Cloud (SaaS) + On-premise / Self-hosted
 - **Platforms:** Android TV, Fire TV, Samsung Tizen, LG webOS, Amazon Vega OS, Raspberry Pi, Windows, ChromeOS, Web
 - **License:** MIT (open source)
-- **Website:** https://screentinker.com
-- **Repo:** https://github.com/screentinker/screentinker
+- **Website:** https://luminascreen.ru
+- **Repo:** https://github.com/luminascreen/luminascreen
 - **Logo / screenshots:** dashboard-preview.png + assets/icon-512.png (grab 3–4 dashboard shots)
 - **Differentiators to emphasize:** open source, self-host/air-gapped, no per-screen fee, all players free, live Android remote control.
 
@@ -25,7 +25,7 @@ queries. Ordered by ROI.
 
 - [ ] **Capterra** — https://www.capterra.com/vendors/sign-up · digital-signage category. The #1 review moat competitors have (Yodeck 4,700+ reviews). Claim/create the profile, then seed honest reviews from real users.
 - [ ] **G2** — https://www.g2.com/products/new · ranks for "[competitor] alternatives". Create the product, request reviews.
-- [ ] **AlternativeTo** — https://alternativeto.net/manage-item/ · submit ScreenTinker as an alternative to **Yodeck, ScreenCloud, OptiSigns, Xibo, Anthias/Screenly**. Tag: open source, self-hosted, free. This is where OSS-seekers browse.
+- [ ] **AlternativeTo** — https://alternativeto.net/manage-item/ · submit LuminaScreen as an alternative to **Yodeck, ScreenCloud, OptiSigns, Xibo, Anthias/Screenly**. Tag: open source, self-hosted, free. This is where OSS-seekers browse.
 - [ ] **awesome-selfhosted** — PR to https://github.com/awesome-selfhosted/awesome-selfhosted (Digital Signage / Media section). High-authority, high-intent backlink; Anthias/Xibo are there. ⚠️ **BLOCKED UNTIL ~2026-10-10.** PR #2392 was closed 2026-04-29 for their "first released more than 4 months ago" rule; first release is v1.8.0, 2026-06-10. Resubmitting early burns the second attempt, so do not.
 - [ ] **fingoweb "Top open source digital signage" roundup** — pitch inclusion via their contact form (their article ranks #1 for several OSS queries and omits us). Highest-value single listicle.
 
@@ -42,7 +42,7 @@ queries. Ordered by ROI.
 
 - [ ] **r/selfhosted** — a genuine "I built/self-host this" post (Anthias gets real traffic here). No spam; lead with the self-host story.
 - [ ] **r/digitalsignage** — participate, link where relevant.
-- [ ] **Hacker News (Show HN)** — "Show HN: ScreenTinker – open-source self-hosted digital signage."
+- [ ] **Hacker News (Show HN)** — "Show HN: LuminaScreen – open-source self-hosted digital signage."
 - [x] **GitHub repo polish** (done) — topics/tags: `digital-signage`, `signage`, `self-hosted`, `open-source`, `cms`, `raspberry-pi`, `kiosk`, `android-tv`. Keyword-rich description + README (done). Stars are themselves a ranking signal (Anthias ranks partly because its repo does).
 - [ ] **Roundup outreach** — signagespace.com, cenareo, nento, digitalsignagehub.org, softwaresuggest "15 best" — ask to be added.
 

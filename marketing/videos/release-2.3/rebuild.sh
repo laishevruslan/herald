@@ -33,7 +33,7 @@ start_server() {
       DATA_DIR=$ROOT/instance PORT=3014 NODE_ENV=development PLUGINS_ENABLED=true \
       STRIPE_SECRET_KEY=sk_test_video_capture_dummy STRIPE_WEBHOOK_SECRET= SMTP_USER= SMTP_PASS= RESEND_API_KEY= \
       MESH_ACCEPT_ENROLLMENT=1 MESH_ALLOW_UPLINK=1 TRIGGER_INGRESS=1 \
-      EMAIL_TRANSPORT=smtp SMTP_HOST=127.0.0.1 SMTP_PORT=2526 SMTP_FROM=noreply@screentinker.test GRAPH_TENANT_ID= GRAPH_CLIENT_ID= GRAPH_CLIENT_SECRET= \
+      EMAIL_TRANSPORT=smtp SMTP_HOST=127.0.0.1 SMTP_PORT=2526 SMTP_FROM=noreply@luminascreen.test GRAPH_TENANT_ID= GRAPH_CLIENT_ID= GRAPH_CLIENT_SECRET= \
       JWT_SECRET=video-capture-only-not-a-secret \
       node server.js < /dev/null > $ROOT/instance/server.log 2>&1 & disown ) 2>/dev/null
   for i in $(seq 1 30); do ss -ltn 2>/dev/null | grep -q ':3014' && { echo "  server up (${i}s)"; return; }; sleep 1; done
@@ -50,12 +50,12 @@ start_sink() {
   for i in $(seq 1 25); do grep -q "devices online" devices.log 2>/dev/null && break; sleep 1; done; sed 's/^/  /' devices.log; exit 0; }
 echo "== 1. stop anything of ours =="; stop_mine; start_sink
 echo "== 2. wipe instance =="; rm -rf "$ROOT/instance" "$ROOT/fleet.json"; mkdir -p "$ROOT/instance"
-cp pkgs/ScreenTinker.* "$ROOT/instance/" 2>/dev/null && echo "  staged release APK/ipk/wgt (from pkgs/)"
+cp pkgs/LuminaScreen.* "$ROOT/instance/" 2>/dev/null && echo "  staged release APK/ipk/wgt (from pkgs/)"
 echo "== 3. boot (creates schema) =="; start_server
 
 echo "== 4. bootstrap admin =="
 TOK=$(curl -s -X POST http://localhost:3014/api/auth/register -H 'Content-Type: application/json' \
-  -d '{"email":"demo@screentinker.test","password":"VideoCapture2026!","name":"Demo","createOrg":true}' \
+  -d '{"email":"demo@luminascreen.test","password":"VideoCapture2026!","name":"Demo","createOrg":true}' \
   | python3 -c "import sys,json;print(json.load(sys.stdin).get('token',''))")
 [ -n "$TOK" ] || { echo "  !! register failed"; exit 1; }
 echo "$TOK" > "$ROOT/.token"; echo "  token ok"

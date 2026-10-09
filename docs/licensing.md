@@ -1,6 +1,6 @@
 # Licensing
 
-ScreenTinker is MIT. This page records how we know what our dependencies are licensed under,
+LuminaScreen is MIT. This page records how we know what our dependencies are licensed under,
 so the answer to "do you track licences?" is something you can check rather than something you
 have to take on trust.
 
@@ -77,7 +77,7 @@ name so it cannot return quietly.
 
 ## SBOM
 
-Every release publishes `screentinker-sbom-<version>.cdx.json`: **CycloneDX 1.5**, listing every
+Every release publishes `luminascreen-sbom-<version>.cdx.json`: **CycloneDX 1.5**, listing every
 production dependency with its version, package URL, and licence. Generated from a production
 install, so it describes what actually runs.
 

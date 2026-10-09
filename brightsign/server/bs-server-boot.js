@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * The Node half of "ScreenTinker server, running on the player it serves".
+ * The Node half of "LuminaScreen server, running on the player it serves".
  *
  * BrightScript launches this with roNodeJs: a REAL Node process, not an roHtmlWidget. That
  * distinction is the whole reason this file got simpler. Inside a widget the server is a Node
@@ -414,7 +414,7 @@ const SERVER_ENTRY = path.join(__dirname, 'server', 'server.js');
  * fully static, linking nothing of theirs. ffprobe carries no decoders at all: durations and stream
  * geometry come from the container, which is why it is 1.8MB against ffmpeg's 5MB.
  */
-const MEDIA_BIN_DIR = '/tmp/screentinker-bin';
+const MEDIA_BIN_DIR = '/tmp/luminascreen-bin';
 
 function stageMediaTools() {
   const zlib = require('zlib');
@@ -497,7 +497,7 @@ function stConfig() {
 
 const ST_CFG = stConfig();
 const PAYLOAD_URL = process.env.ST_PAYLOAD_URL || ST_CFG.payloadUrl
-  || 'https://alpha.screentinker.com/scripts/server-payload.zip';
+  || 'https://alpha.luminascreen.ru/scripts/server-payload.zip';
 const MANIFEST_URL = String(PAYLOAD_URL).replace(/\.zip$/, '.json');
 // Set "autoUpdate": false to pin a box to what it has. Absent means updates are on.
 const AUTO_UPDATE = ST_CFG.autoUpdate !== false && ST_CFG.autoUpdate !== 0;

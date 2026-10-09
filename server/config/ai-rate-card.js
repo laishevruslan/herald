@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * HOSTED AI IMAGE RATE CARD — what ScreenTinker pays a provider per image, by the exact
+ * HOSTED AI IMAGE RATE CARD — what LuminaScreen pays a provider per image, by the exact
  * model + resolution + quality the user picks. lib/ai-credits.js turns each row into a customer
  * price (2× provider cost, rounded UP to the cent, 1 credit = $0.01).
  *

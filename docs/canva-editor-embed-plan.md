@@ -12,7 +12,7 @@
 
 ## 0. Зачем это спрашивают
 
-Оператор умеет Canva и не умеет наш slide-редактор. Конкуренты на сайте пишут «Canva». Ожидание: нажал кнопку в ScreenTinker — открылся Canva — сохранил — экран обновился.
+Оператор умеет Canva и не умеет наш slide-редактор. Конкуренты на сайте пишут «Canva». Ожидание: нажал кнопку в LuminaScreen — открылся Canva — сохранил — экран обновился.
 
 Это три разных ожидания, и их нельзя закрыть одним iframe:
 
@@ -26,7 +26,7 @@
 
 ---
 
-## 1. Что уже есть в ScreenTinker
+## 1. Что уже есть в LuminaScreen
 
 Честный инвентарь HEAD.
 
@@ -135,7 +135,7 @@ api.editDesign({ designId });
 
 Это не «Xibo встроил Canva». Это «Canva встроил кнопку Опубликовать в Xibo».
 
-### ScreenTinker сегодня — слабый M1
+### LuminaScreen сегодня — слабый M1
 
 Гайд честно говорит: отдельного Canva-приложения нет, используйте Webpage-виджет. Нет refresh/fallback как у Yodeck, нет кнопки «Edit in Canva», нет публикации из редактора Canva.
 
@@ -180,11 +180,11 @@ M1 (Webpage + embed) остаётся **ручным** путём для тех,
 
 Это единственный Connect-путь, где оператор стартует **из нашего дашборда**, видит настоящий редактор Canva и возвращается с файлом.
 
-M2 (апп в маркетплейсе) — фаза 3: другой артефакт (TypeScript-апп, ревью Canva, публичный HTTPS), другой UX (дизайнер не открывает ScreenTinker). Для self-hosted air-gap M2 непригоден; M3 пригоден: в интернет ходит только браузер оператора.
+M2 (апп в маркетплейсе) — фаза 3: другой артефакт (TypeScript-апп, ревью Canva, публичный HTTPS), другой UX (дизайнер не открывает LuminaScreen). Для self-hosted air-gap M2 непригоден; M3 пригоден: в интернет ходит только браузер оператора.
 
 ### D5 — Секреты как у AI, не в env единственным источником
 
-Client ID/secret интеграции Canva — JWT-only, workspace или org, как задумано в GAP-18. Env — fallback для hosted `screentinker.com`. Self-hosted без ключа: UI честно выключен (I5), не 500.
+Client ID/secret интеграции Canva — JWT-only, workspace или org, как задумано в GAP-18. Env — fallback для hosted `luminascreen.ru`. Self-hosted без ключа: UI честно выключен (I5), не 500.
 
 OAuth-токены пользователя Canva — encrypted at rest, не в activity log.
 
@@ -214,7 +214,7 @@ Xibo честно пишет, что апп нельзя white-label. Кнопк
 4. **Apps SDK работает наоборот:** наш код в iframe *у Canva*, не наоборот.
 5. **Self-hosted / air-gap:** даже если бы iframe был, редактор всё равно тянет ассеты Canva. Смысл I4 — экраны. Оператор с ноутбуком в интернете — допустимая асимметрия для M3.
 
-Итоговая формулировка для README/help: *«ScreenTinker открывает редактор Canva в новой вкладке и забирает результат в библиотеку. Редактор Canva внутри дашборда Canva не отдаёт сторонним CMS.»*
+Итоговая формулировка для README/help: *«LuminaScreen открывает редактор Canva в новой вкладке и забирает результат в библиотеку. Редактор Canva внутри дашборда Canva не отдаёт сторонним CMS.»*
 
 ---
 
@@ -260,9 +260,9 @@ Xibo честно пишет, что апп нельзя white-label. Кнопк
 
 **correlation_state.** 50 символов мало для workspace+content+csrf. Класть в БД строку `canva_return_state` (`id`, `workspace_id`, `user_id`, `content_id | null`, `preset`, `expires_at`), в URL — `id` в base64url.
 
-**Return URL.** Для hosted: `https://screentinker.com/api/canva/return`. Для self-hosted: оператор вписывает публичный origin в настройках интеграции Canva (как redirect OAuth). Инстанс за NAT без туннеля M3 всё равно работает для *ухода* в Canva, но Return не вернётся — UI обязан сказать это при сохранении redirect URI.
+**Return URL.** Для hosted: `https://luminascreen.ru/api/canva/return`. Для self-hosted: оператор вписывает публичный origin в настройках интеграции Canva (как redirect OAuth). Инстанс за NAT без туннеля M3 всё равно работает для *ухода* в Canva, но Return не вернётся — UI обязан сказать это при сохранении redirect URI.
 
-Многоинстансность: Client ID один на продукт (hosted) или свой у self-hoster. Не хардкодить `screentinker.com` как единственный return (I7 mesh / air-gap).
+Многоинстансность: Client ID один на продукт (hosted) или свой у self-hoster. Не хардкодить `luminascreen.ru` как единственный return (I7 mesh / air-gap).
 
 ---
 
@@ -298,7 +298,7 @@ Xibo честно пишет, что апп нельзя white-label. Кнопк
 
 ### Фаза 3 — Canva App как у Xibo (stretch, ~2–3 нед. + ревью Canva)
 
-Отдельный репозиторий или `canva-app/`: Apps SDK, Content Publisher intent, OAuth на ScreenTinker.
+Отдельный репозиторий или `canva-app/`: Apps SDK, Content Publisher intent, OAuth на LuminaScreen.
 
 | Шаг | Суть |
 |---|---|

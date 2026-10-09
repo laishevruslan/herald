@@ -1,6 +1,6 @@
 # Vega OS player
 
-Fire TV Stick 4K Select (2025, model `AFTCA002`) and Fire TV Stick HD (2026, model `AFTCL001`) run **Vega OS**. That is not Fire OS and it is not Android. The ScreenTinker APK does not install on them, and sideloading it with Downloader will fail.
+Fire TV Stick 4K Select (2025, model `AFTCA002`) and Fire TV Stick HD (2026, model `AFTCL001`) run **Vega OS**. That is not Fire OS and it is not Android. The LuminaScreen APK does not install on them, and sideloading it with Downloader will fail.
 
 `vega/` is the player for those two sticks. It is an installed app that loads the same `/player` page every browser, BrightSign and webOS panel loads, inside Vega's WebView, with the media services turned on so `<video>` is hardware-decoded. Pairing, playlists, zones, widgets, YouTube, HLS, schedules, volume, mute, screenshots and the remote view are the web player's. They are not a second implementation.
 
@@ -53,7 +53,7 @@ The same file holds the pairing. `deviceId` and `deviceToken` are written there 
 
 ## On the stick
 
-1. Launch ScreenTinker.
+1. Launch LuminaScreen.
 2. Enter the server URL and choose Save and start. The pairing code is the web player's.
 3. Claim it in the dashboard. The display's platform is `vega` and its model is `AFTCA002` or `AFTCL001`.
 4. Back on the remote opens the server card. The sign keeps playing behind it. Back does not exit the app.
@@ -64,7 +64,7 @@ The shell asks LCM to treat the component as permanent (`LIFESPAN_POLICY.PERMANE
 
 ## What one stick did
 
-An AFTCA002 (Kepler 1.2, ScreenTinker 2.1.6) paired, reported 1920×1080, and played. Transitions ran and looked right. The process then died in-process (SIGTRAP, not an LCM kill). During playback CmaFree fell from about 236 MB to about 1 MB while MemFree stayed large: the decoder and the GPU surfaces share CMA, and a full-frame wipe uploads into that pool. The capture is now capped (long edge 960) and the bitmap is released after upload. A video wipe still warm-plays the incoming clip, but on Vega the outgoing decoder is paused once its frame is snapshotted, so that window is one decoder rather than two. Group sync still does not preload the next clip ahead of the boundary. The cap has not been run on a stick.
+An AFTCA002 (Kepler 1.2, LuminaScreen 2.1.6) paired, reported 1920×1080, and played. Transitions ran and looked right. The process then died in-process (SIGTRAP, not an LCM kill). During playback CmaFree fell from about 236 MB to about 1 MB while MemFree stayed large: the decoder and the GPU surfaces share CMA, and a full-frame wipe uploads into that pool. The capture is now capped (long edge 960) and the bitmap is released after upload. A video wipe still warm-plays the incoming clip, but on Vega the outgoing decoder is paused once its frame is snapshotted, so that window is one decoder rather than two. Group sync still does not preload the next clip ahead of the boundary. The cap has not been run on a stick.
 
 1920×1080 may be the panel or the HDMI link. The 4K Select can output 4K. The HD (2026) has not been run; its product output is 1080p.
 

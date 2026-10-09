@@ -2,7 +2,7 @@
 # Assemble the scene frame-sequences + VO into the video. Every scene is a full-duration frame sequence
 # (continuous motion baked in), so there's no STATIC/ANIM split like the Pi video — just concat + xfade.
 #   python3 assemble.py            -> draft-nomusic.mp4   (no music, for review)
-#   python3 assemble.py final      -> screentinker-selfhost.mp4 (music bed mixed in)
+#   python3 assemble.py final      -> luminascreen-selfhost.mp4 (music bed mixed in)
 import subprocess, os, sys
 V="audio"; SA="scenes_anim"; W="work"; os.makedirs(W,exist_ok=True)
 scenes=[f"{i:02d}" for i in range(1,11)]
@@ -38,7 +38,7 @@ print(f"\nvideo done ~{L:.1f}s -> draft-nomusic.mp4")
 
 if FINAL:
     # Music bed: loop the Suno track, duck it under the VO (sidechaincompress), fades, mux over the video.
-    out="screentinker-alternative.mp4"
+    out="luminascreen-alternative.mp4"
     subprocess.run(["ffmpeg","-y","-loglevel","error","-i","draft-nomusic.mp4","-stream_loop","-1","-i","Quiet Tech Pulse.mp3",
         "-filter_complex",
         "[0:a]aformat=channel_layouts=stereo,asplit=2[voc][vsc];"
