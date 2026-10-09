@@ -2,8 +2,12 @@
 
 const crypto = require('crypto');
 const config = require('../../config');
-const { db } = require('../../db/database');
 const secretbox = require('../secretbox');
+/*
+ * database.js loads revisions, which loads this module, before `db` is exported. A destructure
+ * at require time would keep that undefined handle forever. Read it when a query actually runs.
+ */
+function db() { return require('../../db/database').db; }
 const { LocalBackend } = require('./local');
 const { StorageError, StorageRefusedError } = require('./errors');
 const breaker = require('./breaker');
@@ -169,20 +173,20 @@ function getProfile(id) {
   const n = normId(id);
   if (n === null) return LOCAL_PROFILE;
   if (n === ENV_ID) { const e = envProfile(); return e && e.id === ENV_ID ? e : null; }
-  return rowToProfile(db.prepare('SELECT * FROM storage_profiles WHERE id = ?').get(n));
+  return rowToProfile(db().prepare('SELECT * FROM storage_profiles WHERE id = ?').get(n));
 }
 
 /** The instance default: env, else the null-org row, else local. */
 function instanceDefault() {
   const e = envProfile();
   if (e) return e;
-  const row = db.prepare('SELECT * FROM storage_profiles WHERE org_id IS NULL LIMIT 1').get();
+  const row = db().prepare('SELECT * FROM storage_profiles WHERE org_id IS NULL LIMIT 1').get();
   return row ? rowToProfile(row) : LOCAL_PROFILE;
 }
 
 function orgOfWorkspace(workspaceId) {
   if (!workspaceId) return null;
-  const r = db.prepare('SELECT organization_id FROM workspaces WHERE id = ?').get(workspaceId);
+  const r = db().prepare('SELECT organization_id FROM workspaces WHERE id = ?').get(workspaceId);
   return r ? r.organization_id : null;
 }
 
@@ -222,7 +226,7 @@ function profileForOrgAdmin(id, orgId) {
 /** The org's default write profile (organizations.storage_profile_id), else the instance default. */
 function orgDefaultProfile(orgId) {
   if (orgId) {
-    const r = db.prepare('SELECT storage_profile_id FROM organizations WHERE id = ?').get(orgId);
+    const r = db().prepare('SELECT storage_profile_id FROM organizations WHERE id = ?').get(orgId);
     if (r && r.storage_profile_id) {
       const p = profileForOrg(r.storage_profile_id, orgId);
       if (p && p.mode === 'rw') return p;
@@ -235,7 +239,7 @@ function orgDefaultProfile(orgId) {
 /** The workspace's raw override (NULL = follows its organization). */
 function workspaceOverride(workspaceId) {
   if (!workspaceId) return null;
-  const r = db.prepare('SELECT storage_profile_id FROM workspaces WHERE id = ?').get(workspaceId);
+  const r = db().prepare('SELECT storage_profile_id FROM workspaces WHERE id = ?').get(workspaceId);
   return (r && r.storage_profile_id) || null;
 }
 
@@ -268,7 +272,7 @@ function writeTargetsForWorkspace(workspaceId) {
   if (orgId) {
     // A migration applies to this workspace when it is scoped to it, or when it is org-wide and the
     // workspace follows the organization (an override opts the workspace out of org-wide moves).
-    const mig = db.prepare(`SELECT * FROM storage_migrations WHERE org_id = ? AND state IN ('copying','ready_to_commit')
+    const mig = db().prepare(`SELECT * FROM storage_migrations WHERE org_id = ? AND state IN ('copying','ready_to_commit')
                               AND (workspace_id = ? OR (workspace_id IS NULL AND ? IS NULL)) LIMIT 1`)
       .get(orgId, workspaceId, workspaceOverride(workspaceId));
     if (mig) {
