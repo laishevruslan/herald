@@ -209,6 +209,8 @@ Schema migrations run automatically on first boot — no manual migration comman
 | `HIDE_BILLING` | Hide the Subscription nav item + billing view; `#/billing` redirects to the dashboard (UI-only, opt-in) | `false` |
 | `DISABLE_REGISTRATION` | Block new account creation (including OAuth auto-signup). First-user setup on an empty DB is still allowed. | `false` |
 | `DISABLE_HOMEPAGE` | Redirect `/` to `/app` instead of serving the marketing landing page. For internal-only self-hosted deployments. | `false` |
+| `VIEW_ONLY_ENABLED` | View-only display links (`/view/<token>`). Each display is still off until a workspace admin turns it on. `false` removes the feature from the instance — see [View-only display access](docs/view-only-access.md). | `true` when `SELF_HOSTED=true`, else `false` |
+| `VIEW_TRUSTED_PROXIES` | Comma-separated proxy addresses/CIDRs whose `X-Forwarded-For` the view-only **network** check believes. Unset = only the TCP peer counts. | unset |
 | `APP_URL` | Your public URL (used for Stripe callbacks and invite-accept URLs in emailed invites) | _(none)_ |
 | `JWT_SECRET` | JWT signing key (auto-generated if not set) | _(auto)_ |
 | `SSL_CERT` | Path to SSL certificate | `server/certs/cert.pem` |
@@ -1006,6 +1008,12 @@ keytool -genkey -v -keystore android/release-key.jks -keyalg RSA -keysize 2048 -
    - **Samsung Tizen TV / signage**: point the TV's URL Launcher (or browser) at `https://your-instance/player` - no signing needed. For an installed native app, see [tizen/README.md](tizen/README.md)
    - **Any browser**: Open `https://your-instance/player` in kiosk/fullscreen mode
 4. Enter the pairing code shown on the device
+
+**A browser screen shows an empty setup page, or never shows a pairing code?** Open
+`https://your-instance/player/check` on that screen. It runs on very old browsers and says which
+player this one can run: `/player`, `/player/legacy` (older smart TVs and signage panels), or
+neither. Point the screen at the address it gives. If it says the browser is too old for both,
+use an Android TV box, Fire TV or Raspberry Pi on HDMI instead.
 
 ### Raspberry Pi notes
 

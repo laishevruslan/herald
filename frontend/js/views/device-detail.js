@@ -9,9 +9,10 @@ import { showDeviceOwnerQRModal } from '../components/device-owner-qr-modal.js';
 import { frameDeviceOutput, displayAspectRatio } from '../lib/device-frame.js';
 import * as gettingStarted from '../components/getting-started.js';
 import { LiveViewer, whenVisible } from '../lib/webrtc-viewer.js';
-import { renderPowerScheduleEditor, readPowerScheduleEditor, presetWindows } from '../components/power-schedule-editor.js';
+import { renderPowerScheduleEditor, readPowerScheduleEditor, presetWindows, problemMessage } from '../components/power-schedule-editor.js';
 import * as cui from '../components/corporate-ui.js';
 import { openDeviceMoveDialog } from '../components/device-move-dialog.js';
+import { setupViewAccess } from '../components/view-access-card.js';
 
 // The player distinguishes three cases for the Wi-Fi name, because "--" was hiding a real
 // answer: Android 8.1+ refuses to reveal the SSID to an app without location permission, and a
@@ -52,6 +53,7 @@ async function wirePowerSchedule(device) {
       inherited = eff && eff.source === 'group' ? eff : null;
       host.innerHTML = renderPowerScheduleEditor(current || { windows: [], enabled: true }, {
         supported,
+        playerVersion: device.app_version || null,
         inherited,
         groupSchedules,
         state: res.state,
@@ -64,7 +66,7 @@ async function wirePowerSchedule(device) {
   }
 
   function redraw(windows, enabled) {
-    host.innerHTML = renderPowerScheduleEditor({ ...(current || {}), windows, enabled }, { supported, inherited, groupSchedules });
+    host.innerHTML = renderPowerScheduleEditor({ ...(current || {}), windows, enabled }, { supported, inherited, groupSchedules, playerVersion: device.app_version || null });
     bind();
   }
 
@@ -83,7 +85,7 @@ async function wirePowerSchedule(device) {
     }));
     // Re-render on a time change so the "crosses midnight" hint appears as soon as it is true —
     // an overnight window is the common case and the least obvious thing about this editor.
-    host.querySelectorAll('.power-start, .power-end').forEach((el) => el.addEventListener('change', () => {
+    host.querySelectorAll('.power-start, .power-end, .power-allday').forEach((el) => el.addEventListener('change', () => {
       const s = readPowerScheduleEditor(document);
       redraw(s?.windows || [], s?.enabled !== false);
     }));
@@ -91,9 +93,14 @@ async function wirePowerSchedule(device) {
     host.querySelector('#powerSave')?.addEventListener('click', async () => {
       const s = readPowerScheduleEditor(document);
       if (!s) return;
+      // A row that cannot be saved is said, never dropped (an empty schedule saved over visible times).
+      const problem = problemMessage(s);
+      if (problem) { showToast(problem, 'error'); return; }
+      const { problems, ...body } = s;
+      void problems;
       try {
-        if (current?.id) await api.updatePowerSchedule(current.id, s);
-        else await api.createPowerSchedule({ device_id: device.id, ...s });
+        if (current?.id) await api.updatePowerSchedule(current.id, body);
+        else await api.createPowerSchedule({ device_id: device.id, ...body });
         showToast(t('power.saved'), 'success');
         await load();
       } catch (err) {
@@ -1136,6 +1143,8 @@ async function loadDevice(deviceId, activeTab = null) {
         ${renderTriggerConfig(device)}
         ${renderTriggerDiagnostics(device)}
 
+        <div id="viewAccessCard"></div>
+
         <!-- Uptime Timeline (24h) -->
         <div style="margin-top:20px">
           <h4 style="font-size:13px;margin-bottom:8px">${t('device.timeline.title')}</h4>
@@ -1540,6 +1549,7 @@ async function loadDevice(deviceId, activeTab = null) {
     setupPlaylistActions(device);
     setupCorporateDevice(device);
     setupEnrolKey(device);
+    setupViewAccess(device);
 
     /*
      * The checklist, at the end of its own trail.

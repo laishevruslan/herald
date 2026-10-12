@@ -184,6 +184,7 @@ app.use(helmet({
 app.use((req, res, next) => {
   if (req.path === '/' || req.path === '/landing.html') return next();
   if (req.path.startsWith('/player')) return next();
+  if (req.path.startsWith('/view/')) return next(); // view-only display page: the web player (routes/view.js)
   if (req.path === '/docs') return next(); // Redoc API reference needs a relaxed CSP
   if (req.path.startsWith('/api/widgets/') && req.path.endsWith('/render')) return next();
   if (req.path.startsWith('/api/widgets/') && req.path.endsWith('/data.json')) return next();
@@ -679,14 +680,29 @@ app.use(express.static(config.frontendDir, { index: false, etag: true, lastModif
 // server-side endpoint defends in depth, but the kill switch saves network
 // traffic on the device too). Other player assets (JS, sw.js, etc) are still
 // served by the static middleware below; only index.html is dynamic.
-function sendPlayer(res, file) {
+/*
+ * A viewer shares its origin with any real web player in the same browser, and the player keeps its
+ * identity, playlist cache and clock in localStorage. So a viewer gets an in-memory localStorage that
+ * dies with the tab: it can never overwrite a real screen's state, and leaves nothing behind. ES5,
+ * because the legacy build is served to viewers too. (The player also namespaces its keys '__view'.)
+ */
+const VIEWER_STORAGE_SHIM = ' (function(){try{var m={};var s={getItem:function(k){return Object.prototype.hasOwnProperty.call(m,k)?m[k]:null;},'
+  + 'setItem:function(k,v){m[k]=String(v);},removeItem:function(k){delete m[k];},clear:function(){m={};},'
+  + 'key:function(i){return Object.keys(m)[i]||null;}};Object.defineProperty(s,"length",{get:function(){return Object.keys(m).length;}});'
+  + 'Object.defineProperty(window,"localStorage",{value:s,configurable:true});Object.defineProperty(window,"sessionStorage",{value:s,configurable:true});}catch(e){}})();';
+function sendPlayer(res, file, opts) {
   const playerHtmlPath = path.join(__dirname, 'player', file);
   fs.readFile(playerHtmlPath, 'utf8', (err, html) => {
     if (err) return res.status(500).type('text/plain').send('player HTML unavailable');
-    const reportingEnabled = String(process.env.PLAYER_DEBUG_REPORTING || 'on').toLowerCase() !== 'off';
+    // View-only viewers (routes/view.js) never report: there is no device to attribute it to.
+    const viewer = opts && opts.viewer;
+    const reportingEnabled = !viewer && String(process.env.PLAYER_DEBUG_REPORTING || 'on').toLowerCase() !== 'off';
     const inject =
       '  <script>window.__playerConfig = window.__playerConfig || {}; ' +
-      'window.__playerConfig.debugReporting = ' + JSON.stringify(reportingEnabled) + ';</script>\n';
+      'window.__playerConfig.debugReporting = ' + JSON.stringify(reportingEnabled) + ';' +
+      // `<` escaped so nothing in the object can close the script element.
+      (viewer ? ' window.__playerConfig.viewer = ' + JSON.stringify(viewer).replace(/</g, '\\u003c') + ';' + VIEWER_STORAGE_SHIM : '') +
+      '</script>\n';
     // Inject right before the debug-overlay.js script tag. If for any reason
     // the tag isn't present (e.g. file edited out), fall back to injecting
     // before </head> so the flag still lands.
@@ -710,7 +726,8 @@ function sendPlayer(res, file) {
       console.warn('[player] ST_PLAYER_VERSION marker not found — page will report a stale client_version');
     }
     modified = stamped;
-    res.type('html').setHeader('Cache-Control', 'no-cache');
+    // A viewer page carries its access token in the URL: never stored by a cache on the way.
+    res.type('html').setHeader('Cache-Control', viewer ? 'no-store' : 'no-cache');
     res.send(modified);
   });
 }
@@ -721,6 +738,13 @@ app.get(['/player', '/player/', '/player/index.html'], (req, res) => {
 
 app.get(['/player/legacy', '/player/legacy/', '/player/legacy/index.html', '/player/legacy.html'], (req, res) => {
   sendPlayer(res, 'legacy.html');
+});
+
+// Which web player can this screen's browser run? (player/check.html — ES3 on purpose, so it runs
+// on the very browsers that cannot run the player, and a photo of it diagnoses the screen.)
+app.get(['/player/check', '/player/check/'], (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
+  res.sendFile(path.join(__dirname, 'player', 'check.html'));
 });
 
 // #74/#75: serve the canonical schedule evaluator to the web player from the
@@ -1338,6 +1362,13 @@ app.use('/api/auth/users', rateLimit(60000, 20));
  * design. Rate-limited per IP like the other public endpoints; the scan itself stores no IP.
  */
 app.get('/q/:code', rateLimit(60000, 120), require('./routes/qr-links').redirect);
+/*
+ * View-only display access (lib/view-access.js, routes/view.js): /view/<token> and the network-only
+ * /view/screen/<id>, plus the read-only payload they poll. GET only, no session, no device row. The
+ * token is the credential, so each IP gets one bucket per route shape (lib/limit-paths.js), not one
+ * per token. 4s polling is 15/min per open viewer; 240/min leaves room for a wall of them on one NAT.
+ */
+app.get(['/view/:key', '/view/screen/:id', '/api/view/:kind/:key/payload'], rateLimit(60000, 240), require('./routes/view')({ sendPlayer }));
 // Canva OAuth callback (routes/canva.js): the browser returns from canva.com with no Authorization
 // header, so it cannot sit behind the JWT-only /api/canva mount below. It trusts only the signed
 // httpOnly transaction cookie set when the person pressed Connect.
@@ -2226,7 +2257,9 @@ app.get('/api/update/check', (req, res) => {
   // Channel selection. An opted-in display is compared against — and offered — the BETA build's
   // declared version, not the server's. Falls back to stable whenever no usable beta is published,
   // so ticking the box on a server with no beta build is a no-op, not a broken display.
-  const onBeta = betaChannel && apkCache.betaAvailable();
+  // A beta behind the stable release does not count (lib/apk-cache.js betaSuperseded): the display
+  // is then compared against stable, and decide()'s beta exemption lets it be offered.
+  const onBeta = betaChannel && apkCache.betaAvailable(latestVersion);
   if (onBeta) latestVersion = apkCache.getBeta().version;
 
   /*
@@ -3079,7 +3112,7 @@ app.get('/download/apk', (req, res) => {
   // Serve the slot the check advertised. If these disagree the client is handed bytes whose
   // size does not match apk_size, which is how an OTA loop starts — so both sides resolve
   // the channel the same way, and both fall back to stable identically.
-  const apk = apkCache.forChannel(req.query.channel === 'beta' ? 'beta' : 'stable');
+  const apk = apkCache.forChannel(req.query.channel === 'beta' ? 'beta' : 'stable', apkCache.get().version || VERSION);
   if (!apk.exists) {
     return res.status(404).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>APK Not Available</title><style>body{font-family:-apple-system,system-ui,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#0f172a;color:#e2e8f0}div{text-align:center;max-width:480px;padding:32px 24px}h1{color:#f87171;font-size:22px;margin:0 0 8px}p{line-height:1.6;color:#94a3b8;font-size:14px;margin:0 0 20px}code{background:#1e293b;padding:2px 6px;border-radius:4px;font-size:13px}a{color:#3b82f6;text-decoration:none}a:hover{text-decoration:underline}.btn{display:inline-block;background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;font-size:14px;font-weight:500;text-decoration:none;margin-bottom:24px}.btn:hover{background:#1d4ed8;text-decoration:none}.muted{font-size:12px;color:#64748b}</style></head><body><div><h1>APK Not Available</h1><p>The Android APK has not been compiled yet.</p><a class="btn" href="https://github.com/luminascreen/luminascreen/releases/latest" target="_blank" rel="noopener">&#128230; Download from GitHub Releases</a><p class="muted">Self-hosting? Mount a built APK at <code>/data/LuminaScreen.apk</code> to serve it from this instance. Or use the <a href="/player">web player</a> instead.</p></div></body></html>`);
   }

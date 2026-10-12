@@ -480,6 +480,26 @@ export const api = {
     body: JSON.stringify({ ids, folder_id: folderId || null })
   }),
 
+  // The Content Library page (server lib/content-library.js): one page of results with the real
+  // total and each row's usage. `opts` are the page's own state; only set values are sent.
+  // folderId: undefined = the whole workspace ("All content"), null = the root, <id> = that folder.
+  getLibraryPage: (opts = {}, signal) => {
+    const p = new URLSearchParams({ envelope: '1' });
+    const q = (opts.q || '').trim();
+    if (!q && opts.folderId !== undefined) p.set('folder_id', opts.folderId === null ? 'root' : opts.folderId);
+    if (q) p.set('q', q);
+    for (const k of ['type', 'status', 'usage', 'scope', 'sort']) if (opts[k] && opts[k] !== 'all') p.set(k, opts[k]);
+    p.set('limit', String(opts.limit || 48));
+    p.set('offset', String(opts.offset || 0));
+    return request(`/content?${p.toString()}`, signal ? { signal } : undefined);
+  },
+  getLibrarySummary: () => request('/content/library-summary'),
+  getContentUsage: (id) => request(`/content/${id}/usage`),
+  batchTagContent: (ids, add, remove) => request('/content/batch/tags', {
+    method: 'POST',
+    body: JSON.stringify({ ids, ...(add && add.length ? { add } : {}), ...(remove && remove.length ? { remove } : {}) })
+  }),
+
   // Studio poster designs (phase 6.1)
   getStudioDesigns: () => request('/studio'),
   getStudioDesign: (contentId) => request(`/studio/${contentId}`),
@@ -600,21 +620,22 @@ export const api = {
     return wasBatch ? out : out[0];
   },
 
-  addRemoteContent: (url, name, mime_type) => request('/content/remote', {
+  // folderId (optional, the library's destination): the new item is filed there instead of the root.
+  addRemoteContent: (url, name, mime_type, folderId) => request('/content/remote', {
     method: 'POST',
-    body: JSON.stringify({ url, name, mime_type })
+    body: JSON.stringify({ url, name, mime_type, ...(folderId ? { folder_id: folderId } : {}) })
   }),
 
-  addYoutubeContent: (url, name) => request('/content/youtube', {
+  addYoutubeContent: (url, name, folderId) => request('/content/youtube', {
     method: 'POST',
-    body: JSON.stringify({ url, name })
+    body: JSON.stringify({ url, name, ...(folderId ? { folder_id: folderId } : {}) })
   }),
 
   // IPTV: add a live HLS stream (the player opens the .m3u8 on its LAN; the server never fetches it).
-  addHoldContent: (mode, name) => request('/content/hold', { method: 'POST', body: JSON.stringify({ mode, name }) }),
-  addHlsContent: (url, name) => request('/content/hls', {
+  addHoldContent: (mode, name, folderId) => request('/content/hold', { method: 'POST', body: JSON.stringify({ mode, name, ...(folderId ? { folder_id: folderId } : {}) }) }),
+  addHlsContent: (url, name, folderId) => request('/content/hls', {
     method: 'POST',
-    body: JSON.stringify({ url, name })
+    body: JSON.stringify({ url, name, ...(folderId ? { folder_id: folderId } : {}) })
   }),
 
   // Assignments
@@ -701,6 +722,10 @@ export const api = {
   // #313: mint or roll the enrolment key that lets a storage-less web player identify itself.
   createEnrolKey: (id) => request(`/devices/${id}/enrol-key`, { method: 'POST' }),
   revokeEnrolKey: (id) => request(`/devices/${id}/enrol-key`, { method: 'DELETE' }),
+  // View-only access (server lib/view-access.js)
+  getViewAccess: (id) => request(`/devices/${id}/view`),
+  updateViewAccess: (id, body) => request(`/devices/${id}/view`, { method: 'PUT', body: JSON.stringify(body) }),
+  regenerateViewLink: (id) => request(`/devices/${id}/view/regenerate`, { method: 'POST' }),
   assignPlaylistToDevice: (playlistId, device_id) => request(`/playlists/${playlistId}/assign`, { method: 'POST', body: JSON.stringify({ device_id }) }),
   clearDevicePlaylist: (device_id) => request(`/devices/${device_id}/playlist`, { method: 'DELETE' }),
   publishPlaylist: (id) => request(`/playlists/${id}/publish`, { method: 'POST' }),
@@ -786,6 +811,9 @@ export const api = {
   adminListOrgs: () => request('/admin/orgs'),
   // Platform-admin view: EVERY plan incl. hidden ones, with subscriber counts.
   adminListPlans: () => request('/admin/plans'),
+  adminPlanImpact: (id) => request(`/admin/plans/${encodeURIComponent(id)}/impact`),
+  adminUpdatePlan: (id, data) => request(`/admin/plans/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
+  adminCreatePlan: (data) => request('/admin/plans', { method: 'POST', body: JSON.stringify(data) }),
   adminListPromotions: () => request('/admin/promotions'),
   adminCreatePromotion: (body) => request('/admin/promotions', { method: 'POST', body: JSON.stringify(body) }),
   adminEndPromotion: (id) => request(`/admin/promotions/${encodeURIComponent(id)}/end`, { method: 'POST' }),

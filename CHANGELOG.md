@@ -29,6 +29,169 @@ available alongside Suika (no feature-flag hide). Help documents both editors. S
 - **Reports → Interactive sessions: the "Sessions per day" bars stacked down the page (#497)**
   instead of standing side by side like the other charts.
 
+## 2.5.1
+
+Thanks to the people whose reports this release fixes: @PowerSprout and カタカナ.
+
+### Added
+
+- **`/player/check`: which player can this screen run?** Open it on a screen whose browser shows an
+  empty setup page or never shows a pairing code. It runs on very old browsers, lists what this one
+  supports, and names the address to use: `/player`, `/player/legacy`, or neither (use a player box on
+  HDMI instead). Added as a troubleshooting step to the README and the Samsung and LG guides. Prompted
+  by a Samsung DM48E (SSSP 3) whose URL Launcher showed an empty page.
+- **Watch a display from any browser, without pairing it (view-only access).** A display's page has a
+  new **View-only access** card on Device Info. A workspace admin turns it on and gets a share link
+  (`/view/…`). Anyone holding the link sees what that display shows, in step with it: no controls, no
+  device details, nothing else from the workspace. A viewer is not a display: it never pairs, never
+  counts toward your plan and never appears in the displays list. Off for every display until an
+  admin turns it on.
+  - **Regenerate link** revokes the old link at once. Turning access off disconnects every open viewer
+    within a few seconds, with "This view is no longer available".
+  - **Allowed networks** (optional) let devices on your own ranges (e.g. `192.168.1.0/24`) open the
+    display's network address with no link at all. Ranges are validated. Behind a reverse proxy, set
+    `VIEW_TRUSTED_PROXIES`, otherwise only the real connecting address counts.
+  - Turning it on or off, creating or regenerating the link and changing networks are recorded in the
+    activity log. Editors, viewers and API tokens cannot change it.
+  - `VIEW_ONLY_ENABLED=false` removes the feature from a server. On by default for self-hosted.
+  - Pairing, `/player`, `/player/legacy` and the vMix web-player URL work exactly as before. Old
+    browsers get the ES5 build with `?legacy=1`.
+- **Certified Hardware: the Fire TV Cube (3rd Gen) is certified**, from 2.5.0 (AFTGAZL, tested at
+  1920x1080). Its HDMI input can be shown live in a playlist. The live picture cannot be captured, so
+  screenshots and previews show that area black.
+- **Certified Hardware: a new "Compatible per manufacturer" list.** The 88 Fire OS models on Amazon's
+  device list are shown, one row each, with their model numbers. These are not Certified Hardware and
+  carry no support commitment: LuminaScreen has not tested them. Models sold on amazon.com have a
+  where-to-buy link.
+- **Social walls can show pictures only.** A new **Show the post text** option sits next to **Show the
+  author**. Turned off, captions are not shown (or even sent to the screen), posts without a picture
+  are skipped, and the ticker shows each post's picture instead of its text. That suits an Instagram
+  feed as a promo strip beside the main content. On by default, so existing walls are unchanged.
+- **Social walls: the play icon on videos can be turned off.** A wall shows a reel's or video's
+  picture, not the video, and nobody can tap a sign, so the play icon read as broken. **Mark videos
+  with a play icon** is on by default; turned off, the picture shows without it. Reported by カタカナ.
+- **Plans can be edited from the dashboard** (Platform → Plans & sales, platform admins). Each plan
+  can change its name, screen and storage limits (or unlimited), features, monthly and yearly price,
+  linked Stripe prices, whether it is shown on the pricing page, and its order. **New plan** adds one,
+  hidden until it is shown. The table now says whether each paid plan can actually be bought.
+  - **Prices are linked, not typed.** Checkout charges the Stripe price linked to the plan, so a price
+    is created in Stripe and its id pasted here. The save is refused while the shown amount, the
+    currency (USD), the interval or an archived Stripe price disagrees. Without Stripe configured
+    (self-hosted, alpha) prices are display-only and the dialog says so.
+  - **Who it reaches is shown first.** The dialog says how many accounts are on the plan and how many
+    pay. Lowering a limit asks before saving, and paying customers keep the Stripe price they
+    subscribed with.
+  - **Free stays free.** Expired trials and lapsed subscriptions land on it, so its price stays $0
+    and it cannot be linked to a Stripe price. One Stripe price cannot be linked to two plans.
+  - Every change is recorded in the activity log, field by field.
+- `PUT /api/admin/plans/:id`, `POST /api/admin/plans` and `GET /api/admin/plans/:id/impact`. The
+  old `PUT/POST /api/subscription/plans` routes now apply the same validation and Stripe checks, and
+  are limited to platform admins.
+- **Room displays speak the room's language.** The page's own words (Available, In use, Book,
+  End meeting, the schedule and every refusal) now come in the dashboard's ten languages. A new
+  **Language on the screen** setting picks one; left on its default, each screen uses its own
+  language, so one widget can serve rooms in two countries. hi/ja/zh are best-effort. Reported by
+  @PowerSprout.
+
+### Changed
+
+- **The Content Library is rebuilt around the content.** A populated library now opens on its
+  content, not on a stack of forms.
+  - **Navigation:** All content, Recently added (the last 7 days) and Unused, each with a count, and
+    the folder tree. A folder still shows the items filed directly in it, and a search still spans
+    the whole workspace.
+  - **Toolbar:** search, type, status and usage filters (removable chips, Clear filters), sort, and
+    a grid or list view. The view is remembered in this browser.
+  - **One result set:** the grid and the table share the results, the selection and the open item,
+    and are paged by the server ("Showing 1–48 of 312 items").
+  - **Table:** sortable Name, Type, Duration and Dimensions headers, with direction shown.
+  - **Content details:** opening an item shows a side panel with its preview, status, name, folder
+    and tags (saved with an explicit Save, with a warning before unsaved changes are dropped), its
+    real details, and the playlists that use it, each a link.
+    - **Replace file** keeps the item's identity, so every playlist keeps it. It is offered only for
+      stored files.
+    - On a narrow screen the panel becomes a drawer.
+  - **Add content:** one button opens a modal with the upload zone and a tile for every source the
+    server supports: Media URL, YouTube, Google / Microsoft (one document, or a SharePoint/OneDrive
+    folder sync), Live stream, HDMI input and Canva. Canva shows only where it is set up or can be,
+    and still connects and disconnects.
+    - Each tile opens its form in the modal, with Back. Values are kept, typed input is not lost
+      without a warning, and links are checked inline the same way the server checks them.
+    - The footer shows the **destination** folder, which every form and upload uses.
+    - A PDF says, before it starts, which folder and playlist it will create.
+  - **Uploads:** files are uploaded one at a time with their own progress: uploading, processing,
+    then ready or failed with the reason, plus Retry and Cancel. One bad file no longer stops the
+    rest. Uploads keep going while you browse.
+    - Dropping files anywhere on the results uploads them to the folder you are in. An empty library
+      keeps a large upload invitation.
+  - **Bulk actions:** checked items can be moved, tagged (new bulk tag endpoint), added to a
+    playlist (items that could not be added are listed with the reason) or deleted. The delete
+    confirmation lists what each item is used in. Changing the folder or the search clears the
+    selection, and says so.
+  - Edit, Delete, History, preview, the expiry date, Canva sync and the other per-item actions are
+    in each item's menu. They are no longer buttons on every card.
+- **Hold screens are added from the playlist they belong to:** a playlist's new **Add hold screen**
+  adds a freeze or blank step of the length you choose, reusing one hold per mode. The library no
+  longer has a Hold card. Existing holds are untouched and can be filtered for.
+
+### Added (server)
+
+- `GET /api/content?envelope=1` returns `{ items, total }`. The plain array is unchanged for every
+  other caller.
+  - Each item carries its playlist count and whether anything at all uses it.
+  - New `scope`, `usage` and `status` filters, and more sorts, each ending on the id so pages never
+    swap equal items.
+  - `GET /api/content/library-summary` gives the navigation counts. `GET /api/content/:id/usage`
+    lists the playlists that use an item, plus counts of its walls, schedules, screen defaults,
+    corporate fallbacks, widgets and slide decks.
+  - "Unused" means none of those, not merely "in no playlist".
+- `POST /api/content/batch/tags` adds or removes tags on up to 500 items, all or nothing, like batch
+  move and delete.
+- `POST /content/remote`, `/youtube`, `/hls` and `/hold` accept a `folder_id` in the same
+  workspace.
+
+### Fixed (Android player)
+
+- **A scheduled "screen off" lasted half a second.** Waking a screen (Screen On, a relaunch, or a
+  schedule's own "on" time) left the player's window set to show over the lock screen and turn the
+  screen on, so locking it to blank the panel lit it straight back up. The player now clears those
+  before it blanks, scheduled or by Screen Off, and drops "keep screen on" before locking rather than
+  after.
+
+### Fixed (dashboard)
+
+- **The display power schedule could not be set on a screen whose player cannot blank yet.** Every
+  control was disabled but looked clickable, under a note meant for groups. The schedule can now be
+  set and saved, and the page says it starts working once the screen updates its player (2.1.6 or
+  later on Android). The server already accepted it, and screens receive it with their content.
+- **"All weekend" saved an empty power schedule.** It ends at 24:00, which a browser time field
+  cannot hold, so the row was blanked and then silently dropped on Save. A row can now be **All day**,
+  an end at midnight is shown as 00:00 and saved as 24:00, and a row that cannot be saved (no day
+  ticked, or a time missing) stops the Save with a message naming it, instead of disappearing.
+
+### Fixed (server)
+
+- **A screen left on an old beta build could never update.** The beta slot still held a test build
+  from weeks earlier, so a screen opted into beta was told it was up to date with it, while unticking
+  beta then offered it nothing at all. A healthy screen stayed on that build, missing every feature
+  since, including the display power schedule. A beta older than the stable release no longer counts,
+  so opted-in screens get stable. A screen that was on the beta channel and is switched off it now
+  updates to the release.
+- **Grafana dashboards on screens showed Grafana's own sidebar and toolbar** (and, on a fresh
+  Grafana 13, an announcement dialog over the dashboard). LuminaScreen asked for kiosk mode as
+  `kiosk=` with an empty value, which Grafana does not treat as kiosk mode; it now sends a bare
+  `kiosk`. Single-panel widgets were not affected. Found filming the 2.5 release video against
+  Grafana 13.0.
+- The **Videos** type filter no longer includes HDMI inputs, and **Web / remote** no longer includes
+  holds or HDMI inputs.
+
+- **Ending a meeting at a room display now frees the room on screen at once.** A meeting booked
+  and ended in the same minute kept saying "In use" for up to a minute, because the calendar needs
+  it to last at least a minute. A calendar answering a moment behind after a booking or an end
+  was also cached as fresh for a minute. The panel now shows what it just did. A forced calendar
+  read after a change also no longer reuses a read that began before the change. Reported by
+  @PowerSprout on a ThinkSmart View.
+
 ## 2.5.0
 
 Thanks to the people whose reports this release fixes: @xela1978, JackyL, Mr. Car [MHA], J.O. and
