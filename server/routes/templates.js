@@ -61,9 +61,9 @@ router.post('/library/seen', (req, res) => {
   try { res.json({ marked: catalog.markSeen(req.user.id, keys) }); } catch (e) { sendError(res, e); }
 });
 
-function publicInstalled(row) {
+function publicInstalled(row, lang) {
   const m = row.manifest || {};
-  return {
+  const out = {
     key: row.id, catalog: row.catalog, id: row.template_id, version: row.version, kind: row.kind, name: row.name,
     description: m.description || '', author: m.author || '', license: m.license || '', tags: m.tags || [],
     orientation: m.orientation || [], network: m.network || [], params: m.params || [],
@@ -72,6 +72,13 @@ function publicInstalled(row) {
     thumbnail: m.thumbnail ? `/api/templates/thumb/${row.sha256}` : null,
     sha256: row.sha256, installed_at: row.installed_at, updated_at: row.updated_at,
   };
+  // One language, and only when the caller asked. No lang (and an untranslated lang) is the
+  // payload older dashboards got: no i18n key at all.
+  if (typeof lang === 'string' && lang) {
+    const tr = store.pickLang(store.i18nOf(row), lang);
+    if (tr) out.i18n = { [lang.slice(0, 2).toLowerCase()]: tr };
+  }
+  return out;
 }
 
 router.get('/installed', (req, res) => {
@@ -406,3 +413,4 @@ router.delete('/installed/:catalog/:id', requirePlatformAdmin, (req, res) => {
 
 module.exports = router;
 module.exports.importBody = importBody;
+module.exports.publicInstalled = publicInstalled;

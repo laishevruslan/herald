@@ -112,6 +112,24 @@ function resolveDevice(req, res) {
   return device;
 }
 
+/*
+ * An embedded panel has no socket. Remember when it said it would poll again, and hand it any
+ * command that was queued for that wake (a scheduled reboot, a dashboard command) as X-ST-Command.
+ * A preview request must not consume the command the real panel is about to collect.
+ */
+function embeddedPollExtras(device, expiresIn, { preview = false } = {}) {
+  if (!device || device.client_type !== 'embedded' || preview) return {};
+  const sec = Math.max(0, Math.floor(Number(expiresIn) || 0));
+  try {
+    db.prepare('UPDATE devices SET heartbeat_expected_by = ? WHERE id = ?')
+      .run(Math.floor(Date.now() / 1000) + sec, device.id);
+  } catch { /* the column is added by migration; a half-migrated db still renders */ }
+  let cmds = [];
+  try { cmds = require('../lib/command-queue').popPendingCommands(device.id); } catch { cmds = []; }
+  if (!cmds.length) return {};
+  return { 'X-ST-Command': JSON.stringify(cmds.length === 1 ? cmds[0] : cmds) };
+}
+
 function touchDeviceHeartbeat(device, req) {
   const clientIp = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || req.ip || '').replace(/^::ffff:/, '');
   try {
@@ -756,6 +774,7 @@ async function handleRenderStandard(req, res, device, profile, opts = {}) {
     'X-ST-Expires-In': String(expiresIn),
     'X-ST-Item-Index': String(itemIndex),
     'X-ST-Total-Items': String(total),
+    ...embeddedPollExtras(device, expiresIn, { preview: isPreview }),
   };
   if (opts.isFallback) {
     headers['X-ST-Layout-Fallback'] = '1';
@@ -884,6 +903,7 @@ async function handleRenderLayout(req, res, device, profile, opts = {}) {
     'X-ST-Expires-In': String(expiresIn),
     'X-ST-Item-Index': '0',
     'X-ST-Total-Zones': String(zoneEntries.length),
+    ...embeddedPollExtras(device, expiresIn, { preview: isPreview }),
   };
 
   if (!isPreview && isNotModified(key, req.headers['if-none-match'])) {

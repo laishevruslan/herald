@@ -161,8 +161,18 @@ function maybeRebootDevice(device, now, deviceNs) {
   // anyway was harmless in itself, but the log line below then claimed a reboot had fired every
   // night for a display that cannot reboot — which is what someone reads when they are trying to
   // work out why a panel never came back.
-  if (!playerCapabilities.supports(device, 'system.reboot')) return;
+  // An embedded panel reboots from the command it reads on its next poll. It has no socket, and
+  // its baseline does not declare system.reboot — the queue is how the nightly reboot reaches it.
+  // Every other player keeps the direct emit, and only when it can actually reboot.
+  const embedded = device.client_type === 'embedded';
+  if (!embedded && !playerCapabilities.supports(device, 'system.reboot')) return;
   db.prepare('UPDATE devices SET reboot_last_date = ? WHERE id = ?').run(today, device.id);
+  const commandQueue = require('../lib/command-queue');
+  if (embedded) {
+    commandQueue.queueCommand(device.id, 'reboot', { scheduled: true }, { ttlMs: commandQueue.ttlForDevice(device) });
+    console.log(`[reboot] scheduled reboot queued for embedded device ${device.id} (${device.name || 'unnamed'}) at local ${today}`);
+    return;
+  }
   deviceNs.to(device.id).emit('device:command', { type: 'reboot', payload: { scheduled: true } });
   console.log(`[reboot] scheduled reboot fired for device ${device.id} (${device.name || 'unnamed'}) at local ${today}`);
 }

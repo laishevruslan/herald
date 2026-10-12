@@ -42,6 +42,9 @@ const MAX_FILES = 64;
 const MAX_PARAMS = 40;
 const MAX_TAGS = 12;
 const MAX_NETWORK = 8;
+// A translation file is a few strings. Well under the 1 MB per-file cap, so an oversized locales
+// file is refused as a locale file and not as a package file.
+const MAX_LOCALE_FILE_BYTES = 64 * 1024;
 
 const ID_RE = /^[a-z][a-z0-9-]{1,63}$/;
 const SEMVER_RE = /^(0|[1-9]\d{0,5})\.(0|[1-9]\d{0,5})\.(0|[1-9]\d{0,5})$/;
@@ -59,6 +62,17 @@ const HOST_RE = /^(?:\*\.)?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63
  */
 const SPDX_ALLOWED = new Set(['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', '0BSD', 'CC0-1.0', 'Unlicense']);
 const SPDX_RE = /^[A-Za-z0-9][A-Za-z0-9.+-]{1,39}$/;
+
+// Dashboard languages except English, which is the manifest itself. A locales/en.json or a
+// language the dashboard cannot show is the same refusal as a misplaced file.
+const LOCALE_LANGS = new Set(['de', 'nl', 'fr', 'es', 'pt', 'it', 'ja', 'zh', 'hi', 'ru']);
+const LOCALE_PATH_RE = /^locales\/([a-z]{2})\.json$/;
+const LOCALE_TOP_KEYS = new Set(['name', 'description', 'params']);
+const LOCALE_PARAM_KEYS = new Set(['label', 'help', 'default', 'options']);
+// C0/C1 controls, bidi overrides, and zero-width / BOM characters. Newlines are controls too;
+// a textarea default is allowed to keep \n and \t, and nothing else here is.
+const CONTROL_RE = /[\u0000-\u001F\u007F-\u009F\u202A-\u202E\u2066-\u2069\u200B-\u200F\uFEFF]/;
+const TEXTAREA_BAD_RE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u202A-\u202E\u2066-\u2069\u200B-\u200F\uFEFF]/;
 
 const KINDS = new Set(['slide', 'html']);
 const PARAM_TYPES = new Set(['text', 'textarea', 'color', 'number', 'select', 'image', 'timezone', 'locale', 'data_source', 'checkbox']);
@@ -270,10 +284,114 @@ function validateManifest(m, files) {
   };
 }
 
-/**
- * Decode and validate the canonical package bytes. Returns { manifest, files: Map<path, Buffer>, sha256 }.
+function cleanLocaleParam(file, name, raw, spec) {
+  for (const k of Object.keys(raw)) {
+    if (!LOCALE_PARAM_KEYS.has(k)) fail(`${file}: params.${name}: unknown key "${String(k).slice(0, 40)}"`);
+  }
+  const out = {};
+  if ('label' in raw) {
+    if (typeof raw.label !== 'string') fail(`${file}: params.${name}.label must be a string`);
+    if (raw.label.length > 80) fail(`${file}: label is too long (max 80)`);
+    if (CONTROL_RE.test(raw.label)) fail(`${file}: label contains control characters`);
+    if (raw.label !== '') out.label = raw.label;
+  }
+  if ('help' in raw) {
+    if (typeof raw.help !== 'string') fail(`${file}: params.${name}.help must be a string`);
+    if (raw.help.length > 200) fail(`${file}: help is too long (max 200)`);
+    if (CONTROL_RE.test(raw.help)) fail(`${file}: help contains control characters`);
+    if (raw.help !== '') out.help = raw.help;
+  }
+  if ('options' in raw) {
+    if (spec.type !== 'select') fail(`${file}: only a select param has options`);
+    if (!isPlainObject(raw.options)) fail(`${file}: options must be an object keyed by option value`);
+    const allowed = new Set((spec.options || []).map((o) => o.value));
+    const options = {};
+    for (const v of Object.keys(raw.options)) {
+      if (!allowed.has(v)) fail(`${file}: "${v}" is not an option value`);
+      const lab = raw.options[v];
+      if (typeof lab !== 'string') fail(`${file}: options must be an object keyed by option value`);
+      if (lab.length > 80) fail(`${file}: too long (max 80)`);
+      if (CONTROL_RE.test(lab)) fail(`${file}: contains control characters`);
+      if (lab !== '') options[v] = lab;
+    }
+    if (Object.keys(options).length) out.options = options;
+  }
+  if ('default' in raw) {
+    if (spec.type !== 'text' && spec.type !== 'textarea') fail(`${file}: only a text or textarea param may have a translated default`);
+    if (typeof raw.default !== 'string') fail(`${file}: default must be a string`);
+    const max = spec.max || (spec.type === 'textarea' ? 2000 : 200);
+    if (raw.default.length > max) fail(`${file}: default is too long (max ${max})`);
+    const bad = spec.type === 'textarea' ? TEXTAREA_BAD_RE : CONTROL_RE;
+    if (bad.test(raw.default)) fail(`${file}: default contains characters that are not allowed`);
+    if (raw.default !== '') out.default = raw.default;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+function cleanLocale(file, obj, manifest) {
+  for (const k of Object.keys(obj)) {
+    if (!LOCALE_TOP_KEYS.has(k)) fail(`${file}: unknown key "${String(k).slice(0, 40)}"`);
+  }
+  const out = {};
+  if ('name' in obj) {
+    if (typeof obj.name !== 'string') fail(`${file}: name must be a string`);
+    if (obj.name.length > 80) fail(`${file}: name is too long (max 80)`);
+    if (CONTROL_RE.test(obj.name)) fail(`${file}: name contains control characters`);
+    if (obj.name !== '') out.name = obj.name;
+  }
+  if ('description' in obj) {
+    if (typeof obj.description !== 'string') fail(`${file}: description must be a string`);
+    if (obj.description.length > 500) fail(`${file}: description is too long (max 500)`);
+    if (CONTROL_RE.test(obj.description)) fail(`${file}: description contains control characters`);
+    if (obj.description !== '') out.description = obj.description;
+  }
+  if ('params' in obj) {
+    if (!isPlainObject(obj.params)) fail(`${file}: params must be an object`);
+    const byName = new Map((manifest.params || []).map((p) => [p.name, p]));
+    const params = {};
+    for (const name of Object.keys(obj.params)) {
+      if (!byName.has(name)) fail(`${file}: params."${name}" is not a param of this template`);
+      const raw = obj.params[name];
+      if (!isPlainObject(raw)) fail(`${file}: params.${name} must be an object`);
+      const cleaned = cleanLocaleParam(file, name, raw, byName.get(name));
+      if (cleaned) params[name] = cleaned;
+    }
+    if (Object.keys(params).length) out.params = params;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+/*
+ * locales/<lang>.json beside the manifest. English stays in the manifest, so en is not a locale
+ * file, and a language the dashboard does not speak is refused the same way a stray path is.
+ * Empty strings and empty objects are dropped; a language left with nothing is omitted.
  */
-function parsePackageBytes(bytes) {
+function parseLocales(files, manifest) {
+  const i18n = {};
+  for (const p of [...files.keys()].sort()) {
+    if (!p.startsWith('locales/')) continue;
+    const m = LOCALE_PATH_RE.exec(p);
+    if (!m || !LOCALE_LANGS.has(m[1])) fail('only locales/<lang>.json is allowed');
+    const buf = files.get(p);
+    if (buf.length > MAX_LOCALE_FILE_BYTES) fail(`file "${p.slice(0, 80)}" is larger than ${MAX_LOCALE_FILE_BYTES} bytes`);
+    let text = buf.toString('utf8');
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    let obj;
+    try { obj = JSON.parse(text); } catch { fail(`${p}: is not valid JSON`); }
+    if (!isPlainObject(obj)) fail(`${p}: must be a JSON object`);
+    const cleaned = cleanLocale(p, obj, manifest);
+    if (cleaned) i18n[m[1]] = cleaned;
+  }
+  return i18n;
+}
+
+/**
+ * Decode and validate the canonical package bytes.
+ * Returns { manifest, files: Map<path, Buffer>, sha256, i18n }.
+ * `lenientLocales` keeps a package whose translation files are bad (an already-installed copy
+ * loaded for the screens): the manifest still parses, and i18n is empty rather than throwing.
+ */
+function parsePackageBytes(bytes, opts) {
   if (!Buffer.isBuffer(bytes)) fail('package bytes must be a buffer');
   if (bytes.length > MAX_ENVELOPE_BYTES) fail('package is too large');
   let obj;
@@ -326,14 +444,21 @@ function parsePackageBytes(bytes) {
     'orientation', 'min_server', 'entry', 'thumbnail', 'network', 'params']);
   for (const k of Object.keys(obj.manifest)) if (!known.has(k)) fail(`manifest has an unknown key "${k.slice(0, 40)}"`);
 
-  return { manifest, files, sha256: sha256Hex(bytes) };
+  let i18n = {};
+  try {
+    i18n = parseLocales(files, manifest);
+  } catch (e) {
+    if (!(opts && opts.lenientLocales)) throw e;
+    i18n = {};
+  }
+  return { manifest, files, sha256: sha256Hex(bytes), i18n };
 }
 
 /**
  * Parse a .sttemplate envelope. Returns { packageBytes, signature, manifest, files, sha256 }.
  * Does NOT verify the signature — signing.verifyPackage does, and callers must.
  */
-function parseEnvelope(input) {
+function parseEnvelope(input, opts) {
   const buf = Buffer.isBuffer(input) ? input : Buffer.from(String(input), 'utf8');
   if (buf.length > MAX_ENVELOPE_BYTES * 2) fail('template file is too large');
   let env;
@@ -350,7 +475,7 @@ function parseEnvelope(input) {
     if (sig.length !== 64) fail('signature must be 64 bytes');
     signature = { key_id: s.key_id, sig };
   }
-  const parsed = parsePackageBytes(packageBytes);
+  const parsed = parsePackageBytes(packageBytes, opts);
   return { packageBytes, signature, ...parsed };
 }
 
@@ -374,6 +499,7 @@ function buildEnvelope(packageBytes, signature = null) {
 module.exports = {
   FORMAT, PackageError,
   MAX_TOTAL_BYTES, MAX_FILE_BYTES, MAX_ASSET_FILE_BYTES, MAX_PACKAGE_BYTES, MAX_FILES, MAX_PARAMS, MAX_ENVELOPE_BYTES,
+  MAX_LOCALE_FILE_BYTES, LOCALE_LANGS,
   BINARY_ASSET_EXTS, isBinaryAsset, SPDX_RE,
   ID_RE, SEMVER_RE, HOST_RE, PARAM_TYPES, EXT_TYPES, SPDX_ALLOWED,
   canonicalJson, sha256Hex, strictBase64, mimeFor, extOf, isPlainObject,

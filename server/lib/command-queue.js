@@ -63,15 +63,59 @@ function queueOrEmitPlaylistUpdate(deviceNs, deviceId, buildPayload) {
 // (always true under current logic; reserved for future "rejected because
 // stale/full" cases). Used by item 6 in commit D - dashboard command handler
 // calls this when the device room is empty.
-function queueCommand(deviceId, type, payload) {
+function queueCommand(deviceId, type, payload, opts) {
   if (!deviceId || !type) return false;
   let perDevice = pendingCommands.get(deviceId);
   if (!perDevice) {
     perDevice = new Map();
     pendingCommands.set(deviceId, perDevice);
   }
-  perDevice.set(type, { payload: payload || {}, expiresAt: Date.now() + config.commandQueueTtlMs });
+  const ttl = opts && Number.isFinite(opts.ttlMs) && opts.ttlMs > 0 ? opts.ttlMs : config.commandQueueTtlMs;
+  perDevice.set(type, { payload: payload || {}, expiresAt: Date.now() + ttl });
   return true;
+}
+
+/*
+ * How long a queued command for this device stays valid.
+ *
+ * A socket player reconnects within seconds, so the 30s TTL is the whole story. An embedded panel
+ * has no socket: it deep-sleeps for whatever X-ST-Expires-In told it, which is hours under a power
+ * schedule, and picks the command up as X-ST-Command on the next poll. A 30s TTL would expire
+ * first, and the dashboard would say "queued" for a reboot the panel never saw.
+ *
+ * The hold is "until it said it would be back, plus 10 minutes of grace", and never shorter than
+ * 15 minutes — a panel that never reported a return time still must not fall back to 30s.
+ */
+const EMBEDDED_TTL_FLOOR_MS = 15 * 60 * 1000;
+const EMBEDDED_TTL_GRACE_MS = 10 * 60 * 1000;
+
+function ttlForDevice(ref) {
+  const id = ref && typeof ref === 'object' ? ref.id : ref;
+  const base = config.commandQueueTtlMs;
+  if (!id) return base;
+  let row = null;
+  try {
+    row = require('../db/database').db.prepare(
+      'SELECT client_type, heartbeat_expected_by FROM devices WHERE id = ?'
+    ).get(id);
+  } catch { return base; }
+  if (!row || row.client_type !== 'embedded') return base;
+  const by = Number(row.heartbeat_expected_by);
+  if (!Number.isFinite(by) || by <= 0) return EMBEDDED_TTL_FLOOR_MS;
+  const remain = by * 1000 - Date.now();
+  return Math.max(EMBEDDED_TTL_FLOOR_MS, remain + EMBEDDED_TTL_GRACE_MS);
+}
+
+/** Drain every still-valid command for a device. The embedded poll sends these; a socket flush does not. */
+function popPendingCommands(deviceId) {
+  if (!deviceId) return [];
+  pruneDevice(deviceId);
+  const cmds = pendingCommands.get(deviceId);
+  if (!cmds || cmds.size === 0) return [];
+  pendingCommands.delete(deviceId);
+  const out = [];
+  for (const [type, entry] of cmds) out.push({ type, payload: entry.payload });
+  return out;
 }
 
 // Called on device:register success, after heartbeat.registerConnection and
@@ -145,6 +189,8 @@ function _resetForTests() {
 module.exports = {
   queueOrEmitPlaylistUpdate,
   queueCommand,
+  popPendingCommands,
+  ttlForDevice,
   flushQueue,
   getQueueDepth,
   startSweep,

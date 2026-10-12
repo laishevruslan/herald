@@ -57,6 +57,13 @@ const CAPABILITIES = [
    * type, shortening the timeline, so the deviceSocket strip keeps it off any screen that does not
    * declare it. */
   'playback.hold',
+  /* The screen's IANA zone as an offset table (lib/tz-table.js), for a player with no zone
+   * database of its own. In NO baseline except roku: every other player has ICU or the OS, and
+   * declaring this is the only way a payload grows a tz_table. */
+  'clock.tz_table',
+  /* Server-rendered stills of browser-only items (GET /api/player/raster), for a player with no
+   * HTML engine. In NO baseline except roku; the route refuses a device that does not declare it. */
+  'render.server_raster',
   /* Zones on a VIDEO WALL: the wall's layout, in percent of the wall's player rect, each zone paced
    * by the shared clock (lib/wall-layout.js). A wall member without it still plays the wall's
    * playlist across the whole wall, so the dashboard names the panels that lack it. In NO baseline. */
@@ -484,6 +491,24 @@ const BASELINE = {
     'system.restart_player',
     'sync.clock',
   ],
+  /*
+   * The Roku channel (roku/). No HTML engine, so widgets that are not a clock are server frames
+   * (render.server_raster) and the clock ticks from the offset table (clock.tz_table) because
+   * roDateTime only knows the zone the box is set to. A real channel declares on every register;
+   * this is the floor for a row whose capabilities column is still NULL.
+   *
+   * Out, on purpose: no reboot, volume, brightness, screenshot, shell, kiosk, self-update, YouTube,
+   * PiP, RTSP, HDMI-in, slide audio, native sync, clock sync or a media cache — none of those exist
+   * in the channel. playback.hls and display.power_schedule are real but declared, not assumed:
+   * an undeclared row must not be handed a stream or a power window it was never shown to evaluate.
+   */
+  roku: [
+    'playback.video', 'playback.image', 'playback.widget', 'playback.bundle',
+    'playback.zones', 'playback.transitions',
+    'audio.mute',
+    'system.restart_player',
+    'clock.tz_table', 'render.server_raster',
+  ],
   // A browser tab. Deliberately the smallest set: it cannot reboot its host, rotate a panel, or
   // capture anything outside its own document.
   web: [
@@ -549,6 +574,12 @@ function platformFamily(device) {
   // The iPad/iPhone app registers through the web player (android_version 'Web/…', client_type
   // 'player'), so this must come before the browser fallback below — like Vega above.
   if (platform === 'ios') return 'ios';
+  /*
+   * The Roku channel. Either signal is enough, and this MUST sit before the Android fallback: that
+   * fallback claims any non-empty, non-"Web/" android_version, and a channel that ever put its OS
+   * string there ("Roku OS 13.0") would otherwise be offered reboots and APK installs.
+   */
+  if (clientType === 'roku' || platform === 'roku') return 'roku';
   // client_type 'apk' is the Android player; android_version that is NOT the web player's
   // "Web/..." shape is the older signal for the same thing.
   if ((device && device.client_type === 'apk') || (android && !android.startsWith('Web/'))) return 'android';

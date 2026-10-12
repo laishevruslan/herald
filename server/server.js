@@ -2155,6 +2155,9 @@ app.use('/api/billing', bearerAuth, require('./routes/billing'));
 // RGB565, etc.) for MCUs that call HTTP instead of running a browser. Handles its own dual
 // auth (device token OR API token) so it cannot use the PUBLIC_ROUTERS bearerAuth loop.
 app.use('/api/embedded', require('./routes/embedded'));
+// Still frames of browser-only items, for a player with no HTML engine (the Roku). Own device-token
+// auth, same as /api/embedded, so it stays outside the PUBLIC_ROUTERS bearerAuth loop.
+app.use('/api/player', require('./routes/player-raster'));
 
 
 // Activity logging middleware now mounted earlier (just before the workspace

@@ -421,6 +421,12 @@ const migrations = [
   "ALTER TABLE devices ADD COLUMN reboot_schedule TEXT",
   "ALTER TABLE devices ADD COLUMN reboot_last_date TEXT",
   "ALTER TABLE device_groups ADD COLUMN reboot_schedule TEXT",
+  // Embedded panels have no socket. heartbeat_expected_by is the unix second the panel said it
+  // would poll again (now + X-ST-Expires-In); the command queue holds a command until then, plus
+  // a grace, instead of the 30s socket TTL. power_source is what the panel last reported (usb,
+  // battery) so a scheduled reboot can tell a panel that is about to sleep from one that is not.
+  "ALTER TABLE devices ADD COLUMN heartbeat_expected_by INTEGER",
+  "ALTER TABLE devices ADD COLUMN power_source TEXT",
   // #157 auto-deactivate expired content. expires_at = epoch-seconds after which the item
   // stops serving (null = never expires, current behaviour). is_active is the stored flag
   // the expiry sweep flips to 0 once expires_at passes — it's ALSO the sweep's once-only
@@ -2010,6 +2016,9 @@ const migrations = [
     updated_at     INTEGER NOT NULL DEFAULT (strftime('%s','now'))
   )`,
   'ALTER TABLE templates_installed ADD COLUMN signer_key_id TEXT',
+  // locales/<lang>.json from the package, keyed by language. NULL means "not read yet" — the
+  // store fills it once from the package file (a row installed before the column existed).
+  'ALTER TABLE templates_installed ADD COLUMN i18n_json TEXT',
   `CREATE TABLE IF NOT EXISTS template_catalogs (
     id             TEXT PRIMARY KEY,
     label          TEXT NOT NULL,

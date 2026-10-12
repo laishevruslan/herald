@@ -65,7 +65,8 @@ function loadPackage(sha256) {
   let bytes;
   try { bytes = fs.readFileSync(packagePath(sha256)); } catch { return null; }
   let env;
-  try { env = pkgLib.parseEnvelope(bytes); } catch { return null; }
+  // Lenient locales: a bad translation file must not stop a screen from rendering the English.
+  try { env = pkgLib.parseEnvelope(bytes, { lenientLocales: true }); } catch { return null; }
   if (env.sha256 !== sha256) {
     console.warn(`[templates] package ${sha256.slice(0, 12)}… on disk does not match its hash — refusing it`);
     return null;
@@ -92,6 +93,38 @@ function getInstalled(id) {
 }
 
 /**
+ * The translation map for an installed row. A NULL i18n_json is a row from before the column:
+ * read the package once and store it, so the next read does not open the file.
+ */
+function i18nOf(row) {
+  if (!row) return {};
+  if (row.i18n_json) {
+    try {
+      const o = JSON.parse(row.i18n_json);
+      if (o && typeof o === 'object' && !Array.isArray(o)) return o;
+    } catch { /* fall through and re-read the package */ }
+  }
+  const env = row.sha256 ? loadPackage(row.sha256) : null;
+  const i18n = env && env.i18n && typeof env.i18n === 'object' && !Array.isArray(env.i18n) ? env.i18n : {};
+  if (row.id && row.i18n_json == null) {
+    try {
+      db.prepare('UPDATE templates_installed SET i18n_json = ? WHERE id = ? AND i18n_json IS NULL').run(JSON.stringify(i18n), row.id);
+    } catch { /* the column is added by migration */ }
+  }
+  return i18n;
+}
+
+/** The entry for `lang` (`de`, or `de-AT` → `de`). English and anything that is not a language code are null. */
+function pickLang(i18n, lang) {
+  if (!i18n || typeof i18n !== 'object' || typeof lang !== 'string') return null;
+  const m = /^([a-z]{2})(?:-[A-Za-z0-9]{1,8})?$/.exec(lang);
+  if (!m || m[1] === 'en' || !pkgLib.LOCALE_LANGS.has(m[1])) return null;
+  if (!Object.prototype.hasOwnProperty.call(i18n, m[1])) return null;
+  const tr = i18n[m[1]];
+  return tr && typeof tr === 'object' && !Array.isArray(tr) ? tr : null;
+}
+
+/**
  * Record an install (or an explicit update to a new version). `env` is a parsed envelope whose
  * signature the caller has ALREADY evaluated into `trust`/`signer`/`catalog`.
  */
@@ -100,14 +133,15 @@ function recordInstall({ env, envelopeBytes, catalog, trust, signer, signerKeyId
   const id = `${catalog}/${env.manifest.id}`;
   const now = Math.floor(Date.now() / 1000);
   db.prepare(`
-    INSERT INTO templates_installed (id, catalog, template_id, version, sha256, kind, name, manifest_json, trust, signer, signer_key_id, status, status_reason, installed_by, installed_at, updated_at)
-    VALUES (@id, @catalog, @template_id, @version, @sha256, @kind, @name, @manifest_json, @trust, @signer, @signer_key_id, 'active', NULL, @user, @now, @now)
+    INSERT INTO templates_installed (id, catalog, template_id, version, sha256, kind, name, manifest_json, i18n_json, trust, signer, signer_key_id, status, status_reason, installed_by, installed_at, updated_at)
+    VALUES (@id, @catalog, @template_id, @version, @sha256, @kind, @name, @manifest_json, @i18n_json, @trust, @signer, @signer_key_id, 'active', NULL, @user, @now, @now)
     ON CONFLICT(id) DO UPDATE SET version = excluded.version, sha256 = excluded.sha256, kind = excluded.kind,
-      name = excluded.name, manifest_json = excluded.manifest_json, trust = excluded.trust, signer = excluded.signer, signer_key_id = excluded.signer_key_id,
+      name = excluded.name, manifest_json = excluded.manifest_json, i18n_json = excluded.i18n_json, trust = excluded.trust, signer = excluded.signer, signer_key_id = excluded.signer_key_id,
       status = 'active', status_reason = NULL, updated_at = excluded.updated_at
   `).run({
     id, catalog, template_id: env.manifest.id, version: env.manifest.version, sha256: env.sha256,
     kind: env.manifest.kind, name: env.manifest.name, manifest_json: JSON.stringify(env.manifest),
+    i18n_json: JSON.stringify(env.i18n && typeof env.i18n === 'object' ? env.i18n : {}),
     trust, signer: signer || null, signer_key_id: signerKeyId || null, user: userId || null, now,
   });
   bumpWidgets(id);
@@ -166,7 +200,7 @@ function bumpWidgets(id) {
 
 module.exports = {
   root, packagesDir, packagePath, putPackageFile, hasPackageFile, loadPackage,
-  listInstalled, getInstalled, recordInstall, setStatus, uninstall, widgetsUsing, bumpWidgets,
+  listInstalled, getInstalled, i18nOf, pickLang, recordInstall, setStatus, uninstall, widgetsUsing, bumpWidgets,
   setWidgetsChangedHook,
   _clearCache: () => cache.clear(),
 };

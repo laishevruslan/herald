@@ -227,7 +227,10 @@ function deviceRowsInScope(db, triggerId) {
  * that has no trigger listener (tizen/js/capabilities.js).
  */
 function platformCannotTrigger(d) {
-  return require('../player-capabilities').platformFamily(d) === 'tizen';
+  const fam = require('../player-capabilities').platformFamily(d);
+  // Tizen has no trigger listener. A Roku has no LAN listener either — the channel store is the
+  // only way it is updated, and it never binds the HTTP/UDP trigger ports.
+  return fam === 'tizen' || fam === 'roku';
 }
 
 /** Why device d cannot be reached by alert t over the LAN trigger path, and by Activate now. */
