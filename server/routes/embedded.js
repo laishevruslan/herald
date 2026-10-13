@@ -35,7 +35,7 @@ const express = require('express');
 const router  = express.Router();
 const crypto  = require('crypto');
 
-const { db }                = require('../db/database');
+const { db, pruneTelemetry }  = require('../db/database');
 const { deviceTokenAuth }   = require('../middleware/deviceTokenAuth');
 const { bearerAuth }        = require('../middleware/apiToken');
 const { resolveTenancy }    = require('../lib/tenancy');
@@ -49,6 +49,18 @@ const { sixDigitCode }      = require('../lib/numeric-code');
 const ScheduleEval          = require('../lib/schedule-eval');
 const PlayOrder             = require('../lib/play-order');
 const { effectiveDeviceTz } = require('../lib/device-timezone');
+const PowerWindow           = require('../lib/power-window');
+const { powerScheduleForDevice } = require('../lib/device-power-schedule');
+const { popPendingCommands }     = require('../lib/command-queue');
+
+function getPendingCommand(deviceId) {
+  if (!deviceId) return null;
+  const cmds = popPendingCommands(deviceId);
+  if (!cmds || cmds.length === 0) return null;
+  const reboot = cmds.find(c => c.type === 'reboot');
+  if (reboot) return 'reboot';
+  return cmds[0].type;
+}
 
 // ─── Auth helper ───────────────────────────────────────────────────────────────
 
@@ -113,40 +125,168 @@ function resolveDevice(req, res) {
 }
 
 /*
- * An embedded panel has no socket. Remember when it said it would poll again, and hand it any
- * command that was queued for that wake (a scheduled reboot, a dashboard command) as X-ST-Command.
- * A preview request must not consume the command the real panel is about to collect.
+ * One call per REQUEST, however many times a handler reaches it. /render touches early (so a
+ * device with no playlist still shows as alive) and the render path touches again once it knows
+ * the item; without this guard every poll wrote two device_telemetry rows and pruned twice.
  */
-function embeddedPollExtras(device, expiresIn, { preview = false } = {}) {
-  if (!device || device.client_type !== 'embedded' || preview) return {};
-  const sec = Math.max(0, Math.floor(Number(expiresIn) || 0));
-  try {
-    db.prepare('UPDATE devices SET heartbeat_expected_by = ? WHERE id = ?')
-      .run(Math.floor(Date.now() / 1000) + sec, device.id);
-  } catch { /* the column is added by migration; a half-migrated db still renders */ }
-  let cmds = [];
-  try { cmds = require('../lib/command-queue').popPendingCommands(device.id); } catch { cmds = []; }
-  if (!cmds.length) return {};
-  return { 'X-ST-Command': JSON.stringify(cmds.length === 1 ? cmds[0] : cmds) };
-}
+const HEARTBEAT_DONE = Symbol('embeddedHeartbeat');
 
 function touchDeviceHeartbeat(device, req) {
+  if (req[HEARTBEAT_DONE] !== undefined) return req[HEARTBEAT_DONE];
   const clientIp = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || req.ip || '').replace(/^::ffff:/, '');
+  req[HEARTBEAT_DONE] = clientIp;
+  noteNextCallOnFinish(device, req);
+
+  // Extract optional telemetry headers reported by MCU/embedded devices
+  const batteryHeader     = req.headers['x-st-device-battery'] || req.headers['x-st-battery'];
+  const rssiHeader        = req.headers['x-st-device-rssi']    || req.headers['x-st-rssi'];
+  const fwHeader          = req.headers['x-st-firmware-version'] || req.headers['x-st-app-version'] || req.headers['x-st-version'];
+  const powerSourceHeader = req.headers['x-st-power-source'];
+  const chargingHeader    = req.headers['x-st-charging'] || req.headers['x-st-battery-charging'];
+
+  let batteryLevel = null;
+  if (batteryHeader !== undefined) {
+    const parsed = parseInt(batteryHeader, 10);
+    if (Number.isFinite(parsed) && parsed >= 0 && parsed <= 100) {
+      batteryLevel = parsed;
+    }
+  }
+
+  let wifiRssi = null;
+  if (rssiHeader !== undefined) {
+    const parsed = parseInt(rssiHeader, 10);
+    if (Number.isFinite(parsed) && parsed <= 0 && parsed >= -120) {
+      wifiRssi = parsed;
+    }
+  }
+
+  const appVersion = typeof fwHeader === 'string' ? fwHeader.trim().slice(0, 64) || null : null;
+
+  let powerSource = null;
+  if (powerSourceHeader === 'usb' || powerSourceHeader === 'mains' || powerSourceHeader === 'external') {
+    powerSource = 'usb';
+  } else if (powerSourceHeader === 'battery') {
+    powerSource = 'battery';
+  }
+
+  /*
+   * ⚠️ 0 WHEN NOT REPORTED, NOT NULL. device_telemetry.battery_charging is NOT NULL DEFAULT 0
+   * (schema.sql), and an explicit NULL does not fall back to the default: it fails the insert. With
+   * NULL here every poll that sent the documented battery / RSSI headers but no X-ST-Charging lost
+   * its whole telemetry row, silently, so the panel never got its battery or Wi-Fi card (2.6.0). 0 is
+   * what every other player's rows mean by "not charging or not reported", and the dashboard only
+   * acts on 1 ("charging").
+   */
+  let batteryCharging = 0;
+  if (chargingHeader !== undefined) {
+    batteryCharging = (chargingHeader === '1' || chargingHeader === 'true') ? 1 : 0;
+  }
+
+  if (powerSource) {
+    device.power_source = powerSource;
+  }
+
   try {
     db.prepare(`
       UPDATE devices
       SET status = 'online',
           last_heartbeat = strftime('%s','now'),
           ip_address = CASE WHEN ? != '' THEN ? ELSE ip_address END,
+          app_version = COALESCE(?, app_version),
+          power_source = COALESCE(?, power_source),
           updated_at = strftime('%s','now')
       WHERE id = ?
-    `).run(clientIp, clientIp, device.id);
-  } catch {
-    // non-fatal
+    `).run(clientIp, clientIp, appVersion, powerSource, device.id);
+
+    // If telemetry headers were provided, record a row in device_telemetry.
+    // ⚠️ local_ip stays NULL: it means the screen's LAN address (the dashboard prints it as "Local
+    // IP"), and all we have here is the address the request came from — the public NAT/proxy one,
+    // already kept in devices.ip_address.
+    if (batteryLevel !== null || wifiRssi !== null || powerSource !== null) {
+      db.prepare(`
+        INSERT INTO device_telemetry (device_id, battery_level, battery_charging, wifi_rssi, local_ip, power_source, reported_at)
+        VALUES (?, ?, ?, ?, NULL, ?, strftime('%s','now'))
+      `).run(device.id, batteryLevel, batteryCharging, wifiRssi, powerSource);
+
+      if (typeof pruneTelemetry === 'function') {
+        pruneTelemetry(device.id);
+      }
+    }
+  } catch (e) {
+    // Non-fatal for the render, but never silent: a bare catch here hid a constraint failure that
+    // dropped every embedded telemetry row for a whole release. Logged once per device per process.
+    if (!_telemetryFailureLogged.has(device.id)) {
+      _telemetryFailureLogged.add(device.id);
+      console.warn(`[embedded] heartbeat/telemetry write failed for ${device.id}: ${e.message}`);
+    }
   }
   return clientIp;
 }
+const _telemetryFailureLogged = new Set();
 
+/**
+ * When the response goes out, remember when this device said it will call next: X-ST-Expires-In is
+ * the deep-sleep the MCU takes before polling again. The heartbeat sweep and the offline alerts
+ * measure lateness from that instant (devices.heartbeat_expected_by), so a panel sleeping through a
+ * power-schedule night is not reported offline every evening.
+ *
+ * ⚠️ Not for a dashboard preview or an ?item= override: those are an operator looking, not the
+ * panel being told when to wake, and recording them would hide a genuinely dead screen.
+ */
+function noteNextCallOnFinish(device, req) {
+  const res = req.res;
+  if (!res || typeof res.once !== 'function') return;
+  if (req.query?.preview === '1' || req.query?.item !== undefined) return;
+  res.once('finish', () => {
+    try {
+      if (res.statusCode >= 400) return;
+      const secs = Number(res.getHeader('X-ST-Expires-In'));
+      if (!Number.isFinite(secs) || secs <= 0) return;
+      db.prepare(`UPDATE devices SET heartbeat_expected_by = CAST(strftime('%s','now') AS INTEGER) + ? WHERE id = ?`)
+        .run(Math.round(secs), device.id);
+    } catch {
+      // non-fatal: without it the device is merely judged by its last call, as before
+    }
+  });
+}
+
+/**
+ * Evaluate the effective power schedule for an embedded device.
+ *
+ * Checks device-beats-group power schedule inheritance via powerScheduleForDevice.
+ * If scheduled off, computes the sleep duration until the morning 'on' edge,
+ * giving microcontrollers the exact duration to deep-sleep.
+ *
+ * @param {object} device
+ * @param {Date|number} [now]
+ * @returns {{
+ *   schedule: object|null,
+ *   isOff: boolean,
+ *   state: 'on'|'scheduled_off',
+ *   nextEdge: { at: string, to: 'on'|'scheduled_off', minutes_until: number }|null,
+ *   sleepSeconds: number|null,
+ * }}
+ */
+function evaluateDevicePower(device, now = Date.now()) {
+  try {
+    const schedule = powerScheduleForDevice(db, device.id);
+    if (!schedule || !schedule.enabled) {
+      return { schedule: null, isOff: false, state: 'on', nextEdge: null, sleepSeconds: null };
+    }
+    const isOff = PowerWindow.isOff(schedule, now);
+    const state = PowerWindow.stateOf(schedule, now);
+    const nextEdge = PowerWindow.nextEdge(schedule, now);
+    let sleepSeconds = null;
+    if (isOff) {
+      sleepSeconds = (nextEdge && nextEdge.to === 'on')
+        ? Math.max(60, nextEdge.minutes_until * 60)
+        : 3600;
+    }
+    return { schedule, isOff, state, nextEdge, sleepSeconds };
+  } catch (_) {
+    return { schedule: null, isOff: false, state: 'on', nextEdge: null, sleepSeconds: null };
+  }
+}
 
 // ─── Item cursor helpers ────────────────────────────────────────────────────────
 
@@ -633,15 +773,24 @@ router.get('/info', resolveAuth, (req, res) => {
 
   touchDeviceHeartbeat(device, req);
   const profile = parseProfile(device.screen_profile);
+  const power = evaluateDevicePower(device);
   // /info is metadata (MCU negotiation / debugging / monitors). It must NOT advance the panel's
   // cursor, or a poll that lands after the current item's dwell would make the real render skip an item.
   const resolved = resolveCurrentItem(device.id, req.query.item, { advance: false });
+  const expiresIn = (power.isOff && power.sleepSeconds)
+    ? power.sleepSeconds
+    : (resolved ? resolved.expiresIn : null);
 
   res.json({
     device_id: device.id,
     device_name: device.name,
     screen_profile: profile,
     presets: listPresets(),
+    power_schedule: power.schedule ? {
+      enabled: power.schedule.enabled,
+      state: power.state,
+      next_edge: power.nextEdge,
+    } : null,
     playlist: resolved
       ? { item_count: resolved.total, current_index: resolved.itemIndex }
       : null,
@@ -650,7 +799,7 @@ router.get('/info', resolveAuth, (req, res) => {
           index: resolved.itemIndex,
           content_id: resolved.content?.content_id || null,
           content_type: resolved.item?.widget_id ? 'widget' : (resolved.content?.mime_type || null),
-          expires_in_seconds: resolved.expiresIn,
+          expires_in_seconds: expiresIn,
         }
       : null,
     server_time_utc: new Date().toISOString(),
@@ -668,6 +817,8 @@ router.get('/presets', resolveAuth, (req, res) => {
 router.get('/render', resolveAuth, async (req, res) => {
   const device = resolveDevice(req, res);
   if (!device) return;
+
+  touchDeviceHeartbeat(device, req);
 
   const profile = parseProfile(device.screen_profile);
   if (!profile) {
@@ -691,12 +842,16 @@ router.get('/render', resolveAuth, async (req, res) => {
     }
   }
 
+  const isPreview = req.query.preview === '1';
+  const pendingCmd = !isPreview ? getPendingCommand(device.id) : null;
+  const renderOpts = { pendingCmd };
+
   // Query mode overrides
   if (req.query.mode === 'single') {
-    return handleRenderStandard(req, res, device, profile);
+    return handleRenderStandard(req, res, device, profile, renderOpts);
   }
   if (req.query.mode === 'layout') {
-    return handleRenderLayout(req, res, device, profile, { explicitMode: true });
+    return handleRenderLayout(req, res, device, profile, { ...renderOpts, explicitMode: true });
   }
 
   // Automatic multi-zone layout detection
@@ -706,12 +861,12 @@ router.get('/render', resolveAuth, async (req, res) => {
   if (layoutResolved && layoutResolved.zoneEntries.length > 1) {
     const isImageOnly = isLayoutImageOnly(layoutResolved.zoneEntries);
     if (!isImageOnly && !isBrowserAvailable()) {
-      return handleRenderStandard(req, res, device, profile, { isFallback: true });
+      return handleRenderStandard(req, res, device, profile, { ...renderOpts, isFallback: true });
     }
-    return handleRenderLayout(req, res, device, profile, { explicitMode: false, preResolved: layoutResolved });
+    return handleRenderLayout(req, res, device, profile, { ...renderOpts, explicitMode: false, preResolved: layoutResolved });
   }
 
-  return handleRenderStandard(req, res, device, profile);
+  return handleRenderStandard(req, res, device, profile, renderOpts);
 });
 
 // ─── GET /api/embedded/render-layout ────────────────────────────────────────────
@@ -719,6 +874,8 @@ router.get('/render', resolveAuth, async (req, res) => {
 router.get('/render-layout', resolveAuth, async (req, res) => {
   const device = resolveDevice(req, res);
   if (!device) return;
+
+  touchDeviceHeartbeat(device, req);
 
   const profile = parseProfile(device.screen_profile);
   if (!profile) {
@@ -741,7 +898,9 @@ router.get('/render-layout', resolveAuth, async (req, res) => {
     }
   }
 
-  return handleRenderLayout(req, res, device, profile, { explicitMode: true });
+  const isPreview = req.query.preview === '1';
+  const pendingCmd = !isPreview ? getPendingCommand(device.id) : null;
+  return handleRenderLayout(req, res, device, profile, { pendingCmd, explicitMode: true });
 });
 
 async function handleRenderStandard(req, res, device, profile, opts = {}) {
@@ -755,15 +914,49 @@ async function handleRenderStandard(req, res, device, profile, opts = {}) {
 
   const forceIndex = req.query.item !== undefined ? req.query.item : null;
   const isPreview = req.query.preview === '1';
+
+  // ── Power Schedule check ──────────────────────────────────────────────────
+  const power = (!isPreview && forceIndex === null)
+    ? evaluateDevicePower(device)
+    : { isOff: false, state: 'on', nextEdge: null, sleepSeconds: null };
+
+  // If the device already holds a frame and is scheduled OFF, answer 304 immediately with deep-sleep duration
+  if (!isPreview && req.headers['if-none-match'] && power.isOff) {
+    const clientIp = touchDeviceHeartbeat(device, req);
+    console.log(`[embedded] Device '${device.name}' (${device.id}) is scheduled OFF [sleep=${power.sleepSeconds}s] from ${clientIp}`);
+    const offHeaders = {
+      'ETag': req.headers['if-none-match'],
+      'Cache-Control': 'no-store',
+      'X-ST-Device-Id': device.id,
+      'X-ST-Expires-In': String(power.sleepSeconds),
+      'X-ST-Power-State': 'scheduled_off',
+    };
+    if (opts.pendingCmd) {
+      offHeaders['X-ST-Command'] = opts.pendingCmd;
+    }
+    res.set(offHeaders).status(304).end();
+    return;
+  }
+
   // A dashboard preview must not advance the real device's cursor (an ?item= override already never
   // does). A genuine device render still advances, time-gated by the current item's dwell.
   const resolved = resolveCurrentItem(device.id, forceIndex, { advance: !isPreview });
   if (!resolved) {
-    return res.status(404).json({ error: 'No playlist assigned or no active items for this device.' });
+    const errHeaders = { 'X-ST-Device-Name': device.name || '' };
+    if (opts.pendingCmd) errHeaders['X-ST-Command'] = opts.pendingCmd;
+    res.set(errHeaders);
+    return res.status(404).json({ error: 'No playlist assigned or no active items for this device.', device_name: device.name || '' });
   }
 
   const clientIp = touchDeviceHeartbeat(device, req);
-  const { item, content, itemIndex, expiresIn, total } = resolved;
+  const { item, content, itemIndex, total } = resolved;
+  let expiresIn = resolved.expiresIn;
+  if (power.isOff && power.sleepSeconds) {
+    expiresIn = power.sleepSeconds;
+  } else if (!power.isOff && power.nextEdge && power.nextEdge.to === 'scheduled_off') {
+    const secondsUntilOff = Math.max(1, power.nextEdge.minutes_until * 60);
+    expiresIn = Math.min(expiresIn, secondsUntilOff);
+  }
 
   console.log(`[embedded] Device '${device.name}' (${device.id}) requested frame [item=${itemIndex + 1}/${total}] from ${clientIp}`);
 
@@ -782,12 +975,16 @@ async function handleRenderStandard(req, res, device, profile, opts = {}) {
     'ETag': toETag(key),
     'Cache-Control': 'no-store',
     'X-ST-Device-Id': device.id,
+    'X-ST-Device-Name': device.name || '',
     'X-ST-Content-Id': content?.content_id || '',
     'X-ST-Expires-In': String(expiresIn),
     'X-ST-Item-Index': String(itemIndex),
     'X-ST-Total-Items': String(total),
-    ...embeddedPollExtras(device, expiresIn, { preview: isPreview }),
+    'X-ST-Power-State': power.state,
   };
+  if (opts.pendingCmd) {
+    headers['X-ST-Command'] = opts.pendingCmd;
+  }
   if (opts.isFallback) {
     headers['X-ST-Layout-Fallback'] = '1';
   }
@@ -830,6 +1027,7 @@ async function handleRenderStandard(req, res, device, profile, opts = {}) {
   }
 
   if (!renderResult || renderResult.unsupported) {
+    if (opts.pendingCmd) res.set('X-ST-Command', opts.pendingCmd);
     return res.status(501).json({
       error: 'Content type not yet supported by Phase 1 renderer.',
       detail: renderResult?.reason || 'No renderable items in playlist',
@@ -892,9 +1090,39 @@ async function handleRenderLayout(req, res, device, profile, opts = {}) {
     }
   }
 
-  const clientIp = touchDeviceHeartbeat(device, req);
-  const { layout, zoneEntries, expiresIn, dynamicRev } = resolved;
   const isPreview = req.query.preview === '1';
+
+  // ── Power Schedule check ──────────────────────────────────────────────────
+  const power = (!isPreview && forceIndex === null)
+    ? evaluateDevicePower(device)
+    : { isOff: false, state: 'on', nextEdge: null, sleepSeconds: null };
+
+  if (!isPreview && req.headers['if-none-match'] && power.isOff) {
+    const clientIp = touchDeviceHeartbeat(device, req);
+    console.log(`[embedded] Device '${device.name}' (${device.id}) is scheduled OFF [layout sleep=${power.sleepSeconds}s] from ${clientIp}`);
+    const offHeaders = {
+      'ETag': req.headers['if-none-match'],
+      'Cache-Control': 'no-store',
+      'X-ST-Device-Id': device.id,
+      'X-ST-Expires-In': String(power.sleepSeconds),
+      'X-ST-Power-State': 'scheduled_off',
+    };
+    if (opts.pendingCmd) {
+      offHeaders['X-ST-Command'] = opts.pendingCmd;
+    }
+    res.set(offHeaders).status(304).end();
+    return;
+  }
+
+  const clientIp = touchDeviceHeartbeat(device, req);
+  const { layout, zoneEntries, dynamicRev } = resolved;
+  let expiresIn = resolved.expiresIn;
+  if (power.isOff && power.sleepSeconds) {
+    expiresIn = power.sleepSeconds;
+  } else if (!power.isOff && power.nextEdge && power.nextEdge.to === 'scheduled_off') {
+    const secondsUntilOff = Math.max(1, power.nextEdge.minutes_until * 60);
+    expiresIn = Math.min(expiresIn, secondsUntilOff);
+  }
 
   console.log(`[embedded] Device '${device.name}' (${device.id}) requested multi-zone frame [layout=${layout.name || layout.id}] from ${clientIp}`);
 
@@ -915,8 +1143,11 @@ async function handleRenderLayout(req, res, device, profile, opts = {}) {
     'X-ST-Expires-In': String(expiresIn),
     'X-ST-Item-Index': '0',
     'X-ST-Total-Zones': String(zoneEntries.length),
-    ...embeddedPollExtras(device, expiresIn, { preview: isPreview }),
+    'X-ST-Power-State': power.state,
   };
+  if (opts.pendingCmd) {
+    headers['X-ST-Command'] = opts.pendingCmd;
+  }
 
   if (!isPreview && isNotModified(key, req.headers['if-none-match'])) {
     res.set(headers).status(304).end();
@@ -993,6 +1224,7 @@ module.exports.resolveLayoutItems = resolveLayoutItems;
 module.exports.resolveDevicePlaylist = resolveDevicePlaylist;
 module.exports.resolvedLayoutId = resolvedLayoutId;
 module.exports.resolveDeviceContext = resolveDeviceContext;
+module.exports.touchDeviceHeartbeat = touchDeviceHeartbeat;
 module.exports.dynamicRevFor = dynamicRevFor;
 module.exports.dynamicPeriodFor = dynamicPeriodFor;
 

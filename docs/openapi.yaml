@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LuminaScreen Public API
-  version: 2.5.1
+  version: 2.6.1
   description: |
     Public, token-scoped REST API for LuminaScreen digital signage.
 

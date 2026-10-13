@@ -65,7 +65,6 @@ function loadPackage(sha256) {
   let bytes;
   try { bytes = fs.readFileSync(packagePath(sha256)); } catch { return null; }
   let env;
-  // Lenient locales: a bad translation file must not stop a screen from rendering the English.
   try { env = pkgLib.parseEnvelope(bytes, { lenientLocales: true }); } catch { return null; }
   if (env.sha256 !== sha256) {
     console.warn(`[templates] package ${sha256.slice(0, 12)}… on disk does not match its hash — refusing it`);
@@ -84,44 +83,53 @@ function rowToInstalled(r) {
   return { ...r, manifest };
 }
 
+/*
+ * The translations of an installed template ({ <lang>: {...} }, possibly {}). Read from the row;
+ * a row from before the i18n_json column (or one whose JSON is unreadable) is filled once from
+ * its package — which re-verifies the hash, so a tampered package contributes nothing.
+ */
+function i18nOf(row) {
+  if (!row) return {};
+  if (typeof row.i18n_json === 'string') {
+    try { const v = JSON.parse(row.i18n_json); if (pkgLib.isPlainObject(v)) return v; } catch { /* refill below */ }
+  }
+  const env = loadPackage(row.sha256);
+  if (!env) return {};
+  const i18n = env.i18n || {};
+  try { db.prepare('UPDATE templates_installed SET i18n_json = ? WHERE id = ? AND sha256 = ?').run(JSON.stringify(i18n), row.id, row.sha256); } catch { /* best effort */ }
+  row.i18n_json = JSON.stringify(i18n);
+  return i18n;
+}
+
+/*
+ * Translations of a package by hash, for a catalog entry that is cached here but not installed.
+ * Its own small cache, so the library view does not re-parse a package per request.
+ */
+const i18nCache = new Map();
+function i18nOfPackage(sha256) {
+  if (i18nCache.has(sha256)) return i18nCache.get(sha256);
+  const env = hasPackageFile(sha256) ? loadPackage(sha256) : null;
+  const i18n = (env && env.i18n) || {};
+  if (env) {
+    i18nCache.set(sha256, i18n);
+    while (i18nCache.size > 256) i18nCache.delete(i18nCache.keys().next().value);
+  }
+  return i18n;
+}
+
+/** One language's entry from an i18n map, or null. `lang` is a dashboard language code. */
+function pickLang(i18n, lang) {
+  const l = typeof lang === 'string' ? lang.toLowerCase().split('-')[0] : '';
+  if (!pkgLib.LOCALE_LANGS.includes(l) || !i18n || !pkgLib.isPlainObject(i18n[l])) return null;
+  return i18n[l];
+}
+
 function listInstalled() {
   return db.prepare('SELECT * FROM templates_installed ORDER BY name COLLATE NOCASE').all().map(rowToInstalled);
 }
 
 function getInstalled(id) {
   return rowToInstalled(db.prepare('SELECT * FROM templates_installed WHERE id = ?').get(String(id)));
-}
-
-/**
- * The translation map for an installed row. A NULL i18n_json is a row from before the column:
- * read the package once and store it, so the next read does not open the file.
- */
-function i18nOf(row) {
-  if (!row) return {};
-  if (row.i18n_json) {
-    try {
-      const o = JSON.parse(row.i18n_json);
-      if (o && typeof o === 'object' && !Array.isArray(o)) return o;
-    } catch { /* fall through and re-read the package */ }
-  }
-  const env = row.sha256 ? loadPackage(row.sha256) : null;
-  const i18n = env && env.i18n && typeof env.i18n === 'object' && !Array.isArray(env.i18n) ? env.i18n : {};
-  if (row.id && row.i18n_json == null) {
-    try {
-      db.prepare('UPDATE templates_installed SET i18n_json = ? WHERE id = ? AND i18n_json IS NULL').run(JSON.stringify(i18n), row.id);
-    } catch { /* the column is added by migration */ }
-  }
-  return i18n;
-}
-
-/** The entry for `lang` (`de`, or `de-AT` → `de`). English and anything that is not a language code are null. */
-function pickLang(i18n, lang) {
-  if (!i18n || typeof i18n !== 'object' || typeof lang !== 'string') return null;
-  const m = /^([a-z]{2})(?:-[A-Za-z0-9]{1,8})?$/.exec(lang);
-  if (!m || m[1] === 'en' || !pkgLib.LOCALE_LANGS.has(m[1])) return null;
-  if (!Object.prototype.hasOwnProperty.call(i18n, m[1])) return null;
-  const tr = i18n[m[1]];
-  return tr && typeof tr === 'object' && !Array.isArray(tr) ? tr : null;
 }
 
 /**
@@ -141,7 +149,7 @@ function recordInstall({ env, envelopeBytes, catalog, trust, signer, signerKeyId
   `).run({
     id, catalog, template_id: env.manifest.id, version: env.manifest.version, sha256: env.sha256,
     kind: env.manifest.kind, name: env.manifest.name, manifest_json: JSON.stringify(env.manifest),
-    i18n_json: JSON.stringify(env.i18n && typeof env.i18n === 'object' ? env.i18n : {}),
+    i18n_json: JSON.stringify(env.i18n || {}),
     trust, signer: signer || null, signer_key_id: signerKeyId || null, user: userId || null, now,
   });
   bumpWidgets(id);
@@ -200,7 +208,7 @@ function bumpWidgets(id) {
 
 module.exports = {
   root, packagesDir, packagePath, putPackageFile, hasPackageFile, loadPackage,
-  listInstalled, getInstalled, i18nOf, pickLang, recordInstall, setStatus, uninstall, widgetsUsing, bumpWidgets,
-  setWidgetsChangedHook,
-  _clearCache: () => cache.clear(),
+  listInstalled, getInstalled, recordInstall, setStatus, uninstall, widgetsUsing, bumpWidgets,
+  setWidgetsChangedHook, i18nOf, i18nOfPackage, pickLang,
+  _clearCache: () => { cache.clear(); i18nCache.clear(); },
 };

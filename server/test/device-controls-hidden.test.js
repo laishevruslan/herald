@@ -50,6 +50,7 @@ function render(device, telemetry) {
     // subject of this file) is what decides visibility; the per-org flag is enforced server-side.
     talkAvailable: true,
     latestTelemetry: telemetry || {},
+    currentDither: 'floyd-steinberg',   // resolved in loadDevice() for embedded panels, outside the slice
     diagWidget: null,
     // Stubs. Each returns something recognisable so a control cannot be "found" by accident.
     t: (key) => key,
@@ -75,6 +76,7 @@ function render(device, telemetry) {
       if (d.client_type === 'pi' || p.startsWith('linux/')) return false;   // the native Pi player
       if (d.client_type === 'win' || p.startsWith('windows/')) return false;   // the native Windows player
       if (d.client_type === 'mac' || p.startsWith('macos/')) return false;   // the native macOS player
+      if (d.client_type === 'roku' || p === 'roku' || p.startsWith('roku/')) return false;   // the Roku player
       if (d.client_type === 'apk') return true;
       const av = String(d.android_version || '');
       return av !== '' && !av.startsWith('Web/');
@@ -85,6 +87,9 @@ function render(device, telemetry) {
     isLinuxDevice: (d) => !!d && (d.client_type === 'pi' || String(d.platform || '').toLowerCase().startsWith('linux/')),
     // Mirrors isWindowsDevice() / isNativeDevice() / terminalPresets() in device-detail.js.
     isWindowsDevice: (d) => !!d && (d.client_type === 'win' || String(d.platform || '').toLowerCase().startsWith('windows/')),
+    // Mirrors isRokuDevice() in device-detail.js (and the 'roku' arm of platformFamily()).
+    isRokuDevice: (d) => !!d && (d.client_type === 'roku' || /^roku($|\/)/.test(String(d.platform || '').toLowerCase())),
+    isEmbeddedDevice: (d) => !!d && (d.client_type === 'embedded' || String(d.platform || '').toLowerCase().includes('embedded')),
     isNativeDevice: (d) => !!d && (d.client_type === 'pi' || d.client_type === 'win' || d.client_type === 'mac'
       || /^(linux|windows|macos)\//.test(String(d.platform || '').toLowerCase())),
     terminalPresets: (d) => {
@@ -101,7 +106,7 @@ function render(device, telemetry) {
     // helper the template calls has to be stubbed or it is a ReferenceError rather than a missing
     // section. The subject here is which CONTROLS a platform is offered, not what the trigger
     // panels render.
-    renderTriggerConfig: () => '',
+    renderTriggerConfig: () => '<div id="triggerConfigStub"></div>',   // a marker, so its gate is testable
     // Same again for the playlist-inheritance badge ("Inherited from Lobby" / "Set for this
     // screen" + revert). It is not platform-dependent, so it is not this file's subject; it has
     // its own coverage in test/device-playlist-source-badge.test.js.
@@ -805,6 +810,25 @@ test('the shipped isWindowsDevice / terminalPresets agree with the harness stubs
   for (const cmd of ['Get-ComputerInfo', 'Get-PSDrive C', 'Get-Service LuminaScreenHelper', 'Get-WinEvent']) assert.ok(presets.includes(cmd), cmd);
 });
 
+test('the shipped isEmbeddedDevice agrees with embedded display checks', () => {
+  const grab = (name) => {
+    const i = SRC.indexOf(`function ${name}(device) {`);
+    assert.ok(i > 0, `${name} missing from device-detail.js`);
+    let depth = 0;
+    for (let k = SRC.indexOf('{', i); k < SRC.length; k++) {
+      if (SRC[k] === '{') depth++;
+      else if (SRC[k] === '}' && --depth === 0) return SRC.slice(i, k + 1);
+    }
+    return null;
+  };
+  const ctx = {};
+  vm.runInNewContext(grab('isEmbeddedDevice') + '\nthis.isEmbeddedDevice = isEmbeddedDevice;', ctx);
+  assert.equal(ctx.isEmbeddedDevice({ client_type: 'embedded' }), true);
+  assert.equal(ctx.isEmbeddedDevice({ platform: 'embedded/esp32s3' }), true);
+  assert.equal(ctx.isEmbeddedDevice({ client_type: 'apk' }), false);
+  assert.equal(ctx.isEmbeddedDevice(null), false);
+});
+
 /*
  * Head office (corporate) playlists, spec §7.9: on a screen head office drives, the playlist tab is
  * head office's section — NOT the store's playlist picker, layout selector or draft banner. The
@@ -821,4 +845,93 @@ test('a screen head office drives gets the head office section instead of the pi
   const plain = render({ ...ANDROID_FULL, playlist_source: 'group', playlist_status: 'draft', playlist_id: 'P' }, {});
   assert.ok(!plain.includes('<!--corporate-playlist-tab-->'), 'an ordinary screen must not get the corporate section');
   for (const id of ['playlistPicker', 'deviceLayoutSelect', 'devicePublishBtn', 'addContentBtn']) assert.ok(plain.includes(`id="${id}"`), `${id} vanished from an ordinary screen`);
+});
+
+// ------------------------------------------------------------------ the Roku player
+//
+// Nothing Roku-specific gates a control: the roku baseline (server/lib/player-capabilities.js) and
+// the existing can(cap) checks do it. These pin that the combination hides everything a Roku app
+// cannot do, and that the page still names the player.
+
+const ROKU = {
+  client_type: 'roku', platform: 'roku', android_version: '', tier: 0,
+  hardware_model: '3941X', hardware_os_version: 'Roku OS 13.0',
+  // The resolved set the API would ship for an undeclared Roku row: BASELINE.roku.
+  capabilities: require('../lib/player-capabilities').capabilitiesFor({ client_type: 'roku', platform: 'roku', capabilities: null }),
+};
+
+test('a Roku gets none of the controls a Roku app cannot honour', () => {
+  const html = render(ROKU);
+  for (const id of ['screenshotBtn', 'deviceOwnerBtn', 'startTalkBtn', 'enableSystemCaptureBtn', 't2Reboot', 't2KioskOn', 'apkUrl']) {
+    assert.equal(has(html, id), false, `${id} must be hidden on a Roku`);
+  }
+  for (const tab of ['remote', 'controls', 'terminal']) {
+    assert.equal(html.includes(`data-tab="${tab}"`), false, `no ${tab} tab`);
+  }
+  assert.equal(html.includes('device.ctl.reboot_device'), false, 'no reboot');
+  assert.equal(html.includes('device.ctl.screen_off'), false, 'no screen power (the player blanks for its schedule; no command)');
+  assert.equal(html.includes('device.ctl.force_update'), false, 'the store updates the channel');
+  assert.ok(html.includes('device.ctl.launch_player'), 'refresh is real');
+  assert.equal((html.match(/<div\b/g) || []).length, (html.match(/<\/div>/g) || []).length, 'balanced markup');
+});
+
+test('a Roku is never offered the Android-only bootstraps, even if it reports an OS string as android_version', () => {
+  for (const d of [ROKU, { ...ROKU, android_version: 'Roku OS 13.0' }, { ...ROKU, client_type: 'legacy', android_version: '13' }]) {
+    const html = render(d);
+    assert.equal(has(html, 'deviceOwnerBtn'), false, 'no device-owner QR');
+    assert.equal(has(html, 'enableSystemCaptureBtn'), false, 'no MediaProjection');
+  }
+});
+
+test('a Roku is labelled as one', () => {
+  const html = render(ROKU);
+  assert.ok(html.includes('device.info.roku_player'), 'player type says Roku');
+  assert.equal(html.includes('device.info.web_player'), false);
+});
+
+test('the shipped isAndroidDevice and isRokuDevice agree that a Roku is a Roku', () => {
+  const grab = (name) => {
+    const i = SRC.indexOf(`function ${name}(device) {`);
+    assert.ok(i > 0, `${name} missing from device-detail.js`);
+    let depth = 0;
+    for (let k = SRC.indexOf('{', i); k < SRC.length; k++) {
+      if (SRC[k] === '{') depth++;
+      else if (SRC[k] === '}' && --depth === 0) return SRC.slice(i, k + 1);
+    }
+    return null;
+  };
+  const android = grab('isAndroidDevice');
+  assert.ok(android.indexOf("'roku'") !== -1 && android.indexOf("'roku'") < android.indexOf("startsWith('Web/')"),
+    'the Roku short-circuit must come BEFORE the android_version test');
+  const ctx = {};
+  vm.runInNewContext(`${android}\n${grab('isRokuDevice')}\nthis.a = isAndroidDevice; this.r = isRokuDevice;`, ctx);
+  assert.equal(ctx.a({ client_type: 'roku', android_version: 'Roku OS 13.0' }), false, 'client_type alone');
+  assert.equal(ctx.a({ platform: 'roku', android_version: '13' }), false, 'platform alone');
+  assert.equal(ctx.a({ client_type: 'apk', android_version: '13' }), true, 'Android unchanged');
+  assert.equal(ctx.r({ client_type: 'roku' }), true);
+  assert.equal(ctx.r({ platform: 'Roku' }), true);
+  assert.equal(ctx.r({ platform: 'brokuser' }), false);
+  assert.equal(ctx.r(null), false);
+});
+
+test('an e-paper panel gets the Controls tab for its power schedule, and nothing else in it', () => {
+  // The embedded renderer honours a device power schedule (deep sleep through the off window), but
+  // the editor lives only in the Controls tab, which used to need a volume or brightness control.
+  const { capabilitiesFor } = require('../lib/player-capabilities');
+  const panel = { client_type: 'embedded', platform: 'embedded', screen_profile: '{"profile":"epd-7in5"}' };
+  panel.capabilities = capabilitiesFor({ ...panel, capabilities: null });
+  const html = render(panel);
+  assert.ok(html.includes('data-tab="controls"'), 'the tab is there');
+  assert.ok(has(html, 'powerScheduleHost'), 'with the power-schedule editor in it');
+  for (const id of ['sysVolume', 'sysWinBrightness', 'sysBrightness', 'sysTimeout']) assert.equal(has(html, id), false, `no ${id} on a panel`);
+  assert.equal(has(html, 'device.sysctl.subtitle'), false, 'and no Android "no device owner needed" line');
+  assert.equal(has(html, 'triggerConfigStub'), false, 'no Triggers listener either');
+});
+
+test('a Roku is not offered the Triggers listener it does not implement', () => {
+  const { capabilitiesFor } = require('../lib/player-capabilities');
+  const roku = { client_type: 'roku', platform: 'roku' };
+  roku.capabilities = capabilitiesFor({ ...roku, capabilities: null });
+  assert.equal(has(render(roku), 'triggerConfigStub'), false);
+  assert.ok(has(render(ANDROID_FULL), 'triggerConfigStub'), 'an Android panel keeps it');
 });

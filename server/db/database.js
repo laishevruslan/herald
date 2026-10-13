@@ -124,6 +124,11 @@ const migrations = [
   'ALTER TABLE devices ADD COLUMN offline_reason TEXT',
   'ALTER TABLE devices ADD COLUMN offline_reason_at INTEGER',
   'ALTER TABLE devices ADD COLUMN offline_detail TEXT',
+  // Embedded (HTTP-polling) displays tell us when they will next call: every render answer carries
+  // X-ST-Expires-In, and the MCU deep-sleeps for exactly that long. This is "now + that", in epoch
+  // seconds, so the heartbeat sweep does not call a screen offline while it is asleep on our own
+  // instruction (overnight under a power schedule that is 8+ hours). NULL for socket players.
+  'ALTER TABLE devices ADD COLUMN heartbeat_expected_by INTEGER',
   // Offline-cause log: annotate each historical offline transition with WHY. `reason` = category
   // (transport_close / ping_timeout / heartbeat_timeout / network / crashed / clean_exit / silent);
   // `detail` = human specifics (e.g. "Wi-Fi link lost — SSID Office, -78dBm" or "LAN up, server
@@ -2016,8 +2021,9 @@ const migrations = [
     updated_at     INTEGER NOT NULL DEFAULT (strftime('%s','now'))
   )`,
   'ALTER TABLE templates_installed ADD COLUMN signer_key_id TEXT',
-  // locales/<lang>.json from the package, keyed by language. NULL means "not read yet" — the
-  // store fills it once from the package file (a row installed before the column existed).
+  // The package's validated locales/<lang>.json translations (package.js validateLocales), kept
+  // beside the manifest so listing templates never has to re-parse every package. NULL = not yet
+  // read (an install from before this column): store.i18nOf fills it from the package once.
   'ALTER TABLE templates_installed ADD COLUMN i18n_json TEXT',
   `CREATE TABLE IF NOT EXISTS template_catalogs (
     id             TEXT PRIMARY KEY,
@@ -2261,6 +2267,29 @@ const migrations = [
    * has an aggregate to read instead, so it should not need to come back.
    */
   'DROP INDEX IF EXISTS idx_play_logs_content',
+  /*
+   * ⚠️ …AND THE DROP ABOVE MISSED ONE READER: THE FOREIGN KEYS. play_logs.content_id and widget_id
+   * are `ON DELETE SET NULL`, so deleting one content or widget row makes SQLite find every play
+   * that references it. With no index on the column that is a full scan of play_logs, synchronous
+   * inside better-sqlite3, so the whole event loop waits for it.
+   *
+   * Prod 2026-10-12 (5.2M plays): content and widget DELETEs took a median 1.1 s and up to 34 s,
+   * matching the week's worst `[loop-lag] tick_gap` freezes one for one. The 34 s one dropped 11
+   * screens and 5 dashboards at once. Account deletion is worse: it removes a workspace's content
+   * in one statement, which is one full scan PER ROW.
+   *
+   * PARTIAL (`IS NOT NULL`), because each play references a content row or a widget, not both, so
+   * each index holds only its own plays. `col = ?` implies `col IS NOT NULL`, so the FK lookup can
+   * use it (verified: 3M rows, delete 180 ms → 10 ms). Different names from the dropped index, so
+   * the DROP above never undoes them. IF NOT EXISTS: a no-op on every boot after the first.
+   *
+   * Building them is one synchronous statement over the whole table; the loop below announces and
+   * times it. Do it at a restart, never as live SQL on a running server.
+   * play_logs.workspace_id has the same FK, but on a workspace delete only (rare), and an index
+   * there covers nearly every row, so it is not built.
+   */
+  'CREATE INDEX IF NOT EXISTS idx_play_logs_content_ref ON play_logs(content_id) WHERE content_id IS NOT NULL',
+  'CREATE INDEX IF NOT EXISTS idx_play_logs_widget_ref ON play_logs(widget_id) WHERE widget_id IS NOT NULL',
   /*
    * #473 v2: one row per visitor session on an interactive web page (Reports > Interactive
    * sessions). client_id is the player's own record id, UNIQUE per device, so a batch the player
@@ -3788,6 +3817,13 @@ migrationStep('device tags and dynamic groups', () => {
   try { db.prepare('ALTER TABLE devices ADD COLUMN tags TEXT').run(); console.log('[migrate] devices.tags added'); } catch (_) { /* present */ }
   try { db.prepare('ALTER TABLE device_groups ADD COLUMN rules TEXT').run(); console.log('[migrate] device_groups.rules added'); } catch (_) { /* present */ }
   try { db.prepare('ALTER TABLE device_settings ADD COLUMN tags TEXT').run(); } catch (_) { /* present */ }
+});
+
+migrationStep('device power source', () => {
+  // NULL = not reported. Only embedded panels send X-ST-Power-Source, and a 'battery' default would
+  // stamp every Android, Pi and Windows row with a power source nobody measured.
+  try { db.prepare('ALTER TABLE devices ADD COLUMN power_source TEXT').run(); } catch (_) { /* present */ }
+  try { db.prepare('ALTER TABLE device_telemetry ADD COLUMN power_source TEXT').run(); } catch (_) { /* present */ }
 });
 
 migrationStep('CAP feeds', () => {

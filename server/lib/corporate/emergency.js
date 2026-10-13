@@ -224,12 +224,12 @@ function deviceRowsInScope(db, triggerId) {
  * capabilities the spec named: those are not in the server's capability vocabulary, the web player
  * declares them only once a listener has BOUND, and the Android and native players never declare
  * them at all — reading them would mark every Android screen unreachable. Tizen is the platform
- * that has no trigger listener (tizen/js/capabilities.js).
+ * that has no trigger listener (tizen/js/capabilities.js); the Roku is the second.
  */
 function platformCannotTrigger(d) {
+  // The Roku has no trigger listener either: a Roku app cannot open a listening socket for a LAN
+  // trigger, and the player does not implement one (docs/roku-player.md).
   const fam = require('../player-capabilities').platformFamily(d);
-  // Tizen has no trigger listener. A Roku has no LAN listener either — the channel store is the
-  // only way it is updated, and it never binds the HTTP/UDP trigger ports.
   return fam === 'tizen' || fam === 'roku';
 }
 

@@ -1,0 +1,26 @@
+# repo https://github.com/luminascreen/luminascreen.git
+# version v2.6.1 02ebc2b33f595232583387aa53a6c3d1fb502774
+# base v2.6.0 5ecc3c057d18dae76772533bd91da761b5a1cbc7
+# status: A added, M modified, D deleted (not written), R renamed, C copied, T type change, S submodule (not written)
+status	path	from_path
+M	android/app/build.gradle.kts	
+M	CHANGELOG.md	
+M	docs/openapi.yaml	
+M	frontend/js/views/device-detail.js	
+M	release-notes.json	
+M	scripts/finalize-release.sh	
+M	server/package.json	
+M	server/package-lock.json	
+M	server/routes/embedded.js	
+M	server/test/device-controls-hidden.test.js	
+M	server/test/embedded-renderer.test.js	
+A	server/test/embedded-telemetry-real-schema.test.js	
+M	server/test/roku-player.test.js	
+M	tizen/config.xml	
+M	tizen/js/app.js	
+M	vega/manifest.toml	
+M	vega/package.json	
+M	vega/src/deviceInfo.ts	
+M	VERSION	
+M	webos/appinfo.json	
+M	webos/js/app.js	

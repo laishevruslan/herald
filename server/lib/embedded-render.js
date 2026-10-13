@@ -50,7 +50,7 @@ function safeHexColor(c, fallback = '#000000') {
  * the directory matched.
  */
 function contentDir() {
-  return require('./storage').root();
+  return config.contentDir;
 }
 
 // Coerce an untrusted dimension (from a screen_profile row) to a positive integer.
@@ -176,8 +176,9 @@ process.on('SIGINT', () => { closeBrowser(); });
 
 function safeLocalImagePath(filepath) {
   if (!filepath) return null;
-  const safe = require('./storage').file(filepath);
-  if (!safe || !safe.startsWith(path.resolve(contentDir()) + path.sep)) {
+  const base = path.resolve(contentDir());
+  const safe = path.resolve(base, path.basename(String(filepath)));
+  if (!safe.startsWith(base + path.sep) && safe !== base) {
     throw Object.assign(new Error('Invalid content file path'), { code: 'INVALID_PATH' });
   }
   if (!fs.existsSync(safe)) {
@@ -418,6 +419,7 @@ async function renderWidgetOrHtml(html, profile, widgetType = '', options = {}) 
         await page.waitForNetworkIdle({ idleTime: 200, timeout: Math.min(2500, remainingMs()) }).catch(() => {});
       }
 
+      // Template-agnostic settlement: fonts, animations, images, and videos (including inside srcdoc iframes)
       await settlePage(page, widgetType === 'layout');
 
       const snap = await page.screenshot({ type: 'png' });
@@ -553,10 +555,9 @@ function guardRasterRequests(page, localOrigin) {
  *   url  — a remote web page, SSRF-vetted before the browser sees it (BLOCKED_URL otherwise);
  *   html — a self-contained document (a flattened HTML bundle).
  * @param {{ width: number, height: number }} profile
- * @param {{ signal?: AbortSignal, timezone?: string, background?: string }} [options]
+ * @param {{ signal?: AbortSignal, timezone?: string }} [options]
  *   timezone — the screen's IANA zone, emulated so a clock or a date in the page reads the screen's
- *              time rather than the server's.
- *   background — 6-digit hex painted under a transparent page (the zone colour).
+ *   time rather than the server's.
  * @returns {Promise<Buffer>} PNG
  */
 async function renderPlayerFrame(source, profile, options = {}) {
@@ -608,7 +609,7 @@ async function renderPlayerFrame(source, profile, options = {}) {
       }
       await page.setViewport({ width, height });
       // ⚠️ Paint the zone's colour under a transparent page. Widgets are drawn to overlay a player's
-      // background, so their own is transparent; captured as-is that is white, and a white
+      // background, so their own <body> is transparent; captured as-is that is white, and a white
       // clock vanishes into it. This colours only what the page leaves transparent.
       if (/^[0-9a-f]{6}$/.test(options.background || '')) {
         const hex = options.background;

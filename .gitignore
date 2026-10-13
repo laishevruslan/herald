@@ -132,3 +132,4 @@ native/packaging/windows/THIRD-PARTY-NOTICES.txt
 ios/LuminaScreen.xcodeproj/
 ios/build/
 ios/DerivedData/
+.roku-build/

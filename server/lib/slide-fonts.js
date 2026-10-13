@@ -136,9 +136,17 @@ function resolveFamily(id) {
 }
 
 /** The CSS font-family value for a family key — the bundled face, then a generic that always exists. */
+// The bundled faces are Latin-only. Players that have Noto installed (Android, Tizen, webOS, Pi with
+// fonts-noto-cjk) draw Japanese, Chinese and Hindi in Noto rather than whatever the generic maps to.
+const SCRIPT_FALLBACKS = {
+  'sans-serif': "'Noto Sans', 'Noto Sans CJK JP', 'Noto Sans CJK SC', 'Noto Sans Devanagari'",
+  serif: "'Noto Serif', 'Noto Serif CJK JP', 'Noto Serif CJK SC', 'Noto Serif Devanagari'",
+};
+
 function fontStack(key) {
   const f = FAMILIES[resolveFamily(key)];
-  return `'${f.css}', ${f.stack}`;
+  const extra = SCRIPT_FALLBACKS[f.stack];
+  return extra ? `'${f.css}', ${extra}, ${f.stack}` : `'${f.css}', ${f.stack}`;
 }
 
 /**
@@ -164,14 +172,12 @@ function fontFaceCss(familyKeys, opts = {}) {
     if (seen.has(k)) continue;
     seen.add(k);
     const f = FAMILIES[k];
-    const scripts = f.scripts || SCRIPTS_LATIN;
-    for (const face of SCRIPT_FACES) {
-      if (!scripts.includes(face.script)) continue;
+    for (const [suffix, range] of [['', RANGE_LATIN], ['-ext', RANGE_LATIN_EXT]]) {
       out.push(
         `@font-face{font-family:'${f.css}';font-style:normal;`
         + `font-weight:${f.weights[0]} ${f.weights[1]};font-display:swap;`
-        + `src:url(${base}/${f.file}${face.suffix}.woff2) format('woff2');`
-        + `unicode-range:${face.range}}`);
+        + `src:url(${base}/${f.file}${suffix}.woff2) format('woff2');`
+        + `unicode-range:${range}}`);
     }
   }
   return out.join('\n  ');
@@ -231,7 +237,6 @@ function catalogue() {
 module.exports = {
   FAMILIES, ALIASES, DEFAULT_FAMILY, FONT_DIR,
   CUSTOM_PREFIX, isCustom, customId, customFace,
-  RANGE_LATIN, RANGE_LATIN_EXT, RANGE_CYRILLIC, RANGE_CYRILLIC_EXT,
-  SCRIPTS_LATIN, SCRIPTS_LATIN_CYR,
+  RANGE_LATIN, RANGE_LATIN_EXT,
   resolveFamily, fontStack, fontFaceCss, catalogue,
 };

@@ -62,7 +62,7 @@ sub Main()
     check(t, "poll url", Instr(1, url, "https://example.test/socket.io/?EIO=4&transport=polling&sid=a%20b&t=") = 1)
 
     ' --- util
-    check(t, "normalise adds https", ST_NormaliseServerUrl(" luminascreen.com/ ") = "https://luminascreen.com")
+    check(t, "normalise adds https", ST_NormaliseServerUrl(" luminascreen.ru/ ") = "https://luminascreen.ru")
     check(t, "normalise keeps http", ST_NormaliseServerUrl("http://10.0.0.5:3001") = "http://10.0.0.5:3001")
     check(t, "is off 0", ST_IsOff(0))
     check(t, "is off false", ST_IsOff(false))

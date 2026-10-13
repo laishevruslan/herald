@@ -3395,6 +3395,23 @@ if (hasSsl) {
 }
 
 server.listen(listenPort, '0.0.0.0', () => {
+  // Settings that look applied but are not, and a JWT_SECRET that changed under saved secrets.
+  // Both used to fail silently; see lib/config-check.js.
+  try {
+    const cc = require('./lib/config-check');
+    for (const m of cc.envFileWarnings({ serverDir: __dirname })) console.warn(m);
+    const appSettings = require('./lib/app-settings');
+    const sk = cc.checkSecretKey({
+      secret: config.jwtSecret,
+      get: (k) => appSettings.get(k, undefined),
+      set: (k, v) => appSettings.set(k, v),
+      certsDir: config.certsDir,
+    });
+    for (const m of sk.messages) console.error(m);
+  } catch (e) {
+    console.error(`[config] check failed: ${e.message}`);
+  }
+
   console.log(`
 ╔══════════════════════════════════════════════════╗
 ║       LuminaScreen Server v${VERSION.padEnd(22).slice(0, 22)}║

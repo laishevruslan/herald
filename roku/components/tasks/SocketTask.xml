@@ -3,7 +3,7 @@
   One socket.io session to the LuminaScreen server, over Engine.IO's HTTP long-polling transport.
   Runs in its own thread so a held-open poll never stalls the screen.
 
-  in:   serverUrl  — base URL, e.g. https://luminascreen.com
+  in:   serverUrl  — base URL, e.g. https://luminascreen.ru
         outbound   — set to { name, data } to emit one event (alwaysNotify: two identical
                      emits in a row are two emits)
         control    — "start" | "stop"

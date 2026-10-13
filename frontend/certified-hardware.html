@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Certified Hardware | LuminaScreen</title>
   <meta name="description" content="Device models tested with LuminaScreen, what each one actually does, and which are not supported. Certified Hardware under LuminaScreen reseller agreements.">
-  <meta name="keywords" content="certified hardware, digital signage hardware, signage player hardware, screentinker supported devices">
+  <meta name="keywords" content="certified hardware, digital signage hardware, signage player hardware, luminascreen supported devices">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://luminascreen.ru/certified-hardware">
   <!-- The plain-text twin, named in the document as well as in the Link header: a CDN may serve a
@@ -110,7 +110,7 @@
     <h1>Certified Hardware</h1>
     <p class="lead">The device models LuminaScreen has tested with LuminaScreen, what each one actually
       does, and which ones to avoid.</p>
-    <p class="updated">Last updated 2026-10-09. 7 devices currently certified.</p>
+    <p class="updated">Last updated 2026-10-12. 7 devices currently certified.</p>
 
     <p style="margin:20px 0 4px">
       <a href="/certified-hardware/submit" class="btn btn-primary" style="padding:14px 28px;font-size:16px">Report hardware that works</a>
@@ -289,7 +289,7 @@
           <dt>Model numbers</dt><dd><span class="unknown">Not recorded</span></dd>
           <dt>Category</dt><dd>Single-board computer</dd>
           <dt>Operating system</dt><dd>Raspberry Pi OS (64-bit), Debian 13 &quot;Trixie&quot;: the Lite image, and the Desktop image of 2026-10-06</dd>
-          <dt>LuminaScreen player</dt><dd>Native player (the screentinker-pi package), installed by the setup script with --native. On Lite it runs as a system service drawing straight to the screen; on Desktop it runs full screen in the desktop session.</dd>
+          <dt>LuminaScreen player</dt><dd>Native player (the luminascreen-pi package), installed by the setup script with --native. On Lite it runs as a system service drawing straight to the screen; on Desktop it runs full screen in the desktop session.</dd>
           <dt>Maximum resolution</dt><dd>1920x1200 at 60 Hz, the highest tested. 4K has not been tested.</dd>
           <dt>Validated on</dt><dd>2026-10-08</dd>
           <dt>Validated by</dt><dd>LuminaScreen</dd>
@@ -512,6 +512,39 @@
       </table></div>
     </section>
 
+    <section class="status-group status-known-issues">
+      <h2>Known issues <span class="count">(1)</span></h2>
+      <p class="group-blurb">Runs, but something is broken. What is broken is stated on each entry.</p>
+      <article class="device" id="roku-streaming-stick-4k">
+        <h3><a class="anchor" href="#roku-streaming-stick-4k" aria-label="Link to Roku Streaming Stick 4K">#</a>Roku Streaming Stick 4K</h3>
+        <dl class="device-spec">
+          <dt>Manufacturer</dt><dd>Roku</dd>
+          <dt>Model numbers</dt><dd>3820R2</dd>
+          <dt>Category</dt><dd>Streaming player</dd>
+          <dt>Operating system</dt><dd>Roku OS</dd>
+          <dt>LuminaScreen player</dt><dd>LuminaScreen for Roku (native app, 0.2.1). Run on one 3820R2</dd>
+          <dt>Maximum resolution</dt><dd>1920x1080</dd>
+          <dt>Validated on</dt><dd>2026-10-12</dd>
+          <dt>Validated by</dt><dd>LuminaScreen</dd>
+          <dt>Tested against</dt><dd>2.5.1</dd>
+          <dt>Minimum LuminaScreen version</dt><dd><span class="unknown">Not recorded</span></dd>
+          <dt>Manufacturer end of life</dt><dd><span class="unknown">Not recorded</span></dd>
+        </dl>
+        <ul class="device-notes">
+          <li>A native Roku app (roku/ in the source, see docs/roku-player.md). It needs Roku OS 15.1 or later. Submitted to the Roku Channel Store in October 2026 and in Roku&#39;s review; once published it is added with the channel code Luminascreen.</li>
+          <li>Run on one 3820R2 (Roku OS 15.3.4, app 0.2.1, against luminascreen.ru on 2.5.1): it paired, played an image playlist, started in about 1.5 seconds, and kept its pairing across a reinstall. Not certified.</li>
+          <li>It does not start by itself. After a power cut, a reboot or a Roku update the Roku stays on its home screen, because Roku does not let apps autostart. Someone, or a device on the network sending Roku&#39;s ECP launch request, has to open it again. LuminaScreen does not send that request.</li>
+          <li>No remote reboot, volume, screenshots or live view, and no TV power or input control. Power schedules blank the picture instead.</li>
+          <li>H.264 taller than 1080 pixels does not decode (&quot;Image height too high&quot;), which rules out portrait 1080x1920 clips in any zone size. The screen says which video failed. Use a copy no bigger than 1920x1080.</li>
+          <li>Widgets, web pages and slides are pictures drawn by the server: no animation, video inside a page, or touch. That needs a server newer than 2.5.1 with Chromium, and it has not been run on this stick yet. Neither has a long video.</li>
+          <li>One video at a time: in a layout only one zone plays video, the others show its thumbnail. No video walls or group sync. The system screensaver is not blocked (a Roku store rule), so set its wait to the longest.</li>
+          <li>1920x1080 is the resolution this stick&#39;s interface reported. The stick can output 4K, so this may be the TV or the HDMI link, not a device ceiling.</li>
+        </ul>
+        <p class="setup-link"><a href="/guides/roku-digital-signage.html">Setup guide for this device</a></p>
+        <p class="buy-link"><a href="https://www.amazon.com/dp/B09BKCDXZC?tag=screentinker-20" rel="sponsored nofollow" target="_blank">Buy this device</a> <span class="affiliate-tag">(affiliate link)</span></p>
+      </article>
+    </section>
+
     <section class="status-group status-not-supported">
       <h2>Not supported <span class="count">(3)</span></h2>
       <p class="group-blurb">Tested and does not work well enough to recommend. Listed with the reason, because otherwise people buy them anyway.</p>
@@ -631,7 +664,7 @@
       <h2>Ready to set up a screen?</h2>
       <p>Start a free LuminaScreen account in under a minute.</p>
       <a href="/app#/login" class="btn btn-primary" style="padding:14px 28px;font-size:16px">Start Free</a>
-      <a href="https://github.com/screentinker/screentinker" target="_blank" rel="noopener" class="btn btn-outline" style="padding:14px 28px;font-size:16px;margin-left:12px">View on GitHub</a>
+      <a href="https://github.com/luminascreen/luminascreen" target="_blank" rel="noopener" class="btn btn-outline" style="padding:14px 28px;font-size:16px;margin-left:12px">View on GitHub</a>
     </div>
   </main>
 
@@ -640,7 +673,7 @@
     <div class="links">
       <a href="/solutions/">Solutions</a>
       <a href="/integrations/">Integrations</a>
-      <a href="https://github.com/screentinker/screentinker" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/luminascreen/luminascreen" target="_blank" rel="noopener">GitHub</a>
       <a href="https://discord.gg/utTdsrqq4Z" target="_blank" rel="noopener">Discord</a>
       <a href="/legal/terms.html">Terms</a>
       <a href="/legal/privacy.html">Privacy</a>

@@ -994,44 +994,45 @@ function buildPlaylistPayloadUnchecked(deviceId) {
    * missed the change still stops counting on its next payload.
    */
   assembled.audience = require('../lib/audience').payloadConfig(deviceId);
-  attachClockTables(assembled, device);
+  /*
+   * The zone's UTC-offset table (lib/tz-table.js), for a player with no time-zone database of its
+   * own (the Roku) — so it evaluates schedules and power windows in the zone `timezone` names, not
+   * in whatever the box is set to.
+   *
+   * ⚠️ ONLY for a player that declares clock.tz_table (or whose baseline has it): every other
+   * player's payload stays byte-for-byte what it was. And ONLY when there IS an effective zone: a
+   * null `timezone` means "trust your own clock" on every player, and a UTC table would silently
+   * override that with the wrong answer for a screen that simply never reported a zone.
+   */
+  if (timezone && capsLib.supports(device, 'clock.tz_table')) {
+    assembled.tz_table = require('../lib/tz-table').tzTable(timezone);
+  }
+  /*
+   * Tables for the OTHER zones a clock widget on this screen names ("New York" on a Chicago lobby
+   * screen), so a player without a zone database can still tick that clock itself rather than show
+   * a frame whose seconds stand still. Keyed by zone; only zones that are real and differ from the
+   * screen's own; absent when there are none.
+   */
+  if (capsLib.supports(device, 'clock.tz_table')) {
+    const zones = new Set();
+    for (const it of Array.isArray(assembled.assignments) ? assembled.assignments : []) {
+      if (!it || it.widget_type !== 'clock') continue;
+      let cfg = it.widget_config;
+      if (typeof cfg === 'string') { try { cfg = JSON.parse(cfg); } catch { cfg = null; } }
+      const z = cfg && typeof cfg.timezone === 'string' ? cfg.timezone : '';
+      if (z && z !== timezone) zones.add(z);
+    }
+    if (zones.size) {
+      const tz = require('../lib/tz-table');
+      const tables = {};
+      for (const z of [...zones].slice(0, 16)) {
+        const t = tz.tzTable(z);
+        if (t && t.zone === z) tables[z] = t;   // an unknown zone comes back as UTC: leave it out
+      }
+      if (Object.keys(tables).length) assembled.tz_tables = tables;
+    }
+  }
   return assembled;
-}
-
-/*
- * tz_table / tz_tables, for a player that asked (capability clock.tz_table) and has an effective
- * zone. A null zone means "trust your own clock" on every player, so no table is sent rather than
- * a UTC one wearing the screen's name. Every other player's payload is left byte-for-byte as it was.
- *
- * A clock widget naming some OTHER real zone also gets its own table (tz_tables, at most 16). The
- * screen's own zone is already tz_table; an unknown zone is left out rather than sent as UTC.
- */
-function widgetConfigOf(item) {
-  let c = item && item.widget_config;
-  if (typeof c === 'string') { try { c = JSON.parse(c); } catch { c = null; } }
-  return c && typeof c === 'object' ? c : null;
-}
-
-function attachClockTables(payload, device) {
-  if (!payload || !capsLib.supports(device, 'clock.tz_table')) return;
-  const zone = payload.timezone;
-  if (!zone) return;
-  const { tzTable, validZone } = require('../lib/tz-table');
-  payload.tz_table = tzTable(zone);
-  const extras = [];
-  const items = Array.isArray(payload.assignments) ? payload.assignments : [];
-  for (const a of items) {
-    if (!a || a.widget_type !== 'clock') continue;
-    const c = widgetConfigOf(a);
-    const z = c && typeof c.timezone === 'string' ? c.timezone : '';
-    if (!z || z === zone || extras.includes(z) || !validZone(z)) continue;
-    extras.push(z);
-    if (extras.length >= 16) break;
-  }
-  if (extras.length) {
-    payload.tz_tables = {};
-    for (const z of extras) payload.tz_tables[z] = tzTable(z);
-  }
 }
 
 // #104: the canonical player payload shape, shared by the device path
