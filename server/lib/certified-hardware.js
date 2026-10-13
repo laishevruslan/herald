@@ -227,7 +227,7 @@ function render(data) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${esc(TITLE)}</title>
   <meta name="description" content="${esc(DESCRIPTION)}">
-  <meta name="keywords" content="certified hardware, digital signage hardware, signage player hardware, screentinker supported devices">
+  <meta name="keywords" content="certified hardware, digital signage hardware, signage player hardware, luminascreen supported devices">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="${URL}">
   <!-- The plain-text twin, named in the document as well as in the Link header: a CDN may serve a
@@ -397,7 +397,7 @@ ${sections}
       <h2>Ready to set up a screen?</h2>
       <p>Start a free LuminaScreen account in under a minute.</p>
       <a href="/app#/login" class="btn btn-primary" style="padding:14px 28px;font-size:16px">Start Free</a>
-      <a href="https://github.com/screentinker/screentinker" target="_blank" rel="noopener" class="btn btn-outline" style="padding:14px 28px;font-size:16px;margin-left:12px">View on GitHub</a>
+      <a href="https://github.com/luminascreen/luminascreen" target="_blank" rel="noopener" class="btn btn-outline" style="padding:14px 28px;font-size:16px;margin-left:12px">View on GitHub</a>
     </div>
   </main>
 
@@ -406,7 +406,7 @@ ${sections}
     <div class="links">
       <a href="/solutions/">Solutions</a>
       <a href="/integrations/">Integrations</a>
-      <a href="https://github.com/screentinker/screentinker" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/luminascreen/luminascreen" target="_blank" rel="noopener">GitHub</a>
       <a href="https://discord.gg/utTdsrqq4Z" target="_blank" rel="noopener">Discord</a>
       <a href="/legal/terms.html">Terms</a>
       <a href="/legal/privacy.html">Privacy</a>

@@ -152,9 +152,9 @@ function fontStack(key) {
 /**
  * @font-face rules for exactly the families a slide uses.
  *
- * ⚠️ ONLY THE ONES USED. Emitting all five would make every slide reference ten files; a browser
- * only downloads a face it actually needs, but a BrightSign parsing ten unicode-range blocks per
- * slide render is work for nothing, and it obscures what a slide actually depends on.
+ * ⚠️ ONLY THE ONES USED. Emitting every family would make every slide reference every subset; a
+ * browser only downloads a face it actually needs, but a BrightSign parsing that many unicode-range
+ * blocks per slide render is work for nothing, and it obscures what a slide actually depends on.
  *
  * ⚠️ font-display: swap, chosen against the alternatives. `block` hides the text for up to three
  * seconds — on a ten-second slide that is most of its life, and on a wall invisible text reads as a
@@ -172,12 +172,14 @@ function fontFaceCss(familyKeys, opts = {}) {
     if (seen.has(k)) continue;
     seen.add(k);
     const f = FAMILIES[k];
-    for (const [suffix, range] of [['', RANGE_LATIN], ['-ext', RANGE_LATIN_EXT]]) {
+    const scripts = f.scripts || SCRIPTS_LATIN;
+    for (const face of SCRIPT_FACES) {
+      if (!scripts.includes(face.script)) continue;
       out.push(
         `@font-face{font-family:'${f.css}';font-style:normal;`
         + `font-weight:${f.weights[0]} ${f.weights[1]};font-display:swap;`
-        + `src:url(${base}/${f.file}${suffix}.woff2) format('woff2');`
-        + `unicode-range:${range}}`);
+        + `src:url(${base}/${f.file}${face.suffix}.woff2) format('woff2');`
+        + `unicode-range:${face.range}}`);
     }
   }
   return out.join('\n  ');
@@ -237,6 +239,7 @@ function catalogue() {
 module.exports = {
   FAMILIES, ALIASES, DEFAULT_FAMILY, FONT_DIR,
   CUSTOM_PREFIX, isCustom, customId, customFace,
-  RANGE_LATIN, RANGE_LATIN_EXT,
+  RANGE_LATIN, RANGE_LATIN_EXT, RANGE_CYRILLIC, RANGE_CYRILLIC_EXT,
+  SCRIPTS_LATIN, SCRIPTS_LATIN_CYR,
   resolveFamily, fontStack, fontFaceCss, catalogue,
 };
