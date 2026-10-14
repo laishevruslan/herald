@@ -312,6 +312,7 @@ export class ControlHandleManager {
   }
 
   private shouldRenderTransformControl() {
+    if (this.editor.heraldFillMode) return false;
     return this.selectedBoxRect && this.enableTransformControl;
   }
 

@@ -14,6 +14,7 @@ export const ungroupAndRecord = (
   graphicsArr: SuikaGraphics[],
   editor: SuikaEditor,
 ) => {
+  if (editor.heraldFillMode) return;
   const frameGraphicsArr = graphicsArr.filter((graphics) =>
     isFrameGraphics(graphics),
   ) as SuikaFrame[];

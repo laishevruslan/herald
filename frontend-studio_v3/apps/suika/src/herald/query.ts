@@ -3,7 +3,13 @@
  * Mirrors Studio params (preset, contentId, lang, for) plus mode=herald.
  */
 
-export type HeraldPresetId = 'landscape-1080' | 'portrait-1080' | 'epaper-5x3';
+export type HeraldPresetId =
+  | 'landscape-1080'
+  | 'portrait-1080'
+  | 'epaper-5x3'
+  | 'landscape-4k'
+  | 'square-1080'
+  | 'bar-1920';
 
 export type HeraldQuery = {
   mode: 'herald' | null;
@@ -16,6 +22,9 @@ const PRESET_IDS: HeraldPresetId[] = [
   'landscape-1080',
   'portrait-1080',
   'epaper-5x3',
+  'landscape-4k',
+  'square-1080',
+  'bar-1920',
 ];
 
 export function parseHeraldQuery(
@@ -26,10 +35,14 @@ export function parseHeraldQuery(
   const mode = modeRaw === 'herald' ? 'herald' : null;
   const presetRaw = (params.get('preset') ||
     'landscape-1080') as HeraldPresetId;
-  const preset = PRESET_IDS.includes(presetRaw) ? presetRaw : 'landscape-1080';
+  const preset = isHeraldPresetId(presetRaw) ? presetRaw : 'landscape-1080';
   const contentId = params.get('contentId') || params.get('content_id') || null;
   const forSlideBg = (params.get('for') || '').toLowerCase() === 'slide-bg';
   return { mode, preset, contentId, forSlideBg };
+}
+
+export function isHeraldPresetId(value: string): value is HeraldPresetId {
+  return (PRESET_IDS as string[]).includes(value);
 }
 
 export function isHeraldMode(

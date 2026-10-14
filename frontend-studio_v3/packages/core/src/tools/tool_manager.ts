@@ -272,6 +272,10 @@ export class ToolManager {
     if (!this.enableSwitchTool || this.getActiveToolName() === toolName) {
       return;
     }
+    // Fill mode keeps the select tool. New shapes are a design-mode action.
+    if (this.editor.heraldFillMode && toolName !== 'select') {
+      return;
+    }
 
     if (!this.enableToolTypes.includes(toolName)) {
       console.warn(`target tool "${toolName}" is not enable`);

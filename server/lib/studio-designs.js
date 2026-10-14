@@ -15,22 +15,38 @@ const { digestFile } = require('./content-digest');
 const { devicesPlayingContent } = require('./devices-playing');
 const storage = require('./storage');
 
-/** Soft cap: scene must not embed data-URL bitmaps (D-SC / plan §7). */
+/** Layerhub scenes stay small. Suika papers may carry copied image bytes (phase A). */
 const MAX_SCENE_JSON_BYTES = 1_500_000;
+const MAX_SUIKA_SCENE_JSON_BYTES = 8_000_000;
 
 const PRESETS = Object.freeze({
   'landscape-1080': { width: 1920, height: 1080 },
   'portrait-1080': { width: 1080, height: 1920 },
   'epaper-5x3': { width: 800, height: 480 },
+  'landscape-4k': { width: 3840, height: 2160 },
+  'square-1080': { width: 1080, height: 1080 },
+  'bar-1920': { width: 1920, height: 540 },
 });
 
 function pickPreset(id, width, height) {
   if (id && PRESETS[id]) return { ...PRESETS[id], preset: id };
-  const w = Number(width) || 1920;
-  const h = Number(height) || 1080;
-  if (w === 1080 && h === 1920) return { width: w, height: h, preset: 'portrait-1080' };
-  if (w === 800 && h === 480) return { width: w, height: h, preset: 'epaper-5x3' };
+  const w = Number(width);
+  const h = Number(height);
+  for (const [pid, size] of Object.entries(PRESETS)) {
+    if (size.width === w && size.height === h) return { width: w, height: h, preset: pid };
+  }
   return { width: 1920, height: 1080, preset: 'landscape-1080' };
+}
+
+function sceneByteLimit(parsed) {
+  if (parsed && parsed.editor === 'suika' && parsed.v === 1) return MAX_SUIKA_SCENE_JSON_BYTES;
+  return MAX_SCENE_JSON_BYTES;
+}
+
+/** Raster data URLs are allowed only inside a Suika paper, so a copied library image survives re-edit. */
+function suikaRasterDataUrl(parsed, value) {
+  if (!parsed || parsed.editor !== 'suika' || parsed.v !== 1) return false;
+  return /^data:image\/(png|jpeg|jpg|gif|webp);/i.test(value);
 }
 
 function walkStrings(value, visit) {
@@ -48,8 +64,9 @@ function walkStrings(value, visit) {
 }
 
 /**
- * Parse + size-gate scene JSON. Rejects data:image and javascript: URLs so the
- * DB does not grow bitmaps and Fabric never loads script URLs on re-edit.
+ * Parse + size-gate scene JSON. Rejects javascript: URLs. Layerhub scenes
+ * also reject data: URLs. A Suika paper may carry raster data URLs (copied
+ * library bytes) up to the larger cap.
  * Accepts Layerhub scenes and Suika wrappers ({ v:1, editor:'suika', paper }).
  * @returns {{ ok: true, json: string, parsed: object } | { ok: false, status: number, error: string }}
  */
@@ -58,8 +75,8 @@ function sanitizeSceneJson(raw) {
     return { ok: true, json: '{}', parsed: {} };
   }
   let text = typeof raw === 'string' ? raw : JSON.stringify(raw);
-  if (Buffer.byteLength(text, 'utf8') > MAX_SCENE_JSON_BYTES) {
-    return { ok: false, status: 413, error: 'scene_json too large (max 1.5MB; do not embed data URLs)' };
+  if (Buffer.byteLength(text, 'utf8') > MAX_SUIKA_SCENE_JSON_BYTES) {
+    return { ok: false, status: 413, error: `scene_json too large (max ${Math.round(MAX_SUIKA_SCENE_JSON_BYTES / 1_000_000)}MB)` };
   }
   let parsed;
   try {
@@ -69,6 +86,10 @@ function sanitizeSceneJson(raw) {
   }
   if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
     return { ok: false, status: 400, error: 'scene_json must be an object' };
+  }
+  const limit = sceneByteLimit(parsed);
+  if (Buffer.byteLength(text, 'utf8') > limit) {
+    return { ok: false, status: 413, error: `scene_json too large (max ${Math.round(limit / 1_000_000)}MB)` };
   }
 
   // Suika wrapper (plan §4.2): must carry a paper object; do not accept empty shells.
@@ -87,17 +108,20 @@ function sanitizeSceneJson(raw) {
   let bad = null;
   walkStrings(parsed, (s) => {
     const t = s.trim().toLowerCase();
-    if (t.startsWith('data:image') || t.startsWith('data:application')) {
-      bad = 'scene_json must not contain data URL images — use library content ids';
-    } else if (t.startsWith('javascript:')) {
+    if (t.startsWith('javascript:')) {
       bad = 'scene_json must not contain javascript: URLs';
+    } else if (t.startsWith('data:')) {
+      if (!suikaRasterDataUrl(parsed, t)) {
+        bad = 'scene_json must not contain data URL images — use library content ids';
+      }
     }
   });
   if (bad) return { ok: false, status: 400, error: bad };
   // Re-serialize to a stable canonical form (drops weird whitespace bloat).
   text = JSON.stringify(parsed);
-  if (Buffer.byteLength(text, 'utf8') > MAX_SCENE_JSON_BYTES) {
-    return { ok: false, status: 413, error: 'scene_json too large after normalize' };
+  const normalizedLimit = sceneByteLimit(parsed);
+  if (Buffer.byteLength(text, 'utf8') > normalizedLimit) {
+    return { ok: false, status: 413, error: `scene_json too large (max ${Math.round(normalizedLimit / 1_000_000)}MB)` };
   }
   return { ok: true, json: text, parsed };
 }
@@ -330,6 +354,8 @@ async function publishExport({
       err.status = 404;
       throw err;
     }
+    // Re-save keeps the library filename. A "Design YYYY-MM-DD.png" in the form
+    // must not overwrite the name the operator already sees in the library.
     const replaced = await replacePngBytes(row, file, { actor });
     content = replaced.row;
     affectedDevices = replaced.affectedDevices;

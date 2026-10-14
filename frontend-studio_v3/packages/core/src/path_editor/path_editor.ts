@@ -41,6 +41,7 @@ export class PathEditor {
     return this._active;
   }
   active(path: SuikaPath) {
+    if (this.editor.heraldFillMode) return;
     this._active = true;
     this.path = path;
 

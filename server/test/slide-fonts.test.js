@@ -178,6 +178,10 @@ test('the catalogue carries what the editor needs to match the renderer exactly'
       assert.ok(f[k] !== undefined, `catalogue entry ${f.id} is missing ${k}`);
     }
     assert.match(f.stack, /^(sans-serif|serif|monospace)$/);
+    assert.ok(Array.isArray(f.faces) && f.faces.length === (f.scripts || []).length, `${f.id} faces`);
   }
+  const archivo = F.catalogue().find((f) => f.id === 'archivo');
+  assert.equal(archivo.faces.length, 2);
+  assert.ok(!archivo.faces.some((face) => face.script === 'cyrillic'));
   assert.equal(F.catalogue().length, Object.keys(F.FAMILIES).length);
 });

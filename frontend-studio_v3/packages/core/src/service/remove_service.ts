@@ -11,6 +11,7 @@ export const removeGraphicsAndRecord = (
   editor: SuikaEditor,
   graphicsArray: SuikaGraphics[],
 ) => {
+  if (editor.heraldFillMode) return;
   const removeIdSet = new Set<string>();
   for (const graphics of graphicsArray) {
     graphics.removeFromParent();

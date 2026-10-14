@@ -9,6 +9,7 @@ import { type ITool } from './type';
 interface ImgData {
   url: string;
   name: string;
+  contentId?: string;
 }
 
 const uploadImg = () => {
@@ -52,7 +53,10 @@ export class DrawImgTool extends DrawGraphicsTool implements ITool {
 
   async enableActive() {
     try {
-      const imgData = await uploadImg();
+      const imgData = this.editor.imagePicker
+        ? await this.editor.imagePicker()
+        : await uploadImg();
+      if (!imgData) return false;
       await this.editor.imgManager.addImg(imgData.url);
       this.imgData = imgData;
       return true;
@@ -73,6 +77,9 @@ export class DrawImgTool extends DrawGraphicsTool implements ITool {
             type: PaintType.Image,
             attrs: {
               src: this.imgData!.url,
+              ...(this.imgData!.contentId
+                ? { heraldContentId: this.imgData!.contentId }
+                : {}),
             },
           },
         ],

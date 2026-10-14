@@ -78,10 +78,16 @@ export const PaintPicker: FC<IProps> = ({
       {paint.type === PaintType.Image && (
         <ImagePicker
           value={paint.attrs.src || ''}
-          onChange={(src) => {
+          heraldContentId={paint.attrs.heraldContentId}
+          onChange={(src, meta) => {
             onChangeComplete({
               type: PaintType.Image,
-              attrs: { src },
+              attrs: {
+                src,
+                ...(meta?.heraldContentId
+                  ? { heraldContentId: meta.heraldContentId }
+                  : {}),
+              },
               visible: true,
             });
           }}

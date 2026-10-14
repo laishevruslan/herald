@@ -37,6 +37,7 @@ const isAlreadyAligned = (bboxes: IBox[], type: AlignType): boolean => {
  * reference: https://mp.weixin.qq.com/s/9mGZYP_EPL7r-JVjOwyotw
  */
 export const alignAndRecord = (editor: SuikaEditor, type: AlignType) => {
+  if (editor.heraldFillMode) return;
   if (editor.selectedElements.getSelectedCount() < 2) {
     console.warn('can align zero or two elements, fail silently');
     return;

@@ -230,10 +230,17 @@ function customFace(font, opts = {}) {
  * (by guessing a generic from the name, say) is how a preview drifts from what plays.
  */
 function catalogue() {
-  return Object.entries(FAMILIES).map(([id, f]) => ({
-    id, label: f.label, role: f.role, note: f.note,
-    weights: f.weights, file: f.file, css: f.css, stack: f.stack,
-  }));
+  return Object.entries(FAMILIES).map(([id, f]) => {
+    const scripts = f.scripts || SCRIPTS_LATIN;
+    return {
+      id, label: f.label, role: f.role, note: f.note,
+      weights: f.weights, file: f.file, css: f.css, stack: f.stack,
+      scripts,
+      faces: SCRIPT_FACES
+        .filter((face) => scripts.includes(face.script))
+        .map((face) => ({ script: face.script, suffix: face.suffix, range: face.range })),
+    };
+  });
 }
 
 module.exports = {

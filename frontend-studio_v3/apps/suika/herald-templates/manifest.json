@@ -1,0 +1,100 @@
+{
+  "templates": [
+    {
+      "id": "promo-hero",
+      "name": "Акция",
+      "preset": "landscape-1080",
+      "tags": [
+        "landscape"
+      ]
+    },
+    {
+      "id": "promo-portrait",
+      "name": "Акция, портрет",
+      "preset": "portrait-1080",
+      "tags": [
+        "portrait"
+      ]
+    },
+    {
+      "id": "announce-lobby",
+      "name": "Объявление",
+      "preset": "landscape-1080",
+      "tags": [
+        "landscape"
+      ]
+    },
+    {
+      "id": "event-poster",
+      "name": "Афиша",
+      "preset": "portrait-1080",
+      "tags": [
+        "portrait"
+      ]
+    },
+    {
+      "id": "hours",
+      "name": "Сегодня",
+      "preset": "landscape-1080",
+      "tags": [
+        "landscape"
+      ]
+    },
+    {
+      "id": "menu-photo",
+      "name": "Блюдо с фото",
+      "preset": "landscape-1080",
+      "tags": [
+        "landscape"
+      ]
+    },
+    {
+      "id": "menu-list",
+      "name": "Меню списком",
+      "preset": "portrait-1080",
+      "tags": [
+        "portrait"
+      ]
+    },
+    {
+      "id": "staff-welcome",
+      "name": "Встреча",
+      "preset": "landscape-1080",
+      "tags": [
+        "landscape"
+      ]
+    },
+    {
+      "id": "wifi",
+      "name": "Wi-Fi",
+      "preset": "landscape-1080",
+      "tags": [
+        "landscape"
+      ]
+    },
+    {
+      "id": "safety",
+      "name": "Безопасность",
+      "preset": "landscape-1080",
+      "tags": [
+        "landscape"
+      ]
+    },
+    {
+      "id": "epaper-notice",
+      "name": "Объявление e-paper",
+      "preset": "epaper-5x3",
+      "tags": [
+        "epaper"
+      ]
+    },
+    {
+      "id": "bar-ticker",
+      "name": "Полоса",
+      "preset": "bar-1920",
+      "tags": [
+        "bar"
+      ]
+    }
+  ]
+}

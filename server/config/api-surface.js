@@ -178,6 +178,11 @@ const JWT_ONLY_ROUTERS = [
    */
   { path: '/api/brand-kit',   mod: './routes/brand-kit',    tenancy: true },
   { path: '/api/studio',      mod: './routes/studio',       tenancy: true },
+  /*
+   * Workspace Suika templates (phase C). JWT + tenancy, same as studio: paper JSON is
+   * operator authoring data, not a PAT target and not the /api/templates widget catalogue.
+   */
+  { path: '/api/suika-templates', mod: './routes/suika-templates', tenancy: true },
 ];
 
 // #73: AGENCY_ROUTERS - capability-restricted ('agency' scope) surface. Mounted with

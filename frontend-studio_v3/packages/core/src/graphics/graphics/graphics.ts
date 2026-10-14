@@ -59,6 +59,40 @@ import {
   type IGraphicsOpts,
 } from './graphics_attrs';
 
+const FILL_CONTENT_KEYS = [
+  'content',
+  'fill',
+  'fontSize',
+  'fontFamily',
+  'letterSpacing',
+  'lineHeight',
+  'textAutoResize',
+  'opacity',
+  'lock',
+] as const;
+
+/**
+ * Fill mode keeps text, image paints, and the Suika session lock
+ * on unlocked layers. Position, size, and heraldLock itself stay put.
+ */
+function pickFillAttrs(
+  heraldLock: boolean | undefined,
+  partial: Partial<GraphicsAttrs> & IAdvancedAttrs,
+): (Partial<GraphicsAttrs> & IAdvancedAttrs) | null {
+  if (heraldLock) return null;
+  const next: Partial<GraphicsAttrs> = {};
+  let any = false;
+  for (const key of FILL_CONTENT_KEYS) {
+    if (key in partial) {
+      (next as Record<string, unknown>)[key] = (
+        partial as Record<string, unknown>
+      )[key];
+      any = true;
+    }
+  }
+  return any ? next : null;
+}
+
 export class SuikaGraphics<ATTRS extends GraphicsAttrs = GraphicsAttrs> {
   type = GraphicsType.Graph;
   attrs: ATTRS;
@@ -144,6 +178,11 @@ export class SuikaGraphics<ATTRS extends GraphicsAttrs = GraphicsAttrs> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _options?: { finishRecomputed?: boolean },
   ) {
+    if (this.doc.heraldStructureLocked()) {
+      const next = pickFillAttrs(this.attrs.heraldLock, partialAttrs);
+      if (!next) return;
+      partialAttrs = next;
+    }
     // TODO: 提示，x、y、rotation 不能和 transform 同时存在，否则效果不可预测
     // 目前是后者会覆盖前者
     if (this.shouldUpdateBbox(partialAttrs)) {
@@ -594,6 +633,7 @@ export class SuikaGraphics<ATTRS extends GraphicsAttrs = GraphicsAttrs> {
 
   static dMove(graphicsArr: SuikaGraphics[], dx: number, dy: number) {
     for (const graphics of graphicsArr) {
+      if (graphics.doc.heraldStructureLocked()) continue;
       const tf = graphics.getWorldTransform();
       tf[4] += dx;
       tf[5] += dy;
@@ -823,6 +863,8 @@ export class SuikaGraphics<ATTRS extends GraphicsAttrs = GraphicsAttrs> {
     return content;
   }
 
+  // Subclasses use the offset; the base tag has no position of its own.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected getSVGTagHead(_offset?: IPoint) {
     return '';
   }

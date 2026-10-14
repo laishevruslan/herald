@@ -49,6 +49,12 @@ export class SelectMoveTool implements IBaseTool {
     }
   }
   onStart(e: PointerEvent) {
+    if (this.editor.heraldFillMode) {
+      this.selectedItems = [];
+      this.dx = 0;
+      this.dy = 0;
+      return;
+    }
     this.editor.controlHandleManager.hideCustomHandles();
 
     this.startPoint = this.editor.getSceneCursorXY(e);
@@ -93,6 +99,7 @@ export class SelectMoveTool implements IBaseTool {
     }
   }
   onDrag(e: PointerEvent) {
+    if (this.editor.heraldFillMode) return;
     this.dragPoint = this.editor.getCursorXY(e);
     this.move();
   }

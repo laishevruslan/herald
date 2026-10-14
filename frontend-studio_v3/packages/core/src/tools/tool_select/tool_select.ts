@@ -168,7 +168,7 @@ export class SelectTool implements ITool {
       this.startPoint,
     );
 
-    if (handleInfo) {
+    if (handleInfo && !this.editor.heraldFillMode) {
       if (isRotationCursor(handleInfo.cursor)) {
         this.strategySelectRotation.handleType = handleInfo.handleName;
         this.currStrategy = this.strategySelectRotation;

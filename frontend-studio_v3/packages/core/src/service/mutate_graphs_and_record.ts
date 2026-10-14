@@ -30,7 +30,7 @@ export const MutateGraphsAndRecord = {
     val: number;
     isDelta: boolean;
   }) {
-    if (graphicsArr.length === 0) {
+    if (editor.heraldFillMode || graphicsArr.length === 0) {
       return;
     }
 
@@ -65,7 +65,7 @@ export const MutateGraphsAndRecord = {
     val: number;
     isDelta: boolean;
   }) {
-    if (graphicsArr.length === 0) {
+    if (editor.heraldFillMode || graphicsArr.length === 0) {
       return;
     }
 
@@ -102,7 +102,7 @@ export const MutateGraphsAndRecord = {
   }) {
     let updateSuccess = false;
 
-    if (graphicsArr.length === 0) {
+    if (editor.heraldFillMode || graphicsArr.length === 0) {
       return false;
     }
 
@@ -139,7 +139,7 @@ export const MutateGraphsAndRecord = {
     val: number;
     isDelta: boolean;
   }) {
-    if (graphicsArr.length === 0) {
+    if (editor.heraldFillMode || graphicsArr.length === 0) {
       return false;
     }
 
@@ -180,7 +180,7 @@ export const MutateGraphsAndRecord = {
     rotation: number;
     isDelta: boolean;
   }) {
-    if (graphicsArr.length === 0) {
+    if (editor.heraldFillMode || graphicsArr.length === 0) {
       return;
     }
 
@@ -211,7 +211,7 @@ export const MutateGraphsAndRecord = {
     val: number;
     isDelta: boolean;
   }) {
-    if (graphicsArr.length === 0) {
+    if (editor.heraldFillMode || graphicsArr.length === 0) {
       return false;
     }
 
@@ -258,7 +258,7 @@ export const MutateGraphsAndRecord = {
     val: number;
     isDelta: boolean;
   }) {
-    if (graphicsArr.length === 0) {
+    if (editor.heraldFillMode || graphicsArr.length === 0) {
       return;
     }
     let updateSuccess = false;
@@ -304,7 +304,7 @@ export const MutateGraphsAndRecord = {
     val: number;
     isDelta: boolean;
   }) {
-    if (graphicsArr.length === 0) {
+    if (editor.heraldFillMode || graphicsArr.length === 0) {
       return;
     }
 
@@ -343,7 +343,7 @@ export const MutateGraphsAndRecord = {
    * hide graphs when all graphs are shown
    */
   toggleVisible(editor: SuikaEditor, graphicsArr: SuikaGraphics[]) {
-    if (graphicsArr.length === 0) {
+    if (editor.heraldFillMode || graphicsArr.length === 0) {
       return;
     }
     // if at least one graphics is hidden, show all graphs; otherwise, hide all graphs
@@ -390,12 +390,42 @@ export const MutateGraphsAndRecord = {
     );
   },
 
+  /**
+   * Herald fill lock. Design mode only. Not the Suika session lock.
+   */
+  setHeraldLock(
+    editor: SuikaEditor,
+    graphicsArr: SuikaGraphics[],
+    locked: boolean,
+  ) {
+    if (editor.heraldFillMode || graphicsArr.length === 0) return;
+    const targets = graphicsArr.filter(
+      (item) => item.type !== 'Document' && item.type !== 'Canvas',
+    );
+    if (targets.length === 0) return;
+    const prevAttrs = targets.map((el) => ({
+      heraldLock: el.attrs.heraldLock,
+    }));
+    targets.forEach((el) => {
+      el.updateAttrs({ heraldLock: locked });
+    });
+    editor.commandManager.pushCommand(
+      new SetGraphsAttrsCmd(
+        'update herald lock of graphs',
+        targets,
+        { heraldLock: locked },
+        prevAttrs,
+      ),
+    );
+  },
+
   /** set name of graphics */
   setGraphName(
     editor: SuikaEditor,
     graphics: SuikaGraphics,
     objectName: string,
   ) {
+    if (editor.heraldFillMode) return;
     const prevAttrs = [{ objectName: graphics.attrs.objectName }];
     graphics.updateAttrs({
       objectName,
@@ -411,6 +441,11 @@ export const MutateGraphsAndRecord = {
   },
 
   setFontSize(editor: SuikaEditor, graphicsArr: SuikaGraphics[], val: number) {
+    graphicsArr = graphicsArr.filter((item) =>
+      editor.canEditHeraldContent(item),
+    );
+    if (graphicsArr.length === 0) return;
+
     const transaction = new Transaction(editor);
 
     let hasTextElement = false;
@@ -447,6 +482,11 @@ export const MutateGraphsAndRecord = {
     graphicsArr: SuikaGraphics[],
     val: string,
   ) {
+    graphicsArr = graphicsArr.filter((item) =>
+      editor.canEditHeraldContent(item),
+    );
+    if (graphicsArr.length === 0) return;
+
     const transaction = new Transaction(editor);
 
     let hasTextElement = false;
@@ -483,6 +523,11 @@ export const MutateGraphsAndRecord = {
     graphicsArr: SuikaGraphics[],
     val: ILetterSpacing,
   ) {
+    graphicsArr = graphicsArr.filter((item) =>
+      editor.canEditHeraldContent(item),
+    );
+    if (graphicsArr.length === 0) return;
+
     const transaction = new Transaction(editor);
 
     let hasTextElement = false;
@@ -519,6 +564,11 @@ export const MutateGraphsAndRecord = {
     graphicsArr: SuikaGraphics[],
     val: ILineHeight,
   ) {
+    graphicsArr = graphicsArr.filter((item) =>
+      editor.canEditHeraldContent(item),
+    );
+    if (graphicsArr.length === 0) return;
+
     const transaction = new Transaction(editor);
 
     let hasTextElement = false;
@@ -555,6 +605,11 @@ export const MutateGraphsAndRecord = {
     graphicsArr: SuikaGraphics[],
     val: ITextAutoResize,
   ) {
+    graphicsArr = graphicsArr.filter((item) =>
+      editor.canEditHeraldContent(item),
+    );
+    if (graphicsArr.length === 0) return;
+
     const transaction = new Transaction(editor);
 
     let hasTextElement = false;

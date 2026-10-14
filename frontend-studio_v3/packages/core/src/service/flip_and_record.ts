@@ -25,6 +25,7 @@ const flipAndRecord = (
   graphicsArr: SuikaGraphics[],
   scale: IPoint,
 ) => {
+  if (editor.heraldFillMode) return;
   const size = graphicsArr.length;
   if (size === 0) {
     console.warn('graphics should not be empty');

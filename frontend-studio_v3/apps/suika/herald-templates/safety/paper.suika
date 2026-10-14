@@ -1,0 +1,246 @@
+{
+  "appVersion": "suika-editor_0.0.3",
+  "paperId": "tpl-safety",
+  "data": [
+    {
+      "id": "0-0",
+      "objectName": "Document",
+      "width": 0,
+      "height": 0,
+      "type": "Document",
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "strokeWidth": 1
+    },
+    {
+      "id": "page",
+      "objectName": "Page 1",
+      "width": 0,
+      "height": 0,
+      "type": "Canvas",
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "strokeWidth": 1,
+      "parentIndex": {
+        "guid": "0-0",
+        "position": "a0"
+      }
+    },
+    {
+      "id": "bg",
+      "objectName": "Background",
+      "type": "Rect",
+      "width": 1920,
+      "height": 1080,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "strokeWidth": 0,
+      "cornerRadius": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 255,
+            "g": 255,
+            "b": 255,
+            "a": 1
+          }
+        }
+      ],
+      "parentIndex": {
+        "guid": "page",
+        "position": "a0"
+      }
+    },
+    {
+      "id": "title",
+      "objectName": "Title",
+      "type": "Text",
+      "content": "Безопасность",
+      "fontSize": 72,
+      "fontFamily": "Oswald",
+      "width": 1600,
+      "height": 100,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        96,
+        70
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a1"
+      }
+    },
+    {
+      "id": "n1",
+      "objectName": "Point 1",
+      "type": "Text",
+      "content": "1   Выход — по указателям",
+      "fontSize": 40,
+      "fontFamily": "Inter",
+      "width": 1600,
+      "height": 80,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        96,
+        280
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a2"
+      }
+    },
+    {
+      "id": "n2",
+      "objectName": "Point 2",
+      "type": "Text",
+      "content": "2   Не перекрывайте двери",
+      "fontSize": 40,
+      "fontFamily": "Inter",
+      "width": 1600,
+      "height": 80,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        96,
+        400
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a3"
+      }
+    },
+    {
+      "id": "n3",
+      "objectName": "Point 3",
+      "type": "Text",
+      "content": "3   Сбор — у главного входа",
+      "fontSize": 40,
+      "fontFamily": "Inter",
+      "width": 1600,
+      "height": 80,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        96,
+        520
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a4"
+      }
+    }
+  ]
+}

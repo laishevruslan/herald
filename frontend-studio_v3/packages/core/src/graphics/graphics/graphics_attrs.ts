@@ -25,7 +25,18 @@ export interface GraphicsAttrs {
   strokeWidth?: number;
 
   visible?: boolean;
+  /** Suika session lock. Not the Herald fill lock. */
   lock?: boolean;
+  /**
+   * Herald fill lock. Survives toJSON / setContents.
+   * In fill mode a locked layer cannot be moved, deleted, or edited.
+   */
+  heraldLock?: boolean;
+  /**
+   * Content row this canvas page was published to. Survives toJSON / setContents
+   * so "Save all pages" replaces the same clips.
+   */
+  heraldPageContentId?: string;
 
   parentIndex?: IParentIndex;
 

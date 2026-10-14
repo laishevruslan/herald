@@ -20,11 +20,13 @@ import {
 import { FONT_FILES } from '@/constant';
 
 import { EditorContext } from '../../context';
+import { useHeraldChrome } from '../../herald/chrome';
 import { FontSizeInput } from '../input/FontSizeInput';
 import { BaseCard } from './BaseCard';
 
 export const TypographyCard = () => {
   const editor = useContext(EditorContext);
+  const chrome = useHeraldChrome();
   const intl = useIntl();
   const MIXED = intl.formatMessage({ id: 'mixed' });
 
@@ -177,6 +179,22 @@ export const TypographyCard = () => {
     return null;
   }
 
+  const catalogue = chrome?.fonts ?? [];
+  const fontNames = [
+    ...catalogue.map((font) => font.css),
+    ...Object.keys(FONT_FILES),
+  ];
+  if (fontFamily && !fontNames.includes(fontFamily)) {
+    fontNames.unshift(fontFamily);
+  }
+  const seenFonts = new Set<string>();
+  const fontOptions = fontNames.filter((name) => {
+    if (!name || seenFonts.has(name)) return false;
+    seenFonts.add(name);
+    return true;
+  });
+  const selectedFace = catalogue.find((font) => font.css === fontFamily);
+
   const execUpdateTextAutoResizeCommand = (value: ITextAutoResize) => {
     if (!editor) return;
     const items = editor.selectedElements.getItems();
@@ -203,9 +221,12 @@ export const TypographyCard = () => {
               <SelectValue placeholder="Select font family" />
             </SelectTrigger>
             <SelectContent className="w-full">
-              {Object.keys(FONT_FILES).map((font) => (
+              {fontOptions.map((font) => (
                 <SelectItem key={font} value={font}>
-                  {font}
+                  <span style={{ fontFamily: `'${font}', sans-serif` }}>
+                    {catalogue.find((item) => item.css === font)?.label ||
+                      font}
+                  </span>
                 </SelectItem>
               ))}
               <SelectItem className="hidden" value={MIXED}>
@@ -213,6 +234,11 @@ export const TypographyCard = () => {
               </SelectItem>
             </SelectContent>
           </Select>
+          {selectedFace && !selectedFace.cyrillic && (
+            <div className="mt-1 text-sm text-muted-foreground">
+              {intl.formatMessage({ id: 'herald.fontNoCyrillic' })}
+            </div>
+          )}
         </div>
 
         <div className="ml-2 mb-2">

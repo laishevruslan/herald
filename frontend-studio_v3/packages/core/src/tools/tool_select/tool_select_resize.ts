@@ -62,6 +62,7 @@ export class SelectResizeTool implements IBaseTool {
     this.unbind = noop;
   }
   onStart(e: PointerEvent) {
+    if (this.editor.heraldFillMode) return;
     this.startPoint = this.editor.getSceneCursorXY(e);
     const handleInfo = this.editor.controlHandleManager.getHandleInfoByPoint(
       this.startPoint,
@@ -99,6 +100,7 @@ export class SelectResizeTool implements IBaseTool {
     this.handleName = handleInfo.handleName;
   }
   onDrag(e: PointerEvent) {
+    if (this.editor.heraldFillMode) return;
     this.editor.commandManager.disableRedoUndo();
     this.editor.hostEventManager.disableDelete();
 

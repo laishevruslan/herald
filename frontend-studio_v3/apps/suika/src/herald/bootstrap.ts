@@ -2,20 +2,36 @@
  * Herald-mode editor bootstrap: load existing design (Phase 2) or seed preset (Phase 1).
  * Phase 3: wait for herald:init when cross-origin (no shared localStorage JWT).
  */
-import { type SuikaEditor } from '@suika/core';
+import {
+  fontManager,
+  type IEditorPaperData,
+  type SuikaEditor,
+} from '@suika/core';
 
 import { AutoSaveGraphics } from '../store/auto-save-graphs';
-import { loadDesign } from './api';
+import {
+  embedLibraryImage,
+  fetchBrandKit,
+  kitSwatches,
+  loadDesign,
+} from './api';
 import {
   heraldPaperStoreKey,
   notifyReady,
   postToOpener,
   setHeraldSession,
 } from './bridge';
+import { setHeraldChrome } from './chrome';
+import { cssForFontId, fontOptions, installHeraldFonts } from './fonts';
+import { requestTemplateChoice } from './gallery-request';
+import { requestHeraldImage } from './image-request';
 import { installHeraldInitListener, waitForHeraldInit } from './init';
+import { applyHeraldAuthoringMode } from './mode';
 import { blankPaperForPreset, PRESET_SIZE } from './presets';
 import { type HeraldPresetId, type HeraldQuery } from './query';
 import { unwrapSuikaPaper } from './scene';
+import { cloneHeraldPaper, loadTemplatePaper } from './templates';
+import { loadWorkspaceTemplatePaper } from './workspace-templates';
 
 function presetFromDims(
   width: number,
@@ -40,6 +56,26 @@ export async function bootstrapHerald(
   // the handshake can complete before loadDesign / export.
   notifyReady(query.contentId);
   await waitForHeraldInit({ timeoutMs: 4000 });
+
+  editor.imagePicker = () => requestHeraldImage();
+  setHeraldChrome({ active: true, swatches: [], fonts: [] });
+
+  await installHeraldFonts().catch(() => []);
+  const kit = await fetchBrandKit();
+  const headingCss = cssForFontId(kit?.font_heading);
+  const bodyCss = cssForFontId(kit?.font_body);
+  // Kit failure leaves the editor default (Source Han Sans CN). A loaded
+  // catalogue face is used only when the kit actually names one.
+  if (bodyCss && fontManager.getFontNames().includes(bodyCss)) {
+    editor.setting.set('defaultFontFamily', bodyCss);
+  }
+  setHeraldChrome({
+    active: true,
+    swatches: kitSwatches(kit),
+    fonts: fontOptions(headingCss, bodyCss).filter((font) =>
+      fontManager.getFontNames().includes(font.css),
+    ),
+  });
 
   const paperStoreKey = heraldPaperStoreKey(query.contentId);
   setHeraldSession({
@@ -66,7 +102,7 @@ export async function bootstrapHerald(
         contentId: design.content_id,
       });
       editor.setContents(paper);
-      editor.render();
+      applyHeraldAuthoringMode(editor, 'design');
       const autosave = new AutoSaveGraphics(editor, paperStoreKey, {
         skipLoad: true,
       });
@@ -81,11 +117,84 @@ export async function bootstrapHerald(
     }
   }
 
-  // Create (or failed load): namespaced autosave restore, else seed blank artboard.
+  // Create (or failed load): namespaced autosave restore, else the layout gallery.
+  // A contentId that failed to load stays on a blank sheet — re-edit never opens the gallery.
   const autosave = new AutoSaveGraphics(editor, paperStoreKey);
-  if (!autosave.hadStoredData()) {
-    editor.setContents(blankPaperForPreset(query.preset));
-    editor.render();
+  if (autosave.hadStoredData()) {
+    try {
+      const stored = JSON.parse(
+        localStorage.getItem(paperStoreKey) || 'null',
+      ) as {
+        data?: {
+          objectName?: string;
+          type?: string;
+          width?: number;
+          height?: number;
+        }[];
+      } | null;
+      const bg = stored?.data?.find(
+        (node) => node?.objectName === 'Background' && node?.type === 'Rect',
+      );
+      if (bg?.width && bg?.height) {
+        const preset = presetFromDims(bg.width, bg.height, query.preset);
+        setHeraldSession({
+          query: { ...query, preset },
+          paperStoreKey,
+          contentId: query.contentId,
+        });
+      }
+    } catch {
+      /* keep the preset from the URL */
+    }
+    applyHeraldAuthoringMode(editor, 'design');
+  } else {
+    let preset = query.preset;
+    let paper: IEditorPaperData | null = null;
+    let openAsFill = false;
+    if (!query.contentId) {
+      const choice = await requestTemplateChoice();
+      if (choice.kind === 'template') {
+        try {
+          const source =
+            choice.source === 'workspace'
+              ? await loadWorkspaceTemplatePaper(choice.id)
+              : await loadTemplatePaper(choice.id);
+          paper = cloneHeraldPaper(source);
+          preset = choice.preset;
+          openAsFill = true;
+          setHeraldSession({
+            query: { ...query, preset },
+            paperStoreKey,
+            contentId: null,
+          });
+        } catch {
+          paper = null;
+          preset = query.preset;
+          openAsFill = false;
+        }
+      }
+    }
+    if (!paper) {
+      let logo: { src: string; contentId: string } | null = null;
+      const logoId = kit?.logo_content_id || null;
+      // Logo only on a fresh blank sheet. A template and a saved paper are left alone.
+      if (!query.contentId && logoId) {
+        const { width, height } = PRESET_SIZE[preset];
+        try {
+          const embedded = await embedLibraryImage(
+            logoId,
+            'Logo',
+            Math.max(width, height),
+          );
+          logo = { src: embedded.url, contentId: embedded.contentId };
+        } catch {
+          logo = null;
+        }
+      }
+      paper = blankPaperForPreset(preset, undefined, logo);
+    }
+    editor.setContents(paper);
+    applyHeraldAuthoringMode(editor, openAsFill ? 'fill' : 'design');
     autosave.save();
   }
 

@@ -1,0 +1,332 @@
+{
+  "appVersion": "suika-editor_0.0.3",
+  "paperId": "tpl-wifi",
+  "data": [
+    {
+      "id": "0-0",
+      "objectName": "Document",
+      "width": 0,
+      "height": 0,
+      "type": "Document",
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "strokeWidth": 1
+    },
+    {
+      "id": "page",
+      "objectName": "Page 1",
+      "width": 0,
+      "height": 0,
+      "type": "Canvas",
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "strokeWidth": 1,
+      "parentIndex": {
+        "guid": "0-0",
+        "position": "a0"
+      }
+    },
+    {
+      "id": "bg",
+      "objectName": "Background",
+      "type": "Rect",
+      "width": 1920,
+      "height": 1080,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "strokeWidth": 0,
+      "cornerRadius": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 255,
+            "g": 255,
+            "b": 255,
+            "a": 1
+          }
+        }
+      ],
+      "parentIndex": {
+        "guid": "page",
+        "position": "a0"
+      }
+    },
+    {
+      "id": "title",
+      "objectName": "Title",
+      "type": "Text",
+      "content": "Wi-Fi",
+      "fontSize": 64,
+      "fontFamily": "Oswald",
+      "width": 1400,
+      "height": 90,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        96,
+        80
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a1"
+      }
+    },
+    {
+      "id": "netl",
+      "objectName": "Network label",
+      "type": "Text",
+      "content": "Сеть",
+      "fontSize": 28,
+      "fontFamily": "Inter",
+      "width": 400,
+      "height": 50,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        96,
+        280
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 100,
+            "g": 116,
+            "b": 139,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a2"
+      }
+    },
+    {
+      "id": "net",
+      "objectName": "Network",
+      "type": "Text",
+      "content": "Guest",
+      "fontSize": 56,
+      "fontFamily": "Oswald",
+      "width": 1200,
+      "height": 90,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        96,
+        340
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a3"
+      }
+    },
+    {
+      "id": "passl",
+      "objectName": "Password label",
+      "type": "Text",
+      "content": "Пароль",
+      "fontSize": 28,
+      "fontFamily": "Inter",
+      "width": 400,
+      "height": 50,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        96,
+        500
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 100,
+            "g": 116,
+            "b": 139,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a4"
+      }
+    },
+    {
+      "id": "pass",
+      "objectName": "Password",
+      "type": "Text",
+      "content": "herald-2026",
+      "fontSize": 64,
+      "fontFamily": "Oswald",
+      "width": 1400,
+      "height": 100,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        96,
+        560
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 245,
+            "g": 158,
+            "b": 11,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a5"
+      }
+    },
+    {
+      "id": "note",
+      "objectName": "Note",
+      "type": "Text",
+      "content": "Спросите на ресепшене",
+      "fontSize": 32,
+      "fontFamily": "Inter",
+      "width": 1400,
+      "height": 60,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        96,
+        760
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 100,
+            "g": 116,
+            "b": 139,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a6"
+      }
+    }
+  ]
+}

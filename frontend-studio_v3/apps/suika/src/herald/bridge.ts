@@ -10,6 +10,7 @@ import {
 } from '@suika/core';
 
 import { authHeaders, publishToLibrary } from './api';
+import { warmHeraldFontsForExport } from './fonts';
 import { getParentOrigin } from './init';
 import { PRESET_SIZE } from './presets';
 import { type HeraldPresetId, type HeraldQuery } from './query';
@@ -46,6 +47,10 @@ type SuikaToHerald =
       contentId: string;
       width: number;
       height: number;
+      /** False on the first save of a clip. True when the same content row was replaced. */
+      replaced?: boolean;
+      /** More than 1 when every page was saved as its own clip. */
+      pageCount?: number;
     }
   | { source: 'suika'; type: 'herald:error'; message: string }
   | { source: 'suika'; type: 'herald:cancelled' };
@@ -78,6 +83,30 @@ function designFileName(forSlideBg: boolean): string {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `Design ${y}-${m}-${day}.png`;
+}
+
+function designStem(): string {
+  return designFileName(false).replace(/\.png$/i, '');
+}
+
+export class HeraldPageEmptyError extends Error {
+  readonly pageName: string;
+
+  constructor(pageName: string) {
+    super(pageName);
+    this.pageName = pageName;
+  }
+}
+
+function heraldCanvases(editor: SuikaEditor) {
+  return editor.doc.graphicsStoreManager
+    .getCanvasItems()
+    .filter((canvas) => !canvas.isDeleted())
+    .sort((a, b) => {
+      const aIndex = a.attrs.parentIndex?.position ?? '';
+      const bIndex = b.attrs.parentIndex?.position ?? '';
+      return aIndex < bIndex ? -1 : aIndex > bIndex ? 1 : 0;
+    });
 }
 
 function markSlideBgDone(contentId: string): void {
@@ -153,31 +182,52 @@ export async function saveToHerald(
       throw new Error('Not signed in to Herald');
     }
 
+    await warmHeraldFontsForExport();
     const png = await exportService.getCurrentPagePNGBlob(editor);
     if (!png) {
       throw new Error('Nothing to export — add shapes on the page first');
     }
 
-    const paper = JSON.parse(editor.sceneGraph.toJSON()) as IEditorPaperData;
-    const scene = wrapSuikaPaper(paper);
     const dims = PRESET_SIZE[sess.query.preset as HeraldPresetId] || {
       width: 1920,
       height: 1080,
     };
     const forSlideBg = sess.query.forSlideBg;
+    const current = editor.doc.getCurrentCanvas();
+    const existingId =
+      sess.contentId || current.attrs.heraldPageContentId || null;
+    const replaced = Boolean(existingId);
+    if (existingId) current.attrs.heraldPageContentId = existingId;
 
+    const scene = wrapSuikaPaper(
+      JSON.parse(editor.sceneGraph.toJSON()) as IEditorPaperData,
+    );
     const result = await publishToLibrary({
       png,
       scene,
-      contentId: sess.contentId,
+      contentId: existingId,
       preset: sess.query.preset,
       width: dims.width,
       height: dims.height,
-      name: designFileName(forSlideBg),
+      name: replaced ? undefined : designFileName(forSlideBg),
     });
 
+    current.attrs.heraldPageContentId = result.content_id;
     sess.contentId = result.content_id;
     session = { ...sess, contentId: result.content_id };
+    if (!replaced) {
+      const stamped = wrapSuikaPaper(
+        JSON.parse(editor.sceneGraph.toJSON()) as IEditorPaperData,
+      );
+      await publishToLibrary({
+        png,
+        scene: stamped,
+        contentId: result.content_id,
+        preset: sess.query.preset,
+        width: dims.width,
+        height: dims.height,
+      });
+    }
 
     postToOpener({
       source: 'suika',
@@ -185,6 +235,8 @@ export async function saveToHerald(
       contentId: result.content_id,
       width: result.width ?? dims.width,
       height: result.height ?? dims.height,
+      replaced,
+      pageCount: 1,
     });
 
     if (forSlideBg) {
@@ -220,6 +272,128 @@ export async function saveToHerald(
     postToOpener({ source: 'suika', type: 'herald:error', message });
     throw err;
   }
+}
+
+/**
+ * One library clip per canvas page. Does not create a playlist.
+ * A page that already has a content id is replaced and keeps its library name.
+ * New pages are named "Design YYYY-MM-DD — 1", "— 2", …
+ */
+export async function saveAllHeraldPages(
+  editor: SuikaEditor,
+  opts?: { closeWindow?: boolean },
+): Promise<SaveToHeraldResult & { pageCount: number }> {
+  const sess = session;
+  if (!sess) throw new Error('Not in Herald mode');
+  const auth = authHeaders() as Record<string, string>;
+  if (!auth.Authorization) throw new Error('Not signed in to Herald');
+
+  const canvases = heraldCanvases(editor);
+  if (canvases.length === 0) {
+    throw new Error('Nothing to export — add shapes on the page first');
+  }
+  for (const canvas of canvases) {
+    const visible = canvas.getChildren().filter((item) => item.isVisible());
+    if (visible.length === 0) {
+      throw new HeraldPageEmptyError(canvas.attrs.objectName || 'Page');
+    }
+  }
+
+  const current = editor.doc.getCurrentCanvas();
+  const claimed = new Set(
+    canvases
+      .map((canvas) => canvas.attrs.heraldPageContentId)
+      .filter((id): id is string => Boolean(id)),
+  );
+  if (sess.contentId && !claimed.has(sess.contentId)) {
+    current.attrs.heraldPageContentId = sess.contentId;
+  }
+
+  await warmHeraldFontsForExport();
+  const pngs: Blob[] = [];
+  for (const canvas of canvases) {
+    const png = await exportService.getCanvasPNGBlob(canvas);
+    if (!png) throw new HeraldPageEmptyError(canvas.attrs.objectName || 'Page');
+    pngs.push(png);
+  }
+
+  const dims = PRESET_SIZE[sess.query.preset as HeraldPresetId] || {
+    width: 1920,
+    height: 1080,
+  };
+  const stem = designStem();
+  const replaced = canvases.some((canvas) => canvas.attrs.heraldPageContentId);
+  const published: string[] = [];
+
+  try {
+    for (let i = 0; i < canvases.length; i++) {
+      const existing = canvases[i].attrs.heraldPageContentId || null;
+      const scene = wrapSuikaPaper(
+        JSON.parse(editor.sceneGraph.toJSON()) as IEditorPaperData,
+      );
+      const result = await publishToLibrary({
+        png: pngs[i],
+        scene,
+        contentId: existing,
+        preset: sess.query.preset,
+        width: dims.width,
+        height: dims.height,
+        name: existing ? undefined : `${stem} — ${i + 1}.png`,
+      });
+      canvases[i].attrs.heraldPageContentId = result.content_id;
+      published.push(result.content_id);
+    }
+
+    const scene = wrapSuikaPaper(
+      JSON.parse(editor.sceneGraph.toJSON()) as IEditorPaperData,
+    );
+    for (let i = 0; i < canvases.length; i++) {
+      await publishToLibrary({
+        png: pngs[i],
+        scene,
+        contentId: published[i],
+        preset: sess.query.preset,
+        width: dims.width,
+        height: dims.height,
+      });
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    postToOpener({ source: 'suika', type: 'herald:error', message });
+    throw err;
+  }
+
+  const contentId =
+    current.attrs.heraldPageContentId || published[0] || sess.contentId || '';
+  sess.contentId = contentId;
+  session = { ...sess, contentId };
+
+  postToOpener({
+    source: 'suika',
+    type: 'herald:saved',
+    contentId,
+    width: dims.width,
+    height: dims.height,
+    replaced,
+    pageCount: canvases.length,
+  });
+
+  if (opts?.closeWindow !== false) {
+    window.setTimeout(() => {
+      try {
+        window.close();
+      } catch {
+        /* ignore */
+      }
+    }, 120);
+  }
+
+  return {
+    contentId,
+    width: dims.width,
+    height: dims.height,
+    pageCount: canvases.length,
+  };
 }
 
 export function cancelHerald(): void {

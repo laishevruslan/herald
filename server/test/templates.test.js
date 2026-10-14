@@ -270,6 +270,19 @@ test('the database cannot swap the official trust anchor', () => {
   assert.equal(row.public_key, process.env.TEMPLATE_CATALOG_PUBLIC_KEY);
 });
 
+test('the official catalog drops the pre-rebrand name ScreenTinker', () => {
+  freshCatalogState();
+  db.prepare("UPDATE template_catalogs SET label = 'ScreenTinker' WHERE id = 'official'").run();
+  db.prepare(`INSERT INTO templates_installed
+    (id, catalog, template_id, version, sha256, kind, name, manifest_json, trust, signer)
+    VALUES ('official/lobby-welcome', 'official', 'lobby-welcome', '1.0.0', '${'ab'.repeat(32)}', 'slide', 'Lobby', '{"author":"ScreenTinker"}', 'verified', 'ScreenTinker')`).run();
+  catalog.ensureOfficial();
+  assert.equal(catalog.getCatalog('official').label, 'LuminaScreen');
+  assert.equal(db.prepare("SELECT signer FROM templates_installed WHERE id = 'official/lobby-welcome'").get().signer, 'LuminaScreen');
+  assert.equal(catalog.presentOfficialName('official', 'ScreenTinker'), 'LuminaScreen');
+  assert.equal(catalog.presentOfficialName('community', 'ScreenTinker'), 'ScreenTinker');
+});
+
 /* =================================================================== installing */
 
 async function installOfficial(bytesList, opts) {

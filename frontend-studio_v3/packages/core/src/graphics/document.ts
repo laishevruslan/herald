@@ -47,6 +47,11 @@ export class SuikaDocument extends SuikaGraphics<SuikaCanvasAttrs> {
     this.editor = editor;
   }
 
+  /** Fill mode blocks move, resize, delete, and edits of heraldLock layers. */
+  heraldStructureLocked(): boolean {
+    return Boolean(this.editor && this.editor.heraldFillMode);
+  }
+
   clear() {
     // TODO: update doc.updateInfo
     this.graphicsStoreManager.clear();

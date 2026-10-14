@@ -1,0 +1,825 @@
+{
+  "appVersion": "suika-editor_0.0.3",
+  "paperId": "tpl-menu-list",
+  "data": [
+    {
+      "id": "0-0",
+      "objectName": "Document",
+      "width": 0,
+      "height": 0,
+      "type": "Document",
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "strokeWidth": 1
+    },
+    {
+      "id": "page",
+      "objectName": "Page 1",
+      "width": 0,
+      "height": 0,
+      "type": "Canvas",
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "strokeWidth": 1,
+      "parentIndex": {
+        "guid": "0-0",
+        "position": "a0"
+      }
+    },
+    {
+      "id": "bg",
+      "objectName": "Background",
+      "type": "Rect",
+      "width": 1080,
+      "height": 1920,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "strokeWidth": 0,
+      "cornerRadius": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 255,
+            "g": 255,
+            "b": 255,
+            "a": 1
+          }
+        }
+      ],
+      "parentIndex": {
+        "guid": "page",
+        "position": "a0"
+      }
+    },
+    {
+      "id": "title",
+      "objectName": "Title",
+      "type": "Text",
+      "content": "Меню",
+      "fontSize": 72,
+      "fontFamily": "Oswald",
+      "width": 900,
+      "height": 100,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        64,
+        80
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a1"
+      }
+    },
+    {
+      "id": "d0",
+      "objectName": "Борщ",
+      "type": "Text",
+      "content": "Борщ",
+      "fontSize": 40,
+      "fontFamily": "Inter",
+      "width": 620,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        64,
+        280
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a2"
+      }
+    },
+    {
+      "id": "p0",
+      "objectName": "420 ₽",
+      "type": "Text",
+      "content": "420 ₽",
+      "fontSize": 40,
+      "fontFamily": "Oswald",
+      "width": 300,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        700,
+        280
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a3"
+      }
+    },
+    {
+      "id": "rule0",
+      "objectName": "Rule",
+      "type": "Rect",
+      "width": 952,
+      "height": 2,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        64,
+        370
+      ],
+      "strokeWidth": 0,
+      "cornerRadius": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 226,
+            "g": 232,
+            "b": 240,
+            "a": 1
+          }
+        }
+      ],
+      "parentIndex": {
+        "guid": "page",
+        "position": "a4"
+      }
+    },
+    {
+      "id": "d1",
+      "objectName": "Том ям",
+      "type": "Text",
+      "content": "Том ям",
+      "fontSize": 40,
+      "fontFamily": "Inter",
+      "width": 620,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        64,
+        460
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a5"
+      }
+    },
+    {
+      "id": "p1",
+      "objectName": "690 ₽",
+      "type": "Text",
+      "content": "690 ₽",
+      "fontSize": 40,
+      "fontFamily": "Oswald",
+      "width": 300,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        700,
+        460
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a6"
+      }
+    },
+    {
+      "id": "rule1",
+      "objectName": "Rule",
+      "type": "Rect",
+      "width": 952,
+      "height": 2,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        64,
+        550
+      ],
+      "strokeWidth": 0,
+      "cornerRadius": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 226,
+            "g": 232,
+            "b": 240,
+            "a": 1
+          }
+        }
+      ],
+      "parentIndex": {
+        "guid": "page",
+        "position": "a7"
+      }
+    },
+    {
+      "id": "d2",
+      "objectName": "Цезарь",
+      "type": "Text",
+      "content": "Цезарь",
+      "fontSize": 40,
+      "fontFamily": "Inter",
+      "width": 620,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        64,
+        640
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a8"
+      }
+    },
+    {
+      "id": "p2",
+      "objectName": "540 ₽",
+      "type": "Text",
+      "content": "540 ₽",
+      "fontSize": 40,
+      "fontFamily": "Oswald",
+      "width": 300,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        700,
+        640
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a9"
+      }
+    },
+    {
+      "id": "rule2",
+      "objectName": "Rule",
+      "type": "Rect",
+      "width": 952,
+      "height": 2,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        64,
+        730
+      ],
+      "strokeWidth": 0,
+      "cornerRadius": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 226,
+            "g": 232,
+            "b": 240,
+            "a": 1
+          }
+        }
+      ],
+      "parentIndex": {
+        "guid": "page",
+        "position": "aa"
+      }
+    },
+    {
+      "id": "d3",
+      "objectName": "Стейк",
+      "type": "Text",
+      "content": "Стейк",
+      "fontSize": 40,
+      "fontFamily": "Inter",
+      "width": 620,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        64,
+        820
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "ab"
+      }
+    },
+    {
+      "id": "p3",
+      "objectName": "1290 ₽",
+      "type": "Text",
+      "content": "1290 ₽",
+      "fontSize": 40,
+      "fontFamily": "Oswald",
+      "width": 300,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        700,
+        820
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "ac"
+      }
+    },
+    {
+      "id": "rule3",
+      "objectName": "Rule",
+      "type": "Rect",
+      "width": 952,
+      "height": 2,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        64,
+        910
+      ],
+      "strokeWidth": 0,
+      "cornerRadius": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 226,
+            "g": 232,
+            "b": 240,
+            "a": 1
+          }
+        }
+      ],
+      "parentIndex": {
+        "guid": "page",
+        "position": "ad"
+      }
+    },
+    {
+      "id": "d4",
+      "objectName": "Тирамису",
+      "type": "Text",
+      "content": "Тирамису",
+      "fontSize": 40,
+      "fontFamily": "Inter",
+      "width": 620,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        64,
+        1000
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "ae"
+      }
+    },
+    {
+      "id": "p4",
+      "objectName": "390 ₽",
+      "type": "Text",
+      "content": "390 ₽",
+      "fontSize": 40,
+      "fontFamily": "Oswald",
+      "width": 300,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        700,
+        1000
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "af"
+      }
+    },
+    {
+      "id": "rule4",
+      "objectName": "Rule",
+      "type": "Rect",
+      "width": 952,
+      "height": 2,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        64,
+        1090
+      ],
+      "strokeWidth": 0,
+      "cornerRadius": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 226,
+            "g": 232,
+            "b": 240,
+            "a": 1
+          }
+        }
+      ],
+      "parentIndex": {
+        "guid": "page",
+        "position": "ag"
+      }
+    },
+    {
+      "id": "d5",
+      "objectName": "Чай",
+      "type": "Text",
+      "content": "Чай",
+      "fontSize": 40,
+      "fontFamily": "Inter",
+      "width": 620,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        64,
+        1180
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "ah"
+      }
+    },
+    {
+      "id": "p5",
+      "objectName": "180 ₽",
+      "type": "Text",
+      "content": "180 ₽",
+      "fontSize": 40,
+      "fontFamily": "Oswald",
+      "width": 300,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        700,
+        1180
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "ai"
+      }
+    },
+    {
+      "id": "rule5",
+      "objectName": "Rule",
+      "type": "Rect",
+      "width": 952,
+      "height": 2,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        64,
+        1270
+      ],
+      "strokeWidth": 0,
+      "cornerRadius": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 226,
+            "g": 232,
+            "b": 240,
+            "a": 1
+          }
+        }
+      ],
+      "parentIndex": {
+        "guid": "page",
+        "position": "aj"
+      }
+    }
+  ]
+}

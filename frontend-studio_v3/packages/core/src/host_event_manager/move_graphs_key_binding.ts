@@ -62,6 +62,7 @@ export class MoveGraphsKeyBinding {
       pressed.ArrowDown;
 
     const handleKeydown = (event: KeyboardEvent) => {
+      if (editor.heraldFillMode) return;
       const movedGraphicsArr = editor.selectedElements.getItems();
       if (movedGraphicsArr.length === 0) return;
 

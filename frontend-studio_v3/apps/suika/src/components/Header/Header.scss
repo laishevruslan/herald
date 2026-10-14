@@ -39,5 +39,31 @@
     .sk-herald-save-btn {
       flex-shrink: 0;
     }
+
+    .sk-herald-modes {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .sk-herald-safezone {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: #333;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .sk-herald-epaper {
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+      color: #666;
+    }
   }
 }

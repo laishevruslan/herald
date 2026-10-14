@@ -5,11 +5,20 @@ import { useMount } from 'ahooks';
 import { type FC, useRef } from 'react';
 import { FormattedMessage } from 'react-intl';
 
+import { useHeraldChrome } from '../../../herald/chrome';
+import { requestHeraldImage } from '../../../herald/image-request';
+
 interface IProps {
   value: string;
-  onChange: (src: string) => void;
+  heraldContentId?: string;
+  onChange: (src: string, meta?: { heraldContentId?: string }) => void;
 }
-export const ImagePicker: FC<IProps> = ({ value, onChange }) => {
+export const ImagePicker: FC<IProps> = ({
+  value,
+  heraldContentId,
+  onChange,
+}) => {
+  const chrome = useHeraldChrome();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useMount(() => {
@@ -44,6 +53,21 @@ export const ImagePicker: FC<IProps> = ({ value, onChange }) => {
           >
             <FormattedMessage id="uploadFile" />
           </button>
+          {chrome?.active && (
+            <button
+              className="suika-img-choose-btn"
+              onClick={() => {
+                void requestHeraldImage(heraldContentId).then((picked) => {
+                  if (!picked) return;
+                  onChange(picked.url, {
+                    heraldContentId: picked.contentId,
+                  });
+                });
+              }}
+            >
+              <FormattedMessage id="herald.fromLibrary" />
+            </button>
+          )}
         </div>
       </div>
     </div>

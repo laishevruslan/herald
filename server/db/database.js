@@ -2171,6 +2171,18 @@ const migrations = [
      logo_content_id  TEXT REFERENCES content(id) ON DELETE SET NULL,
      updated_at       INTEGER NOT NULL DEFAULT (strftime('%s','now'))
    )`,
+  // Workspace Suika templates (phase C). Thumb is a blob, not a content/playlist row. No org_id.
+  `CREATE TABLE IF NOT EXISTS workspace_suika_templates (
+     id           TEXT PRIMARY KEY,
+     workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+     name         TEXT NOT NULL,
+     preset       TEXT NOT NULL,
+     paper_json   TEXT NOT NULL,
+     thumb        BLOB,
+     created_by   TEXT,
+     updated_at   INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+   )`,
+  'CREATE INDEX IF NOT EXISTS idx_suika_templates_ws ON workspace_suika_templates(workspace_id, updated_at)',
 
   /*
    * ⚠️ WHERE A PLAY HAPPENED IS A FACT ABOUT THE PAST — snapshot it, do not resolve it later.

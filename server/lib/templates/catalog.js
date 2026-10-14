@@ -29,6 +29,10 @@ const paramsLib = require('./params');
 const { readZip } = require('./zip');
 
 const OFFICIAL_ID = 'official';
+const OFFICIAL_LABEL = 'LuminaScreen';
+// The built-in catalog's display name before the rebrand. Installs snapshot it into `signer`,
+// and published packages still carry it as `author` until the catalog is re-signed.
+const LEGACY_OFFICIAL_LABELS = new Set(['ScreenTinker']);
 const DEFAULT_OFFICIAL_URL = 'https://luminascreen.github.io/templates/';
 const CATALOG_ID_RE = /^[a-z][a-z0-9-]{1,31}$/;
 const MAX_INDEX_BYTES = 2 * 1024 * 1024;
@@ -68,17 +72,32 @@ function officialUrl() {
  * database row is not where a trust anchor may live, because anything that can write the
  * database could then swap it.
  */
+/** The name shown for the official catalog, including the pre-rebrand label still stored on old rows. */
+function presentOfficialName(catalogId, name) {
+  if (catalogId === OFFICIAL_ID && LEGACY_OFFICIAL_LABELS.has(name)) return OFFICIAL_LABEL;
+  return name || '';
+}
+
 function ensureOfficial() {
   const pem = signing.officialPublicKey().export({ type: 'spki', format: 'pem' });
   const row = db.prepare('SELECT * FROM template_catalogs WHERE id = ?').get(OFFICIAL_ID);
   if (!row) {
     db.prepare('INSERT INTO template_catalogs (id, label, url, public_key, builtin, enabled) VALUES (?, ?, ?, ?, 1, 1)')
-      .run(OFFICIAL_ID, 'LuminaScreen', officialUrl(), pem);
-  } else if (row.public_key !== pem || row.url !== officialUrl() || !row.builtin) {
+      .run(OFFICIAL_ID, OFFICIAL_LABEL, officialUrl(), pem);
+  } else if (row.public_key !== pem || row.url !== officialUrl() || !row.builtin || row.label !== OFFICIAL_LABEL) {
     // A changed key invalidates the cached index: it was verified under the old one.
+    // The label is part of the same rewrite: a database row is not allowed to keep the old product name.
     const keyChanged = row.public_key !== pem;
-    db.prepare(`UPDATE template_catalogs SET public_key = ?, url = ?, builtin = 1${keyChanged ? ', index_json = NULL, index_expires = NULL, last_serial = 0' : ''} WHERE id = ?`)
-      .run(pem, officialUrl(), OFFICIAL_ID);
+    db.prepare(`UPDATE template_catalogs SET label = ?, public_key = ?, url = ?, builtin = 1${keyChanged ? ', index_json = NULL, index_expires = NULL, last_serial = 0' : ''} WHERE id = ?`)
+      .run(OFFICIAL_LABEL, pem, officialUrl(), OFFICIAL_ID);
+  }
+  // `signer` is a copy of the catalog label taken at install time, so old installs still say ScreenTinker.
+  // The lookup is cheap (a handful of rows) and the write happens only while one of those names remains.
+  const legacy = [...LEGACY_OFFICIAL_LABELS];
+  const marks = legacy.map(() => '?').join(',');
+  if (db.prepare(`SELECT 1 FROM templates_installed WHERE catalog = ? AND signer IN (${marks}) LIMIT 1`).get(OFFICIAL_ID, ...legacy)) {
+    db.prepare(`UPDATE templates_installed SET signer = ? WHERE catalog = ? AND signer IN (${marks})`)
+      .run(OFFICIAL_LABEL, OFFICIAL_ID, ...legacy);
   }
 }
 
@@ -547,7 +566,7 @@ function library(userId, { lang = null } = {}) {
       const latest = t.versions.find((v) => !isRevoked(index, c.id, t.id, v.version, v.sha256)) || null;
       if (!latest) continue;
       entries.push({
-        key, catalog: c.id, id: t.id, name: t.name, description: t.description, author: t.author, license: t.license,
+        key, catalog: c.id, id: t.id, name: t.name, description: t.description, author: presentOfficialName(c.id, t.author), license: t.license,
         kind: t.kind, tags: t.tags, orientation: t.orientation, homepage: t.homepage,
         latest: latest.version, network: latest.network, min_server: latest.min_server,
         compatible: semverCmp(latest.min_server, serverVersion()) <= 0,
@@ -601,6 +620,7 @@ function markSeen(userId, keys) {
 module.exports = {
   OFFICIAL_ID, CatalogError, SETTING_ENABLED, SETTING_UNSIGNED_CODE,
   networkEnabled, unsignedCodeAllowed, semverCmp, serverVersion,
+  OFFICIAL_LABEL, presentOfficialName,
   ensureOfficial, listCatalogs, getCatalog, trustedKeys, addCatalog, setCatalogEnabled, removeCatalog,
   validateIndex, acceptIndex, cachedIndex, isRevoked, applyRevocations, resolveUrl,
   setFetcher, refreshCatalog, refreshAll, startPoller, stopPoller,

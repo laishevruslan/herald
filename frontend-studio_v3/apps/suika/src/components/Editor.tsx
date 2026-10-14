@@ -14,12 +14,17 @@ import { FONT_FILES } from '@/constant';
 
 import { EditorContext } from '../context';
 import { bootstrapHerald } from '../herald/bootstrap';
+import { getHeraldSession } from '../herald/bridge';
+import { isEpaperPreset } from '../herald/presets';
 import { parseHeraldQuery } from '../herald/query';
 import { isSpikeExportMode, runSpikeExport } from '../spike/run-spike-export';
 import { AutoSaveGraphics } from '../store/auto-save-graphs';
 import { ClearCanvasDialog } from './ClearCanvasDialog';
 import { ContextMenu } from './ContextMenu';
 import { Header } from './Header';
+import { ImageSourceDialog } from './Herald/ImageSourceDialog';
+import { SafeZoneOverlay } from './Herald/SafeZoneOverlay';
+import { TemplateGallery } from './Herald/TemplateGallery';
 import { InfoPanel } from './InfoPanel';
 import { LayerPanel } from './LayerPanel';
 import { Pages } from './Pages';
@@ -53,6 +58,9 @@ const Editor: FC = () => {
   const [clearCanvasOpen, setClearCanvasOpen] = useState(false);
   const heraldQuery = parseHeraldQuery();
   const heraldMode = heraldQuery.mode === 'herald';
+  const livePreset =
+    (heraldMode && getHeraldSession()?.query.preset) || heraldQuery.preset;
+  const [safeZone, setSafeZone] = useState(true);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -156,6 +164,9 @@ const Editor: FC = () => {
         <Header
           title={heraldMode ? 'herald' : 'suika'}
           heraldMode={heraldMode}
+          safeZone={safeZone}
+          epaper={heraldMode && isEpaperPreset(livePreset)}
+          onToggleSafeZone={() => setSafeZone((on) => !on)}
           onClearCanvas={() => setClearCanvasOpen(true)}
         />
         {/* body */}
@@ -168,6 +179,15 @@ const Editor: FC = () => {
             ref={containerRef}
             style={{ position: 'absolute', left: 240, top: 0 }}
           />
+          {heraldMode && suikaEditor && (
+            <SafeZoneOverlay
+              editor={suikaEditor}
+              preset={livePreset}
+              enabled={safeZone}
+            />
+          )}
+          {heraldMode && !heraldQuery.contentId && <TemplateGallery />}
+          {heraldMode && <ImageSourceDialog />}
           <InfoPanel />
           <ContextMenu />
         </div>

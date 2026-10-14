@@ -23,6 +23,7 @@ export const groupAndRecord = (
   graphicsArr: SuikaGraphics[],
   editor: SuikaEditor,
 ) => {
+  if (editor.heraldFillMode) return;
   if (graphicsArr.length === 0) {
     console.warn('graphics should not be empty');
     return;

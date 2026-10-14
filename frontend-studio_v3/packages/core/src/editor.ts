@@ -81,6 +81,30 @@ export class SuikaEditor {
   pathTool: PathTool;
 
   perfMonitor: PerfMonitor;
+
+  /**
+   * Herald image tool. When set, it replaces the local file dialog.
+   * Null keeps the original upload-only behaviour.
+   */
+  imagePicker:
+    | (() => Promise<{
+        url: string;
+        name: string;
+        contentId?: string;
+      } | null>)
+    | null = null;
+
+  /**
+   * Herald fill mode («Заполнение»). Design mode leaves this false.
+   * The Suika session lock (`attrs.lock`) is a separate control.
+   */
+  heraldFillMode = false;
+
+  /** Text and image paints are editable in fill mode only without heraldLock. */
+  canEditHeraldContent(graphics: { attrs: { heraldLock?: boolean } }): boolean {
+    return !this.heraldFillMode || !graphics.attrs.heraldLock;
+  }
+
   private unbindSVGDropEvents: () => void;
 
   constructor(options: IEditorOptions) {

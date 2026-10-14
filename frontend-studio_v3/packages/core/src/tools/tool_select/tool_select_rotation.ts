@@ -46,6 +46,10 @@ export class SelectRotationTool implements IBaseTool {
     this.editor.hostEventManager.off('shiftToggle', this.shiftPressHandler);
   }
   onStart(e: PointerEvent) {
+    if (this.editor.heraldFillMode) {
+      this.selectedItems = [];
+      return;
+    }
     this.selectedItems = this.editor.selectedElements.getItems({
       excludeLocked: true,
     });
@@ -77,6 +81,7 @@ export class SelectRotationTool implements IBaseTool {
     this.startBboxRotation = this.editor.selectedElements.getRotation();
   }
   onDrag(e: PointerEvent) {
+    if (this.editor.heraldFillMode) return;
     this.lastPoint = this.editor.getSceneCursorXY(e);
     this.rotateSelectedGraphics();
   }

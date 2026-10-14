@@ -18,6 +18,7 @@ export type ISetElementsAttrsType = Partial<{
   objectName: string;
   visible: boolean;
   lock: boolean;
+  heraldLock: boolean;
   transform: IMatrixArr;
   pathData: IPathItem[];
   content: string;

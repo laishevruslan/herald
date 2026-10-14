@@ -78,7 +78,7 @@ function publicInstalled(row, lang = null) {
   return {
     ...(tr ? { i18n: { [lang]: tr } } : {}),
     key: row.id, catalog: row.catalog, id: row.template_id, version: row.version, kind: row.kind, name: row.name,
-    description: m.description || '', author: m.author || '', license: m.license || '', tags: m.tags || [],
+    description: m.description || '', author: catalog.presentOfficialName(row.catalog, m.author), license: m.license || '', tags: m.tags || [],
     orientation: m.orientation || [], network: m.network || [], params: m.params || [],
     trust: row.trust, signer: row.signer, status: row.status, status_reason: row.status_reason,
     usable: !tplWidget.usable(row), unusable_reason: tplWidget.usable(row),

@@ -108,9 +108,9 @@ test('⚠️ nothing claims certification without the evidence certification mea
       `${d.id} is community-reported but claims LuminaScreen validated it`);
   }
   // A manufacturer's compatibility list is the manufacturer's claim, not a test of ours, and it carries
-  // no version: it must not borrow the fields that make a card read like a ScreenTinker validation.
+  // no version: it must not borrow the fields that make a card read like a LuminaScreen validation.
   for (const d of devices.filter((x) => x.status === 'compatible-per-manufacturer')) {
-    assert.ok(d.validated_by && d.validated_by !== 'LuminaScreen' && d.validated_by !== 'ScreenTinker' && d.validated_by !== 'Community',
+    assert.ok(d.validated_by && d.validated_by !== 'LuminaScreen' && d.validated_by !== 'LuminaScreen' && d.validated_by !== 'Community',
       `${d.id} is compatible-per-manufacturer, so validated_by must name the manufacturer`);
     for (const f of ['validated_on', 'player_version', 'min_version', 'photo']) {
       assert.equal(d[f], null, `${d.id}.${f} must be null — nothing was tested`);

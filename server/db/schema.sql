@@ -818,6 +818,22 @@ CREATE TABLE IF NOT EXISTS studio_designs (
 
 CREATE INDEX IF NOT EXISTS idx_studio_designs_ws ON studio_designs(workspace_id);
 
+-- Workspace Suika templates (phase C). Paper JSON only — not a playlist item.
+-- Thumb is a blob so the preview does not appear in the content library.
+-- No org_id: a template is visible only inside its workspace.
+CREATE TABLE IF NOT EXISTS workspace_suika_templates (
+    id           TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    name         TEXT NOT NULL,
+    preset       TEXT NOT NULL,
+    paper_json   TEXT NOT NULL,
+    thumb        BLOB,
+    created_by   TEXT,
+    updated_at   INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_suika_templates_ws ON workspace_suika_templates(workspace_id, updated_at);
+
 -- Workspace brand kit (authoring). Distinct from white_labels (login chrome).
 CREATE TABLE IF NOT EXISTS workspace_brand_kits (
     workspace_id     TEXT PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,

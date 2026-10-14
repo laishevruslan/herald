@@ -192,7 +192,7 @@ export class SelectedElements {
   }
 
   removeFromScene() {
-    if (this.isEmpty()) {
+    if (this.editor.heraldFillMode || this.isEmpty()) {
       return;
     }
     removeGraphicsAndRecord(this.editor, this.items);

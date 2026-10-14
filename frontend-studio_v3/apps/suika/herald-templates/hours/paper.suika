@@ -1,0 +1,439 @@
+{
+  "appVersion": "suika-editor_0.0.3",
+  "paperId": "tpl-hours",
+  "data": [
+    {
+      "id": "0-0",
+      "objectName": "Document",
+      "width": 0,
+      "height": 0,
+      "type": "Document",
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "strokeWidth": 1
+    },
+    {
+      "id": "page",
+      "objectName": "Page 1",
+      "width": 0,
+      "height": 0,
+      "type": "Canvas",
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "strokeWidth": 1,
+      "parentIndex": {
+        "guid": "0-0",
+        "position": "a0"
+      }
+    },
+    {
+      "id": "bg",
+      "objectName": "Background",
+      "type": "Rect",
+      "width": 1920,
+      "height": 1080,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "strokeWidth": 0,
+      "cornerRadius": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 255,
+            "g": 255,
+            "b": 255,
+            "a": 1
+          }
+        }
+      ],
+      "parentIndex": {
+        "guid": "page",
+        "position": "a0"
+      }
+    },
+    {
+      "id": "title",
+      "objectName": "Title",
+      "type": "Text",
+      "content": "Сегодня",
+      "fontSize": 72,
+      "fontFamily": "Oswald",
+      "width": 1200,
+      "height": 100,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        96,
+        70
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a1"
+      }
+    },
+    {
+      "id": "r1",
+      "objectName": "Kitchen",
+      "type": "Text",
+      "content": "Кухня",
+      "fontSize": 40,
+      "fontFamily": "Inter",
+      "width": 700,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        96,
+        260
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a2"
+      }
+    },
+    {
+      "id": "t1",
+      "objectName": "Kitchen hours",
+      "type": "Text",
+      "content": "08:00–22:00",
+      "fontSize": 40,
+      "fontFamily": "Oswald",
+      "width": 700,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        1100,
+        260
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a3"
+      }
+    },
+    {
+      "id": "d1",
+      "objectName": "Rule",
+      "type": "Rect",
+      "width": 1728,
+      "height": 2,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        96,
+        350
+      ],
+      "strokeWidth": 0,
+      "cornerRadius": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 226,
+            "g": 232,
+            "b": 240,
+            "a": 1
+          }
+        }
+      ],
+      "parentIndex": {
+        "guid": "page",
+        "position": "a4"
+      }
+    },
+    {
+      "id": "r2",
+      "objectName": "Bar",
+      "type": "Text",
+      "content": "Бар",
+      "fontSize": 40,
+      "fontFamily": "Inter",
+      "width": 700,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        96,
+        400
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a5"
+      }
+    },
+    {
+      "id": "t2",
+      "objectName": "Bar hours",
+      "type": "Text",
+      "content": "12:00–00:00",
+      "fontSize": 40,
+      "fontFamily": "Oswald",
+      "width": 700,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        1100,
+        400
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a6"
+      }
+    },
+    {
+      "id": "d2",
+      "objectName": "Rule",
+      "type": "Rect",
+      "width": 1728,
+      "height": 2,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        96,
+        490
+      ],
+      "strokeWidth": 0,
+      "cornerRadius": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 226,
+            "g": 232,
+            "b": 240,
+            "a": 1
+          }
+        }
+      ],
+      "parentIndex": {
+        "guid": "page",
+        "position": "a7"
+      }
+    },
+    {
+      "id": "r3",
+      "objectName": "Desk",
+      "type": "Text",
+      "content": "Ресепшен",
+      "fontSize": 40,
+      "fontFamily": "Inter",
+      "width": 700,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        96,
+        540
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a8"
+      }
+    },
+    {
+      "id": "t3",
+      "objectName": "Desk hours",
+      "type": "Text",
+      "content": "круглосуточно",
+      "fontSize": 40,
+      "fontFamily": "Oswald",
+      "width": 700,
+      "height": 70,
+      "transform": [
+        1,
+        0,
+        0,
+        1,
+        1100,
+        540
+      ],
+      "strokeWidth": 0,
+      "fill": [
+        {
+          "type": "Solid",
+          "attrs": {
+            "r": 17,
+            "g": 24,
+            "b": 39,
+            "a": 1
+          }
+        }
+      ],
+      "lineHeight": {
+        "value": 1.15,
+        "units": "RAW"
+      },
+      "letterSpacing": {
+        "value": 0,
+        "units": "PIXELS"
+      },
+      "textAutoResize": "NONE",
+      "parentIndex": {
+        "guid": "page",
+        "position": "a9"
+      }
+    }
+  ]
+}

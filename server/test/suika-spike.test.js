@@ -42,6 +42,76 @@ test('demo .suika papers match current editor appVersion', { skip: !HAS_SUIKA_SO
   }
 });
 
+test('herald template catalogue is twelve Suika papers with thumbs', { skip: !HAS_SUIKA_SOURCES }, () => {
+  const SIZES = {
+    'landscape-1080': [1920, 1080],
+    'portrait-1080': [1080, 1920],
+    'epaper-5x3': [800, 480],
+    'landscape-4k': [3840, 2160],
+    'square-1080': [1080, 1080],
+    'bar-1920': [1920, 540],
+  };
+  const expected = [
+    'promo-hero',
+    'promo-portrait',
+    'announce-lobby',
+    'event-poster',
+    'hours',
+    'menu-photo',
+    'menu-list',
+    'staff-welcome',
+    'wifi',
+    'safety',
+    'epaper-notice',
+    'bar-ticker',
+  ];
+  const dir = path.join(ROOT, 'frontend-studio_v3', 'apps', 'suika', 'herald-templates');
+  const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+  assert.equal(manifest.templates.length, expected.length);
+  const ids = manifest.templates.map((entry) => entry.id);
+  assert.deepEqual(ids, expected);
+  for (const entry of manifest.templates) {
+    assert.ok(SIZES[entry.preset], `${entry.id} preset`);
+    assert.ok(Array.isArray(entry.tags) && entry.tags.length > 0, `${entry.id} tags`);
+    const paperPath = path.join(dir, entry.id, 'paper.suika');
+    const paper = JSON.parse(fs.readFileSync(paperPath, 'utf8'));
+    assert.equal(paper.appVersion, 'suika-editor_0.0.3', `${entry.id} appVersion`);
+    assert.equal(typeof paper.paperId, 'string');
+    assert.ok(Array.isArray(paper.data) && paper.data.length > 2, `${entry.id} graphics`);
+    const bg = paper.data.find((node) => node.id === 'bg');
+    assert.equal(bg.width, SIZES[entry.preset][0], `${entry.id} width`);
+    assert.equal(bg.height, SIZES[entry.preset][1], `${entry.id} height`);
+    const fonts = paper.data.filter((node) => node.type === 'Text').map((node) => node.fontFamily);
+    assert.ok(fonts.length > 0, `${entry.id} text`);
+    for (const family of fonts) {
+      assert.notEqual(family, 'sans-serif', `${entry.id} font`);
+      assert.ok(family === 'Inter' || family === 'Oswald', `${entry.id} catalogue font`);
+    }
+    const text = paper.data
+      .filter((node) => node.type === 'Text')
+      .map((node) => node.content)
+      .join('\n');
+    assert.match(text, /[А-Яа-яЁё]/, `${entry.id} Russian placeholder`);
+    const thumb = fs.readFileSync(path.join(dir, entry.id, 'thumb.png'));
+    assert.equal(thumb.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${entry.id} png`);
+  }
+  const en = fs.readFileSync(path.join(ROOT, 'frontend', 'js', 'i18n', 'en.js'), 'utf8');
+  const ru = fs.readFileSync(path.join(ROOT, 'frontend', 'js', 'i18n', 'ru.js'), 'utf8');
+  for (const key of [
+    'design.gallery_title',
+    'design.gallery_blank',
+    'design.gallery_from_layout',
+    'design.gallery_landscape',
+    'design.gallery_portrait',
+    'design.gallery_epaper',
+  ]) {
+    assert.match(en, new RegExp(`'${key}'`));
+    assert.match(ru, new RegExp(`'${key}'`));
+  }
+  assert.match(ru, /Пустой лист/);
+  assert.match(ru, /Из макета/);
+});
+
 test('spike fixture is 1920×1080 and matches appVersion', { skip: !HAS_SUIKA_SOURCES }, () => {
   const src = fs.readFileSync(
     path.join(ROOT, 'frontend-studio_v3', 'apps', 'suika', 'src', 'spike', 'herald-spike-paper.ts'),

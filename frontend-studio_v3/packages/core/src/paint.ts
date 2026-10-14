@@ -21,6 +21,8 @@ export interface PaintImage {
   attrs: {
     src?: string;
     opacity?: number;
+    /** Library row these bytes were copied from. Kept in the sidecar, not drawn. */
+    heraldContentId?: string;
   };
   visible?: boolean;
 }

@@ -1616,10 +1616,17 @@ function folderPath(folder, all) {
   return parts.join(' / ');
 }
 
-const DESIGN_PRESETS = [
+const STUDIO_PRESETS = [
   { id: 'landscape-1080', labelKey: 'studio.preset_landscape', hintKey: 'studio.preset_landscape_hint' },
   { id: 'portrait-1080', labelKey: 'studio.preset_portrait', hintKey: 'studio.preset_portrait_hint' },
   { id: 'epaper-5x3', labelKey: 'studio.preset_epaper', hintKey: 'studio.preset_epaper_hint' },
+];
+
+const SUIKA_PRESETS = [
+  ...STUDIO_PRESETS,
+  { id: 'landscape-4k', labelKey: 'design.preset_4k', hintKey: 'design.preset_4k_hint' },
+  { id: 'square-1080', labelKey: 'design.preset_square', hintKey: 'design.preset_square_hint' },
+  { id: 'bar-1920', labelKey: 'design.preset_bar', hintKey: 'design.preset_bar_hint' },
 ];
 
 /** Library → New poster: pick canvas size before opening the Studio island (6.1 presets). */
@@ -1631,6 +1638,7 @@ function openNewPosterPresetModal() {
     goKey: 'studio.open_editor',
     inputName: 'studioPreset',
     titleId: 'studioPresetTitle',
+    presets: STUDIO_PRESETS,
     onPick: (picked) => {
       window.location.href = `/studio/?preset=${encodeURIComponent(picked)}&lang=${encodeURIComponent(lang)}`;
     },
@@ -1645,13 +1653,14 @@ function openNewDesignPresetModal() {
     goKey: 'design.open_editor',
     inputName: 'designPreset',
     titleId: 'designPresetTitle',
+    presets: SUIKA_PRESETS,
     onPick: (picked) => {
       openDesignEditorWindow({ preset: picked });
     },
   });
 }
 
-function openCanvasPresetModal({ titleKey, helpKey, goKey, inputName, titleId, onPick }) {
+function openCanvasPresetModal({ titleKey, helpKey, goKey, inputName, titleId, presets, onPick }) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.style.display = 'flex';
@@ -1663,7 +1672,7 @@ function openCanvasPresetModal({ titleKey, helpKey, goKey, inputName, titleId, o
       </div>
       <div class="modal-body" style="display:grid;gap:10px">
         <p style="margin:0;font-size:13px;color:var(--text-muted)">${esc(t(helpKey))}</p>
-        ${DESIGN_PRESETS.map((p, i) => `
+        ${(presets || STUDIO_PRESETS).map((p, i) => `
           <label style="display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer">
             <input type="radio" name="${esc(inputName)}" value="${esc(p.id)}" ${i === 0 ? 'checked' : ''} style="margin-top:3px">
             <span>
@@ -1691,10 +1700,14 @@ function openCanvasPresetModal({ titleKey, helpKey, goKey, inputName, titleId, o
   document.body.appendChild(overlay);
 }
 
-const onSuikaHeraldMessage = createSuikaHeraldMessageHandler((contentId) => {
+const onSuikaHeraldMessage = createSuikaHeraldMessageHandler((contentId, meta) => {
   state.openId = contentId;
   state.selected.set(contentId, { id: contentId });
-  showToast(t('design.saved_toast'), 'success');
+  const pages = meta && Number(meta.pageCount) > 1 ? Number(meta.pageCount) : 0;
+  if (pages > 1) showToast(t('design.saved_pages', { n: pages }), 'success');
+  else if (meta && meta.replaced === true) showToast(t('design.saved_toast_updated'), 'success');
+  else if (meta && meta.replaced === false) showToast(t('design.saved_toast_first'), 'success');
+  else showToast(t('design.saved_toast'), 'success');
   loadContent();
 });
 

@@ -86,7 +86,7 @@ export function openDesignEditorWindow(opts = {}) {
  * Message listener for Library (and optional hosts). Handles suika:ready → herald:init
  * when Dev Variant B is active, plus herald:saved / herald:error.
  *
- * @param {(contentId: string) => void} onSaved
+ * @param {(contentId: string, meta?: { replaced?: boolean, pageCount?: number }) => void} onSaved
  * @returns {(event: MessageEvent) => void}
  */
 export function createSuikaHeraldMessageHandler(onSaved) {
@@ -106,7 +106,10 @@ export function createSuikaHeraldMessageHandler(onSaved) {
     }
 
     if (data.type === 'herald:saved' && data.contentId) {
-      onSaved(data.contentId);
+      onSaved(data.contentId, {
+        replaced: data.replaced,
+        pageCount: data.pageCount,
+      });
       return;
     }
     if (data.type === 'herald:error' && data.message) {

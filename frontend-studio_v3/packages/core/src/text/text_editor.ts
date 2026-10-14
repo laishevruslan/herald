@@ -66,6 +66,10 @@ export class TextEditor {
     pos?: IPoint;
     selection?: ISelection;
   }) {
+    if (this.editor.heraldFillMode) {
+      const text = params.textGraphics;
+      if (!text || text.attrs.heraldLock) return;
+    }
     this._active = true;
     this.inputDom.value = '';
     this.editor.controlHandleManager.enableTransformControl = false;
